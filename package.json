@@ -14,6 +14,8 @@
     "firebase:emulators": "firebase emulators:start",
     "firebase:deploy:rules": "firebase deploy --only firestore:rules",
     "firebase:deploy:functions": "firebase deploy --only functions",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
     "postinstall": "npx shadcn@latest init -y 2>/dev/null || true"
   },
   "dependencies": {
@@ -39,7 +41,9 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^20.12.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
