@@ -19,6 +19,14 @@ const config: Config = {
           cyan: '#06B6D4',
           'cyan-light': '#67E8F9',
         },
+        border: 'hsl(var(--border))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
+        },
+        ring: 'hsl(var(--ring))',
       },
       fontFamily: {
         display: ['Nunito', 'system-ui', 'sans-serif'],
