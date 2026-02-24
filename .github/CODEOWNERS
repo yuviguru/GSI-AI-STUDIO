@@ -1,0 +1,12 @@
+# Safety-critical code — always review
+lib/safety/ @yuviguru
+lib/firebase/sessionService.ts @yuviguru
+
+# Documentation changes
+docs/ @yuviguru
+
+# Security rules
+firestore.rules @yuviguru
+
+# CI/CD changes
+.github/ @yuviguru
