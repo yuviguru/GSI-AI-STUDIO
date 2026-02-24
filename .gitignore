@@ -46,5 +46,8 @@ coverage/
 /blob-report/
 /playwright/.cache/
 
+# Cache
+node-compile-cache/
+
 # Sentry
 .sentryclirc
