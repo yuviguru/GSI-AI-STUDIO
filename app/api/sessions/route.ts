@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
+import { getOrCreateSession } from '@/lib/firebase/sessionService';
 
 /**
  * POST /api/sessions
@@ -15,17 +16,11 @@ export async function POST(request: NextRequest) {
       throw new AppException('INVALID_INPUT', 'Session ID required', 400);
     }
 
-    // TODO: Implement in INFRA-001
-    // - Check Firestore for existing session
-    // - If expired or missing, create new session doc
-    // - Return remaining creation count + cooldown
+    const fingerprint = typeof body.fingerprint === 'string' ? body.fingerprint : undefined;
 
-    return apiSuccess({
-      sessionId,
-      creationsRemaining: 5,
-      cooldownSeconds: 0,
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    });
+    const result = await getOrCreateSession(sessionId, fingerprint);
+
+    return apiSuccess(result);
   } catch (error) {
     return handleApiError(error);
   }

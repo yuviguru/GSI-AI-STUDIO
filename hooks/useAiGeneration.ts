@@ -47,7 +47,7 @@ export function useAiGeneration<T>(studioType: 'story' | 'music' | 'quiz') {
       setState({ data: null, aiXray: null, loading: true, error: null, progressMessage: '' });
 
       // Rotate progress messages
-      const messages = PROGRESS_MESSAGES[studioType] ?? PROGRESS_MESSAGES.story;
+      const messages: string[] = PROGRESS_MESSAGES[studioType] ?? PROGRESS_MESSAGES.story!;
       let msgIndex = 0;
       const interval = setInterval(() => {
         msgIndex = (msgIndex + 1) % messages.length;
@@ -66,7 +66,7 @@ export function useAiGeneration<T>(studioType: 'story' | 'music' | 'quiz') {
           body: JSON.stringify(input),
         });
 
-        const json: ApiResponse<{ [key: string]: T; aiXray: AiXrayData }> = await res.json();
+        const json: ApiResponse<Record<string, unknown> & { aiXray: AiXrayData }> = await res.json();
 
         if (!json.success || !json.data) {
           const errorMsg = json.error ? friendlyError(json.error.code) : 'Generation failed';
