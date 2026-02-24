@@ -1,0 +1,55 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Creations ───────────────────────────────────────────
+    // Phase 1: Public read for published, server-side write only
+    match /creations/{creationId} {
+      allow read: if resource.data.isPublic == true || resource.data.status == 'published';
+      allow write: if false; // Server-side only via Admin SDK
+    }
+
+    // ─── Sessions ────────────────────────────────────────────
+    // Phase 1: Rate limiting — server-side only
+    match /sessions/{sessionId} {
+      allow read, write: if false; // Server-side only via Admin SDK
+    }
+
+    // ─── Users (Phase 2+) ───────────────────────────────────
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false; // Server-side only
+
+      // Kid profiles (sub-collection)
+      match /kids/{kidId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if false; // Server-side only
+      }
+    }
+
+    // ─── Curriculum ──────────────────────────────────────────
+    // Read-only reference data
+    match /curriculum/{topicId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ─── Challenges (Phase 2+) ──────────────────────────────
+    match /challenges/{challengeId} {
+      allow read: if true;
+      allow write: if false; // Server-side only
+    }
+
+    // ─── Schools (Phase 3) ──────────────────────────────────
+    match /schools/{schoolId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Server-side only
+    }
+
+    // Default: deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

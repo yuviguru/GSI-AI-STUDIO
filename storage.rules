@@ -1,0 +1,22 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Creation media (images, audio) — public read, server write only
+    match /creations/{creationId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if false; // Server-side only via Admin SDK
+    }
+
+    // User avatars (Phase 2+) — authenticated owner only
+    match /users/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Default: deny all
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
