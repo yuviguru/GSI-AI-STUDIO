@@ -13,11 +13,19 @@ const mockDocRef = {
   update: mockUpdate,
 };
 
+// Transaction mock: tx.get() and tx.update() for trackCreation
+const mockTxGet = vi.fn();
+const mockTxUpdate = vi.fn();
+const mockRunTransaction = vi.fn(async (cb: (tx: { get: typeof mockTxGet; update: typeof mockTxUpdate }) => Promise<unknown>) => {
+  return cb({ get: mockTxGet, update: mockTxUpdate });
+});
+
 vi.mock('./admin', () => ({
   adminDb: {
     collection: () => ({
       doc: () => mockDocRef,
     }),
+    runTransaction: (...args: unknown[]) => mockRunTransaction(...args),
   },
 }));
 
@@ -59,6 +67,7 @@ describe('sessionService', () => {
     vi.clearAllMocks();
     mockSet.mockResolvedValue(undefined);
     mockUpdate.mockResolvedValue(undefined);
+    mockTxUpdate.mockReturnValue(undefined);
   });
 
   describe('getOrCreateSession', () => {
@@ -94,24 +103,25 @@ describe('sessionService', () => {
   });
 
   describe('trackCreation', () => {
-    it('increments creation count', async () => {
-      mockGet.mockResolvedValue(makeSessionDoc({ creationCount: 2 }));
+    it('increments creation count within a transaction', async () => {
+      mockTxGet.mockResolvedValue(makeSessionDoc({ creationCount: 2 }));
 
       const result = await trackCreation('test-session');
 
-      expect(mockUpdate).toHaveBeenCalledOnce();
+      expect(mockRunTransaction).toHaveBeenCalledOnce();
+      expect(mockTxUpdate).toHaveBeenCalledOnce();
       expect(result.creationsRemaining).toBe(2); // 5 - 3
     });
 
     it('throws RATE_LIMITED when at max creations', async () => {
-      mockGet.mockResolvedValue(makeSessionDoc({ creationCount: 5 }));
+      mockTxGet.mockResolvedValue(makeSessionDoc({ creationCount: 5 }));
 
       await expect(trackCreation('test-session')).rejects.toThrow('Daily creation limit reached');
     });
 
     it('throws COOLDOWN when within 2-minute window', async () => {
       const recentMs = Date.now() - 30 * 1000; // 30 seconds ago
-      mockGet.mockResolvedValue(
+      mockTxGet.mockResolvedValue(
         makeSessionDoc({ lastCreationAt: Timestamp.fromMillis(recentMs) })
       );
 
@@ -120,7 +130,7 @@ describe('sessionService', () => {
 
     it('allows creation after cooldown period', async () => {
       const oldMs = Date.now() - 3 * 60 * 1000; // 3 minutes ago
-      mockGet.mockResolvedValue(
+      mockTxGet.mockResolvedValue(
         makeSessionDoc({
           creationCount: 1,
           lastCreationAt: Timestamp.fromMillis(oldMs),
@@ -129,18 +139,18 @@ describe('sessionService', () => {
 
       const result = await trackCreation('test-session');
 
-      expect(mockUpdate).toHaveBeenCalledOnce();
+      expect(mockTxUpdate).toHaveBeenCalledOnce();
       expect(result.creationsRemaining).toBe(3); // 5 - 2
     });
 
     it('throws SESSION_NOT_FOUND for missing session', async () => {
-      mockGet.mockResolvedValue({ exists: false });
+      mockTxGet.mockResolvedValue({ exists: false });
 
       await expect(trackCreation('missing')).rejects.toThrow('Session not found');
     });
 
     it('throws SESSION_EXPIRED for expired session', async () => {
-      mockGet.mockResolvedValue(makeExpiredSession());
+      mockTxGet.mockResolvedValue(makeExpiredSession());
 
       await expect(trackCreation('expired')).rejects.toThrow('Session has expired');
     });
