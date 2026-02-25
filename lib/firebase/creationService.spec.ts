@@ -261,6 +261,10 @@ describe('creationService', () => {
       expect(mockLimit).toHaveBeenCalledWith(6);
     });
 
+    it('rejects cursor containing slash', async () => {
+      await expect(listCreations('session-123', { cursor: 'a/b' })).rejects.toThrow('Invalid cursor');
+    });
+
     it('caps limit at 50', async () => {
       mockQueryGet.mockResolvedValue({ docs: [] });
 
