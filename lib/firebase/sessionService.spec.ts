@@ -25,7 +25,7 @@ vi.mock('./admin', () => ({
     collection: () => ({
       doc: () => mockDocRef,
     }),
-    runTransaction: (...args: unknown[]) => mockRunTransaction(...args),
+    runTransaction: (cb: Parameters<typeof mockRunTransaction>[0]) => mockRunTransaction(cb),
   },
 }));
 
