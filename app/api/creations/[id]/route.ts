@@ -1,18 +1,26 @@
 import { NextRequest } from 'next/server';
-import { apiSuccess, handleApiError } from '@/lib/api-utils';
+import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { getCreation, incrementView } from '@/lib/firebase/creationService';
 
 /**
  * GET /api/creations/:id — Fetch a single creation
- * Public endpoint: increments view count on each fetch.
+ * Returns public creations to anyone. Private creations require matching session.
  * See: docs/api-contracts.md#creations
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const creation = await getCreation(params.id);
+
+    // Private creations are only visible to their owner
+    if (!creation.isPublic) {
+      const sessionId = request.headers.get('X-Session-Id');
+      if (sessionId !== creation.sessionId) {
+        throw new AppException('NOT_FOUND', 'Creation not found', 404);
+      }
+    }
 
     // Increment view count in the background (fire-and-forget)
     incrementView(params.id).catch(() => {

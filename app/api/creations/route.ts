@@ -23,6 +23,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const input = saveCreationSchema.parse(body);
 
+    // Track quota before persisting to avoid orphaned creations on quota failure
+    await trackCreation(sessionId);
+
     // Save creation to Firestore
     const result = await saveCreation({
       type: input.type,
@@ -36,9 +39,6 @@ export async function POST(request: NextRequest) {
       isPublic: input.isPublic,
       sessionId,
     });
-
-    // Track creation for rate limiting
-    await trackCreation(sessionId);
 
     return apiSuccess(
       {
@@ -67,12 +67,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') as CreationType | null;
     const cursor = searchParams.get('cursor');
-    const limit = searchParams.get('limit');
+    const limitRaw = searchParams.get('limit');
+    const parsedLimit = limitRaw ? parseInt(limitRaw, 10) : NaN;
+    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : undefined;
 
     const result = await listCreations(sessionId, {
       type: type ?? undefined,
       cursor: cursor ?? undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
+      limit,
     });
 
     return apiSuccess(result);
