@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 
 export default function StoryStudioPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-brand-purple/5 to-white px-4 py-8">
+    <div className="bg-gradient-to-b from-brand-purple/5 to-white px-4 py-8">
       <div className="mx-auto max-w-2xl text-center">
         <span className="text-5xl">📖</span>
         <h1 className="mt-4 font-display text-3xl font-bold text-gray-900">
@@ -21,6 +21,6 @@ export default function StoryStudioPage() {
           Story creation form coming soon — see stories/STUDIO-001-story-creation-flow.md
         </div>
       </div>
-    </main>
+    </div>
   );
 }
