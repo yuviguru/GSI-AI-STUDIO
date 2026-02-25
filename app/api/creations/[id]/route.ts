@@ -27,6 +27,14 @@ export async function GET(
       // View count increment is non-critical; swallow errors
     });
 
+    // Strip sessionId from public responses to prevent session impersonation
+    const sessionId = request.headers.get('X-Session-Id');
+    const isOwner = sessionId === creation.sessionId;
+    if (!isOwner) {
+      const { sessionId: _sid, ...publicCreation } = creation;
+      return apiSuccess(publicCreation);
+    }
+
     return apiSuccess(creation);
   } catch (error) {
     return handleApiError(error);

@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const result = await saveCreation({
       type: input.type,
       title: input.title,
-      prompt: (body.prompt as string) ?? '',
+      prompt: input.prompt,
       content: input.content,
       media: input.media,
       thumbnail: input.thumbnail,

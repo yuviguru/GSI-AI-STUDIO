@@ -35,6 +35,7 @@ export const quizInputSchema = z.object({
 export const saveCreationSchema = z.object({
   type: z.enum(['story', 'music', 'quiz', 'game', 'comic']),
   title: z.string().min(1).max(200),
+  prompt: z.string().max(2000).default(''),
   content: z.record(z.unknown()),
   media: z.array(z.object({ url: z.string().url(), type: z.string(), alt: z.string() })).optional(),
   thumbnail: z.string().url().optional(),
