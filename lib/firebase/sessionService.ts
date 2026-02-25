@@ -57,53 +57,61 @@ export async function getOrCreateSession(
 
 /**
  * Track a creation for rate limiting. Call this after a successful AI generation.
+ * Uses a Firestore transaction to prevent concurrent requests from bypassing limits.
  * Throws if rate limited.
  */
 export async function trackCreation(sessionId: string): Promise<SessionResult> {
   const docRef = adminDb.collection(SESSIONS_COLLECTION).doc(sessionId);
-  const doc = await docRef.get();
 
-  if (!doc.exists) {
-    throw new AppException('SESSION_NOT_FOUND', 'Session not found', 404);
-  }
+  const updatedData = await adminDb.runTransaction(async (tx) => {
+    const doc = await tx.get(docRef);
 
-  const data = doc.data() as SessionDoc;
-  const now = Date.now();
-
-  // Check session expiry
-  if (now > data.expiresAt.toMillis()) {
-    throw new AppException('SESSION_EXPIRED', 'Session has expired. Please refresh.', 401);
-  }
-
-  // Check daily limit
-  if (data.creationCount >= MAX_CREATIONS_PER_DAY) {
-    throw new AppException('RATE_LIMITED', 'Daily creation limit reached. Come back tomorrow!', 429);
-  }
-
-  // Check cooldown
-  if (data.lastCreationAt) {
-    const elapsed = (now - data.lastCreationAt.toMillis()) / 1000;
-    if (elapsed < COOLDOWN_SECONDS) {
-      const remaining = Math.ceil(COOLDOWN_SECONDS - elapsed);
-      throw new AppException(
-        'COOLDOWN',
-        `Please wait ${remaining} seconds before creating again.`,
-        429
-      );
+    if (!doc.exists) {
+      throw new AppException('SESSION_NOT_FOUND', 'Session not found', 404);
     }
-  }
 
-  // Update session
-  await docRef.update({
-    creationCount: data.creationCount + 1,
-    lastCreationAt: Timestamp.fromMillis(now),
+    const data = doc.data() as SessionDoc;
+    const now = Date.now();
+
+    // Check session expiry
+    if (now > data.expiresAt.toMillis()) {
+      throw new AppException('SESSION_EXPIRED', 'Session has expired. Please refresh.', 401);
+    }
+
+    // Check daily limit
+    if (data.creationCount >= MAX_CREATIONS_PER_DAY) {
+      throw new AppException('RATE_LIMITED', 'Daily creation limit reached. Come back tomorrow!', 429);
+    }
+
+    // Check cooldown
+    if (data.lastCreationAt) {
+      const elapsed = (now - data.lastCreationAt.toMillis()) / 1000;
+      if (elapsed < COOLDOWN_SECONDS) {
+        const remaining = Math.ceil(COOLDOWN_SECONDS - elapsed);
+        throw new AppException(
+          'COOLDOWN',
+          `Please wait ${remaining} seconds before creating again.`,
+          429
+        );
+      }
+    }
+
+    // Atomically update within the transaction
+    const newCount = data.creationCount + 1;
+    const newLastCreation = Timestamp.fromMillis(now);
+    tx.update(docRef, {
+      creationCount: newCount,
+      lastCreationAt: newLastCreation,
+    });
+
+    return {
+      ...data,
+      creationCount: newCount,
+      lastCreationAt: newLastCreation,
+    };
   });
 
-  return buildSessionResult(sessionId, {
-    ...data,
-    creationCount: data.creationCount + 1,
-    lastCreationAt: Timestamp.fromMillis(now),
-  });
+  return buildSessionResult(sessionId, updatedData);
 }
 
 /**
