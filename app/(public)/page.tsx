@@ -68,7 +68,7 @@ export default function HomePage() {
       </div>
 
       {/* Floating emojis */}
-      <div className="pointer-events-none absolute inset-0 -z-5 overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         {floatingItems.map((item, i) => (
           <motion.span
             key={i}
