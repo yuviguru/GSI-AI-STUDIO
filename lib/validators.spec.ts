@@ -233,6 +233,28 @@ describe('saveCreationSchema', () => {
       saveCreationSchema.parse({ ...validCreation, title: 'x'.repeat(201) })
     ).toThrow();
   });
+
+  it('defaults prompt to empty string when omitted', () => {
+    const result = saveCreationSchema.parse(validCreation);
+    expect(result.prompt).toBe('');
+  });
+
+  it('accepts a valid prompt', () => {
+    const result = saveCreationSchema.parse({ ...validCreation, prompt: 'Write a story about a cat' });
+    expect(result.prompt).toBe('Write a story about a cat');
+  });
+
+  it('rejects prompt over 2000 characters', () => {
+    expect(() =>
+      saveCreationSchema.parse({ ...validCreation, prompt: 'x'.repeat(2001) })
+    ).toThrow();
+  });
+
+  it('rejects non-string prompt', () => {
+    expect(() =>
+      saveCreationSchema.parse({ ...validCreation, prompt: 123 })
+    ).toThrow();
+  });
 });
 
 describe('kidProfileSchema', () => {
