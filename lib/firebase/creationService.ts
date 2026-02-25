@@ -109,6 +109,9 @@ export async function listCreations(
   }
 
   if (filters.cursor) {
+    if (filters.cursor.includes('/')) {
+      throw new AppException('INVALID_INPUT', 'Invalid cursor', 400);
+    }
     const cursorDoc = await adminDb.collection(CREATIONS_COLLECTION).doc(filters.cursor).get();
     if (cursorDoc.exists) {
       query = query.startAfter(cursorDoc);
