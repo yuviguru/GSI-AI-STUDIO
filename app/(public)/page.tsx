@@ -21,9 +21,9 @@ const studios = [
     title: 'Story Studio',
     description: 'Write & illustrate amazing AI stories',
     gradient: 'from-violet-500 to-purple-600',
-    shadow: 'shadow-violet-200',
+    hoverShadow: 'hover:shadow-violet-200',
     bg: 'bg-violet-50',
-    ring: 'ring-violet-200',
+    hoverRing: 'hover:ring-violet-200',
   },
   {
     href: '/create/music',
@@ -31,9 +31,9 @@ const studios = [
     title: 'Music Lab',
     description: 'Create songs & beats with AI',
     gradient: 'from-orange-400 to-rose-500',
-    shadow: 'shadow-orange-200',
+    hoverShadow: 'hover:shadow-orange-200',
     bg: 'bg-orange-50',
-    ring: 'ring-orange-200',
+    hoverRing: 'hover:ring-orange-200',
   },
   {
     href: '/create/quiz',
@@ -41,9 +41,9 @@ const studios = [
     title: 'Quiz Maker',
     description: 'Build quizzes & challenge friends',
     gradient: 'from-cyan-400 to-blue-500',
-    shadow: 'shadow-cyan-200',
+    hoverShadow: 'hover:shadow-cyan-200',
     bg: 'bg-cyan-50',
-    ring: 'ring-cyan-200',
+    hoverRing: 'hover:ring-cyan-200',
   },
 ];
 
@@ -171,18 +171,18 @@ function StudioCard({
   title,
   description,
   gradient,
-  shadow,
+  hoverShadow,
   bg,
-  ring,
+  hoverRing,
 }: {
   href: string;
   emoji: string;
   title: string;
   description: string;
   gradient: string;
-  shadow: string;
+  hoverShadow: string;
   bg: string;
-  ring: string;
+  hoverRing: string;
 }) {
   return (
     <Link href={href} className="group block">
@@ -190,7 +190,8 @@ function StudioCard({
         className={cn(
           'relative rounded-2xl border border-gray-100 bg-white p-5 text-center',
           'ring-1 ring-transparent transition-shadow',
-          `hover:${ring} hover:${shadow}`,
+          hoverRing,
+          hoverShadow,
         )}
         whileHover={{ y: -6, scale: 1.02 }}
         whileTap={{ scale: 0.97 }}
