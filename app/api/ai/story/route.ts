@@ -5,12 +5,14 @@ import { filterInput, filterOutput, filterImagePrompt } from '@/lib/safety/input
 import { checkRateLimit, trackCreation } from '@/lib/firebase/sessionService';
 import { saveCreation } from '@/lib/firebase/creationService';
 import { generateJsonWithClaude } from '@/lib/ai/claudeClient';
+import { generateJsonWithGroq } from '@/lib/ai/groqClient';
 import { generateImage } from '@/lib/ai/replicateClient';
+import { generateImageFree } from '@/lib/ai/pollinationsClient';
 import { STORY_SYSTEM_PROMPT, buildStoryUserPrompt } from '@/lib/ai/prompts/storyPrompt';
 import type { AiXrayData, StoryContent } from '@/types';
 
-/** Shape Claude returns for a story */
-interface ClaudeStoryResponse {
+/** Shape returned by LLM for a story */
+interface LlmStoryResponse {
   title: string;
   pages: Array<{
     pageNumber: number;
@@ -31,9 +33,19 @@ interface ClaudeStoryResponse {
 const IMAGE_CONCURRENCY = 3;
 const PLACEHOLDER_IMAGE = '/images/placeholder-story.png';
 
+// Auto-detect which providers to use based on available API keys
+function shouldUseGroq(): boolean {
+  return !!process.env.GROQ_API_KEY && !process.env.ANTHROPIC_API_KEY?.startsWith('sk-ant-api');
+}
+
+function shouldUseReplicate(): boolean {
+  return !!process.env.REPLICATE_API_TOKEN && !process.env.REPLICATE_API_TOKEN?.includes('your-token');
+}
+
 /**
  * POST /api/ai/story
- * Generate an illustrated story using Claude (text) + Replicate (images).
+ * Generate an illustrated story using LLM (text) + image generator (illustrations).
+ * Auto-selects free providers (Groq + Pollinations) when paid API keys aren't configured.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -53,8 +65,9 @@ export async function POST(request: NextRequest) {
     // 4. Check rate limit
     await checkRateLimit(sessionId);
 
-    // 5. Generate story text via Claude
-    const claudeResponse = await generateJsonWithClaude<ClaudeStoryResponse>({
+    // 5. Generate story text via LLM
+    const generateJson = shouldUseGroq() ? generateJsonWithGroq : generateJsonWithClaude;
+    const llmResponse = await generateJson<LlmStoryResponse>({
       systemPrompt: STORY_SYSTEM_PROMPT,
       userMessage: buildStoryUserPrompt({
         premise: input.premise,
@@ -67,43 +80,45 @@ export async function POST(request: NextRequest) {
       maxTokens: 4096,
     });
 
-    // 6. Safety-filter Claude output
-    const filteredPages = claudeResponse.pages.map((page) => ({
+    // 6. Safety-filter output
+    const filteredPages = llmResponse.pages.map((page) => ({
       ...page,
       text: filterOutput(page.text),
       imagePrompt: filterImagePrompt(page.imagePrompt),
     }));
 
     // 7. Generate illustrations in parallel (batched)
-    const imageUrls = await generateImagesParallel(filteredPages, input.style);
+    const genImage = shouldUseReplicate() ? generateImage : generateImageFree;
+    const imageUrls = await generateImagesParallel(filteredPages, input.style, genImage);
 
     // 8. Build story content
+    const modelName = shouldUseGroq() ? 'llama-3.3-70b' : 'claude-sonnet';
     const storyContent: StoryContent & { title: string; moral: string } = {
-      title: claudeResponse.title,
+      title: llmResponse.title,
       pages: filteredPages.map((page, i) => ({
         pageNumber: page.pageNumber,
         text: page.text,
         imageUrl: imageUrls[i] ?? PLACEHOLDER_IMAGE,
       })),
-      genre: claudeResponse.genre,
-      characters: claudeResponse.characters,
-      setting: claudeResponse.setting,
-      moral: claudeResponse.moral,
+      genre: llmResponse.genre,
+      characters: llmResponse.characters,
+      setting: llmResponse.setting,
+      moral: llmResponse.moral,
     };
 
     // 9. Build AI X-Ray metadata
     const aiXray: AiXrayData = {
-      model: 'claude-sonnet',
-      concept: claudeResponse.aiXray.concept,
-      explanation: claudeResponse.aiXray.explanation,
-      curriculumTag: claudeResponse.aiXray.curriculumTag,
+      model: modelName,
+      concept: llmResponse.aiXray.concept,
+      explanation: llmResponse.aiXray.explanation,
+      curriculumTag: llmResponse.aiXray.curriculumTag,
       aiPoints: 10,
     };
 
     // 10. Save creation to Firestore
     const { id: creationId, shareUrl } = await saveCreation({
       type: 'story',
-      title: claudeResponse.title,
+      title: llmResponse.title,
       prompt: input.premise,
       content: storyContent as unknown as Record<string, unknown>,
       media: imageUrls
@@ -127,7 +142,8 @@ export async function POST(request: NextRequest) {
 /** Generate images in parallel with concurrency limit */
 async function generateImagesParallel(
   pages: Array<{ imagePrompt: string }>,
-  style: string
+  style: string,
+  genImage: (opts: { prompt: string; style: 'watercolor' | 'cartoon' | 'pixel-art' | 'comic'; width: number; height: number }) => Promise<string>
 ): Promise<string[]> {
   const urls: string[] = new Array(pages.length).fill(PLACEHOLDER_IMAGE);
 
@@ -135,7 +151,7 @@ async function generateImagesParallel(
     const batch = pages.slice(i, i + IMAGE_CONCURRENCY);
     const results = await Promise.allSettled(
       batch.map((page) =>
-        generateImage({
+        genImage({
           prompt: page.imagePrompt,
           style: style as 'watercolor' | 'cartoon' | 'pixel-art' | 'comic',
           width: 768,
