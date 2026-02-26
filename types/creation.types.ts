@@ -39,6 +39,14 @@ export interface QuizContent {
 
 export type CreationContent = StoryContent | MusicContent | QuizContent;
 
+/** API response from POST /api/ai/story */
+export interface StoryGenerateResponse {
+  story: StoryContent & { title: string; moral: string };
+  aiXray: AiXrayData;
+  creationId: string;
+  shareUrl: string;
+}
+
 export interface AiXrayData {
   model: string;
   concept: string;
