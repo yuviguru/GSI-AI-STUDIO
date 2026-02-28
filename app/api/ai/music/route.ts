@@ -107,11 +107,13 @@ export async function POST(request: NextRequest) {
     };
 
     // 10. Save creation to Firestore
+    // Strip large binary data (base64 audio, waveform) — Firestore has a 1MB doc limit
+    const { audioUrl: _audioUrl, waveformData: _waveform, ...savableContent } = musicContent;
     const { id: creationId, shareUrl } = await saveCreation({
       type: 'music',
       title: llmResponse.title,
       prompt: input.theme ?? `${input.mood} ${input.genre}`,
-      content: musicContent as unknown as Record<string, unknown>,
+      content: savableContent as unknown as Record<string, unknown>,
       media: musicResult.audioUrl.startsWith('data:')
         ? []
         : [{ url: musicResult.audioUrl, type: 'audio/mpeg', alt: `${llmResponse.title} audio` }],
