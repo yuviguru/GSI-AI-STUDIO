@@ -1,3 +1,7 @@
+// Prevent ws from using a broken native bufferutil (pnpm hoisting issue)
+process.env.WS_NO_BUFFER_UTIL = '1';
+process.env.WS_NO_UTF_8_VALIDATE = '1';
+
 import Replicate from 'replicate';
 
 // ---------------------------------------------------------------------------
@@ -42,6 +46,7 @@ async function generateWithLyria(opts: MusicGenOptions): Promise<MusicGenResult>
 
   const client = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY!,
+    httpOptions: { apiVersion: 'v1alpha' },
   });
 
   // Collect base64 PCM chunks via onmessage callback
