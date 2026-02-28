@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { AiXrayModal } from '@/components/studios/story/AiXrayModal';
+import { AiXrayPopup } from '@/components/learning/AiXrayPopup';
 import type { AiXrayData, MusicContent } from '@/types';
 
 type MusicData = MusicContent & { title: string; waveformData: number[] };
@@ -19,6 +19,15 @@ export function MusicPlayer({ music, aiXray, onCreateAnother }: MusicPlayerProps
   const [audioDuration, setAudioDuration] = useState(music.duration || 0);
   const [showXray, setShowXray] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Auto-show X-Ray on first creation per session
+  useEffect(() => {
+    const key = 'gsi-xray-shown-music';
+    if (!sessionStorage.getItem(key)) {
+      setShowXray(true);
+      sessionStorage.setItem(key, 'true');
+    }
+  }, []);
 
   const howlRef = useRef<import('howler').Howl | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -268,7 +277,7 @@ export function MusicPlayer({ music, aiXray, onCreateAnother }: MusicPlayerProps
         Create Another Song
       </button>
 
-      <AiXrayModal isOpen={showXray} onClose={() => setShowXray(false)} aiXray={aiXray} />
+      <AiXrayPopup isOpen={showXray} onClose={() => setShowXray(false)} aiXray={aiXray} />
     </div>
   );
 }

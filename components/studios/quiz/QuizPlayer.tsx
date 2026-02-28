@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { AiXrayModal } from '@/components/studios/story/AiXrayModal';
+import { AiXrayPopup } from '@/components/learning/AiXrayPopup';
 import type { AiXrayData } from '@/types';
 
 interface QuizQuestion {
@@ -36,6 +36,16 @@ export function QuizPlayer({ quiz, aiXray, onCreateAnother }: QuizPlayerProps) {
   const [score, setScore] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
   const [showXray, setShowXray] = useState(false);
+
+  // Auto-show X-Ray on quiz completion (first time per session)
+  useEffect(() => {
+    if (!isFinished) return;
+    const key = 'gsi-xray-shown-quiz';
+    if (!sessionStorage.getItem(key)) {
+      setShowXray(true);
+      sessionStorage.setItem(key, 'true');
+    }
+  }, [isFinished]);
 
   const totalQuestions = quiz.questions.length;
   const currentQuestion = quiz.questions[currentIndex];
@@ -167,7 +177,7 @@ export function QuizPlayer({ quiz, aiXray, onCreateAnother }: QuizPlayerProps) {
           Create Another Quiz
         </button>
 
-        <AiXrayModal isOpen={showXray} onClose={() => setShowXray(false)} aiXray={aiXray} />
+        <AiXrayPopup isOpen={showXray} onClose={() => setShowXray(false)} aiXray={aiXray} />
       </div>
     );
   }

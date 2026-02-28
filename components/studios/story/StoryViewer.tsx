@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { StoryPageView } from './StoryPageView';
-import { AiXrayModal } from './AiXrayModal';
+import { AiXrayPopup } from '@/components/learning/AiXrayPopup';
 import type { AiXrayData } from '@/types';
 
 interface StoryViewerProps {
@@ -23,6 +23,15 @@ export function StoryViewer({ story, aiXray, onCreateAnother }: StoryViewerProps
   const [currentPage, setCurrentPage] = useState(0);
   const [direction, setDirection] = useState(0);
   const [showXray, setShowXray] = useState(false);
+
+  // Auto-show X-Ray on first creation per session
+  useEffect(() => {
+    const key = 'gsi-xray-shown-story';
+    if (!sessionStorage.getItem(key)) {
+      setShowXray(true);
+      sessionStorage.setItem(key, 'true');
+    }
+  }, []);
 
   const totalPages = story.pages.length;
 
@@ -139,7 +148,7 @@ export function StoryViewer({ story, aiXray, onCreateAnother }: StoryViewerProps
         Create Another Story
       </button>
 
-      <AiXrayModal isOpen={showXray} onClose={() => setShowXray(false)} aiXray={aiXray} />
+      <AiXrayPopup isOpen={showXray} onClose={() => setShowXray(false)} aiXray={aiXray} />
     </div>
   );
 }
