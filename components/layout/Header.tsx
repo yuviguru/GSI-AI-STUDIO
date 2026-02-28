@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AiPointsBadge } from '@/components/learning/AiPointsBadge';
 
 export function Header() {
   return (
@@ -20,10 +20,7 @@ export function Header() {
           </span>
         </Link>
 
-        <div className="flex items-center gap-1.5 rounded-full bg-brand-purple/10 px-3 py-1.5 text-sm font-medium text-brand-purple">
-          <Sparkles className="h-4 w-4" />
-          <span>0 AI Points</span>
-        </div>
+        <AiPointsBadge />
       </div>
     </header>
   );
