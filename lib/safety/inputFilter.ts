@@ -31,6 +31,7 @@ export function filterOutput(text: string): string {
     /\b\d{10}\b/, // phone numbers
     /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z]{2,}\b/i, // email
     /\b\d{1,5}\s\w+\s(?:street|st|avenue|ave|road|rd|drive|dr)\b/i, // addresses
+    /\b\d{4}\s?\d{4}\s?\d{4}\b/, // Aadhaar numbers (12 digits, optional spaces)
   ];
 
   let filtered = text;
