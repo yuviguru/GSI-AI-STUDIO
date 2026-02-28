@@ -1,0 +1,274 @@
+'use client';
+
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { cn } from '@/lib/utils';
+import { AiXrayModal } from '@/components/studios/story/AiXrayModal';
+import type { AiXrayData, MusicContent } from '@/types';
+
+type MusicData = MusicContent & { title: string; waveformData: number[] };
+
+interface MusicPlayerProps {
+  music: MusicData;
+  aiXray: AiXrayData;
+  onCreateAnother: () => void;
+}
+
+export function MusicPlayer({ music, aiXray, onCreateAnother }: MusicPlayerProps) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(music.duration || 0);
+  const [showXray, setShowXray] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  const howlRef = useRef<import('howler').Howl | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animFrameRef = useRef<number>(0);
+
+  // Initialize Howler (client-side only)
+  useEffect(() => {
+    let howl: import('howler').Howl | null = null;
+
+    (async () => {
+      const { Howl } = await import('howler');
+      howl = new Howl({
+        src: [music.audioUrl],
+        html5: true,
+        onload: () => {
+          setAudioDuration(howl!.duration());
+          setIsLoaded(true);
+        },
+        onend: () => {
+          setIsPlaying(false);
+          setCurrentTime(0);
+        },
+        onloaderror: (_id: number, err: unknown) => {
+          console.warn('[MusicPlayer] Load error:', err);
+          setIsLoaded(true); // still show UI
+        },
+      });
+      howlRef.current = howl;
+    })();
+
+    return () => {
+      if (howl) howl.unload();
+      cancelAnimationFrame(animFrameRef.current);
+    };
+  }, [music.audioUrl]);
+
+  // Animate progress while playing
+  useEffect(() => {
+    if (!isPlaying) {
+      cancelAnimationFrame(animFrameRef.current);
+      return;
+    }
+
+    const tick = () => {
+      const howl = howlRef.current;
+      if (howl && howl.playing()) {
+        setCurrentTime(howl.seek() as number);
+      }
+      animFrameRef.current = requestAnimationFrame(tick);
+    };
+    animFrameRef.current = requestAnimationFrame(tick);
+
+    return () => cancelAnimationFrame(animFrameRef.current);
+  }, [isPlaying]);
+
+  // Draw waveform
+  const drawWaveform = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    const { width, height } = rect;
+    const data = music.waveformData;
+    const barCount = data.length;
+    const barWidth = Math.max(2, (width / barCount) * 0.7);
+    const barGap = (width - barWidth * barCount) / (barCount - 1);
+    const progress = audioDuration > 0 ? currentTime / audioDuration : 0;
+    const progressX = progress * width;
+
+    ctx.clearRect(0, 0, width, height);
+
+    for (let i = 0; i < barCount; i++) {
+      const x = i * (barWidth + barGap);
+      const barHeight = Math.max(4, (data[i] ?? 0) * height * 0.85);
+      const y = (height - barHeight) / 2;
+
+      ctx.fillStyle = x + barWidth <= progressX ? '#F97316' : '#e5e7eb';
+      ctx.beginPath();
+      ctx.roundRect(x, y, barWidth, barHeight, 1.5);
+      ctx.fill();
+    }
+  }, [music.waveformData, currentTime, audioDuration]);
+
+  useEffect(() => {
+    drawWaveform();
+  }, [drawWaveform]);
+
+  // Resize observer for canvas
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const observer = new ResizeObserver(() => drawWaveform());
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, [drawWaveform]);
+
+  const togglePlay = () => {
+    const howl = howlRef.current;
+    if (!howl) return;
+
+    if (isPlaying) {
+      howl.pause();
+      setIsPlaying(false);
+    } else {
+      howl.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    const howl = howlRef.current;
+    if (!canvas || !howl || !audioDuration) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const progress = x / rect.width;
+    const newTime = progress * audioDuration;
+
+    howl.seek(newTime);
+    setCurrentTime(newTime);
+  };
+
+  const handleShare = async () => {
+    const shareData = {
+      title: music.title,
+      text: `Check out my AI song: ${music.title}`,
+      url: window.location.href,
+    };
+    if (navigator.share) {
+      try { await navigator.share(shareData); } catch { /* user cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(window.location.href);
+    }
+  };
+
+  const formatTime = (seconds: number): string => {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Title + metadata */}
+      <div className="text-center">
+        <h2 className="font-display text-2xl font-bold text-gray-900">{music.title}</h2>
+        <div className="mt-2 flex flex-wrap justify-center gap-2">
+          <span className="rounded-full bg-brand-orange/10 px-3 py-0.5 text-sm font-medium capitalize text-brand-orange">
+            {music.genre}
+          </span>
+          <span className="rounded-full bg-brand-purple/10 px-3 py-0.5 text-sm font-medium capitalize text-brand-purple">
+            {music.mood}
+          </span>
+          <span className="rounded-full bg-brand-cyan/10 px-3 py-0.5 text-sm font-medium text-brand-cyan">
+            {music.bpm} BPM
+          </span>
+          {music.instruments.map((inst) => (
+            <span key={inst} className="rounded-full bg-gray-100 px-3 py-0.5 text-sm font-medium text-gray-600">
+              {inst}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Player card */}
+      <div className="rounded-2xl border-2 border-gray-100 bg-white p-5 shadow-sm">
+        {/* Waveform canvas */}
+        <canvas
+          ref={canvasRef}
+          onClick={handleCanvasClick}
+          className="h-20 w-full cursor-pointer rounded-lg"
+        />
+
+        {/* Controls */}
+        <div className="mt-4 flex items-center gap-4">
+          {/* Play/pause button */}
+          <button
+            onClick={togglePlay}
+            disabled={!isLoaded}
+            className={cn(
+              'flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-2xl text-white transition-all active:scale-95',
+              isLoaded
+                ? 'bg-brand-orange hover:bg-brand-orange/90'
+                : 'cursor-wait bg-gray-300'
+            )}
+            aria-label={isPlaying ? 'Pause' : 'Play'}
+          >
+            {isPlaying ? '⏸' : '▶'}
+          </button>
+
+          {/* Time */}
+          <div className="flex-1">
+            <div className="flex justify-between text-sm text-gray-500">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(audioDuration)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Lyrics */}
+      {music.lyrics && (
+        <div className="rounded-2xl bg-gray-50 p-5">
+          <h3 className="mb-3 text-sm font-semibold text-gray-700">Lyrics</h3>
+          <div className="max-h-48 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
+            {music.lyrics}
+          </div>
+        </div>
+      )}
+
+      {/* Action buttons */}
+      <div className="flex gap-3">
+        <button
+          onClick={handleShare}
+          className={cn(
+            'flex-1 rounded-full border-2 border-brand-orange py-3 text-center font-bold text-brand-orange',
+            'transition-all active:scale-95 hover:bg-brand-orange/5'
+          )}
+        >
+          Share
+        </button>
+        <button
+          onClick={() => setShowXray(true)}
+          className={cn(
+            'flex-1 rounded-full border-2 border-brand-cyan py-3 text-center font-bold text-brand-cyan',
+            'transition-all active:scale-95 hover:bg-brand-cyan/5'
+          )}
+        >
+          AI X-Ray 🔍
+        </button>
+      </div>
+
+      <button
+        onClick={onCreateAnother}
+        className="rounded-full bg-gray-100 py-3 text-center font-bold text-gray-600 transition-all hover:bg-gray-200 active:scale-95"
+      >
+        Create Another Song
+      </button>
+
+      <AiXrayModal isOpen={showXray} onClose={() => setShowXray(false)} aiXray={aiXray} />
+    </div>
+  );
+}
