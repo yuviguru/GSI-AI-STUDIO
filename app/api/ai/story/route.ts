@@ -8,6 +8,7 @@ import { generateJsonWithClaude } from '@/lib/ai/claudeClient';
 import { generateJsonWithGroq } from '@/lib/ai/groqClient';
 import { generateImage } from '@/lib/ai/replicateClient';
 import { generateImageFree } from '@/lib/ai/pollinationsClient';
+import { generateImageLocal } from '@/lib/ai/comfyuiClient';
 import { STORY_SYSTEM_PROMPT, buildStoryUserPrompt } from '@/lib/ai/prompts/storyPrompt';
 import type { AiXrayData, StoryContent } from '@/types';
 
@@ -36,6 +37,10 @@ const PLACEHOLDER_IMAGE = '/images/placeholder-story.png';
 // Auto-detect which providers to use based on available API keys
 function shouldUseGroq(): boolean {
   return !!process.env.GROQ_API_KEY && !process.env.ANTHROPIC_API_KEY?.startsWith('sk-ant-api');
+}
+
+function shouldUseComfyUI(): boolean {
+  return !!process.env.COMFYUI_URL;
 }
 
 function shouldUseReplicate(): boolean {
@@ -88,10 +93,12 @@ export async function POST(request: NextRequest) {
     }));
 
     // 7. Generate illustrations in parallel (batched)
-    const genImage = shouldUseReplicate() ? generateImage : generateImageFree;
+    const genImage = shouldUseComfyUI() ? generateImageLocal : shouldUseReplicate() ? generateImage : generateImageFree;
     const imageUrls = await generateImagesParallel(filteredPages, input.style, genImage);
 
     // 8. Build story content
+    const imageProvider = shouldUseComfyUI() ? 'flux-schnell-local' : shouldUseReplicate() ? 'sdxl' : 'pollinations';
+    console.log(`[Story] Using image provider: ${imageProvider}`);
     const modelName = shouldUseGroq() ? 'llama-3.3-70b' : 'claude-sonnet';
     const storyContent: StoryContent & { title: string; moral: string } = {
       title: llmResponse.title,
@@ -154,8 +161,8 @@ async function generateImagesParallel(
         genImage({
           prompt: page.imagePrompt,
           style: style as 'watercolor' | 'cartoon' | 'pixel-art' | 'comic',
-          width: 768,
-          height: 512,
+          width: 512,
+          height: 384,
         })
       )
     );
