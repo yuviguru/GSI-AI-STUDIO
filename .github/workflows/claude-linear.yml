@@ -19,6 +19,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Create feature branch
+        id: branch
+        run: |
+          ISSUE_ID="${{ github.event.client_payload.issue_id }}"
+          TITLE="${{ github.event.client_payload.title }}"
+          # Slugify: lowercase, replace spaces/special chars with hyphens, trim
+          SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | cut -c1-50)
+          BRANCH="${ISSUE_ID}-${SLUG}"
+          echo "branch_name=${BRANCH}" >> "$GITHUB_OUTPUT"
+          git checkout -b "$BRANCH"
+          git push -u origin "$BRANCH"
+
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -37,6 +49,10 @@ jobs:
             3. If a story file exists, follow its subtasks exactly — each subtask specifies target files, action types, and requirements.
             4. Follow existing code patterns (e.g., the 3-step studio pattern in `StoryStudioClient.tsx`).
             5. Run `pnpm lint` and `pnpm test -- --run` before finishing to catch issues.
-            6. Create a descriptive commit message referencing the Linear issue ID.
+            6. Prefix ALL commit messages with `${{ github.event.client_payload.issue_id }}:` (e.g., `${{ github.event.client_payload.issue_id }}: add game studio UI`).
+            7. After all work is done, push your commits and create a PR to `main` using:
+               ```
+               gh pr create --title "${{ github.event.client_payload.issue_id }}: ${{ github.event.client_payload.title }}" --body "Resolves ${{ github.event.client_payload.issue_id }}"
+               ```
           direct_prompt: true
           allowed_tools: "Read,Edit,Write,Bash,Glob,Grep"
