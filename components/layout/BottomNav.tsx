@@ -26,7 +26,7 @@ export function BottomNav() {
       <div className="mx-auto flex h-14 max-w-lg items-stretch">
         {tabs.map((tab) => {
           const isActive =
-            pathname === tab.href || pathname.startsWith(tab.href + '/');
+            pathname === tab.href || pathname?.startsWith(tab.href + '/');
 
           return (
             <Link
