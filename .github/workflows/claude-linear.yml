@@ -1,0 +1,42 @@
+name: Claude Code — Linear Issues
+
+on:
+  repository_dispatch:
+    types: [linear-issue]
+
+jobs:
+  implement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            You are working on the GSI AI Studio project — an AI creation + learning platform for Indian kids.
+
+            ## Linear Issue: ${{ github.event.client_payload.issue_id }}
+            **Title:** ${{ github.event.client_payload.title }}
+
+            **Description:**
+            ${{ github.event.client_payload.description }}
+
+            ## Instructions
+            1. Read `.claude/CLAUDE.md` for project context and conventions.
+            2. Look for the matching story file in `stories/` (search by the issue prefix, e.g. UI-001, STUDIO-004).
+            3. If a story file exists, follow its subtasks exactly — each subtask specifies target files, action types, and requirements.
+            4. Follow existing code patterns (e.g., the 3-step studio pattern in `StoryStudioClient.tsx`).
+            5. Run `pnpm lint` and `pnpm test -- --run` before finishing to catch issues.
+            6. Create a descriptive commit message referencing the Linear issue ID.
+          direct_prompt: true
+          allowed_tools: "Read,Edit,Write,Bash,Glob,Grep"
