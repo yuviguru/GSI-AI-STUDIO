@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { AiXrayPopup } from '@/components/learning/AiXrayPopup';
+import { ShareButton } from '@/components/shared/ShareButton';
 import type { AiXrayData } from '@/types';
 
 interface QuizQuestion {
@@ -25,11 +26,13 @@ interface QuizPlayerProps {
   quiz: QuizData;
   aiXray: AiXrayData;
   onCreateAnother: () => void;
+  creationId?: string;
+  readOnly?: boolean;
 }
 
 type AnswerState = 'unanswered' | 'correct' | 'wrong';
 
-export function QuizPlayer({ quiz, aiXray, onCreateAnother }: QuizPlayerProps) {
+export function QuizPlayer({ quiz, aiXray, onCreateAnother, creationId, readOnly = false }: QuizPlayerProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [answerState, setAnswerState] = useState<AnswerState>('unanswered');
@@ -37,15 +40,15 @@ export function QuizPlayer({ quiz, aiXray, onCreateAnother }: QuizPlayerProps) {
   const [isFinished, setIsFinished] = useState(false);
   const [showXray, setShowXray] = useState(false);
 
-  // Auto-show X-Ray on quiz completion (first time per session)
+  // Auto-show X-Ray on quiz completion (first time per session, skip in readOnly mode)
   useEffect(() => {
-    if (!isFinished) return;
+    if (!isFinished || readOnly) return;
     const key = 'gsi-xray-shown-quiz';
     if (!sessionStorage.getItem(key)) {
       setShowXray(true);
       sessionStorage.setItem(key, 'true');
     }
-  }, [isFinished]);
+  }, [isFinished, readOnly]);
 
   const totalQuestions = quiz.questions.length;
   const currentQuestion = quiz.questions[currentIndex];
@@ -72,20 +75,6 @@ export function QuizPlayer({ quiz, aiXray, onCreateAnother }: QuizPlayerProps) {
     }
   }, [currentIndex, totalQuestions]);
 
-  const handleShare = async () => {
-    const pct = Math.round((score / totalQuestions) * 100);
-    const shareData = {
-      title: quiz.title,
-      text: `I scored ${score}/${totalQuestions} (${pct}%) on "${quiz.title}"! Can you beat me?`,
-      url: window.location.href,
-    };
-    if (navigator.share) {
-      try { await navigator.share(shareData); } catch { /* user cancelled */ }
-    } else {
-      await navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
-    }
-  };
-
   const handleReplay = () => {
     setCurrentIndex(0);
     setSelectedAnswer(null);
@@ -97,7 +86,7 @@ export function QuizPlayer({ quiz, aiXray, onCreateAnother }: QuizPlayerProps) {
   // Final score screen
   if (isFinished) {
     const pct = Math.round((score / totalQuestions) * 100);
-    const emoji = pct >= 80 ? '🏆' : pct >= 60 ? '🌟' : pct >= 40 ? '👍' : '💪';
+    const emoji = pct >= 80 ? '\uD83C\uDFC6' : pct >= 60 ? '\uD83C\uDF1F' : pct >= 40 ? '\uD83D\uDC4D' : '\uD83D\uDCAA';
     const message = pct >= 80
       ? 'Amazing! You nailed it!'
       : pct >= 60
@@ -143,24 +132,23 @@ export function QuizPlayer({ quiz, aiXray, onCreateAnother }: QuizPlayerProps) {
 
         {/* Action buttons */}
         <div className="flex w-full gap-3">
-          <button
-            onClick={handleShare}
-            className={cn(
-              'flex-1 rounded-full border-2 border-brand-cyan py-3 text-center font-bold text-brand-cyan',
-              'transition-all active:scale-95 hover:bg-brand-cyan/5'
-            )}
-          >
-            Challenge Friends
-          </button>
-          <button
-            onClick={() => setShowXray(true)}
-            className={cn(
-              'flex-1 rounded-full border-2 border-brand-purple py-3 text-center font-bold text-brand-purple',
-              'transition-all active:scale-95 hover:bg-brand-purple/5'
-            )}
-          >
-            AI X-Ray 🔍
-          </button>
+          <ShareButton
+            creationId={creationId ?? ''}
+            creationTitle={quiz.title}
+            creationType="quiz"
+            className="flex-1"
+          />
+          {!readOnly && (
+            <button
+              onClick={() => setShowXray(true)}
+              className={cn(
+                'flex-1 rounded-full border-2 border-brand-purple py-3 text-center font-bold text-brand-purple',
+                'transition-all active:scale-95 hover:bg-brand-purple/5'
+              )}
+            >
+              AI X-Ray {'\uD83D\uDD0D'}
+            </button>
+          )}
         </div>
 
         <button
@@ -170,14 +158,18 @@ export function QuizPlayer({ quiz, aiXray, onCreateAnother }: QuizPlayerProps) {
           Play Again
         </button>
 
-        <button
-          onClick={onCreateAnother}
-          className="w-full rounded-full bg-gray-100 py-3 text-center font-bold text-gray-600 transition-all hover:bg-gray-200 active:scale-95"
-        >
-          Create Another Quiz
-        </button>
+        {!readOnly && (
+          <button
+            onClick={onCreateAnother}
+            className="w-full rounded-full bg-gray-100 py-3 text-center font-bold text-gray-600 transition-all hover:bg-gray-200 active:scale-95"
+          >
+            Create Another Quiz
+          </button>
+        )}
 
-        <AiXrayPopup isOpen={showXray} onClose={() => setShowXray(false)} aiXray={aiXray} />
+        {!readOnly && (
+          <AiXrayPopup isOpen={showXray} onClose={() => setShowXray(false)} aiXray={aiXray} />
+        )}
       </div>
     );
   }
@@ -251,10 +243,10 @@ export function QuizPlayer({ quiz, aiXray, onCreateAnother }: QuizPlayerProps) {
                 >
                   {option}
                   {answerState !== 'unanswered' && isCorrectOption && (
-                    <span className="ml-2">✓</span>
+                    <span className="ml-2">{'\u2713'}</span>
                   )}
                   {answerState === 'wrong' && isSelected && !isCorrectOption && (
-                    <span className="ml-2">✗</span>
+                    <span className="ml-2">{'\u2717'}</span>
                   )}
                 </motion.button>
               );
@@ -275,7 +267,7 @@ export function QuizPlayer({ quiz, aiXray, onCreateAnother }: QuizPlayerProps) {
                   answerState === 'correct' ? 'bg-green-50' : 'bg-amber-50'
                 )}>
                   <p className="font-display font-bold">
-                    {answerState === 'correct' ? '🎉 Correct!' : '💡 Not quite!'}
+                    {answerState === 'correct' ? '\uD83C\uDF89 Correct!' : '\uD83D\uDCA1 Not quite!'}
                   </p>
                   <p className="mt-1 text-sm leading-relaxed text-gray-600">
                     {currentQuestion.explanation}
@@ -286,7 +278,7 @@ export function QuizPlayer({ quiz, aiXray, onCreateAnother }: QuizPlayerProps) {
                   onClick={handleNext}
                   className="mt-4 w-full rounded-full bg-brand-cyan py-3.5 text-center font-display font-bold text-white transition-all hover:shadow-lg active:scale-[0.98]"
                 >
-                  {currentIndex + 1 >= totalQuestions ? 'See My Score' : 'Next Question →'}
+                  {currentIndex + 1 >= totalQuestions ? 'See My Score' : 'Next Question \u2192'}
                 </button>
               </motion.div>
             )}

@@ -28,6 +28,7 @@ const PROGRESS_MESSAGES: Record<string, string[]> = {
 interface GenerationState<T> {
   data: T | null;
   aiXray: AiXrayData | null;
+  creationId: string | null;
   loading: boolean;
   error: string | null;
   progressMessage: string;
@@ -37,6 +38,7 @@ export function useAiGeneration<T>(studioType: 'story' | 'music' | 'quiz') {
   const [state, setState] = useState<GenerationState<T>>({
     data: null,
     aiXray: null,
+    creationId: null,
     loading: false,
     error: null,
     progressMessage: '',
@@ -44,7 +46,7 @@ export function useAiGeneration<T>(studioType: 'story' | 'music' | 'quiz') {
 
   const generate = useCallback(
     async (input: Record<string, unknown>): Promise<T | null> => {
-      setState({ data: null, aiXray: null, loading: true, error: null, progressMessage: '' });
+      setState({ data: null, aiXray: null, creationId: null, loading: true, error: null, progressMessage: '' });
 
       // Rotate progress messages
       const messages: string[] = PROGRESS_MESSAGES[studioType] ?? PROGRESS_MESSAGES.story!;
@@ -74,12 +76,13 @@ export function useAiGeneration<T>(studioType: 'story' | 'music' | 'quiz') {
           return null;
         }
 
-        const { aiXray, ...rest } = json.data;
+        const { aiXray, creationId: cid, ...rest } = json.data as Record<string, unknown> & { aiXray: AiXrayData; creationId?: string };
         const creationData = rest[studioType] as T;
 
         setState({
           data: creationData,
           aiXray,
+          creationId: cid ?? null,
           loading: false,
           error: null,
           progressMessage: '',
@@ -100,7 +103,7 @@ export function useAiGeneration<T>(studioType: 'story' | 'music' | 'quiz') {
   );
 
   const reset = useCallback(() => {
-    setState({ data: null, aiXray: null, loading: false, error: null, progressMessage: '' });
+    setState({ data: null, aiXray: null, creationId: null, loading: false, error: null, progressMessage: '' });
   }, []);
 
   return { ...state, generate, reset };

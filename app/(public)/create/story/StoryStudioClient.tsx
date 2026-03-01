@@ -15,7 +15,7 @@ type StudioStep = 'inspire' | 'create' | 'share';
 
 export function StoryStudioClient() {
   const [step, setStep] = useState<StudioStep>('inspire');
-  const { data, aiXray, loading, error, progressMessage, generate, reset } =
+  const { data, aiXray, creationId, loading, error, progressMessage, generate, reset } =
     useAiGeneration<StoryData>('story');
   const { canCreate, cooldownSeconds, creationsRemaining, trackCreation } = useSession();
 
@@ -101,6 +101,7 @@ export function StoryStudioClient() {
                 story={data}
                 aiXray={aiXray}
                 onCreateAnother={handleCreateAnother}
+                creationId={creationId ?? undefined}
               />
             </motion.div>
           )}
