@@ -15,6 +15,7 @@ dist/
 
 # Firebase
 .firebase/
+.firebase-sa.json
 firebase-debug.log
 firestore-debug.log
 ui-debug.log

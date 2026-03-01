@@ -1,5 +1,5 @@
 [build]
-  command = "pnpm build"
+  command = "node -e \"if(process.env.FIREBASE_SERVICE_ACCOUNT){require('fs').writeFileSync('.firebase-sa.json',Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT,'base64').toString('utf-8'))}\" && pnpm build"
   publish = ".next"
   functions = "netlify/functions"
 

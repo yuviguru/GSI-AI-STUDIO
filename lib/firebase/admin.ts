@@ -2,8 +2,22 @@ import { initializeApp, getApps, cert, type ServiceAccount, type App } from 'fir
 import { getAuth, type Auth } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { getStorage, type Storage } from 'firebase-admin/storage';
+import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
 
+/**
+ * Load Firebase service account from env var or file.
+ * On Netlify, the build writes the base64-encoded service account to a file
+ * to avoid the 4KB Lambda env var limit. Falls back to the env var for local dev.
+ */
 function getServiceAccount(): ServiceAccount {
+  // Try file first (Netlify deploys — avoids 4KB Lambda env var limit)
+  const saPath = join(process.cwd(), '.firebase-sa.json');
+  if (existsSync(saPath)) {
+    return JSON.parse(readFileSync(saPath, 'utf-8')) as ServiceAccount;
+  }
+
+  // Fall back to env var (local dev)
   const encoded = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!encoded || encoded === 'REPLACE-ME') {
     throw new Error(
