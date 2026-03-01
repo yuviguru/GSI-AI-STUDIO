@@ -3,9 +3,6 @@ import crypto from "crypto";
 
 const GITHUB_REPO = "yuviguru/GSI-AI-STUDIO";
 
-// Phase labels that should trigger Claude Code
-const TRIGGER_LABELS = ["Phase 1.5", "Phase 2", "Phase 3", "Bug"];
-
 // Verify Linear webhook signature
 function verifySignature(body: string, signature: string, secret: string): boolean {
   const hmac = crypto.createHmac("sha256", secret);
@@ -74,36 +71,20 @@ const handler: Handler = async (event: HandlerEvent) => {
     return { statusCode: 200, body: "Ignored: not an issue event" };
   }
 
-  // Trigger on:
-  // 1. Issue label added (matching a phase label)
-  // 2. Issue assigned (any assignment change)
-  let shouldTrigger = false;
-  let triggerReason = "";
+  // Trigger only when issue is assigned (prevents duplicate runs)
+  const isAssignment =
+    action === "update" &&
+    payload.updatedFrom?.assigneeId !== undefined &&
+    data.assignee;
 
-  // Check if a trigger label was added
-  if (data.labelIds && Array.isArray(data.labels)) {
-    const labels = data.labels as Array<{ name: string }>;
-    const hasPhaseLabel = labels.some((l) => TRIGGER_LABELS.includes(l.name));
-    if (hasPhaseLabel) {
-      shouldTrigger = true;
-      triggerReason = `Label matched: ${labels.map((l) => l.name).join(", ")}`;
-    }
-  }
-
-  // Check if issue was just assigned
-  if (action === "update" && payload.updatedFrom?.assigneeId !== undefined) {
-    if (data.assignee) {
-      shouldTrigger = true;
-      triggerReason = `Assigned to: ${data.assignee.name || data.assignee.id}`;
-    }
-  }
-
-  if (!shouldTrigger) {
+  if (!isAssignment) {
     return {
       statusCode: 200,
-      body: "Ignored: no trigger condition met",
+      body: "Ignored: not an assignment event",
     };
   }
+
+  const triggerReason = `Assigned to: ${data.assignee.name || data.assignee.id}`;
 
   // Trigger GitHub Action
   try {
