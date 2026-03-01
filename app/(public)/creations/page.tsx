@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
-export const dynamic = 'force-dynamic';
-
 export const metadata: Metadata = {
   title: 'My Creations — GSI AI Studio',
   description: 'View all your AI-powered creations — stories, music, quizzes and more.',

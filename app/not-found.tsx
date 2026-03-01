@@ -1,37 +1,21 @@
+import Link from 'next/link';
+
 export default function NotFound() {
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        fontFamily: 'system-ui, sans-serif',
-      }}
-    >
-      <span style={{ fontSize: '3rem' }}>🔍</span>
-      <h1 style={{ marginTop: '1rem', fontSize: '1.5rem', fontWeight: 700 }}>
+    <main className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
+      <span className="text-5xl">🔍</span>
+      <h1 className="mt-4 font-display text-2xl font-bold text-gray-900">
         Page not found
       </h1>
-      <p style={{ marginTop: '0.5rem', color: '#6b7280' }}>
-        We couldn&apos;t find what you were looking for.
+      <p className="mt-2 text-gray-500">
+        Oops! We couldn&apos;t find what you were looking for.
       </p>
-      <a
+      <Link
         href="/"
-        style={{
-          marginTop: '1.5rem',
-          padding: '0.625rem 1.25rem',
-          backgroundColor: '#7C3AED',
-          color: 'white',
-          borderRadius: '9999px',
-          textDecoration: 'none',
-          fontSize: '0.875rem',
-          fontWeight: 600,
-        }}
+        className="mt-6 inline-flex rounded-full bg-brand-purple px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-purple/25 transition-transform hover:scale-105 active:scale-95"
       >
         Back to Home
-      </a>
-    </div>
+      </Link>
+    </main>
   );
 }

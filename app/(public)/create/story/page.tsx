@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import { StoryStudioClient } from './StoryStudioClient';
 
-export const dynamic = 'force-dynamic';
-
 export const metadata: Metadata = {
   title: 'Story Studio — GSI AI Studio',
   description:

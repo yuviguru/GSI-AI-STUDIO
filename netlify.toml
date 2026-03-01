@@ -1,5 +1,5 @@
 [build]
-  command = "NODE_ENV=production pnpm build"
+  command = "pnpm build"
   publish = ".next"
   functions = "netlify/functions"
 
