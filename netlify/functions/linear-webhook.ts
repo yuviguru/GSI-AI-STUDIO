@@ -16,6 +16,7 @@ async function triggerGitHubAction(issueData: {
   issue_id: string;
   title: string;
   description: string;
+  labels: string[];
 }) {
   const githubPat = process.env.GITHUB_PAT;
   if (!githubPat) throw new Error("GITHUB_PAT not configured");
@@ -88,10 +89,15 @@ const handler: Handler = async (event: HandlerEvent) => {
 
   // Trigger GitHub Action
   try {
+    const labels = Array.isArray(data.labels)
+      ? (data.labels as Array<{ name: string }>).map((l) => l.name)
+      : [];
+
     await triggerGitHubAction({
       issue_id: data.identifier || data.id,
       title: data.title || "Untitled",
       description: data.description || "",
+      labels,
     });
 
     console.log(

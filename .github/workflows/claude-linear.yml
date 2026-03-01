@@ -31,7 +31,21 @@ jobs:
           git checkout -b "$BRANCH"
           git push -u origin "$BRANCH"
 
+      - name: Select model
+        id: model
+        run: |
+          LABELS='${{ toJSON(github.event.client_payload.labels) }}'
+          # Use Sonnet for quick-fix/Bug labels, Opus for everything else
+          if echo "$LABELS" | grep -qiE '"quick-fix"|"Bug"'; then
+            echo "name=claude-sonnet-4-6" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=claude-opus-4-6" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Selected model: $(grep name <<< "$(cat "$GITHUB_OUTPUT")")"
+
       - uses: anthropics/claude-code-action@v1
+        env:
+          ANTHROPIC_MODEL: ${{ steps.model.outputs.name }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           show_full_output: true
