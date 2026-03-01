@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { StoryPageView } from './StoryPageView';
 import { AiXrayPopup } from '@/components/learning/AiXrayPopup';
+import { ShareButton } from '@/components/shared/ShareButton';
 import type { AiXrayData } from '@/types';
 
 interface StoryViewerProps {
@@ -17,21 +18,24 @@ interface StoryViewerProps {
   };
   aiXray: AiXrayData;
   onCreateAnother: () => void;
+  creationId?: string;
+  readOnly?: boolean;
 }
 
-export function StoryViewer({ story, aiXray, onCreateAnother }: StoryViewerProps) {
+export function StoryViewer({ story, aiXray, onCreateAnother, creationId, readOnly = false }: StoryViewerProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const [direction, setDirection] = useState(0);
   const [showXray, setShowXray] = useState(false);
 
-  // Auto-show X-Ray on first creation per session
+  // Auto-show X-Ray on first creation per session (skip in readOnly mode)
   useEffect(() => {
+    if (readOnly) return;
     const key = 'gsi-xray-shown-story';
     if (!sessionStorage.getItem(key)) {
       setShowXray(true);
       sessionStorage.setItem(key, 'true');
     }
-  }, []);
+  }, [readOnly]);
 
   const totalPages = story.pages.length;
 
@@ -44,19 +48,6 @@ export function StoryViewer({ story, aiXray, onCreateAnother }: StoryViewerProps
   const handleDragEnd = (_: unknown, info: { offset: { x: number } }) => {
     if (info.offset.x < -50 && currentPage < totalPages - 1) goToPage(currentPage + 1);
     if (info.offset.x > 50 && currentPage > 0) goToPage(currentPage - 1);
-  };
-
-  const handleShare = async () => {
-    const shareData = {
-      title: story.title,
-      text: `Check out my AI story: ${story.title}`,
-      url: window.location.href,
-    };
-    if (navigator.share) {
-      try { await navigator.share(shareData); } catch { /* user cancelled */ }
-    } else {
-      await navigator.clipboard.writeText(window.location.href);
-    }
   };
 
   const page = story.pages[currentPage];
@@ -105,7 +96,7 @@ export function StoryViewer({ story, aiXray, onCreateAnother }: StoryViewerProps
             className="absolute left-2 top-1/3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-xl shadow-md backdrop-blur-sm transition-transform active:scale-90"
             aria-label="Previous page"
           >
-            ‹
+            {'\u2039'}
           </button>
         )}
         {currentPage < totalPages - 1 && (
@@ -114,41 +105,53 @@ export function StoryViewer({ story, aiXray, onCreateAnother }: StoryViewerProps
             className="absolute right-2 top-1/3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-xl shadow-md backdrop-blur-sm transition-transform active:scale-90"
             aria-label="Next page"
           >
-            ›
+            {'\u203A'}
           </button>
         )}
       </div>
 
       {/* Action buttons */}
       <div className="flex gap-3">
-        <button
-          onClick={handleShare}
-          className={cn(
-            'flex-1 rounded-full border-2 border-brand-purple py-3 text-center font-bold text-brand-purple',
-            'transition-all active:scale-95 hover:bg-brand-purple/5'
-          )}
-        >
-          Share
-        </button>
-        <button
-          onClick={() => setShowXray(true)}
-          className={cn(
-            'flex-1 rounded-full border-2 border-brand-cyan py-3 text-center font-bold text-brand-cyan',
-            'transition-all active:scale-95 hover:bg-brand-cyan/5'
-          )}
-        >
-          AI X-Ray 🔍
-        </button>
+        {creationId ? (
+          <ShareButton
+            creationId={creationId}
+            creationTitle={story.title}
+            creationType="story"
+            className="flex-1"
+          />
+        ) : (
+          <ShareButton
+            creationId=""
+            creationTitle={story.title}
+            creationType="story"
+            className="flex-1"
+          />
+        )}
+        {!readOnly && (
+          <button
+            onClick={() => setShowXray(true)}
+            className={cn(
+              'flex-1 rounded-full border-2 border-brand-cyan py-3 text-center font-bold text-brand-cyan',
+              'transition-all active:scale-95 hover:bg-brand-cyan/5'
+            )}
+          >
+            AI X-Ray {'\uD83D\uDD0D'}
+          </button>
+        )}
       </div>
 
-      <button
-        onClick={onCreateAnother}
-        className="rounded-full bg-gray-100 py-3 text-center font-bold text-gray-600 transition-all hover:bg-gray-200 active:scale-95"
-      >
-        Create Another Story
-      </button>
+      {!readOnly && (
+        <button
+          onClick={onCreateAnother}
+          className="rounded-full bg-gray-100 py-3 text-center font-bold text-gray-600 transition-all hover:bg-gray-200 active:scale-95"
+        >
+          Create Another Story
+        </button>
+      )}
 
-      <AiXrayPopup isOpen={showXray} onClose={() => setShowXray(false)} aiXray={aiXray} />
+      {!readOnly && (
+        <AiXrayPopup isOpen={showXray} onClose={() => setShowXray(false)} aiXray={aiXray} />
+      )}
     </div>
   );
 }

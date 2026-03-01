@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { AiXrayPopup } from '@/components/learning/AiXrayPopup';
+import { ShareButton } from '@/components/shared/ShareButton';
 import type { AiXrayData, MusicContent } from '@/types';
 
 type MusicData = MusicContent & { title: string; waveformData: number[] };
@@ -11,23 +12,26 @@ interface MusicPlayerProps {
   music: MusicData;
   aiXray: AiXrayData;
   onCreateAnother: () => void;
+  creationId?: string;
+  readOnly?: boolean;
 }
 
-export function MusicPlayer({ music, aiXray, onCreateAnother }: MusicPlayerProps) {
+export function MusicPlayer({ music, aiXray, onCreateAnother, creationId, readOnly = false }: MusicPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(music.duration || 0);
   const [showXray, setShowXray] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Auto-show X-Ray on first creation per session
+  // Auto-show X-Ray on first creation per session (skip in readOnly mode)
   useEffect(() => {
+    if (readOnly) return;
     const key = 'gsi-xray-shown-music';
     if (!sessionStorage.getItem(key)) {
       setShowXray(true);
       sessionStorage.setItem(key, 'true');
     }
-  }, []);
+  }, [readOnly]);
 
   const howlRef = useRef<import('howler').Howl | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -160,19 +164,6 @@ export function MusicPlayer({ music, aiXray, onCreateAnother }: MusicPlayerProps
     setCurrentTime(newTime);
   };
 
-  const handleShare = async () => {
-    const shareData = {
-      title: music.title,
-      text: `Check out my AI song: ${music.title}`,
-      url: window.location.href,
-    };
-    if (navigator.share) {
-      try { await navigator.share(shareData); } catch { /* user cancelled */ }
-    } else {
-      await navigator.clipboard.writeText(window.location.href);
-    }
-  };
-
   const formatTime = (seconds: number): string => {
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
@@ -225,7 +216,7 @@ export function MusicPlayer({ music, aiXray, onCreateAnother }: MusicPlayerProps
             )}
             aria-label={isPlaying ? 'Pause' : 'Play'}
           >
-            {isPlaying ? '⏸' : '▶'}
+            {isPlaying ? '\u23F8' : '\u25B6'}
           </button>
 
           {/* Time */}
@@ -250,34 +241,37 @@ export function MusicPlayer({ music, aiXray, onCreateAnother }: MusicPlayerProps
 
       {/* Action buttons */}
       <div className="flex gap-3">
-        <button
-          onClick={handleShare}
-          className={cn(
-            'flex-1 rounded-full border-2 border-brand-orange py-3 text-center font-bold text-brand-orange',
-            'transition-all active:scale-95 hover:bg-brand-orange/5'
-          )}
-        >
-          Share
-        </button>
-        <button
-          onClick={() => setShowXray(true)}
-          className={cn(
-            'flex-1 rounded-full border-2 border-brand-cyan py-3 text-center font-bold text-brand-cyan',
-            'transition-all active:scale-95 hover:bg-brand-cyan/5'
-          )}
-        >
-          AI X-Ray 🔍
-        </button>
+        <ShareButton
+          creationId={creationId ?? ''}
+          creationTitle={music.title}
+          creationType="music"
+          className="flex-1"
+        />
+        {!readOnly && (
+          <button
+            onClick={() => setShowXray(true)}
+            className={cn(
+              'flex-1 rounded-full border-2 border-brand-cyan py-3 text-center font-bold text-brand-cyan',
+              'transition-all active:scale-95 hover:bg-brand-cyan/5'
+            )}
+          >
+            AI X-Ray {'\uD83D\uDD0D'}
+          </button>
+        )}
       </div>
 
-      <button
-        onClick={onCreateAnother}
-        className="rounded-full bg-gray-100 py-3 text-center font-bold text-gray-600 transition-all hover:bg-gray-200 active:scale-95"
-      >
-        Create Another Song
-      </button>
+      {!readOnly && (
+        <button
+          onClick={onCreateAnother}
+          className="rounded-full bg-gray-100 py-3 text-center font-bold text-gray-600 transition-all hover:bg-gray-200 active:scale-95"
+        >
+          Create Another Song
+        </button>
+      )}
 
-      <AiXrayPopup isOpen={showXray} onClose={() => setShowXray(false)} aiXray={aiXray} />
+      {!readOnly && (
+        <AiXrayPopup isOpen={showXray} onClose={() => setShowXray(false)} aiXray={aiXray} />
+      )}
     </div>
   );
 }
