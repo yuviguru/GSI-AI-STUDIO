@@ -34,6 +34,7 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          show_full_output: true
           prompt: |
             You are working on the GSI AI Studio project — an AI creation + learning platform for Indian kids.
 
