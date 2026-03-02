@@ -59,6 +59,9 @@ export function useCreations(type?: CreationType | null): UseCreationsReturn {
     let cancelled = false;
 
     async function load() {
+      setCreations([]);
+      setNextCursor(null);
+      setHasMore(false);
       setLoading(true);
       setError(null);
       try {
