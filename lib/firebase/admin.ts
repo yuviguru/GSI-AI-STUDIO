@@ -2,30 +2,35 @@ import { initializeApp, getApps, cert, type ServiceAccount, type App } from 'fir
 import { getAuth, type Auth } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { getStorage, type Storage } from 'firebase-admin/storage';
-import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
 
 /**
- * Load Firebase service account from env var or file.
- * On Netlify, the build writes the base64-encoded service account to a file
- * to avoid the 4KB Lambda env var limit. Falls back to the env var for local dev.
+ * Load Firebase service account credentials.
+ *
+ * Priority:
+ * 1. Individual env vars (Netlify deploys — avoids 4KB Lambda env var limit)
+ * 2. Base64-encoded JSON env var (local dev with .env.local)
  */
 function getServiceAccount(): ServiceAccount {
-  // Try file first (Netlify deploys — avoids 4KB Lambda env var limit)
-  const saPath = join(process.cwd(), '.firebase-sa.json');
-  if (existsSync(saPath)) {
-    return JSON.parse(readFileSync(saPath, 'utf-8')) as ServiceAccount;
+  // Option 1: Individual credential fields (Netlify — smallest env var footprint)
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
+  if (projectId && clientEmail && privateKey) {
+    return { projectId, clientEmail, privateKey } as ServiceAccount;
   }
 
-  // Fall back to env var (local dev)
+  // Option 2: Base64-encoded full service account JSON (local dev)
   const encoded = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!encoded || encoded === 'REPLACE-ME') {
-    throw new Error(
-      'FIREBASE_SERVICE_ACCOUNT is not configured. ' +
-      'See .env.example for instructions.'
-    );
+  if (encoded && encoded !== 'REPLACE-ME') {
+    return JSON.parse(Buffer.from(encoded, 'base64').toString('utf-8')) as ServiceAccount;
   }
-  return JSON.parse(Buffer.from(encoded, 'base64').toString('utf-8')) as ServiceAccount;
+
+  throw new Error(
+    'Firebase credentials not configured. ' +
+    'Set FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY, or FIREBASE_SERVICE_ACCOUNT. ' +
+    'See .env.example for instructions.'
+  );
 }
 
 function getApp(): App {
