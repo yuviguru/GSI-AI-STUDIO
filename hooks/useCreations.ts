@@ -65,7 +65,7 @@ export function useCreations(type?: CreationType | null): UseCreationsReturn {
         const data = await fetchPage();
         if (cancelled) return;
         setCreations(data.items);
-        setNextCursor(data.nextCursor);
+        setNextCursor(data.nextCursor ?? null);
         setHasMore(data.hasMore);
       } catch (err) {
         if (cancelled) return;
@@ -88,7 +88,7 @@ export function useCreations(type?: CreationType | null): UseCreationsReturn {
     try {
       const data = await fetchPage(nextCursor);
       setCreations((prev) => [...prev, ...data.items]);
-      setNextCursor(data.nextCursor);
+      setNextCursor(data.nextCursor ?? null);
       setHasMore(data.hasMore);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load more');
@@ -103,7 +103,7 @@ export function useCreations(type?: CreationType | null): UseCreationsReturn {
     try {
       const data = await fetchPage();
       setCreations(data.items);
-      setNextCursor(data.nextCursor);
+      setNextCursor(data.nextCursor ?? null);
       setHasMore(data.hasMore);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch creations');
