@@ -91,6 +91,10 @@ export async function getCreation(id: string): Promise<Creation> {
 
 /**
  * List creations for a given session with optional filters and cursor pagination.
+ *
+ * Note: archived status is filtered in memory rather than via Firestore `!=` to avoid
+ * requiring a composite index on (sessionId, status, createdAt). The existing indexes
+ * on (sessionId, createdAt) and (sessionId, type, createdAt) are sufficient.
  */
 export async function listCreations(
   sessionId: string,
@@ -98,16 +102,21 @@ export async function listCreations(
 ): Promise<ListCreationsResult> {
   const limit = Math.min(filters.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
 
+  // Fetch extra docs to account for any archived ones filtered in memory
+  const fetchLimit = limit + 10;
+
+  // Build base query — all WHERE clauses must come before orderBy
   let query = adminDb
     .collection(CREATIONS_COLLECTION)
-    .where('sessionId', '==', sessionId)
-    .where('status', '!=', 'archived')
-    .orderBy('createdAt', 'desc')
-    .limit(limit + 1); // Fetch one extra to determine hasMore
+    .where('sessionId', '==', sessionId);
 
   if (filters.type) {
+    // Uses composite index: (sessionId, type, createdAt)
     query = query.where('type', '==', filters.type);
   }
+
+  // Uses index: (sessionId, createdAt) or (sessionId, type, createdAt)
+  query = query.orderBy('createdAt', 'desc').limit(fetchLimit);
 
   if (filters.cursor) {
     if (filters.cursor.includes('/')) {
@@ -120,10 +129,12 @@ export async function listCreations(
   }
 
   const snapshot = await query.get();
-  const docs = snapshot.docs;
 
-  const hasMore = docs.length > limit;
-  const items = docs.slice(0, limit).map(docToCreation);
+  // Filter archived docs in memory — avoids needing a composite index on (sessionId, status, createdAt)
+  const activeDocs = snapshot.docs.filter((doc) => doc.data().status !== 'archived');
+
+  const hasMore = activeDocs.length > limit;
+  const items = activeDocs.slice(0, limit).map(docToCreation);
   const nextCursor = hasMore && items.length > 0 ? items[items.length - 1]!.id : null;
 
   return { items, nextCursor, hasMore };

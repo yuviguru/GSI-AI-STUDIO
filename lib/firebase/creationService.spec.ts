@@ -234,6 +234,21 @@ describe('creationService', () => {
       expect(result.nextCursor).toBeTruthy();
     });
 
+    it('excludes archived creations from results', async () => {
+      mockQueryGet.mockResolvedValue({
+        docs: [
+          makeCreationDoc({ title: 'Live Story' }),
+          makeCreationDoc({ title: 'Deleted Story', status: 'archived' }),
+          makeCreationDoc({ title: 'Another Live Story' }),
+        ],
+      });
+
+      const result = await listCreations('session-123');
+
+      expect(result.items).toHaveLength(2);
+      expect(result.items.every((c) => c.status !== 'archived')).toBe(true);
+    });
+
     it('applies type filter', async () => {
       mockQueryGet.mockResolvedValue({ docs: [] });
 
@@ -257,8 +272,8 @@ describe('creationService', () => {
 
       await listCreations('session-123', { limit: 5 });
 
-      // limit + 1 for hasMore detection
-      expect(mockLimit).toHaveBeenCalledWith(6);
+      // limit + 10 to account for archived docs filtered in memory
+      expect(mockLimit).toHaveBeenCalledWith(15);
     });
 
     it('rejects cursor containing slash', async () => {
@@ -270,8 +285,8 @@ describe('creationService', () => {
 
       await listCreations('session-123', { limit: 100 });
 
-      // Should cap at 50 + 1 = 51
-      expect(mockLimit).toHaveBeenCalledWith(51);
+      // Should cap at 50 + 10 = 60
+      expect(mockLimit).toHaveBeenCalledWith(60);
     });
   });
 
