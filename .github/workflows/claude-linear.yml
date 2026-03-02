@@ -44,10 +44,9 @@ jobs:
           echo "Selected model: $(grep name <<< "$(cat "$GITHUB_OUTPUT")")"
 
       - uses: anthropics/claude-code-action@v1
-        env:
-          ANTHROPIC_MODEL: ${{ steps.model.outputs.name }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          model: ${{ steps.model.outputs.name }}
           show_full_output: true
           dangerously_skip_permissions: true
           prompt: |
