@@ -35,13 +35,14 @@ jobs:
         id: model
         run: |
           LABELS='${{ toJSON(github.event.client_payload.labels) }}'
-          # Use Sonnet for quick-fix/Bug labels, Opus for everything else
-          if echo "$LABELS" | grep -qiE '"quick-fix"|"Bug"'; then
+          # Only "quick-fix" label triggers Sonnet, everything else uses Opus
+          if echo "$LABELS" | grep -q '"quick-fix"'; then
             echo "name=claude-sonnet-4-6" >> "$GITHUB_OUTPUT"
+            echo "Selected model: claude-sonnet-4-6"
           else
             echo "name=claude-opus-4-6" >> "$GITHUB_OUTPUT"
+            echo "Selected model: claude-opus-4-6"
           fi
-          echo "Selected model: $(grep name <<< "$(cat "$GITHUB_OUTPUT")")"
 
       - uses: anthropics/claude-code-action@v1
         with:
