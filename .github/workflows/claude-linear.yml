@@ -7,7 +7,7 @@ on:
 jobs:
   implement:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     permissions:
       contents: write
       pull-requests: write
@@ -47,9 +47,10 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          model: ${{ steps.model.outputs.name }}
           show_full_output: true
-          dangerously_skip_permissions: true
+          claude_args: |
+            --model ${{ steps.model.outputs.name }}
+            --allowedTools "Read,Edit,Write,Bash,Glob,Grep"
           prompt: |
             You are working on the GSI AI Studio project — an AI creation + learning platform for Indian kids.
 
@@ -70,5 +71,3 @@ jobs:
                ```
                gh pr create --title "${{ github.event.client_payload.issue_id }}: ${{ github.event.client_payload.title }}" --body "Resolves ${{ github.event.client_payload.issue_id }}"
                ```
-          direct_prompt: true
-          allowed_tools: "Read,Edit,Write,Bash,Glob,Grep"
