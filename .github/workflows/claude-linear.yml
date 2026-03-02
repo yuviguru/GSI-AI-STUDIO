@@ -65,9 +65,14 @@ jobs:
             2. Look for the matching story file in `stories/` (search by the issue prefix, e.g. UI-001, STUDIO-004).
             3. If a story file exists, follow its subtasks exactly — each subtask specifies target files, action types, and requirements.
             4. Follow existing code patterns (e.g., the 3-step studio pattern in `StoryStudioClient.tsx`).
-            5. Run `pnpm lint` and `pnpm test -- --run` before finishing to catch issues.
+            5. Before creating the PR, run ALL of these checks and fix any errors:
+               - `pnpm lint` (code style)
+               - `pnpm typecheck` (TypeScript type checking)
+               - `pnpm test -- --run` (unit tests)
+               - `pnpm build` (production build)
+               Do NOT create the PR until all four commands pass. If any fail, fix the issues and re-run.
             6. Prefix ALL commit messages with `${{ github.event.client_payload.issue_id }}:` (e.g., `${{ github.event.client_payload.issue_id }}: add game studio UI`).
-            7. After all work is done, push your commits and create a PR to `main` using:
+            7. After all checks pass, push your commits and create a PR to `main` using:
                ```
                gh pr create --title "${{ github.event.client_payload.issue_id }}: ${{ github.event.client_payload.title }}" --body "Resolves ${{ github.event.client_payload.issue_id }}"
                ```
