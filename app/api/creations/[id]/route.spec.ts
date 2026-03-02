@@ -5,10 +5,12 @@ import type { Creation } from '@/types/creation.types';
 
 const mockGetCreation = vi.fn();
 const mockIncrementView = vi.fn();
+const mockArchiveCreation = vi.fn();
 
 vi.mock('@/lib/firebase/creationService', () => ({
   getCreation: (...args: unknown[]) => mockGetCreation(...args),
   incrementView: (...args: unknown[]) => mockIncrementView(...args),
+  archiveCreation: (...args: unknown[]) => mockArchiveCreation(...args),
 }));
 
 vi.mock('next/server', () => ({
@@ -32,7 +34,7 @@ vi.mock('next/server', () => ({
 }));
 
 // Import AFTER mocks
-import { GET } from './route';
+import { GET, DELETE } from './route';
 import { NextRequest } from 'next/server';
 
 // ─── Helpers ────────────────────────────────────────────
@@ -158,6 +160,58 @@ describe('GET /api/creations/:id', () => {
     mockGetCreation.mockRejectedValue(new AppException('NOT_FOUND', 'Creation not found', 404));
 
     const res = (await GET(makeRequest(), {
+      params: { id: 'nonexistent' },
+    })) as unknown as ApiResponse;
+
+    expect(res.status).toBe(404);
+    expect(res.body.success).toBe(false);
+  });
+});
+
+describe('DELETE /api/creations/:id', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockArchiveCreation.mockResolvedValue(undefined);
+  });
+
+  it('archives the creation and returns success', async () => {
+    const res = (await DELETE(makeRequest({ 'X-Session-Id': 'session-owner' }), {
+      params: { id: 'creation-1' },
+    })) as unknown as ApiResponse;
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(mockArchiveCreation).toHaveBeenCalledWith('creation-1', 'session-owner');
+  });
+
+  it('returns 401 when no session header', async () => {
+    const res = (await DELETE(makeRequest(), {
+      params: { id: 'creation-1' },
+    })) as unknown as ApiResponse;
+
+    expect(res.status).toBe(401);
+    expect(res.body.success).toBe(false);
+    expect(mockArchiveCreation).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 when session does not own the creation', async () => {
+    const { AppException } = await import('@/lib/api-utils');
+    mockArchiveCreation.mockRejectedValue(new AppException('FORBIDDEN', 'You do not own this creation', 403));
+
+    const res = (await DELETE(makeRequest({ 'X-Session-Id': 'other-session' }), {
+      params: { id: 'creation-1' },
+    })) as unknown as ApiResponse;
+
+    expect(res.status).toBe(403);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error?.code).toBe('FORBIDDEN');
+  });
+
+  it('returns 404 when creation does not exist', async () => {
+    const { AppException } = await import('@/lib/api-utils');
+    mockArchiveCreation.mockRejectedValue(new AppException('NOT_FOUND', 'Creation not found', 404));
+
+    const res = (await DELETE(makeRequest({ 'X-Session-Id': 'session-owner' }), {
       params: { id: 'nonexistent' },
     })) as unknown as ApiResponse;
 

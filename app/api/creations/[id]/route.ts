@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
-import { getCreation, incrementView } from '@/lib/firebase/creationService';
+import { getCreation, incrementView, archiveCreation } from '@/lib/firebase/creationService';
 
 /**
  * GET /api/creations/:id — Fetch a single creation
@@ -36,6 +36,28 @@ export async function GET(
     }
 
     return apiSuccess(creation);
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
+/**
+ * DELETE /api/creations/:id — Soft-delete (archive) a creation
+ * Requires matching session ownership.
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const sessionId = request.headers.get('X-Session-Id');
+    if (!sessionId) {
+      throw new AppException('UNAUTHORIZED', 'Missing session', 401);
+    }
+
+    await archiveCreation(params.id, sessionId);
+
+    return apiSuccess(null);
   } catch (error) {
     return handleApiError(error);
   }

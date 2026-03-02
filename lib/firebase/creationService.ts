@@ -101,6 +101,7 @@ export async function listCreations(
   let query = adminDb
     .collection(CREATIONS_COLLECTION)
     .where('sessionId', '==', sessionId)
+    .where('status', '!=', 'archived')
     .orderBy('createdAt', 'desc')
     .limit(limit + 1); // Fetch one extra to determine hasMore
 
@@ -158,6 +159,29 @@ export async function incrementShare(id: string): Promise<void> {
 
   await docRef.update({
     shareCount: FieldValue.increment(1),
+    updatedAt: Timestamp.now(),
+  });
+}
+
+/**
+ * Soft-delete a creation by setting its status to 'archived'.
+ * Verifies the requesting session owns the creation.
+ */
+export async function archiveCreation(id: string, sessionId: string): Promise<void> {
+  const docRef = adminDb.collection(CREATIONS_COLLECTION).doc(id);
+  const doc = await docRef.get();
+
+  if (!doc.exists) {
+    throw new AppException('NOT_FOUND', 'Creation not found', 404);
+  }
+
+  const data = doc.data()!;
+  if (data.sessionId !== sessionId) {
+    throw new AppException('FORBIDDEN', 'You do not own this creation', 403);
+  }
+
+  await docRef.update({
+    status: 'archived',
     updatedAt: Timestamp.now(),
   });
 }
