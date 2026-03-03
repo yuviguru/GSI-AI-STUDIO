@@ -33,7 +33,7 @@ function sanitizeFilename(title: string): string {
 
 /** Fire-and-forget call to track download count */
 function trackDownload(creationId: string) {
-  fetch(`/api/creations/${creationId}/download`, { method: 'POST' }).catch(() => {
+  fetch(`/api/download/${creationId}`, { method: 'POST' }).catch(() => {
     // Fire-and-forget — ignore errors
   });
 }
