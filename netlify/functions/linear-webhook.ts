@@ -2,6 +2,7 @@ import type { Handler, HandlerEvent } from "@netlify/functions";
 import crypto from "crypto";
 
 const GITHUB_REPO = "yuviguru/GSI-AI-STUDIO";
+const CLAUDE_BOT_EMAIL = "yuvaguru.guru8@gmail.com";
 
 // Verify Linear webhook signature
 function verifySignature(body: string, signature: string, secret: string): boolean {
@@ -72,16 +73,17 @@ const handler: Handler = async (event: HandlerEvent) => {
     return { statusCode: 200, body: "Ignored: not an issue event" };
   }
 
-  // Trigger only when issue is assigned (prevents duplicate runs)
-  const isAssignment =
+  // Trigger only when assigned to you (prevents false triggers)
+  const isAssignedToYou =
     action === "update" &&
     payload.updatedFrom?.assigneeId !== undefined &&
-    data.assignee;
+    data.assignee &&
+    data.assignee.email === CLAUDE_BOT_EMAIL;
 
-  if (!isAssignment) {
+  if (!isAssignedToYou) {
     return {
       statusCode: 200,
-      body: "Ignored: not an assignment event",
+      body: `Ignored: not assigned to ${CLAUDE_BOT_EMAIL}`,
     };
   }
 
