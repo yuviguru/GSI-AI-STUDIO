@@ -6,7 +6,7 @@ import { Sparkles } from 'lucide-react';
 import { useAiPoints } from '@/contexts/AiPointsContext';
 
 export function AiPointsBadge() {
-  const { totalPoints, pendingPoints } = useAiPoints();
+  const { totalPoints, pendingPoints, openBadgeGallery } = useAiPoints();
   const [displayPoints, setDisplayPoints] = useState(0);
   const animRef = useRef<number>(0);
 
@@ -37,7 +37,11 @@ export function AiPointsBadge() {
   }, [totalPoints]);
 
   return (
-    <div className="relative flex items-center gap-1.5 rounded-full bg-brand-purple/10 px-3 py-1.5 text-sm font-medium text-brand-purple">
+    <button
+      onClick={openBadgeGallery}
+      className="relative flex items-center gap-1.5 rounded-full bg-brand-purple/10 px-3 py-1.5 text-sm font-medium text-brand-purple transition-colors hover:bg-brand-purple/20 active:bg-brand-purple/25"
+      aria-label="Open badge gallery"
+    >
       <Sparkles className="h-4 w-4" />
       <span>{displayPoints} AI Points</span>
 
@@ -55,6 +59,6 @@ export function AiPointsBadge() {
           </motion.span>
         )}
       </AnimatePresence>
-    </div>
+    </button>
   );
 }

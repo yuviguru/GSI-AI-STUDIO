@@ -1,11 +1,29 @@
-import { Timestamp } from 'firebase-admin/firestore';
+import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from './admin';
 import { AppException } from '@/lib/api-utils';
+import { checkBadgeUnlocks, type UserStats } from '@/lib/badges';
+import type { CreationType } from '@/types/creation.types';
 
 const SESSIONS_COLLECTION = 'sessions';
 const MAX_CREATIONS_PER_DAY = 5;
 const COOLDOWN_SECONDS = 120; // 2 minutes
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+export interface CreationsByType {
+  story: number;
+  music: number;
+  quiz: number;
+  game: number;
+  comic: number;
+}
+
+const DEFAULT_CREATIONS_BY_TYPE: CreationsByType = {
+  story: 0,
+  music: 0,
+  quiz: 0,
+  game: 0,
+  comic: 0,
+};
 
 interface SessionDoc {
   id: string;
@@ -15,6 +33,11 @@ interface SessionDoc {
   ipHash: string | null;
   createdAt: Timestamp;
   expiresAt: Timestamp;
+  aiPoints: number;
+  badges: string[];
+  conceptsLearned: string[];
+  creationsByType: CreationsByType;
+  shareCount: number;
 }
 
 export interface SessionResult {
@@ -170,6 +193,11 @@ async function createSession(
     ipHash: ipHash ?? null,
     createdAt: now,
     expiresAt,
+    aiPoints: 0,
+    badges: [],
+    conceptsLearned: [],
+    creationsByType: { ...DEFAULT_CREATIONS_BY_TYPE },
+    shareCount: 0,
   };
 
   await docRef.set(sessionData);
@@ -179,6 +207,142 @@ async function createSession(
     creationsRemaining: MAX_CREATIONS_PER_DAY,
     cooldownSeconds: 0,
     expiresAt: expiresAt.toDate().toISOString(),
+  };
+}
+
+export interface PointsUpdateResult {
+  aiPoints: number;
+  badges: string[];
+  conceptsLearned: string[];
+  creationsByType: CreationsByType;
+  shareCount: number;
+  newBadges: string[];
+}
+
+export type PointsAction = 'add_points' | 'learn_concept' | 'track_creation' | 'track_share';
+
+/**
+ * Update points/stats on a session and check for newly unlocked badges.
+ * Uses Firestore transaction for atomic updates.
+ */
+export async function updateSessionPoints(
+  sessionId: string,
+  action: PointsAction,
+  payload: { amount?: number; concept?: string; creationType?: CreationType }
+): Promise<PointsUpdateResult> {
+  const docRef = adminDb.collection(SESSIONS_COLLECTION).doc(sessionId);
+
+  return adminDb.runTransaction(async (tx) => {
+    const doc = await tx.get(docRef);
+
+    if (!doc.exists) {
+      throw new AppException('SESSION_NOT_FOUND', 'Session not found', 404);
+    }
+
+    const data = doc.data() as SessionDoc;
+    const now = Date.now();
+
+    if (now > data.expiresAt.toMillis()) {
+      throw new AppException('SESSION_EXPIRED', 'Session has expired. Please refresh.', 401);
+    }
+
+    // Ensure fields exist (backward compat with old sessions)
+    const aiPoints = data.aiPoints ?? 0;
+    const badges = data.badges ?? [];
+    const conceptsLearned = data.conceptsLearned ?? [];
+    const creationsByType = { ...DEFAULT_CREATIONS_BY_TYPE, ...data.creationsByType };
+    const shareCount = data.shareCount ?? 0;
+
+    const updates: Record<string, FieldValue | number | string> = {};
+
+    switch (action) {
+      case 'add_points': {
+        const amount = payload.amount ?? 0;
+        if (amount > 0) {
+          updates.aiPoints = FieldValue.increment(amount);
+        }
+        break;
+      }
+      case 'learn_concept': {
+        const concept = payload.concept;
+        if (concept && !conceptsLearned.includes(concept)) {
+          updates.conceptsLearned = FieldValue.arrayUnion(concept);
+          conceptsLearned.push(concept);
+        }
+        break;
+      }
+      case 'track_creation': {
+        const type = payload.creationType;
+        if (type && type in creationsByType) {
+          updates[`creationsByType.${type}`] = FieldValue.increment(1);
+          creationsByType[type as keyof CreationsByType] += 1;
+        }
+        break;
+      }
+      case 'track_share': {
+        updates.shareCount = FieldValue.increment(1);
+        break;
+      }
+    }
+
+    // Build updated stats for badge checking
+    const updatedPoints = action === 'add_points' ? aiPoints + (payload.amount ?? 0) : aiPoints;
+    const totalCreations = Object.values(creationsByType).reduce((sum, n) => sum + n, 0);
+    const updatedShareCount = action === 'track_share' ? shareCount + 1 : shareCount;
+
+    const stats: UserStats = {
+      aiPoints: updatedPoints,
+      conceptsLearned,
+      creationsByType: creationsByType as Record<CreationType, number>,
+      shareCount: updatedShareCount,
+      totalCreations,
+      badges,
+    };
+
+    const newlyUnlocked = checkBadgeUnlocks(stats);
+    const newBadgeIds = newlyUnlocked.map((b) => b.id);
+
+    if (newBadgeIds.length > 0) {
+      updates.badges = FieldValue.arrayUnion(...newBadgeIds);
+    }
+
+    if (Object.keys(updates).length > 0) {
+      tx.update(docRef, updates);
+    }
+
+    return {
+      aiPoints: updatedPoints,
+      badges: [...badges, ...newBadgeIds],
+      conceptsLearned,
+      creationsByType,
+      shareCount: updatedShareCount,
+      newBadges: newBadgeIds,
+    };
+  });
+}
+
+/**
+ * Get current points and badge stats for a session.
+ */
+export async function getSessionPoints(sessionId: string): Promise<PointsUpdateResult> {
+  const docRef = adminDb.collection(SESSIONS_COLLECTION).doc(sessionId);
+  const doc = await docRef.get();
+
+  if (!doc.exists) {
+    throw new AppException('SESSION_NOT_FOUND', 'Session not found', 404);
+  }
+
+  const data = doc.data() as SessionDoc;
+  const creationsByType = { ...DEFAULT_CREATIONS_BY_TYPE, ...data.creationsByType };
+  const totalCreations = Object.values(creationsByType).reduce((sum, n) => sum + n, 0);
+
+  return {
+    aiPoints: data.aiPoints ?? 0,
+    badges: data.badges ?? [],
+    conceptsLearned: data.conceptsLearned ?? [],
+    creationsByType,
+    shareCount: data.shareCount ?? 0,
+    newBadges: [],
   };
 }
 
