@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { Mascot } from '@/components/mascot/Mascot';
 
 interface StoryProgressProps {
   progressMessage: string;
@@ -10,23 +11,8 @@ interface StoryProgressProps {
 export function StoryProgress({ progressMessage, onCancel }: StoryProgressProps) {
   return (
     <div className="flex flex-col items-center gap-6 py-12">
-      {/* Animated illustrations */}
-      <div className="relative flex items-end gap-2">
-        <motion.span
-          className="text-6xl"
-          animate={{ y: [0, -12, 0] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-        >
-          📖
-        </motion.span>
-        <motion.span
-          className="text-4xl"
-          animate={{ rotate: [0, -15, 15, 0] }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-        >
-          ✏️
-        </motion.span>
-      </div>
+      {/* Mascot — painting expression */}
+      <Mascot expression="painting" size="md" bobbing />
 
       {/* Progress message */}
       <motion.p
