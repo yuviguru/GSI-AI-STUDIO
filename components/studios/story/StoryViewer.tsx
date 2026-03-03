@@ -6,7 +6,9 @@ import { cn } from '@/lib/utils';
 import { StoryPageView } from './StoryPageView';
 import { AiXrayPopup } from '@/components/learning/AiXrayPopup';
 import { ShareButton } from '@/components/shared/ShareButton';
+import { DownloadButton } from '@/components/shared/DownloadButton';
 import type { AiXrayData } from '@/types';
+import type { StoryContent } from '@/types/creation.types';
 
 interface StoryViewerProps {
   story: {
@@ -127,6 +129,16 @@ export function StoryViewer({ story, aiXray, onCreateAnother, creationId, readOn
             className="flex-1"
           />
         )}
+        <DownloadButton
+          creation={{
+            id: creationId ?? '',
+            type: 'story',
+            title: story.title,
+            content: story as unknown as StoryContent,
+          }}
+          variant="full"
+          className="flex-1"
+        />
         {!readOnly && (
           <button
             onClick={() => setShowXray(true)}
@@ -139,6 +151,17 @@ export function StoryViewer({ story, aiXray, onCreateAnother, creationId, readOn
           </button>
         )}
       </div>
+
+      {/* Print button for stories */}
+      <button
+        onClick={async () => {
+          const { printStory } = await import('@/lib/export/printUtils');
+          printStory(story);
+        }}
+        className="rounded-full border-2 border-gray-300 py-3 text-center font-bold text-gray-600 transition-all hover:bg-gray-50 active:scale-95"
+      >
+        Print Story
+      </button>
 
       {!readOnly && (
         <button
