@@ -6,64 +6,184 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   type ReactNode,
 } from 'react';
+import type { ApiResponse, PointsResponse } from '@/types';
 
-const POINTS_KEY = 'gsi-ai-points';
-const CONCEPTS_KEY = 'gsi-concepts-learned';
+const SESSION_KEY = 'gsi-session-id';
+const POINTS_KEY = 'gsi-ai-points'; // kept for optimistic initial load & migration
+
+function getSessionId(): string {
+  return typeof window !== 'undefined' ? (localStorage.getItem(SESSION_KEY) ?? '') : '';
+}
+
+// ─── Context types ────────────────────────────────────────────────────────────
 
 interface AiPointsState {
   totalPoints: number;
   conceptsLearned: string[];
+  badges: string[];
+  creationsByType: Record<string, number>;
   pendingPoints: number;
-  addPoints: (amount: number, concept?: string) => void;
+  newBadges: string[]; // non-empty triggers CelebrationModal
+  isLoaded: boolean;   // false until first Firestore response
+  addPoints: (amount: number, concept?: string) => Promise<void>;
+  trackCreation: (creationType: string) => Promise<void>;
+  trackShare: () => Promise<void>;
+  dismissBadgeCelebration: () => void;
 }
 
 const AiPointsContext = createContext<AiPointsState | null>(null);
 
+// ─── Provider ─────────────────────────────────────────────────────────────────
+
 export function AiPointsProvider({ children }: { children: ReactNode }) {
   const [totalPoints, setTotalPoints] = useState(0);
   const [conceptsLearned, setConceptsLearned] = useState<string[]>([]);
+  const [badges, setBadges] = useState<string[]>([]);
+  const [creationsByType, setCreationsByType] = useState<Record<string, number>>({});
   const [pendingPoints, setPendingPoints] = useState(0);
+  const [newBadges, setNewBadges] = useState<string[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const pendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // SSR-safe: load from localStorage after mount
-  useEffect(() => {
-    const stored = localStorage.getItem(POINTS_KEY);
-    if (stored) setTotalPoints(parseInt(stored, 10) || 0);
-
-    const concepts = localStorage.getItem(CONCEPTS_KEY);
-    if (concepts) {
-      try {
-        setConceptsLearned(JSON.parse(concepts));
-      } catch {
-        // corrupted data — reset
-      }
+  // Apply a full PointsResponse snapshot to state
+  const applySnapshot = useCallback((data: PointsResponse) => {
+    setTotalPoints(data.aiPoints);
+    setConceptsLearned(data.conceptsLearned);
+    setBadges(data.badges);
+    setCreationsByType(data.creationsByType);
+    if (data.newBadges?.length > 0) {
+      setNewBadges((prev) => [...prev, ...data.newBadges]);
+    }
+    // Keep localStorage in sync as optimistic cache
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(POINTS_KEY, String(data.aiPoints));
     }
   }, []);
 
-  const addPoints = useCallback((amount: number, concept?: string) => {
-    setTotalPoints((prev) => {
-      const next = prev + amount;
-      localStorage.setItem(POINTS_KEY, String(next));
-      return next;
-    });
+  // Load from Firestore on mount; use localStorage as optimistic initial value
+  useEffect(() => {
+    // Instant display from localStorage while server responds
+    if (typeof window !== 'undefined') {
+      const stored = parseInt(localStorage.getItem(POINTS_KEY) ?? '0', 10);
+      if (stored > 0) setTotalPoints(stored);
+    }
 
-    setPendingPoints(amount);
-    setTimeout(() => setPendingPoints(0), 2000);
+    const sessionId = getSessionId();
+    if (!sessionId) {
+      setIsLoaded(true);
+      return;
+    }
 
-    if (concept) {
-      setConceptsLearned((prev) => {
-        if (prev.includes(concept)) return prev;
-        const next = [...prev, concept];
-        localStorage.setItem(CONCEPTS_KEY, JSON.stringify(next));
+    fetch('/api/sessions/points', {
+      headers: { 'X-Session-Id': sessionId },
+    })
+      .then((res) => res.json())
+      .then((json: ApiResponse<PointsResponse>) => {
+        if (json.success && json.data) {
+          applySnapshot({ ...json.data, newBadges: [] });
+        }
+      })
+      .catch(() => {
+        // Server unavailable — keep localStorage values, non-blocking
+      })
+      .finally(() => setIsLoaded(true));
+  }, [applySnapshot]);
+
+  // Helper: call PATCH and apply returned snapshot
+  const patchPoints = useCallback(
+    async (body: Record<string, unknown>): Promise<PointsResponse | null> => {
+      const sessionId = getSessionId();
+      if (!sessionId) return null;
+
+      try {
+        const res = await fetch('/api/sessions/points', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Session-Id': sessionId,
+          },
+          body: JSON.stringify(body),
+        });
+        const json: ApiResponse<PointsResponse> = await res.json();
+        if (json.success && json.data) {
+          applySnapshot(json.data);
+          return json.data;
+        }
+      } catch {
+        // Network failure — optimistic state already applied, non-blocking
+      }
+      return null;
+    },
+    [applySnapshot]
+  );
+
+  const addPoints = useCallback(
+    async (amount: number, concept?: string) => {
+      // Optimistic update
+      setTotalPoints((prev) => {
+        const next = prev + amount;
+        if (typeof window !== 'undefined') localStorage.setItem(POINTS_KEY, String(next));
         return next;
       });
-    }
+      if (concept) {
+        setConceptsLearned((prev) => (prev.includes(concept) ? prev : [...prev, concept]));
+      }
+      if (pendingTimer.current) clearTimeout(pendingTimer.current);
+      setPendingPoints(amount);
+      pendingTimer.current = setTimeout(() => setPendingPoints(0), 2000);
+
+      // Persist to Firestore (concept included in add_points to reduce round trips)
+      await patchPoints({ action: 'add_points', points: amount, concept });
+    },
+    [patchPoints]
+  );
+
+  const trackCreation = useCallback(
+    async (creationType: string) => {
+      // Optimistic update
+      setCreationsByType((prev) => ({
+        ...prev,
+        [creationType]: (prev[creationType] ?? 0) + 1,
+      }));
+      await patchPoints({ action: 'track_creation', creationType });
+    },
+    [patchPoints]
+  );
+
+  const trackShare = useCallback(async () => {
+    await patchPoints({ action: 'track_share' });
+  }, [patchPoints]);
+
+  const dismissBadgeCelebration = useCallback(() => {
+    // Dequeue only the first badge so subsequent unlocks are still shown one at a time
+    setNewBadges((prev) => prev.slice(1));
+  }, []);
+
+  // Cleanup pending timer
+  useEffect(() => {
+    return () => {
+      if (pendingTimer.current) clearTimeout(pendingTimer.current);
+    };
   }, []);
 
   return (
     <AiPointsContext.Provider
-      value={{ totalPoints, conceptsLearned, pendingPoints, addPoints }}
+      value={{
+        totalPoints,
+        conceptsLearned,
+        badges,
+        creationsByType,
+        pendingPoints,
+        newBadges,
+        isLoaded,
+        addPoints,
+        trackCreation,
+        trackShare,
+        dismissBadgeCelebration,
+      }}
     >
       {children}
     </AiPointsContext.Provider>

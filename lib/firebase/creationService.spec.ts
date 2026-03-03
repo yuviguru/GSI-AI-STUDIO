@@ -272,8 +272,8 @@ describe('creationService', () => {
 
       await listCreations('session-123', { limit: 5 });
 
-      // limit + 10 to account for archived docs filtered in memory
-      expect(mockLimit).toHaveBeenCalledWith(15);
+      // BATCH_SIZE = max(limit * 2, 20) = max(10, 20) = 20
+      expect(mockLimit).toHaveBeenCalledWith(20);
     });
 
     it('rejects cursor containing slash', async () => {
@@ -285,8 +285,8 @@ describe('creationService', () => {
 
       await listCreations('session-123', { limit: 100 });
 
-      // Should cap at 50 + 10 = 60
-      expect(mockLimit).toHaveBeenCalledWith(60);
+      // limit is capped at MAX_PAGE_SIZE=50; BATCH_SIZE = max(50 * 2, 20) = 100
+      expect(mockLimit).toHaveBeenCalledWith(100);
     });
   });
 

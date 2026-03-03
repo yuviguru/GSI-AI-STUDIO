@@ -56,6 +56,17 @@ export interface SessionResponse {
   expiresAt: string;
 }
 
+/** Points & badge types */
+
+export interface PointsResponse {
+  aiPoints: number;
+  badges: string[];
+  newBadges: string[];
+  conceptsLearned: string[];
+  creationsByType: Record<string, number>;
+  shareCount: number;
+}
+
 /** Share types */
 
 export interface ShareResponse {

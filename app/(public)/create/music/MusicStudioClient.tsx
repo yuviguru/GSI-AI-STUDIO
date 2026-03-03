@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAiGeneration } from '@/hooks/useAiGeneration';
 import { useSession } from '@/hooks/useSession';
+import { useAiPoints } from '@/contexts/AiPointsContext';
 import { MusicPromptForm } from '@/components/studios/music/MusicPromptForm';
 import { MusicProgress } from '@/components/studios/music/MusicProgress';
 import { MusicPlayer } from '@/components/studios/music/MusicPlayer';
@@ -18,6 +19,7 @@ export function MusicStudioClient() {
   const { data, aiXray, creationId, loading, error, progressMessage, generate, reset } =
     useAiGeneration<MusicData>('music');
   const { canCreate, cooldownSeconds, creationsRemaining, trackCreation } = useSession();
+  const { trackCreation: trackPointsCreation } = useAiPoints();
 
   const handleSubmit = async (input: MusicInput) => {
     setStep('create');
@@ -25,6 +27,7 @@ export function MusicStudioClient() {
     if (result) {
       setStep('share');
       await trackCreation();
+      trackPointsCreation('music');
     } else {
       setStep('inspire');
     }

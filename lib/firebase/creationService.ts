@@ -95,6 +95,9 @@ export async function getCreation(id: string): Promise<Creation> {
  * Note: archived status is filtered in memory rather than via Firestore `!=` to avoid
  * requiring a composite index on (sessionId, status, createdAt). The existing indexes
  * on (sessionId, createdAt) and (sessionId, type, createdAt) are sufficient.
+ *
+ * Uses a batched loop rather than a single `limit + N` fetch so that `hasMore` is
+ * accurate even when many archived docs cluster near the top of the timeline.
  */
 export async function listCreations(
   sessionId: string,
@@ -102,36 +105,56 @@ export async function listCreations(
 ): Promise<ListCreationsResult> {
   const limit = Math.min(filters.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
 
-  // Fetch extra docs to account for any archived ones filtered in memory
-  const fetchLimit = limit + 10;
+  // Fetch at least 20 docs per batch; double the limit so one pass is usually enough
+  const BATCH_SIZE = Math.max(limit * 2, 20);
+  // Safety cap — prevents runaway Firestore reads on pathological data
+  const MAX_BATCHES = 5;
 
-  // Build base query — all WHERE clauses must come before orderBy
-  let query = adminDb
-    .collection(CREATIONS_COLLECTION)
-    .where('sessionId', '==', sessionId);
-
-  if (filters.type) {
-    // Uses composite index: (sessionId, type, createdAt)
-    query = query.where('type', '==', filters.type);
-  }
-
-  // Uses index: (sessionId, createdAt) or (sessionId, type, createdAt)
-  query = query.orderBy('createdAt', 'desc').limit(fetchLimit);
-
+  // Resolve cursor upfront so the base query stays clean
+  let startAfterDoc: FirebaseFirestore.DocumentSnapshot | null = null;
   if (filters.cursor) {
     if (filters.cursor.includes('/')) {
       throw new AppException('INVALID_INPUT', 'Invalid cursor', 400);
     }
     const cursorDoc = await adminDb.collection(CREATIONS_COLLECTION).doc(filters.cursor).get();
     if (cursorDoc.exists) {
-      query = query.startAfter(cursorDoc);
+      startAfterDoc = cursorDoc;
     }
   }
 
-  const snapshot = await query.get();
+  // Build base query — all WHERE clauses must come before orderBy; .limit() applied per batch
+  let baseQuery = adminDb
+    .collection(CREATIONS_COLLECTION)
+    .where('sessionId', '==', sessionId);
 
-  // Filter archived docs in memory — avoids needing a composite index on (sessionId, status, createdAt)
-  const activeDocs = snapshot.docs.filter((doc) => doc.data().status !== 'archived');
+  if (filters.type) {
+    // Uses composite index: (sessionId, type, createdAt)
+    baseQuery = baseQuery.where('type', '==', filters.type);
+  }
+
+  // Uses index: (sessionId, createdAt) or (sessionId, type, createdAt)
+  baseQuery = baseQuery.orderBy('createdAt', 'desc');
+
+  // Collect active docs across batches until we have limit + 1 (enough to determine hasMore)
+  const activeDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+  let lastDoc: FirebaseFirestore.DocumentSnapshot | null = startAfterDoc;
+
+  for (let i = 0; i < MAX_BATCHES; i++) {
+    const batchQuery = lastDoc
+      ? baseQuery.startAfter(lastDoc).limit(BATCH_SIZE)
+      : baseQuery.limit(BATCH_SIZE);
+
+    const snapshot = await batchQuery.get();
+
+    // Filter archived docs in memory — avoids composite index on (sessionId, status, createdAt)
+    const active = snapshot.docs.filter((doc) => doc.data().status !== 'archived');
+    activeDocs.push(...active);
+
+    // Stop when we have enough active docs to fill the page + peek ahead, or collection is exhausted
+    if (activeDocs.length > limit || snapshot.docs.length < BATCH_SIZE) break;
+
+    lastDoc = snapshot.docs[snapshot.docs.length - 1]!;
+  }
 
   const hasMore = activeDocs.length > limit;
   const items = activeDocs.slice(0, limit).map(docToCreation);

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAiGeneration } from '@/hooks/useAiGeneration';
 import { useSession } from '@/hooks/useSession';
+import { useAiPoints } from '@/contexts/AiPointsContext';
 import { QuizPromptForm } from '@/components/studios/quiz/QuizPromptForm';
 import { QuizProgress } from '@/components/studios/quiz/QuizProgress';
 import { QuizPlayer } from '@/components/studios/quiz/QuizPlayer';
@@ -18,6 +19,7 @@ export function QuizStudioClient() {
   const { data, aiXray, creationId, loading, error, progressMessage, generate, reset } =
     useAiGeneration<QuizData>('quiz');
   const { canCreate, cooldownSeconds, creationsRemaining, trackCreation } = useSession();
+  const { trackCreation: trackPointsCreation } = useAiPoints();
 
   const handleSubmit = async (input: QuizInput) => {
     setStep('create');
@@ -25,6 +27,7 @@ export function QuizStudioClient() {
     if (result) {
       setStep('play');
       await trackCreation();
+      trackPointsCreation('quiz');
     } else {
       setStep('inspire');
     }
