@@ -19,14 +19,16 @@ export function CelebrationModal() {
   const badge = badgeId ? BADGE_CATALOG.find((b) => b.id === badgeId) : null;
   const isOpen = !!badge;
 
-  // Auto-dismiss after 3.5 s
+  // Auto-dismiss after 3.5 s.
+  // Depend on `badgeId` (not `isOpen`) so the timer re-arms when the queue shifts from
+  // one badge to the next — `isOpen` stays true throughout, so it would never re-fire.
   useEffect(() => {
-    if (!isOpen) return;
+    if (!badgeId) return;
     autoTimer.current = setTimeout(() => dismissBadgeCelebration(), 3500);
     return () => {
       if (autoTimer.current) clearTimeout(autoTimer.current);
     };
-  }, [isOpen, dismissBadgeCelebration]);
+  }, [badgeId, dismissBadgeCelebration]);
 
   return (
     <AnimatePresence>

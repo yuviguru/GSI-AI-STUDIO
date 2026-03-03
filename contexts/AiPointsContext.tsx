@@ -158,7 +158,8 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
   }, [patchPoints]);
 
   const dismissBadgeCelebration = useCallback(() => {
-    setNewBadges([]);
+    // Dequeue only the first badge so subsequent unlocks are still shown one at a time
+    setNewBadges((prev) => prev.slice(1));
   }, []);
 
   // Cleanup pending timer

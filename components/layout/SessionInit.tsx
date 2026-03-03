@@ -41,11 +41,15 @@ export function SessionInit() {
       },
       body: JSON.stringify({ action: 'add_points', points: storedPoints }),
     })
-      .then(() => {
-        localStorage.setItem(MIGRATION_KEY, '1');
+      .then((response) => {
+        // Only mark migration complete on a successful response.
+        // If the server returns a 4xx/5xx the flag stays unset and we retry on next load.
+        if (response.ok) {
+          localStorage.setItem(MIGRATION_KEY, '1');
+        }
       })
       .catch(() => {
-        // Non-blocking — will retry on next page load until migration_key is set
+        // Network error — non-blocking, will retry on next page load
       });
   }, []);
 
