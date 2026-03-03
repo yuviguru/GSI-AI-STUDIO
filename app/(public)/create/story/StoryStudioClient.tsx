@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAiGeneration } from '@/hooks/useAiGeneration';
 import { useSession } from '@/hooks/useSession';
+import { useAiPoints } from '@/contexts/AiPointsContext';
 import { StoryPromptForm } from '@/components/studios/story/StoryPromptForm';
 import { StoryProgress } from '@/components/studios/story/StoryProgress';
 import { StoryViewer } from '@/components/studios/story/StoryViewer';
@@ -18,6 +19,7 @@ export function StoryStudioClient() {
   const { data, aiXray, creationId, loading, error, progressMessage, generate, reset } =
     useAiGeneration<StoryData>('story');
   const { canCreate, cooldownSeconds, creationsRemaining, trackCreation } = useSession();
+  const { trackCreation: trackPointsCreation } = useAiPoints();
 
   const handleSubmit = async (input: StoryInput) => {
     setStep('create');
@@ -25,6 +27,7 @@ export function StoryStudioClient() {
     if (result) {
       setStep('share');
       await trackCreation();
+      trackPointsCreation('story');
     } else {
       setStep('inspire');
     }

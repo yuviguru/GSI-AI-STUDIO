@@ -1,6 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { adminDb } from './admin';
 import { AppException } from '@/lib/api-utils';
+import { checkBadgeUnlocks } from '@/lib/badges';
 
 const SESSIONS_COLLECTION = 'sessions';
 const MAX_CREATIONS_PER_DAY = 5;
@@ -15,6 +16,66 @@ interface SessionDoc {
   ipHash: string | null;
   createdAt: Timestamp;
   expiresAt: Timestamp;
+  // Points & badge fields (added in Phase 1.5 — optional for backward compat)
+  aiPoints?: number;
+  badges?: string[];
+  conceptsLearned?: string[];
+  creationsByType?: Record<string, number>;
+  shareCount?: number;
+}
+
+// ─── Points types ─────────────────────────────────────────────────────────────
+
+export interface SessionPointsData {
+  aiPoints: number;
+  badges: string[];
+  conceptsLearned: string[];
+  creationsByType: Record<string, number>;
+  shareCount: number;
+}
+
+export type PointsAction =
+  | { action: 'add_points'; points: number; concept?: string }
+  | { action: 'learn_concept'; concept: string }
+  | { action: 'track_creation'; creationType: string }
+  | { action: 'track_share' };
+
+function extractPointsData(data: SessionDoc): SessionPointsData {
+  return {
+    aiPoints: data.aiPoints ?? 0,
+    badges: data.badges ?? [],
+    conceptsLearned: data.conceptsLearned ?? [],
+    creationsByType: data.creationsByType ?? {},
+    shareCount: data.shareCount ?? 0,
+  };
+}
+
+function applyAction(current: SessionPointsData, action: PointsAction): SessionPointsData {
+  switch (action.action) {
+    case 'add_points': {
+      const updated: SessionPointsData = {
+        ...current,
+        aiPoints: current.aiPoints + action.points,
+      };
+      if (action.concept && !current.conceptsLearned.includes(action.concept)) {
+        updated.conceptsLearned = [...current.conceptsLearned, action.concept];
+      }
+      return updated;
+    }
+    case 'learn_concept': {
+      if (current.conceptsLearned.includes(action.concept)) return current;
+      return { ...current, conceptsLearned: [...current.conceptsLearned, action.concept] };
+    }
+    case 'track_creation': {
+      const prev = current.creationsByType[action.creationType] ?? 0;
+      return {
+        ...current,
+        creationsByType: { ...current.creationsByType, [action.creationType]: prev + 1 },
+      };
+    }
+    case 'track_share':
+      return { ...current, shareCount: current.shareCount + 1 };
+  }
 }
 
 export interface SessionResult {
@@ -149,6 +210,62 @@ export async function checkRateLimit(sessionId: string): Promise<SessionResult> 
   }
 
   return buildSessionResult(sessionId, data);
+}
+
+// ─── Points & badge service functions ────────────────────────────────────────
+
+/**
+ * Read the current points/badge state for a session.
+ * Returns zero defaults for sessions that predate the points system.
+ */
+export async function getSessionPoints(sessionId: string): Promise<SessionPointsData> {
+  const doc = await adminDb.collection(SESSIONS_COLLECTION).doc(sessionId).get();
+  if (!doc.exists) {
+    throw new AppException('SESSION_NOT_FOUND', 'Session not found', 404);
+  }
+  return extractPointsData(doc.data() as SessionDoc);
+}
+
+/**
+ * Atomically apply a points action and check for newly unlocked badges.
+ * Returns the updated points data and any badges unlocked by this action.
+ */
+export async function updateSessionPoints(
+  sessionId: string,
+  action: PointsAction
+): Promise<{ data: SessionPointsData; newBadges: string[] }> {
+  const docRef = adminDb.collection(SESSIONS_COLLECTION).doc(sessionId);
+
+  const result = await adminDb.runTransaction(async (tx) => {
+    const doc = await tx.get(docRef);
+    if (!doc.exists) {
+      throw new AppException('SESSION_NOT_FOUND', 'Session not found', 404);
+    }
+
+    const sessionData = doc.data() as SessionDoc;
+    const current = extractPointsData(sessionData);
+    const updated = applyAction(current, action);
+
+    // Determine which badges are newly earned
+    const alreadyEarned = new Set(current.badges);
+    const nowEligible = checkBadgeUnlocks(updated);
+    const newBadges = nowEligible.filter((id) => !alreadyEarned.has(id));
+    if (newBadges.length > 0) {
+      updated.badges = [...current.badges, ...newBadges];
+    }
+
+    tx.update(docRef, {
+      aiPoints: updated.aiPoints,
+      badges: updated.badges,
+      conceptsLearned: updated.conceptsLearned,
+      creationsByType: updated.creationsByType,
+      shareCount: updated.shareCount,
+    });
+
+    return { data: updated, newBadges };
+  });
+
+  return result;
 }
 
 // ─── Internal helpers ────────────────────────────────────

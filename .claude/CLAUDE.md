@@ -38,3 +38,27 @@ pnpm build            # Production build
 pnpm test             # Run tests
 pnpm firebase:emulators  # Start Firestore/Auth emulators
 ```
+
+## Git Workflow (MANDATORY — follow for every ticket)
+
+### Starting a ticket
+Before writing any code, always create a branch from `main` using the ticket identifier and a short slug of the title:
+```
+git checkout main && git pull origin main
+git checkout -b <ticket-id>-<short-kebab-slug>
+# Example: CLA-14-ai-points-persistence-badge-system
+```
+Branch naming rule: `<TICKET-ID>-<title-in-kebab-case-max-6-words>`
+
+### Committing changes
+Every commit message MUST be prefixed with the ticket number:
+```
+<TICKET-ID>: <imperative description>
+# Example: CLA-14: implement badge catalog and points persistence
+```
+Multi-scope commits use the same prefix — do not omit it.
+
+### When to commit
+- Commit logically grouped work (not every file save, not one giant commit at the end)
+- Always run `pnpm build` before committing to confirm no type errors
+- Typical commit points: after backend (service + API), after frontend components, after wiring/integration
