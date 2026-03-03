@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { AiPointsBadge } from '@/components/learning/AiPointsBadge';
+import { MuteToggle } from '@/components/layout/MuteToggle';
 
 export function Header() {
   return (
@@ -20,7 +21,10 @@ export function Header() {
           </span>
         </Link>
 
-        <AiPointsBadge />
+        <div className="flex items-center gap-3">
+          <MuteToggle />
+          <AiPointsBadge />
+        </div>
       </div>
     </header>
   );

@@ -23,6 +23,9 @@ importers:
       ai:
         specifier: ^3.1.0
         version: 3.4.33(react@18.3.1)(sswr@2.2.0(svelte@5.53.3))(svelte@5.53.3)(vue@3.5.29(typescript@5.9.3))(zod@3.25.76)
+      canvas-confetti:
+        specifier: ^1.9.0
+        version: 1.9.4
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.1
@@ -44,6 +47,9 @@ importers:
       howler:
         specifier: ^2.2.0
         version: 2.2.4
+      lottie-react:
+        specifier: ^2.4.0
+        version: 2.4.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       lucide-react:
         specifier: ^0.378.0
         version: 0.378.0(react@18.3.1)
@@ -90,6 +96,9 @@ importers:
       '@testing-library/react':
         specifier: ^16.3.2
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@types/canvas-confetti':
+        specifier: ^1.9.0
+        version: 1.9.0
       '@types/howler':
         specifier: ^2.2.12
         version: 2.2.12
@@ -1702,6 +1711,9 @@ packages:
   '@types/babel__traverse@7.28.0':
     resolution: {integrity: sha512-8PvcXf70gTDZBgt9ptxJ8elBeBjcLOAcOtoO/mPJjtji1+CdGbHgm77om1GrsPxsiE+uXIpNSK64UYaIwQXd4Q==}
 
+  '@types/canvas-confetti@1.9.0':
+    resolution: {integrity: sha512-aBGj/dULrimR1XDZLtG9JwxX1b4HPRF6CX9Yfwh3NvstZEm1ZL7RBnel4keCPSqs1ANRu1u2Aoz9R+VmtjYuTg==}
+
   '@types/caseless@0.12.5':
     resolution: {integrity: sha512-hWtVTC2q7hc7xZ/RLbxapMvDMgUnDvKvMOpKal4DrMyfGBUfB1oKaZlIRr6mJL+If3bAP6sV/QneGzF6tJjZDg==}
 
@@ -2502,6 +2514,9 @@ packages:
 
   caniuse-lite@1.0.30001774:
     resolution: {integrity: sha512-DDdwPGz99nmIEv216hKSgLD+D4ikHQHjBC/seF98N9CPqRX4M5mSxT9eTV6oyisnJcuzxtZy4n17yKKQYmYQOA==}
+
+  canvas-confetti@1.9.4:
+    resolution: {integrity: sha512-yxQbJkAVrFXWNbTUjPqjF7G+g6pDotOUHGbkZq2NELZUMDpiJ85rIEazVb8GTaAptNW2miJAXbs1BtioA251Pw==}
 
   chai@4.5.0:
     resolution: {integrity: sha512-RITGBfijLkBddZvnn8jdqoTypxvqbOLYQkGGxXzeFjVHvudaPw0HNFD9x928/eUwYWd2dPCugVqspGALTZZQKw==}
@@ -4316,6 +4331,15 @@ packages:
   loose-envify@1.4.0:
     resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
     hasBin: true
+
+  lottie-react@2.4.1:
+    resolution: {integrity: sha512-LQrH7jlkigIIv++wIyrOYFLHSKQpEY4zehPicL9bQsrt1rnoKRYCYgpCUe5maqylNtacy58/sQDZTkwMcTRxZw==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  lottie-web@5.13.0:
+    resolution: {integrity: sha512-+gfBXl6sxXMPe8tKQm7qzLnUy5DUPJPKIyRHwtpCpyUEYjHYRJC/5gjUvdkuO2c3JllrPtHXH5UJJK8LRYl5yQ==}
 
   loupe@2.3.7:
     resolution: {integrity: sha512-zSMINGVYkdpYSOBmLi0D1Uo7JU9nVdQKrHxC8eYlV+9YKK9WePqAlL7lSlorG/U2Fw1w0hTBmaa/jrQ3UbPHtA==}
@@ -8215,6 +8239,8 @@ snapshots:
     dependencies:
       '@babel/types': 7.29.0
 
+  '@types/canvas-confetti@1.9.0': {}
+
   '@types/caseless@0.12.5': {}
 
   '@types/diff-match-patch@1.0.36': {}
@@ -9139,6 +9165,8 @@ snapshots:
   camelize@1.0.1: {}
 
   caniuse-lite@1.0.30001774: {}
+
+  canvas-confetti@1.9.4: {}
 
   chai@4.5.0:
     dependencies:
@@ -11386,6 +11414,14 @@ snapshots:
   loose-envify@1.4.0:
     dependencies:
       js-tokens: 4.0.0
+
+  lottie-react@2.4.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+    dependencies:
+      lottie-web: 5.13.0
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+
+  lottie-web@5.13.0: {}
 
   loupe@2.3.7:
     dependencies:

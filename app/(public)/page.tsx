@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Rocket } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MascotSpeechBubble } from '@/components/mascot/MascotSpeechBubble';
 
 const floatingItems = [
   { emoji: '🚀', x: '10%', y: '15%', delay: 0, size: 'text-3xl' },
@@ -117,6 +118,15 @@ export default function HomePage() {
         >
           Build stories, music & quizzes with AI — then peek behind the curtain to see how it works!
         </motion.p>
+
+        <motion.div variants={fadeUp} className="mt-6 flex justify-center">
+          <MascotSpeechBubble
+            expression="waving"
+            size="md"
+            message="Hi! I'm Koko. Let's create something cool!"
+            position="right"
+          />
+        </motion.div>
       </motion.section>
 
       {/* Studio cards */}
