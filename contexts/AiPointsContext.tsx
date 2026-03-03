@@ -10,12 +10,53 @@ import {
   type ReactNode,
 } from 'react';
 import type { ApiResponse, PointsResponse } from '@/types';
+import type { ConfettiVariant } from '@/components/celebrations/ConfettiCelebration';
 
 const SESSION_KEY = 'gsi-session-id';
 const POINTS_KEY = 'gsi-ai-points'; // kept for optimistic initial load & migration
+const MILESTONES_KEY = 'gsi-milestones-shown';
 
 function getSessionId(): string {
   return typeof window !== 'undefined' ? (localStorage.getItem(SESSION_KEY) ?? '') : '';
+}
+
+// ─── Milestone types & thresholds ───────────────────────────────────────────
+
+export interface MilestoneCelebration {
+  type: 'milestone';
+  message: string;
+  variant: ConfettiVariant;
+}
+
+interface MilestoneThreshold {
+  id: string;
+  check: (points: number, totalCreations: number) => boolean;
+  message: string;
+  variant: ConfettiVariant;
+}
+
+const MILESTONE_THRESHOLDS: MilestoneThreshold[] = [
+  { id: 'first_creation', check: (_, tc) => tc >= 1, message: 'Your first AI creation!', variant: 'burst' },
+  { id: 'points_50', check: (p) => p >= 50, message: '50 AI Points!', variant: 'burst' },
+  { id: 'points_100', check: (p) => p >= 100, message: '100 AI Points!', variant: 'rain' },
+  { id: 'creations_5', check: (_, tc) => tc >= 5, message: '5 Creations!', variant: 'rain' },
+  { id: 'creations_10', check: (_, tc) => tc >= 10, message: '10 Creations!', variant: 'sides' },
+];
+
+function getShownMilestones(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    return new Set(JSON.parse(localStorage.getItem(MILESTONES_KEY) ?? '[]'));
+  } catch {
+    return new Set();
+  }
+}
+
+function markMilestoneShown(id: string) {
+  if (typeof window === 'undefined') return;
+  const shown = getShownMilestones();
+  shown.add(id);
+  localStorage.setItem(MILESTONES_KEY, JSON.stringify([...shown]));
 }
 
 // ─── Context types ────────────────────────────────────────────────────────────
@@ -26,12 +67,14 @@ interface AiPointsState {
   badges: string[];
   creationsByType: Record<string, number>;
   pendingPoints: number;
-  newBadges: string[]; // non-empty triggers CelebrationModal
+  newBadges: string[]; // non-empty triggers CelebrationModal badge mode
+  celebration: MilestoneCelebration | null; // non-null triggers CelebrationModal milestone mode
   isLoaded: boolean;   // false until first Firestore response
   addPoints: (amount: number, concept?: string) => Promise<void>;
   trackCreation: (creationType: string) => Promise<void>;
   trackShare: () => Promise<void>;
   dismissBadgeCelebration: () => void;
+  dismissCelebration: () => void;
 }
 
 const AiPointsContext = createContext<AiPointsState | null>(null);
@@ -45,11 +88,26 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
   const [creationsByType, setCreationsByType] = useState<Record<string, number>>({});
   const [pendingPoints, setPendingPoints] = useState(0);
   const [newBadges, setNewBadges] = useState<string[]>([]);
+  const [celebration, setCelebration] = useState<MilestoneCelebration | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const pendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Check for new milestones after any state update from server
+  const checkMilestones = useCallback((points: number, cbt: Record<string, number>) => {
+    const shown = getShownMilestones();
+    const totalCreations = Object.values(cbt).reduce((s, n) => s + n, 0);
+
+    for (const m of MILESTONE_THRESHOLDS) {
+      if (!shown.has(m.id) && m.check(points, totalCreations)) {
+        markMilestoneShown(m.id);
+        setCelebration({ type: 'milestone', message: m.message, variant: m.variant });
+        break; // Show one at a time
+      }
+    }
+  }, []);
+
   // Apply a full PointsResponse snapshot to state
-  const applySnapshot = useCallback((data: PointsResponse) => {
+  const applySnapshot = useCallback((data: PointsResponse, skipMilestones = false) => {
     setTotalPoints(data.aiPoints);
     setConceptsLearned(data.conceptsLearned);
     setBadges(data.badges);
@@ -61,7 +119,11 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
     if (typeof window !== 'undefined') {
       localStorage.setItem(POINTS_KEY, String(data.aiPoints));
     }
-  }, []);
+    // Check milestones after mutation responses (not on initial load)
+    if (!skipMilestones) {
+      checkMilestones(data.aiPoints, data.creationsByType);
+    }
+  }, [checkMilestones]);
 
   // Load from Firestore on mount; use localStorage as optimistic initial value
   useEffect(() => {
@@ -83,7 +145,7 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
       .then((res) => res.json())
       .then((json: ApiResponse<PointsResponse>) => {
         if (json.success && json.data) {
-          applySnapshot({ ...json.data, newBadges: [] });
+          applySnapshot({ ...json.data, newBadges: [] }, true);
         }
       })
       .catch(() => {
@@ -162,6 +224,10 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
     setNewBadges((prev) => prev.slice(1));
   }, []);
 
+  const dismissCelebration = useCallback(() => {
+    setCelebration(null);
+  }, []);
+
   // Cleanup pending timer
   useEffect(() => {
     return () => {
@@ -178,11 +244,13 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
         creationsByType,
         pendingPoints,
         newBadges,
+        celebration,
         isLoaded,
         addPoints,
         trackCreation,
         trackShare,
         dismissBadgeCelebration,
+        dismissCelebration,
       }}
     >
       {children}
