@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { getTemplatesByType, getCategoriesByType, getDailySpark, type Template } from '@/lib/templates';
+import { TemplateCarousel } from '@/components/shared/TemplateCarousel';
+import { SurpriseButton } from '@/components/shared/SurpriseButton';
 import type { StoryInput } from '@/lib/validators';
 
 interface StoryPromptFormProps {
-  onSubmit: (input: StoryInput) => void;
+  onSubmit: (input: StoryInput & { templateId?: string }) => void;
   isLoading: boolean;
   canCreate: boolean;
   cooldownSeconds: number;
@@ -40,6 +43,19 @@ export function StoryPromptForm({
   const [pages, setPages] = useState(5);
   const [showOptions, setShowOptions] = useState(false);
   const [error, setError] = useState('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>();
+
+  const storyTemplates = getTemplatesByType('story');
+  const storyCategories = getCategoriesByType('story');
+  const dailySpark = getDailySpark('story');
+
+  const handleTemplateSelect = useCallback((template: Template) => {
+    setPremise(template.promptText);
+    setSelectedTemplateId(template.id);
+    setError('');
+    if (template.settings?.genre) setGenre(template.settings.genre as string);
+    if (template.settings?.style) setStyle(template.settings.style as typeof STYLES[number]);
+  }, []);
 
   const handleSubmit = () => {
     if (premise.trim().length < 5) {
@@ -53,11 +69,13 @@ export function StoryPromptForm({
       style,
       ageGroup,
       pages,
+      templateId: selectedTemplateId,
     });
   };
 
   const handleChipClick = (label: string) => {
     setPremise(label);
+    setSelectedTemplateId(undefined);
     setError('');
   };
 
@@ -90,8 +108,8 @@ export function StoryPromptForm({
         </div>
       </div>
 
-      {/* Suggestion chips */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+      {/* Suggestion chips + Surprise Me */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {SUGGESTION_CHIPS.map((chip) => (
           <button
             key={chip.label}
@@ -107,7 +125,17 @@ export function StoryPromptForm({
             {chip.label}
           </button>
         ))}
+        <SurpriseButton type="story" accentColor="brand-purple" onSelect={handleTemplateSelect} />
       </div>
+
+      {/* Template Carousel */}
+      <TemplateCarousel
+        templates={storyTemplates}
+        categories={storyCategories}
+        dailySpark={dailySpark}
+        accentColor="brand-purple"
+        onSelect={handleTemplateSelect}
+      />
 
       {/* More options toggle */}
       <button

@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { getTemplatesByType, getCategoriesByType, getDailySpark, type Template } from '@/lib/templates';
+import { TemplateCarousel } from '@/components/shared/TemplateCarousel';
+import { SurpriseButton } from '@/components/shared/SurpriseButton';
 import type { MusicInput } from '@/lib/validators';
 
 interface MusicPromptFormProps {
-  onSubmit: (input: MusicInput) => void;
+  onSubmit: (input: MusicInput & { templateId?: string }) => void;
   isLoading: boolean;
   canCreate: boolean;
   cooldownSeconds: number;
@@ -58,6 +61,19 @@ export function MusicPromptForm({
   const [instruments, setInstruments] = useState<string[]>([]);
   const [showOptions, setShowOptions] = useState(false);
   const [error, setError] = useState('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>();
+
+  const musicTemplates = getTemplatesByType('music');
+  const musicCategories = getCategoriesByType('music');
+  const dailySpark = getDailySpark('music');
+
+  const handleTemplateSelect = useCallback((template: Template) => {
+    setTheme(template.promptText);
+    setSelectedTemplateId(template.id);
+    setError('');
+    if (template.settings?.mood) setMood(template.settings.mood as string);
+    if (template.settings?.genre) setGenre(template.settings.genre as string);
+  }, []);
 
   const handleSubmit = () => {
     if (!mood) {
@@ -77,11 +93,13 @@ export function MusicPromptForm({
       duration,
       instruments: instruments.length > 0 ? instruments : undefined,
       ageGroup: ageGroup as MusicInput['ageGroup'],
+      templateId: selectedTemplateId,
     });
   };
 
   const handleThemeChip = (label: string) => {
     setTheme(label);
+    setSelectedTemplateId(undefined);
     setError('');
   };
 
@@ -147,8 +165,8 @@ export function MusicPromptForm({
         </div>
       </div>
 
-      {/* Theme suggestion chips */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+      {/* Theme suggestion chips + Surprise Me */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {THEME_CHIPS.map((chip) => (
           <button
             key={chip.label}
@@ -164,7 +182,17 @@ export function MusicPromptForm({
             {chip.label}
           </button>
         ))}
+        <SurpriseButton type="music" accentColor="brand-orange" onSelect={handleTemplateSelect} />
       </div>
+
+      {/* Template Carousel */}
+      <TemplateCarousel
+        templates={musicTemplates}
+        categories={musicCategories}
+        dailySpark={dailySpark}
+        accentColor="brand-orange"
+        onSelect={handleTemplateSelect}
+      />
 
       {/* Error message */}
       {error && <p className="text-sm text-red-500">{error}</p>}
