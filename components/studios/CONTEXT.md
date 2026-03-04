@@ -13,6 +13,7 @@ Creation studio UI components — the core interactive experience where kids cre
 - **Story Studio** (`story/`): Text premise → Claude generates narrative → Replicate generates illustrations → shareable storybook
 - **Music Lab** (`music/`): Mood/genre/theme → Suno generates audio → kid tweaks → shareable track
 - **Quiz Maker** (`quiz/`): Topic → Claude generates questions → playable/shareable quiz game
+- **Game Studio** (`game/`): Premise → Claude generates branching scene graph → interactive choose-your-own-adventure
 
 ## Local Patterns
 - All studios follow the 3-step pattern: INSPIRE → CREATE → SHARE & LEARN
@@ -26,6 +27,7 @@ Creation studio UI components — the core interactive experience where kids cre
 @see /lib/ai/storyGenerator.ts      # Story generation pipeline
 @see /lib/ai/musicGenerator.ts      # Music generation pipeline
 @see /lib/ai/quizGenerator.ts       # Quiz generation pipeline
+@see /lib/ai/validateSceneGraph.ts  # Game scene graph validation
 @see /lib/ai/prompts/               # System prompts for each studio
 @see /hooks/useAiGeneration.ts      # AI generation state management
 @see /components/learning/           # AI X-Ray popup component
