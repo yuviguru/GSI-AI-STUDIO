@@ -1,10 +1,15 @@
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Rocket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MascotSpeechBubble } from '@/components/mascot/MascotSpeechBubble';
+import {
+  OnboardingCarousel,
+  ONBOARDING_STORAGE_KEY,
+} from '@/components/onboarding/OnboardingCarousel';
 
 const floatingItems = [
   { emoji: '🚀', x: '10%', y: '15%', delay: 0, size: 'text-3xl' },
@@ -59,8 +64,32 @@ const fadeUp = {
 };
 
 export default function HomePage() {
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    try {
+      const completed = localStorage.getItem(ONBOARDING_STORAGE_KEY);
+      if (!completed) {
+        setShowOnboarding(true);
+      }
+    } catch {
+      // localStorage unavailable — skip onboarding
+    }
+  }, []);
+
+  const handleOnboardingComplete = useCallback(() => {
+    setShowOnboarding(false);
+  }, []);
+
   return (
     <div className="relative overflow-hidden">
+      {/* Onboarding overlay for first-time visitors */}
+      <AnimatePresence>
+        {showOnboarding && (
+          <OnboardingCarousel onComplete={handleOnboardingComplete} />
+        )}
+      </AnimatePresence>
+
       {/* Background blobs */}
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-brand-purple/8 blur-3xl" />
