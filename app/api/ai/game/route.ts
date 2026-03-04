@@ -1,0 +1,142 @@
+import { NextRequest } from 'next/server';
+import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
+import { gameInputSchema } from '@/lib/validators';
+import { filterInput, filterOutput } from '@/lib/safety/inputFilter';
+import { checkRateLimit, trackCreation } from '@/lib/firebase/sessionService';
+import { saveCreation } from '@/lib/firebase/creationService';
+import { generateJsonWithClaude } from '@/lib/ai/claudeClient';
+import { generateJsonWithGroq } from '@/lib/ai/groqClient';
+import { GAME_SYSTEM_PROMPT, buildGameUserPrompt } from '@/lib/ai/prompts/gamePrompt';
+import { validateSceneGraph } from '@/lib/ai/validateSceneGraph';
+import type { AiXrayData, GameContent, GameScene } from '@/types';
+
+/** Shape returned by LLM for a game */
+interface LlmGameResponse {
+  title: string;
+  setting: string;
+  characterName: string;
+  scenes: Array<{
+    id: string;
+    title: string;
+    text: string;
+    choices: Array<{ text: string; nextSceneId: string }>;
+    isEnding: boolean;
+    endingType?: 'success' | 'neutral' | 'try_again';
+    endingMessage?: string;
+  }>;
+  aiXray: {
+    concept: string;
+    explanation: string;
+    curriculumTag: string;
+  };
+}
+
+// Auto-detect which LLM to use based on available API keys
+function shouldUseGroq(): boolean {
+  return !!process.env.GROQ_API_KEY && !process.env.ANTHROPIC_API_KEY?.startsWith('sk-ant-api');
+}
+
+/**
+ * POST /api/ai/game
+ * Generate a text adventure game using LLM.
+ * See: docs/api-contracts.md#post-apiaigame
+ */
+export async function POST(request: NextRequest) {
+  try {
+    // 1. Validate session
+    const sessionId = request.headers.get('X-Session-Id');
+    if (!sessionId) {
+      throw new AppException('UNAUTHORIZED', 'Missing session', 401);
+    }
+
+    // 2. Parse and validate input
+    const body = await request.json();
+    const input = gameInputSchema.parse(body);
+
+    // 3. Safety filter
+    filterInput(input.premise);
+
+    // 4. Check rate limit
+    await checkRateLimit(sessionId);
+
+    // 5. Generate game via LLM
+    const generateJson = shouldUseGroq() ? generateJsonWithGroq : generateJsonWithClaude;
+    const llmResponse = await generateJson<LlmGameResponse>({
+      systemPrompt: GAME_SYSTEM_PROMPT,
+      userMessage: buildGameUserPrompt({
+        premise: input.premise,
+        setting: input.setting,
+        characterName: input.characterName,
+        difficulty: input.difficulty,
+        ageGroup: input.ageGroup,
+      }),
+      maxTokens: 4096,
+    });
+
+    // 6. Safety-filter output
+    const filteredScenes: GameScene[] = llmResponse.scenes.map((scene) => ({
+      ...scene,
+      text: filterOutput(scene.text),
+      title: filterOutput(scene.title),
+      choices: scene.choices.map((c) => ({
+        text: filterOutput(c.text),
+        nextSceneId: c.nextSceneId,
+      })),
+      endingMessage: scene.endingMessage ? filterOutput(scene.endingMessage) : undefined,
+    }));
+
+    // 7. Validate scene graph
+    const validation = validateSceneGraph(filteredScenes, 'scene_1');
+    if (!validation.valid) {
+      console.error('[Game] Scene graph validation failed:', validation.errors);
+      throw new AppException(
+        'GENERATION_FAILED',
+        'Generated game had structural issues. Please try again.',
+        500
+      );
+    }
+
+    // 8. Build game content
+    const modelName = shouldUseGroq() ? 'llama-3.3-70b' : 'claude-sonnet';
+    const endings = filteredScenes.filter((s) => s.isEnding);
+    console.log(`[Game] LLM: ${modelName}, Scenes: ${filteredScenes.length}, Endings: ${endings.length}`);
+
+    const gameContent: GameContent & { title: string } = {
+      title: llmResponse.title,
+      scenes: filteredScenes,
+      startSceneId: 'scene_1',
+      totalScenes: filteredScenes.length,
+      totalEndings: endings.length,
+      setting: llmResponse.setting,
+      characterName: llmResponse.characterName,
+    };
+
+    // 9. Build AI X-Ray metadata
+    const aiXray: AiXrayData = {
+      model: modelName,
+      concept: llmResponse.aiXray.concept,
+      explanation: llmResponse.aiXray.explanation,
+      curriculumTag: llmResponse.aiXray.curriculumTag,
+      aiPoints: 15,
+    };
+
+    // 10. Save creation to Firestore
+    const { id: creationId, shareUrl } = await saveCreation({
+      type: 'game',
+      title: llmResponse.title,
+      prompt: input.premise,
+      content: gameContent as unknown as Record<string, unknown>,
+      media: [],
+      aiMetadata: aiXray as unknown as Record<string, unknown>,
+      aiConceptsTaught: ['decision_trees', 'branching_logic'],
+      sessionId,
+    });
+
+    // 11. Track creation for rate limiting
+    await trackCreation(sessionId);
+
+    return apiSuccess({ game: gameContent, aiXray, creationId, shareUrl });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
