@@ -74,13 +74,19 @@ export async function POST(request: NextRequest) {
       maxTokens: 4096,
     });
 
-    // 6. Safety-filter output text in each scene
-    const filteredScenes = llmResponse.scenes.map((scene) => ({
-      ...scene,
-      text: filterOutput(scene.text),
-      choices: scene.choices.map((c) => ({ ...c, text: filterOutput(c.text) })),
-      endingMessage: scene.endingMessage ? filterOutput(scene.endingMessage) : undefined,
-    }));
+    // 6. Safety-filter output text in each scene (strip undefined fields for Firestore)
+    const filteredScenes = llmResponse.scenes.map((scene) => {
+      const filtered: Record<string, unknown> = {
+        id: scene.id,
+        title: scene.title,
+        text: filterOutput(scene.text),
+        choices: scene.choices.map((c) => ({ text: filterOutput(c.text), nextSceneId: c.nextSceneId })),
+        isEnding: scene.isEnding,
+      };
+      if (scene.endingType) filtered.endingType = scene.endingType;
+      if (scene.endingMessage) filtered.endingMessage = filterOutput(scene.endingMessage);
+      return filtered;
+    }) as LlmGameResponse['scenes'];
 
     // 7. Validate scene graph integrity
     const startSceneId = 'scene_1';
