@@ -5,7 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { AiXrayPopup } from '@/components/learning/AiXrayPopup';
 import { ShareButton } from '@/components/shared/ShareButton';
+import { DownloadButton } from '@/components/shared/DownloadButton';
 import type { AiXrayData } from '@/types';
+import type { QuizContent } from '@/types/creation.types';
 
 interface QuizQuestion {
   question: string;
@@ -136,6 +138,16 @@ export function QuizPlayer({ quiz, aiXray, onCreateAnother, creationId, readOnly
             creationId={creationId ?? ''}
             creationTitle={quiz.title}
             creationType="quiz"
+            className="flex-1"
+          />
+          <DownloadButton
+            creation={{
+              id: creationId ?? '',
+              type: 'quiz',
+              title: quiz.title,
+              content: quiz as unknown as QuizContent,
+            }}
+            variant="full"
             className="flex-1"
           />
           {!readOnly && (

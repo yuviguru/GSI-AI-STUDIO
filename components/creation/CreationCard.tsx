@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { cn, formatCount } from '@/lib/utils';
+import { DownloadButton } from '@/components/shared/DownloadButton';
 import type { Creation, CreationType } from '@/types/creation.types';
 
 interface CreationCardProps {
@@ -152,6 +153,10 @@ export function CreationCard({ creation, onShare, onDelete }: CreationCardProps)
                   <ShareIcon /> Share
                 </button>
               )}
+              <DownloadButton
+                creation={creation}
+                variant="icon"
+              />
               {onDelete && (
                 <button
                   onClick={(e) => {

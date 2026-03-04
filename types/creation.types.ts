@@ -71,6 +71,7 @@ export interface Creation {
   shareUrl?: string;
   viewCount: number;
   shareCount: number;
+  downloadCount: number;
   likeCount: number;
   aiConceptsTaught: string[];
   curriculumTags: string[];

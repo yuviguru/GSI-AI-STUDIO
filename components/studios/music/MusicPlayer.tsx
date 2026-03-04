@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { AiXrayPopup } from '@/components/learning/AiXrayPopup';
 import { ShareButton } from '@/components/shared/ShareButton';
+import { DownloadButton } from '@/components/shared/DownloadButton';
 import type { AiXrayData, MusicContent } from '@/types';
 
 type MusicData = MusicContent & { title: string; waveformData: number[] };
@@ -245,6 +246,16 @@ export function MusicPlayer({ music, aiXray, onCreateAnother, creationId, readOn
           creationId={creationId ?? ''}
           creationTitle={music.title}
           creationType="music"
+          className="flex-1"
+        />
+        <DownloadButton
+          creation={{
+            id: creationId ?? '',
+            type: 'music',
+            title: music.title,
+            content: music as MusicContent,
+          }}
+          variant="full"
           className="flex-1"
         />
         {!readOnly && (

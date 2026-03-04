@@ -62,6 +62,7 @@ export async function saveCreation(input: SaveCreationInput): Promise<{ id: stri
     shareUrl: `/view/${id}`,
     viewCount: 0,
     shareCount: 0,
+    downloadCount: 0,
     likeCount: 0,
     aiConceptsTaught: input.aiConceptsTaught,
     curriculumTags: input.curriculumTags ?? [],
@@ -181,6 +182,23 @@ export async function incrementView(id: string): Promise<void> {
 }
 
 /**
+ * Atomically increment the download count for a creation.
+ */
+export async function incrementDownload(id: string): Promise<void> {
+  const docRef = adminDb.collection(CREATIONS_COLLECTION).doc(id);
+  const doc = await docRef.get();
+
+  if (!doc.exists) {
+    throw new AppException('NOT_FOUND', 'Creation not found', 404);
+  }
+
+  await docRef.update({
+    downloadCount: FieldValue.increment(1),
+    updatedAt: Timestamp.now(),
+  });
+}
+
+/**
  * Atomically increment the share count for a creation.
  */
 export async function incrementShare(id: string): Promise<void> {
@@ -240,6 +258,7 @@ function docToCreation(doc: FirebaseFirestore.DocumentSnapshot): Creation {
     shareUrl: data.shareUrl ?? undefined,
     viewCount: data.viewCount ?? 0,
     shareCount: data.shareCount ?? 0,
+    downloadCount: data.downloadCount ?? 0,
     likeCount: data.likeCount ?? 0,
     aiConceptsTaught: data.aiConceptsTaught ?? [],
     curriculumTags: data.curriculumTags ?? [],
