@@ -101,7 +101,7 @@ Music:
 }
 ```
 
-Quiz/Game:
+Quiz:
 ```json
 {
   "questions": [
@@ -111,6 +111,35 @@ Quiz/Game:
   "difficulty": "intermediate",
   "format": "trivia",
   "totalQuestions": 10
+}
+```
+
+Game (Text Adventure):
+```json
+{
+  "scenes": [
+    {
+      "id": "scene_1",
+      "title": "The Discovery",
+      "text": "You notice a strange door...",
+      "choices": [{ "text": "Open the door", "nextSceneId": "scene_2" }],
+      "isEnding": false
+    },
+    {
+      "id": "scene_5",
+      "title": "Victory!",
+      "text": "You solved the puzzle...",
+      "choices": [],
+      "isEnding": true,
+      "endingType": "success",
+      "endingMessage": "You saved the day!"
+    }
+  ],
+  "startSceneId": "scene_1",
+  "totalScenes": 8,
+  "totalEndings": 3,
+  "setting": "school",
+  "characterName": "You"
 }
 ```
 

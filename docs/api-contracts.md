@@ -208,6 +208,59 @@ Generate an AI quiz or game.
 
 ---
 
+### POST /api/ai/game
+
+Generate a text adventure game with branching narrative.
+
+**Request:**
+```json
+{
+  "premise": "A brave kid discovers a hidden door in their school",
+  "setting": "school",
+  "characterName": "You",
+  "difficulty": "medium",
+  "ageGroup": "10-12"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "game": {
+      "title": "The Secret Door",
+      "scenes": [
+        {
+          "id": "scene_1",
+          "title": "The Discovery",
+          "text": "You notice a strange door behind the library shelf...",
+          "choices": [
+            { "text": "Open the door", "nextSceneId": "scene_2" },
+            { "text": "Tell a teacher", "nextSceneId": "scene_3" }
+          ],
+          "isEnding": false
+        }
+      ],
+      "startSceneId": "scene_1",
+      "totalScenes": 8,
+      "totalEndings": 3,
+      "setting": "school",
+      "characterName": "You"
+    },
+    "aiXray": {
+      "model": "claude-sonnet",
+      "concept": "decision_trees",
+      "explanation": "The AI created a branching story using decision tree logic, where each choice leads to different paths...",
+      "curriculumTag": "ai_basics_decision_trees",
+      "aiPoints": 15
+    }
+  }
+}
+```
+
+---
+
 ## Creation Management Endpoints
 
 ### POST /api/creations

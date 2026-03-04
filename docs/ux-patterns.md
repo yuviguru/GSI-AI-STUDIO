@@ -19,7 +19,7 @@
 
 ### Creation Studio Layout
 
-All three studios (Story, Music, Quiz) follow the same 3-step pattern:
+All four studios (Story, Music, Quiz, Game) follow the same 3-step pattern:
 
 ```
 ┌─────────────────────────────────────────┐
@@ -111,11 +111,11 @@ Desktop: Top nav with studio links + logo
 │                                     │
 │  What do you want to create today?  │
 │                                     │
-│  ┌─────────┐ ┌─────────┐ ┌───────┐ │
-│  │  📖     │ │  🎵     │ │  🎮   │ │
-│  │ Story   │ │ Music   │ │ Quiz  │ │
-│  │ Studio  │ │  Lab    │ │ Maker │ │
-│  └─────────┘ └─────────┘ └───────┘ │
+│  ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐ │
+│  │  📖   │ │  🎵   │ │  🎮   │ │  🕹️   │ │
+│  │ Story  │ │ Music  │ │ Quiz  │ │ Game  │ │
+│  │ Studio │ │  Lab   │ │ Maker │ │Studio │ │
+│  └───────┘ └───────┘ └───────┘ └───────┘ │
 │                                     │
 │  Recent Creations                   │
 │  ┌─────────┐ ┌─────────┐           │
@@ -123,7 +123,7 @@ Desktop: Top nav with studio links + logo
 │  │ title   │ │ title   │           │
 │  └─────────┘ └─────────┘           │
 └─────────────────────────────────────┘
-│  📖 Story  │  🎵 Music  │  🎮 Quiz  │  ← bottom tabs (mobile)
+│ 📖 Story │ 🎵 Music │ 🎮 Quiz │ 🕹️ Game │ 🔍 Explore │ ✨ My Stuff │ ← bottom tabs
 ```
 
 ### Phase 2 (Authenticated)
