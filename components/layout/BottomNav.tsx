@@ -9,6 +9,7 @@ const tabs = [
   { href: '/create/story', label: 'Story', emoji: '📖' },
   { href: '/create/music', label: 'Music', emoji: '🎵' },
   { href: '/create/quiz', label: 'Quiz', emoji: '🎮' },
+  { href: '/explore', label: 'Explore', emoji: '🔍' },
   { href: '/creations', label: 'My Stuff', emoji: '✨' },
 ] as const;
 

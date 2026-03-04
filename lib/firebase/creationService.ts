@@ -30,6 +30,14 @@ export interface ListCreationsFilters {
   cursor?: string;
 }
 
+/** Filters for listing public creations */
+export interface PublicListFilters {
+  type?: CreationType;
+  sort: 'trending' | 'newest';
+  limit?: number;
+  cursor?: string;
+}
+
 /** Paginated list result */
 export interface ListCreationsResult {
   items: Creation[];
@@ -236,6 +244,98 @@ export async function archiveCreation(id: string, sessionId: string): Promise<vo
     status: 'archived',
     updatedAt: Timestamp.now(),
   });
+}
+
+/**
+ * List public creations with optional type filter and sort.
+ * No session filtering — returns all public, published creations.
+ * Supports trending (likeCount desc) and newest (createdAt desc) sort.
+ */
+export async function listPublicCreations(
+  filters: PublicListFilters
+): Promise<ListCreationsResult> {
+  const limit = Math.min(filters.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
+  const sortField = filters.sort === 'trending' ? 'likeCount' : 'createdAt';
+
+  // Resolve cursor
+  let startAfterDoc: FirebaseFirestore.DocumentSnapshot | null = null;
+  if (filters.cursor) {
+    if (filters.cursor.includes('/')) {
+      throw new AppException('INVALID_INPUT', 'Invalid cursor', 400);
+    }
+    const cursorDoc = await adminDb.collection(CREATIONS_COLLECTION).doc(filters.cursor).get();
+    if (cursorDoc.exists) {
+      startAfterDoc = cursorDoc;
+    }
+  }
+
+  // Build base query — public + published creations only
+  let baseQuery: FirebaseFirestore.Query = adminDb
+    .collection(CREATIONS_COLLECTION)
+    .where('isPublic', '==', true);
+
+  if (filters.type) {
+    baseQuery = baseQuery.where('type', '==', filters.type);
+  }
+
+  baseQuery = baseQuery.orderBy(sortField, 'desc');
+
+  // Filter archived in memory (same pattern as listCreations)
+  const BATCH_SIZE = Math.max(limit * 2, 20);
+  const MAX_BATCHES = 5;
+
+  const activeDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+  let lastDoc: FirebaseFirestore.DocumentSnapshot | null = startAfterDoc;
+
+  for (let i = 0; i < MAX_BATCHES; i++) {
+    const batchQuery = lastDoc
+      ? baseQuery.startAfter(lastDoc).limit(BATCH_SIZE)
+      : baseQuery.limit(BATCH_SIZE);
+
+    const snapshot = await batchQuery.get();
+
+    const active = snapshot.docs.filter((doc) => doc.data().status !== 'archived');
+    activeDocs.push(...active);
+
+    if (activeDocs.length > limit || snapshot.docs.length < BATCH_SIZE) break;
+
+    lastDoc = snapshot.docs[snapshot.docs.length - 1]!;
+  }
+
+  const hasMore = activeDocs.length > limit;
+  const items = activeDocs.slice(0, limit).map(docToCreation);
+  const nextCursor = hasMore && items.length > 0 ? items[items.length - 1]!.id : null;
+
+  return { items, nextCursor, hasMore };
+}
+
+/**
+ * Get top creators by creation count.
+ * Returns aggregated session-level stats for the leaderboard.
+ */
+export async function getTopCreators(topN: number = 5): Promise<
+  Array<{ sessionId: string; creationCount: number }>
+> {
+  // Fetch recent public published creations and aggregate by session
+  const snapshot = await adminDb
+    .collection(CREATIONS_COLLECTION)
+    .where('isPublic', '==', true)
+    .orderBy('createdAt', 'desc')
+    .limit(200)
+    .get();
+
+  const counts = new Map<string, number>();
+  for (const doc of snapshot.docs) {
+    const data = doc.data();
+    if (data.status === 'archived') continue;
+    const sid = data.sessionId as string;
+    counts.set(sid, (counts.get(sid) ?? 0) + 1);
+  }
+
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, topN)
+    .map(([sessionId, creationCount]) => ({ sessionId, creationCount }));
 }
 
 // ─── Internal helpers ────────────────────────────────────
