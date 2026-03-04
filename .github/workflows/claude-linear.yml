@@ -52,8 +52,6 @@ jobs:
             --model ${{ steps.model.outputs.name }}
             --allowedTools "Read,Edit,Write,Bash,Glob,Grep"
           prompt: |
-            You are working on the GSI AI Studio project — an AI creation + learning platform for Indian kids.
-
             ## Linear Issue: ${{ github.event.client_payload.issue_id }}
             **Title:** ${{ github.event.client_payload.title }}
 
@@ -61,18 +59,16 @@ jobs:
             ${{ github.event.client_payload.description }}
 
             ## Instructions
-            1. Read `.claude/CLAUDE.md` for project context and conventions.
-            2. Look for the matching story file in `stories/` (search by the issue prefix, e.g. UI-001, STUDIO-004).
-            3. If a story file exists, follow its subtasks exactly — each subtask specifies target files, action types, and requirements.
-            4. Follow existing code patterns (e.g., the 3-step studio pattern in `StoryStudioClient.tsx`).
-            5. Before creating the PR, run ALL of these checks and fix any errors:
-               - `pnpm lint` (code style)
-               - `pnpm typecheck` (TypeScript type checking)
-               - `pnpm test -- --run` (unit tests)
-               - `pnpm build` (production build)
-               Do NOT create the PR until all four commands pass. If any fail, fix the issues and re-run.
-            6. Prefix ALL commit messages with `${{ github.event.client_payload.issue_id }}:` (e.g., `${{ github.event.client_payload.issue_id }}: add game studio UI`).
-            7. After all checks pass, push your commits and create a PR to `main` using:
+            1. Read `.claude/CLAUDE.md` — it contains the MANDATORY development workflow.
+               Follow it exactly: load context → check/update docs → implement → verify.
+            2. Find the matching story file in `stories/` by issue prefix (e.g., STUDIO-004, UI-001).
+               If no story file exists, create one following `.claude/skills/story-creator.md`.
+            3. Follow the complete 4-phase workflow in CLAUDE.md. Do NOT skip context loading or doc updates.
+               If docs are missing architecture for this feature, design it and update docs BEFORE writing code.
+            4. Read the relevant `.claude/skills/*.md` files for the type of work you're doing
+               (story-runner for full stories, fn-generator for API routes, code-generator for all code).
+            5. Prefix ALL commits with `${{ github.event.client_payload.issue_id }}:`.
+            6. After all checks pass (lint, typecheck, test, build), create a PR:
                ```
                gh pr create --title "${{ github.event.client_payload.issue_id }}: ${{ github.event.client_payload.title }}" --body "Resolves ${{ github.event.client_payload.issue_id }}"
                ```
