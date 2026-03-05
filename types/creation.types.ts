@@ -37,7 +37,29 @@ export interface QuizContent {
   totalQuestions: number;
 }
 
-export type CreationContent = StoryContent | MusicContent | QuizContent;
+export interface GameScene {
+  id: string;
+  title: string;
+  text: string;
+  choices: Array<{
+    text: string;
+    nextSceneId: string;
+  }>;
+  isEnding: boolean;
+  endingType?: 'success' | 'neutral' | 'try_again';
+  endingMessage?: string;
+}
+
+export interface GameContent {
+  scenes: GameScene[];
+  startSceneId: string;
+  totalScenes: number;
+  totalEndings: number;
+  setting: string;
+  characterName: string;
+}
+
+export type CreationContent = StoryContent | MusicContent | QuizContent | GameContent;
 
 /** API response from POST /api/ai/story */
 export interface StoryGenerateResponse {
@@ -75,6 +97,7 @@ export interface Creation {
   likeCount: number;
   aiConceptsTaught: string[];
   curriculumTags: string[];
+  templateId?: string;
   isPublic: boolean;
   createdAt: Date;
   updatedAt: Date;

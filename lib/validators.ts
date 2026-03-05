@@ -31,6 +31,26 @@ export const quizInputSchema = z.object({
   ageGroup: z.enum(['8-10', '10-12', '12-14', '14-17']),
 });
 
+/** Game generation input */
+export const gameInputSchema = z.object({
+  premise: z.string().min(5, 'Tell us more about your adventure idea!').max(500),
+  setting: z
+    .enum([
+      'fantasy_world',
+      'space_station',
+      'underwater_city',
+      'enchanted_forest',
+      'indian_palace',
+      'time_machine',
+      'mystery_island',
+      'futuristic_city',
+    ])
+    .optional(),
+  characterName: z.string().max(30).optional().default('You'),
+  difficulty: z.enum(['easy', 'medium', 'hard']).default('medium'),
+  ageGroup: z.enum(['8-10', '10-12', '12-14', '14-17']),
+});
+
 /** Creation save input */
 export const saveCreationSchema = z.object({
   type: z.enum(['story', 'music', 'quiz', 'game', 'comic']),
@@ -56,5 +76,6 @@ export const kidProfileSchema = z.object({
 export type StoryInput = z.infer<typeof storyInputSchema>;
 export type MusicInput = z.infer<typeof musicInputSchema>;
 export type QuizInput = z.infer<typeof quizInputSchema>;
+export type GameInput = z.infer<typeof gameInputSchema>;
 export type SaveCreationInput = z.infer<typeof saveCreationSchema>;
 export type KidProfileInput = z.infer<typeof kidProfileSchema>;

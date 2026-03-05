@@ -1,15 +1,12 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { getTemplatesByType, getCategoriesByType, getDailySpark, type Template } from '@/lib/templates';
-import { TemplateCarousel } from '@/components/shared/TemplateCarousel';
-import { SurpriseButton } from '@/components/shared/SurpriseButton';
-import type { StoryInput } from '@/lib/validators';
+import type { GameInput } from '@/lib/validators';
 
-interface StoryPromptFormProps {
-  onSubmit: (input: StoryInput & { templateId?: string }) => void;
+interface GamePromptFormProps {
+  onSubmit: (input: GameInput) => void;
   isLoading: boolean;
   canCreate: boolean;
   cooldownSeconds: number;
@@ -17,65 +14,65 @@ interface StoryPromptFormProps {
 }
 
 const SUGGESTION_CHIPS = [
-  { emoji: '🚀', label: 'A space adventure' },
-  { emoji: '🐉', label: 'My pet dragon' },
-  { emoji: '🏰', label: 'A magical kingdom' },
-  { emoji: '🦸', label: 'A young superhero' },
-  { emoji: '🌊', label: 'An underwater quest' },
-  { emoji: '🤖', label: 'A friendly robot' },
+  { emoji: '🏰', label: 'Defend a magical kingdom' },
+  { emoji: '🚀', label: 'Explore an alien planet' },
+  { emoji: '🔍', label: 'Solve a mystery at school' },
+  { emoji: '🐉', label: 'Befriend a baby dragon' },
+  { emoji: '⏰', label: 'Travel back in time' },
+  { emoji: '🌊', label: 'Discover an underwater city' },
 ];
 
-const GENRES = ['adventure', 'sci-fi', 'fantasy', 'mystery', 'funny', 'friendship'] as const;
-const STYLES = ['cartoon', 'watercolor', 'pixel-art', 'comic'] as const;
+const SETTINGS = [
+  { value: 'fantasy_world', label: 'Fantasy World' },
+  { value: 'space_station', label: 'Space Station' },
+  { value: 'underwater_city', label: 'Underwater City' },
+  { value: 'enchanted_forest', label: 'Enchanted Forest' },
+  { value: 'indian_palace', label: 'Indian Palace' },
+  { value: 'time_machine', label: 'Time Machine' },
+  { value: 'mystery_island', label: 'Mystery Island' },
+  { value: 'futuristic_city', label: 'Futuristic City' },
+] as const;
+
+const DIFFICULTIES = [
+  { value: 'easy', label: 'Easy', desc: '6 scenes' },
+  { value: 'medium', label: 'Medium', desc: '8 scenes' },
+  { value: 'hard', label: 'Hard', desc: '10 scenes' },
+] as const;
+
 const AGE_GROUPS = ['8-10', '10-12', '12-14', '14-17'] as const;
 
-export function StoryPromptForm({
+export function GamePromptForm({
   onSubmit,
   isLoading,
   canCreate,
   cooldownSeconds,
   creationsRemaining,
-}: StoryPromptFormProps) {
+}: GamePromptFormProps) {
   const [premise, setPremise] = useState('');
-  const [genre, setGenre] = useState<string | undefined>();
-  const [style, setStyle] = useState<typeof STYLES[number]>('cartoon');
+  const [setting, setSetting] = useState<string | undefined>();
+  const [characterName, setCharacterName] = useState('');
+  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [ageGroup, setAgeGroup] = useState<typeof AGE_GROUPS[number]>('10-12');
-  const [pages, setPages] = useState(5);
   const [showOptions, setShowOptions] = useState(false);
   const [error, setError] = useState('');
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>();
-
-  const storyTemplates = getTemplatesByType('story');
-  const storyCategories = getCategoriesByType('story');
-  const dailySpark = getDailySpark('story');
-
-  const handleTemplateSelect = useCallback((template: Template) => {
-    setPremise(template.promptText);
-    setSelectedTemplateId(template.id);
-    setError('');
-    if (template.settings?.genre) setGenre(template.settings.genre as string);
-    if (template.settings?.style) setStyle(template.settings.style as typeof STYLES[number]);
-  }, []);
 
   const handleSubmit = () => {
     if (premise.trim().length < 5) {
-      setError('Tell us a bit more about your story idea! What happens?');
+      setError('Tell us more about your adventure idea! What happens?');
       return;
     }
     setError('');
     onSubmit({
       premise: premise.trim(),
-      genre: genre as StoryInput['genre'],
-      style,
+      setting: setting as GameInput['setting'],
+      characterName: characterName.trim() || 'You',
+      difficulty,
       ageGroup,
-      pages,
-      templateId: selectedTemplateId,
     });
   };
 
   const handleChipClick = (label: string) => {
     setPremise(label);
-    setSelectedTemplateId(undefined);
     setError('');
   };
 
@@ -88,11 +85,11 @@ export function StoryPromptForm({
         <textarea
           value={premise}
           onChange={(e) => { setPremise(e.target.value); setError(''); }}
-          placeholder="What's your story about? A brave cat exploring space, a magical school..."
+          placeholder="Describe your adventure... A treasure hunt in ancient India, escaping a maze on Mars..."
           className={cn(
             'w-full resize-none rounded-2xl border-2 bg-white p-4 font-display text-base leading-relaxed outline-none transition-colors',
             'placeholder:text-gray-400',
-            error ? 'border-red-300 focus:border-red-400' : 'border-gray-200 focus:border-brand-purple',
+            error ? 'border-red-300 focus:border-red-400' : 'border-gray-200 focus:border-emerald-500',
             'min-h-[100px]'
           )}
           maxLength={500}
@@ -108,8 +105,8 @@ export function StoryPromptForm({
         </div>
       </div>
 
-      {/* Suggestion chips + Surprise Me */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+      {/* Suggestion chips */}
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {SUGGESTION_CHIPS.map((chip) => (
           <button
             key={chip.label}
@@ -117,30 +114,20 @@ export function StoryPromptForm({
             className={cn(
               'flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2.5 text-sm font-medium transition-all active:scale-95',
               premise === chip.label
-                ? 'border-brand-purple bg-brand-purple/10 text-brand-purple'
-                : 'border-gray-200 bg-white text-gray-600 hover:border-brand-purple/40'
+                ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                : 'border-gray-200 bg-white text-gray-600 hover:border-emerald-400/40'
             )}
           >
             <span>{chip.emoji}</span>
             {chip.label}
           </button>
         ))}
-        <SurpriseButton type="story" accentColor="brand-purple" onSelect={handleTemplateSelect} />
       </div>
-
-      {/* Template Carousel */}
-      <TemplateCarousel
-        templates={storyTemplates}
-        categories={storyCategories}
-        dailySpark={dailySpark}
-        accentColor="brand-purple"
-        onSelect={handleTemplateSelect}
-      />
 
       {/* More options toggle */}
       <button
         onClick={() => setShowOptions(!showOptions)}
-        className="flex items-center gap-1 self-start text-sm font-medium text-brand-purple"
+        className="flex items-center gap-1 self-start text-sm font-medium text-emerald-600"
       >
         <motion.span animate={{ rotate: showOptions ? 90 : 0 }} className="inline-block">
           ▶
@@ -155,60 +142,58 @@ export function StoryPromptForm({
         className="overflow-hidden"
       >
         <div className="flex flex-col gap-4 pb-2">
-          {/* Genre */}
+          {/* Setting */}
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">Genre</label>
+            <label className="mb-2 block text-sm font-semibold text-gray-700">Setting</label>
             <div className="flex flex-wrap gap-2">
-              {GENRES.map((g) => (
+              {SETTINGS.map((s) => (
                 <button
-                  key={g}
-                  onClick={() => setGenre(genre === g ? undefined : g)}
+                  key={s.value}
+                  onClick={() => setSetting(setting === s.value ? undefined : s.value)}
                   className={cn(
-                    'rounded-full px-3.5 py-2 text-sm font-medium capitalize transition-all active:scale-95',
-                    genre === g
-                      ? 'bg-brand-purple text-white'
+                    'rounded-full px-3.5 py-2 text-sm font-medium transition-all active:scale-95',
+                    setting === s.value
+                      ? 'bg-emerald-500 text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   )}
                 >
-                  {g}
+                  {s.label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Style */}
+          {/* Difficulty */}
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">Art Style</label>
+            <label className="mb-2 block text-sm font-semibold text-gray-700">Difficulty</label>
             <div className="flex flex-wrap gap-2">
-              {STYLES.map((s) => (
+              {DIFFICULTIES.map((d) => (
                 <button
-                  key={s}
-                  onClick={() => setStyle(s)}
+                  key={d.value}
+                  onClick={() => setDifficulty(d.value)}
                   className={cn(
-                    'rounded-full px-3.5 py-2 text-sm font-medium capitalize transition-all active:scale-95',
-                    style === s
-                      ? 'bg-brand-cyan text-white'
+                    'rounded-full px-3.5 py-2 text-sm font-medium transition-all active:scale-95',
+                    difficulty === d.value
+                      ? 'bg-teal-500 text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   )}
                 >
-                  {s}
+                  {d.label} ({d.desc})
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Pages */}
+          {/* Character name */}
           <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Pages: {pages}
-            </label>
+            <label className="mb-2 block text-sm font-semibold text-gray-700">Your Character Name</label>
             <input
-              type="range"
-              min={1}
-              max={8}
-              value={pages}
-              onChange={(e) => setPages(Number(e.target.value))}
-              className="w-full accent-brand-purple"
+              type="text"
+              value={characterName}
+              onChange={(e) => setCharacterName(e.target.value)}
+              placeholder="You (default)"
+              maxLength={30}
+              className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-emerald-500"
             />
           </div>
 
@@ -241,10 +226,10 @@ export function StoryPromptForm({
         disabled={isDisabled}
         className={cn(
           'relative w-full rounded-full py-4 text-center font-display text-lg font-bold text-white transition-all',
-          'bg-gradient-to-r from-brand-purple to-brand-purple/80',
+          'bg-gradient-to-r from-emerald-500 to-teal-500',
           isDisabled
             ? 'cursor-not-allowed opacity-50'
-            : 'hover:shadow-lg hover:shadow-brand-purple/25 active:scale-[0.98]'
+            : 'hover:shadow-lg hover:shadow-emerald-200 active:scale-[0.98]'
         )}
       >
         {cooldownSeconds > 0 ? (
@@ -252,7 +237,7 @@ export function StoryPromptForm({
         ) : isLoading ? (
           'Creating...'
         ) : (
-          'Create My Story ✨'
+          'Create My Adventure 🕹️'
         )}
       </button>
 

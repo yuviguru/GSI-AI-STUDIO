@@ -206,6 +206,57 @@ Generate an AI quiz or game.
 }
 ```
 
+### POST /api/ai/game
+
+Generate a text adventure game with branching scenes and choices.
+
+**Request:**
+```json
+{
+  "premise": "A treasure hunt in ancient India",
+  "setting": "indian_palace",
+  "characterName": "Arjun",
+  "difficulty": "medium",
+  "ageGroup": "10-12"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "game": {
+      "title": "The Lost Treasure of Hampi",
+      "scenes": [
+        {
+          "id": "scene_1",
+          "title": "The Ancient Map",
+          "text": "You find a weathered map in your grandmother's attic...",
+          "choices": [
+            { "text": "Follow the river path", "nextSceneId": "scene_2" },
+            { "text": "Take the mountain trail", "nextSceneId": "scene_3" }
+          ],
+          "isEnding": false
+        }
+      ],
+      "startSceneId": "scene_1",
+      "totalScenes": 8,
+      "totalEndings": 3,
+      "setting": "indian_palace",
+      "characterName": "Arjun"
+    },
+    "aiXray": {
+      "model": "claude-sonnet",
+      "concept": "Decision Trees & Branching Logic",
+      "explanation": "The AI created a branching story graph where each choice leads to different outcomes...",
+      "curriculumTag": "ai_decision_trees",
+      "aiPoints": 15
+    }
+  }
+}
+```
+
 ---
 
 ## Creation Management Endpoints
