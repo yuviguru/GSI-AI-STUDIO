@@ -209,6 +209,7 @@ When a creation is shared on WhatsApp, the link preview shows:
 - Storybooks: Page-flip animation, tap/swipe to navigate
 - Music: Waveform visualizer + play controls
 - Quizzes: Interactive playable quiz
+- Games: Interactive choose-your-own-adventure player
 - Footer: "Made with GSI AI Studio — Create your own! [Try Now]"
 
 ---

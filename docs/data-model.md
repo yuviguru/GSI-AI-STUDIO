@@ -101,7 +101,7 @@ Music:
 }
 ```
 
-Quiz/Game:
+Quiz:
 ```json
 {
   "questions": [
@@ -111,6 +111,29 @@ Quiz/Game:
   "difficulty": "intermediate",
   "format": "trivia",
   "totalQuestions": 10
+}
+```
+
+Game:
+```json
+{
+  "scenes": [
+    {
+      "id": "scene_1",
+      "title": "The Beginning",
+      "text": "You stand at the entrance of a mysterious cave...",
+      "choices": [
+        { "text": "Enter the cave", "nextSceneId": "scene_2" },
+        { "text": "Explore outside", "nextSceneId": "scene_3" }
+      ],
+      "isEnding": false
+    }
+  ],
+  "startSceneId": "scene_1",
+  "totalScenes": 8,
+  "totalEndings": 3,
+  "setting": "mystery_island",
+  "characterName": "You"
 }
 ```
 

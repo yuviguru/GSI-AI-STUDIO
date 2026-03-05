@@ -23,6 +23,12 @@ const PROGRESS_MESSAGES: Record<string, string[]> = {
     'Writing fun explanations... 💡',
     'Finalizing your quiz... 🎮',
   ],
+  game: [
+    'Building your world... 🌍',
+    'Creating storylines... ✍️',
+    'Adding plot twists... 🔀',
+    'Preparing your adventure... 🕹️',
+  ],
 };
 
 interface GenerationState<T> {
@@ -34,7 +40,7 @@ interface GenerationState<T> {
   progressMessage: string;
 }
 
-export function useAiGeneration<T>(studioType: 'story' | 'music' | 'quiz') {
+export function useAiGeneration<T>(studioType: 'story' | 'music' | 'quiz' | 'game') {
   const [state, setState] = useState<GenerationState<T>>({
     data: null,
     aiXray: null,

@@ -6,8 +6,9 @@ import { cn } from '@/lib/utils';
 import { StoryViewer } from '@/components/studios/story/StoryViewer';
 import { MusicPlayer } from '@/components/studios/music/MusicPlayer';
 import { QuizPlayer } from '@/components/studios/quiz/QuizPlayer';
+import { GamePlayer } from '@/components/studios/game/GamePlayer';
 import { ShareButton } from '@/components/shared/ShareButton';
-import type { Creation, StoryContent, MusicContent, QuizContent, CreationType } from '@/types/creation.types';
+import type { Creation, StoryContent, MusicContent, QuizContent, GameContent, CreationType } from '@/types/creation.types';
 
 /** Serialized creation (dates as ISO strings from server component) */
 interface SerializedCreation extends Omit<Creation, 'createdAt' | 'updatedAt'> {
@@ -23,12 +24,14 @@ const STUDIO_LINKS: Record<string, string> = {
   story: '/create/story',
   music: '/create/music',
   quiz: '/create/quiz',
+  game: '/create/game',
 };
 
 const CTA_LABELS: Record<string, string> = {
   story: 'Create Your Own Story',
   music: 'Create Your Own Song',
   quiz: 'Create Your Own Quiz',
+  game: 'Create Your Own Game',
 };
 
 export function ViewerClient({ creation }: ViewerClientProps) {
@@ -75,8 +78,21 @@ export function ViewerClient({ creation }: ViewerClientProps) {
         />
       )}
 
+      {creation.type === 'game' && (
+        <GamePlayer
+          game={{
+            ...(creation.content as GameContent),
+            title: creation.title,
+          }}
+          aiXray={creation.aiMetadata}
+          onCreateAnother={() => {}}
+          creationId={creation.id}
+          readOnly
+        />
+      )}
+
       {/* Unsupported type fallback */}
-      {!['story', 'music', 'quiz'].includes(creation.type) && (
+      {!['story', 'music', 'quiz', 'game'].includes(creation.type) && (
         <div className="flex flex-col items-center gap-4 py-12 text-center">
           <span className="text-5xl">{'\u2728'}</span>
           <h2 className="font-display text-xl font-bold text-gray-900">
