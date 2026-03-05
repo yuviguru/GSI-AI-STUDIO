@@ -88,18 +88,18 @@ export async function POST(request: NextRequest) {
       return filtered;
     }) as LlmGameResponse['scenes'];
 
-    // 7. Validate scene graph integrity
+    // 7. Validate scene graph integrity and prune unreachable scenes
     const startSceneId = 'scene_1';
-    validateSceneGraph(filteredScenes, startSceneId);
+    const prunedScenes = validateSceneGraph(filteredScenes, startSceneId);
 
-    // 8. Build game content
+    // 8. Build game content (using pruned scenes — only reachable nodes)
     const modelName = shouldUseGroq() ? 'llama-3.3-70b' : 'claude-sonnet';
     const gameContent: GameContent & { title: string } = {
       title: llmResponse.title,
-      scenes: filteredScenes,
+      scenes: prunedScenes,
       startSceneId,
-      totalScenes: filteredScenes.length,
-      totalEndings: filteredScenes.filter((s) => s.isEnding).length,
+      totalScenes: prunedScenes.length,
+      totalEndings: prunedScenes.filter((s) => s.isEnding).length,
       setting: llmResponse.setting,
       characterName: llmResponse.characterName || input.characterName || 'You',
     };
