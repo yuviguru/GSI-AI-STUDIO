@@ -97,6 +97,7 @@ export interface Creation {
   likeCount: number;
   aiConceptsTaught: string[];
   curriculumTags: string[];
+  templateId?: string;
   isPublic: boolean;
   createdAt: Date;
   updatedAt: Date;

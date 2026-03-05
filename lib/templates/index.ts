@@ -1,0 +1,37 @@
+import type { CreationType } from '@/types/creation.types';
+import type { Template } from './types';
+import { STORY_TEMPLATES, STORY_CATEGORIES } from './storyTemplates';
+import { MUSIC_TEMPLATES, MUSIC_CATEGORIES } from './musicTemplates';
+import { QUIZ_TEMPLATES, QUIZ_CATEGORIES } from './quizTemplates';
+
+export type { Template } from './types';
+export { getDailySpark } from './dailySpark';
+
+const TEMPLATES_BY_TYPE: Record<string, Template[]> = {
+  story: STORY_TEMPLATES,
+  music: MUSIC_TEMPLATES,
+  quiz: QUIZ_TEMPLATES,
+};
+
+const CATEGORIES_BY_TYPE: Record<string, string[]> = {
+  story: STORY_CATEGORIES,
+  music: MUSIC_CATEGORIES,
+  quiz: QUIZ_CATEGORIES,
+};
+
+/** Get all templates for a creation type */
+export function getTemplatesByType(type: CreationType): Template[] {
+  return TEMPLATES_BY_TYPE[type] ?? [];
+}
+
+/** Get category names for a creation type */
+export function getCategoriesByType(type: CreationType): string[] {
+  return CATEGORIES_BY_TYPE[type] ?? [];
+}
+
+/** Get a random template for a creation type */
+export function getRandomTemplate(type: CreationType): Template | null {
+  const templates = TEMPLATES_BY_TYPE[type];
+  if (!templates || templates.length === 0) return null;
+  return templates[Math.floor(Math.random() * templates.length)] ?? null;
+}

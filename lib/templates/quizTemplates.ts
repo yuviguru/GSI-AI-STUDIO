@@ -1,0 +1,133 @@
+import type { Template } from './types';
+
+export const QUIZ_TEMPLATES: Template[] = [
+  // Science
+  {
+    id: 'quiz-solar-system',
+    emoji: '🪐',
+    title: 'Solar System Explorer',
+    description: 'Test your knowledge of planets and space',
+    promptText: 'The solar system, planets, moons, and space exploration by ISRO and NASA',
+    category: 'Science',
+    type: 'quiz',
+    settings: { difficulty: 'intermediate' },
+  },
+  {
+    id: 'quiz-human-body',
+    emoji: '🫀',
+    title: 'Amazing Human Body',
+    description: 'How well do you know your own body?',
+    promptText: 'The human body — organs, bones, the brain, digestion, and how our senses work',
+    category: 'Science',
+    type: 'quiz',
+    settings: { difficulty: 'beginner' },
+  },
+  {
+    id: 'quiz-chemistry-fun',
+    emoji: '⚗️',
+    title: 'Chemistry Is Fun',
+    description: 'Elements, reactions, and cool experiments',
+    promptText: 'Fun chemistry facts — elements, chemical reactions, famous experiments, and everyday chemistry',
+    category: 'Science',
+    type: 'quiz',
+    settings: { difficulty: 'intermediate' },
+  },
+  // History
+  {
+    id: 'quiz-indian-freedom',
+    emoji: '🇮🇳',
+    title: 'Freedom Fighters',
+    description: 'Heroes of Indian independence',
+    promptText: 'Indian freedom struggle, independence movement, and the brave freedom fighters who shaped India',
+    category: 'History',
+    type: 'quiz',
+    settings: { difficulty: 'intermediate' },
+  },
+  {
+    id: 'quiz-ancient-india',
+    emoji: '🏛️',
+    title: 'Ancient India',
+    description: 'Indus Valley, Mauryas, and Guptas',
+    promptText: 'Ancient Indian civilizations — Indus Valley, Maurya Empire, Gupta period, and their amazing contributions to science and math',
+    category: 'History',
+    type: 'quiz',
+    settings: { difficulty: 'advanced' },
+  },
+  // Geography
+  {
+    id: 'quiz-india-geography',
+    emoji: '🗺️',
+    title: 'Know Your India',
+    description: 'States, capitals, rivers, and mountains',
+    promptText: 'Indian geography — states and capitals, major rivers, mountain ranges, and famous landmarks',
+    category: 'Geography',
+    type: 'quiz',
+    settings: { difficulty: 'beginner' },
+  },
+  // Indian Culture
+  {
+    id: 'quiz-festivals',
+    emoji: '🪔',
+    title: 'Festival Trivia',
+    description: 'How much do you know about Indian festivals?',
+    promptText: 'Indian festivals — Diwali, Holi, Eid, Christmas, Pongal, Onam, Baisakhi, and how they are celebrated across India',
+    category: 'Indian Culture',
+    type: 'quiz',
+    settings: { difficulty: 'beginner' },
+  },
+  {
+    id: 'quiz-indian-food',
+    emoji: '🍛',
+    title: 'Foodie Challenge',
+    description: 'Match dishes to their states',
+    promptText: 'Indian food — famous dishes from different states, spices, cooking methods, and food history',
+    category: 'Indian Culture',
+    type: 'quiz',
+    settings: { difficulty: 'intermediate' },
+  },
+  // Animals
+  {
+    id: 'quiz-indian-wildlife',
+    emoji: '🐅',
+    title: 'Indian Wildlife Safari',
+    description: 'Tigers, elephants, and more',
+    promptText: 'Indian wildlife — national parks, endangered species, Project Tiger, and amazing animals found only in India',
+    category: 'Animals',
+    type: 'quiz',
+    settings: { difficulty: 'intermediate' },
+  },
+  // Sports
+  {
+    id: 'quiz-cricket-legends',
+    emoji: '🏏',
+    title: 'Cricket Legends',
+    description: 'Test your cricket knowledge',
+    promptText: 'Indian cricket history — legendary players, World Cup victories, famous matches, and cricket records',
+    category: 'Sports',
+    type: 'quiz',
+    settings: { difficulty: 'intermediate' },
+  },
+  {
+    id: 'quiz-olympics',
+    emoji: '🏅',
+    title: 'Olympic Champions',
+    description: 'India at the Olympics',
+    promptText: 'India at the Olympics — medal winners, sports heroes, and Olympic history from India',
+    category: 'Sports',
+    type: 'quiz',
+    settings: { difficulty: 'advanced' },
+  },
+  // Space
+  {
+    id: 'quiz-isro',
+    emoji: '🚀',
+    title: 'ISRO Explorer',
+    description: 'India\'s space achievements',
+    promptText: 'ISRO and India in space — Chandrayaan, Mangalyaan, Gaganyaan, satellites, and India\'s space achievements',
+    category: 'Space',
+    type: 'quiz',
+    settings: { difficulty: 'intermediate' },
+  },
+];
+
+export const QUIZ_CATEGORIES = [...new Set(QUIZ_TEMPLATES.map((t) => t.category))];

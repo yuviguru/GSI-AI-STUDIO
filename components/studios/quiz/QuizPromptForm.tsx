@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { getTemplatesByType, getCategoriesByType, getDailySpark, type Template } from '@/lib/templates';
+import { TemplateCarousel } from '@/components/shared/TemplateCarousel';
+import { SurpriseButton } from '@/components/shared/SurpriseButton';
 import type { QuizInput } from '@/lib/validators';
 
 interface QuizPromptFormProps {
-  onSubmit: (input: QuizInput) => void;
+  onSubmit: (input: QuizInput & { templateId?: string }) => void;
   isLoading: boolean;
   canCreate: boolean;
   cooldownSeconds: number;
@@ -51,6 +54,19 @@ export function QuizPromptForm({
   const [ageGroup, setAgeGroup] = useState<typeof AGE_GROUPS[number]>('10-12');
   const [showOptions, setShowOptions] = useState(false);
   const [error, setError] = useState('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>();
+
+  const quizTemplates = getTemplatesByType('quiz');
+  const quizCategories = getCategoriesByType('quiz');
+  const dailySpark = getDailySpark('quiz');
+
+  const handleTemplateSelect = useCallback((template: Template) => {
+    setTopic(template.promptText);
+    setSelectedTemplateId(template.id);
+    setError('');
+    if (template.settings?.difficulty) setDifficulty(template.settings.difficulty as string);
+    if (template.settings?.format) setFormat(template.settings.format as string);
+  }, []);
 
   const handleSubmit = () => {
     if (topic.trim().length < 2) {
@@ -64,11 +80,13 @@ export function QuizPromptForm({
       difficulty: difficulty as QuizInput['difficulty'],
       questionCount,
       ageGroup,
+      templateId: selectedTemplateId,
     });
   };
 
   const handleChipClick = (label: string) => {
     setTopic(label);
+    setSelectedTemplateId(undefined);
     setError('');
   };
 
@@ -101,8 +119,8 @@ export function QuizPromptForm({
         </div>
       </div>
 
-      {/* Suggestion chips */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+      {/* Suggestion chips + Surprise Me */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {SUGGESTION_CHIPS.map((chip) => (
           <button
             key={chip.label}
@@ -118,7 +136,17 @@ export function QuizPromptForm({
             {chip.label}
           </button>
         ))}
+        <SurpriseButton type="quiz" accentColor="brand-cyan" onSelect={handleTemplateSelect} />
       </div>
+
+      {/* Template Carousel */}
+      <TemplateCarousel
+        templates={quizTemplates}
+        categories={quizCategories}
+        dailySpark={dailySpark}
+        accentColor="brand-cyan"
+        onSelect={handleTemplateSelect}
+      />
 
       {/* Format selector */}
       <div>
