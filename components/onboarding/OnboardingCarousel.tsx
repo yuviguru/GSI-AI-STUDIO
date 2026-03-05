@@ -30,7 +30,7 @@ const slides: SlideData[] = [
   },
   {
     title: 'Create Amazing Things',
-    subtitle: 'Stories, music, quizzes — all powered by AI!',
+    subtitle: 'Stories, music, quizzes & games — all powered by AI!',
     gradient: 'bg-gradient-to-b from-orange-50 to-white',
     illustration: <CreateThingsIllustration />,
   },

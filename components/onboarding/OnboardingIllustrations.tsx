@@ -39,9 +39,10 @@ export function MeetKokoIllustration() {
 }
 
 const creationTypes = [
-  { emoji: '📖', label: 'Stories', bg: 'bg-violet-100', rotate: -8 },
-  { emoji: '🎵', label: 'Music', bg: 'bg-orange-100', rotate: 0 },
-  { emoji: '🎮', label: 'Quizzes', bg: 'bg-cyan-100', rotate: 8 },
+  { emoji: '📖', label: 'Stories', bg: 'bg-violet-100', rotate: -10 },
+  { emoji: '🎵', label: 'Music', bg: 'bg-orange-100', rotate: -3 },
+  { emoji: '🎮', label: 'Quizzes', bg: 'bg-cyan-100', rotate: 3 },
+  { emoji: '🕹️', label: 'Games', bg: 'bg-emerald-100', rotate: 10 },
 ];
 
 export function CreateThingsIllustration() {
