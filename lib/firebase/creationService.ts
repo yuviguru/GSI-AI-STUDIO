@@ -20,6 +20,7 @@ export interface SaveCreationInput {
   curriculumTags?: string[];
   isPublic?: boolean;
   sessionId: string;
+  remixedFromId?: string;
 }
 
 /** Filters for listing creations */
@@ -74,12 +75,21 @@ export async function saveCreation(input: SaveCreationInput): Promise<{ id: stri
     likeCount: 0,
     aiConceptsTaught: input.aiConceptsTaught,
     curriculumTags: input.curriculumTags ?? [],
+    remixedFromId: input.remixedFromId ?? null,
+    remixCount: 0,
     isPublic: input.isPublic ?? true,
     createdAt: now,
     updatedAt: now,
   };
 
   await docRef.set(creationDoc);
+
+  // Fire-and-forget: increment remix count on original creation
+  if (input.remixedFromId) {
+    incrementRemixCount(input.remixedFromId).catch(() => {
+      // Non-critical — don't fail the save if the original is missing
+    });
+  }
 
   return { id, shareUrl: `/view/${id}` };
 }
@@ -224,6 +234,17 @@ export async function incrementShare(id: string): Promise<void> {
 }
 
 /**
+ * Atomically increment the remix count for a creation.
+ */
+export async function incrementRemixCount(id: string): Promise<void> {
+  const docRef = adminDb.collection(CREATIONS_COLLECTION).doc(id);
+  await docRef.update({
+    remixCount: FieldValue.increment(1),
+    updatedAt: Timestamp.now(),
+  });
+}
+
+/**
  * Soft-delete a creation by setting its status to 'archived'.
  * Verifies the requesting session owns the creation.
  */
@@ -362,6 +383,8 @@ function docToCreation(doc: FirebaseFirestore.DocumentSnapshot): Creation {
     likeCount: data.likeCount ?? 0,
     aiConceptsTaught: data.aiConceptsTaught ?? [],
     curriculumTags: data.curriculumTags ?? [],
+    remixedFromId: data.remixedFromId ?? undefined,
+    remixCount: data.remixCount ?? 0,
     isPublic: data.isPublic ?? true,
     createdAt: data.createdAt?.toDate?.() ?? new Date(),
     updatedAt: data.updatedAt?.toDate?.() ?? new Date(),

@@ -9,11 +9,13 @@ import { SurpriseButton } from '@/components/shared/SurpriseButton';
 import type { StoryInput } from '@/lib/validators';
 
 interface StoryPromptFormProps {
-  onSubmit: (input: StoryInput & { templateId?: string }) => void;
+  onSubmit: (input: StoryInput & { templateId?: string; remixedFromId?: string }) => void;
   isLoading: boolean;
   canCreate: boolean;
   cooldownSeconds: number;
   creationsRemaining: number;
+  defaultPrompt?: string;
+  remixFromId?: string;
 }
 
 const SUGGESTION_CHIPS = [
@@ -35,8 +37,10 @@ export function StoryPromptForm({
   canCreate,
   cooldownSeconds,
   creationsRemaining,
+  defaultPrompt,
+  remixFromId,
 }: StoryPromptFormProps) {
-  const [premise, setPremise] = useState('');
+  const [premise, setPremise] = useState(defaultPrompt ?? '');
   const [genre, setGenre] = useState<string | undefined>();
   const [style, setStyle] = useState<typeof STYLES[number]>('cartoon');
   const [ageGroup, setAgeGroup] = useState<typeof AGE_GROUPS[number]>('10-12');
@@ -70,6 +74,7 @@ export function StoryPromptForm({
       ageGroup,
       pages,
       templateId: selectedTemplateId,
+      remixedFromId: remixFromId,
     });
   };
 
@@ -83,6 +88,14 @@ export function StoryPromptForm({
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Remix banner */}
+      {remixFromId && (
+        <div className="flex items-center gap-2 rounded-2xl bg-brand-purple/10 px-4 py-3 text-sm font-medium text-brand-purple">
+          <RemixBannerIcon />
+          Remixed from another creation — make it your own!
+        </div>
+      )}
+
       {/* Premise input */}
       <div>
         <textarea
@@ -263,5 +276,16 @@ export function StoryPromptForm({
         </p>
       )}
     </div>
+  );
+}
+
+function RemixBannerIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="17 1 21 5 17 9" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <polyline points="7 23 3 19 7 15" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+    </svg>
   );
 }

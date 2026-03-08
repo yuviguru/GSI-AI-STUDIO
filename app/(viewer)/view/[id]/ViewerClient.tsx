@@ -8,6 +8,7 @@ import { MusicPlayer } from '@/components/studios/music/MusicPlayer';
 import { QuizPlayer } from '@/components/studios/quiz/QuizPlayer';
 import { GamePlayer } from '@/components/studios/game/GamePlayer';
 import { ShareButton } from '@/components/shared/ShareButton';
+import { RemixButton } from '@/components/shared/RemixButton';
 import type { Creation, StoryContent, MusicContent, QuizContent, GameContent, CreationType } from '@/types/creation.types';
 
 /** Serialized creation (dates as ISO strings from server component) */
@@ -104,13 +105,15 @@ export function ViewerClient({ creation }: ViewerClientProps) {
         </div>
       )}
 
-      {/* Spacer + CTA */}
+      {/* Remix + CTA */}
       <motion.div
         className="mt-8 flex flex-col gap-3"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
       >
+        <RemixButton creation={creation} variant="full" />
+
         <Link
           href={studioLink}
           className={cn(

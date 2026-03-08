@@ -91,6 +91,13 @@ export function CreationCard({ creation, onShare, onDelete }: CreationCardProps)
           >
             {config.label}
           </span>
+
+          {/* Remixed badge */}
+          {creation.remixedFromId && (
+            <span className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full bg-brand-purple/90 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
+              <RemixIcon /> Remixed
+            </span>
+          )}
         </div>
       </Link>
 
@@ -113,6 +120,11 @@ export function CreationCard({ creation, onShare, onDelete }: CreationCardProps)
             {creation.shareCount > 0 && (
               <span className="flex items-center gap-0.5">
                 <ShareIcon /> {formatCount(creation.shareCount)}
+              </span>
+            )}
+            {(creation.remixCount ?? 0) > 0 && (
+              <span className="flex items-center gap-0.5">
+                <RemixIcon /> {formatCount(creation.remixCount!)}
               </span>
             )}
           </div>
@@ -213,6 +225,17 @@ function MoreIcon() {
       <circle cx="12" cy="5" r="2" />
       <circle cx="12" cy="12" r="2" />
       <circle cx="12" cy="19" r="2" />
+    </svg>
+  );
+}
+
+function RemixIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="17 1 21 5 17 9" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <polyline points="7 23 3 19 7 15" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
     </svg>
   );
 }
