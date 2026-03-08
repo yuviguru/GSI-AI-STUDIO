@@ -135,6 +135,7 @@ export async function POST(request: NextRequest) {
       aiMetadata: aiXray as unknown as Record<string, unknown>,
       aiConceptsTaught: ['natural_language_generation', 'text_to_image'],
       sessionId,
+      remixedFromId: input.remixedFromId,
     });
 
     // 11. Track creation for rate limiting

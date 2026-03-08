@@ -69,6 +69,8 @@ Core collection storing all AI-generated creations.
 | likeCount | number | yes | Phase 2: community likes (default 0) |
 | aiConceptsTaught | array\<string\> | yes | AI concepts covered `["prompt_engineering", "nlg"]` |
 | curriculumTags | array\<string\> | no | CBSE curriculum mapping tags |
+| remixedFromId | string | no | ID of original creation this was remixed from |
+| remixCount | number | no | Denormalized count of remixes (default 0) |
 | isPublic | boolean | yes | Whether creation is publicly viewable |
 | createdAt | timestamp | yes | Creation timestamp |
 | updatedAt | timestamp | yes | Last modification timestamp |

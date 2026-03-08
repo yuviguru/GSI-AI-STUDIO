@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAiGeneration } from '@/hooks/useAiGeneration';
 import { useSession } from '@/hooks/useSession';
@@ -15,6 +16,10 @@ type QuizData = QuizContent & { title: string };
 type StudioStep = 'inspire' | 'create' | 'play';
 
 export function QuizStudioClient() {
+  const searchParams = useSearchParams();
+  const remixFromId = searchParams.get('remix') ?? undefined;
+  const defaultPrompt = searchParams.get('prompt') ?? undefined;
+
   const [step, setStep] = useState<StudioStep>('inspire');
   const { data, aiXray, creationId, loading, error, progressMessage, generate, reset } =
     useAiGeneration<QuizData>('quiz');
@@ -76,6 +81,8 @@ export function QuizStudioClient() {
                 canCreate={canCreate}
                 cooldownSeconds={cooldownSeconds}
                 creationsRemaining={creationsRemaining}
+                defaultPrompt={defaultPrompt}
+                remixFromId={remixFromId}
               />
             </motion.div>
           )}

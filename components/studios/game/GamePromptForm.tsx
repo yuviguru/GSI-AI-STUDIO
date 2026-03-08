@@ -6,11 +6,13 @@ import { cn } from '@/lib/utils';
 import type { GameInput } from '@/lib/validators';
 
 interface GamePromptFormProps {
-  onSubmit: (input: GameInput) => void;
+  onSubmit: (input: GameInput & { remixedFromId?: string }) => void;
   isLoading: boolean;
   canCreate: boolean;
   cooldownSeconds: number;
   creationsRemaining: number;
+  defaultPrompt?: string;
+  remixFromId?: string;
 }
 
 const SUGGESTION_CHIPS = [
@@ -47,8 +49,10 @@ export function GamePromptForm({
   canCreate,
   cooldownSeconds,
   creationsRemaining,
+  defaultPrompt,
+  remixFromId,
 }: GamePromptFormProps) {
-  const [premise, setPremise] = useState('');
+  const [premise, setPremise] = useState(defaultPrompt ?? '');
   const [setting, setSetting] = useState<string | undefined>();
   const [characterName, setCharacterName] = useState('');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
@@ -68,6 +72,7 @@ export function GamePromptForm({
       characterName: characterName.trim() || 'You',
       difficulty,
       ageGroup,
+      remixedFromId: remixFromId,
     });
   };
 
@@ -80,6 +85,14 @@ export function GamePromptForm({
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Remix banner */}
+      {remixFromId && (
+        <div className="flex items-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-600">
+          <RemixBannerIcon />
+          Remixed from another creation — make it your own!
+        </div>
+      )}
+
       {/* Premise input */}
       <div>
         <textarea
@@ -248,5 +261,16 @@ export function GamePromptForm({
         </p>
       )}
     </div>
+  );
+}
+
+function RemixBannerIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="17 1 21 5 17 9" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <polyline points="7 23 3 19 7 15" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+    </svg>
   );
 }
