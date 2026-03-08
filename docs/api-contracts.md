@@ -259,6 +259,79 @@ Generate a text adventure game with branching scenes and choices.
 
 ---
 
+### POST /api/ai/comic
+
+Generate a multi-panel illustrated comic strip with dialogue bubbles.
+
+**Request:**
+```json
+{
+  "premise": "Two friends discover a time machine in their school basement",
+  "style": "manga",
+  "panelCount": 4,
+  "characters": ["Priya, tall girl with red hair", "Arjun, stocky boy with glasses"],
+  "ageGroup": "10-12"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| premise | string | yes | Comic idea (5-500 chars) |
+| style | string | yes | `manga` \| `cartoon` \| `superhero` \| `indie` \| `chibi` |
+| panelCount | number | no | 4 (default), 6, or 8 panels |
+| characters | string[] | no | Up to 4 character descriptions (name + appearance) |
+| ageGroup | string | yes | `8-10` \| `10-12` \| `12-14` \| `14-17` |
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "comic": {
+      "title": "The Time Machine Mystery",
+      "style": "manga",
+      "panels": [
+        {
+          "panelNumber": 1,
+          "imageUrl": "data:image/png;base64,...",
+          "dialogue": [
+            { "character": "Priya", "text": "Arjun, look what I found!", "position": "left" },
+            { "character": "Arjun", "text": "No way!", "position": "right" }
+          ],
+          "caption": "After school one Tuesday...",
+          "imagePrompt": "manga style: two kids discovering a glowing portal"
+        }
+      ],
+      "characters": [
+        { "name": "Priya", "description": "tall girl with red hair and blue jacket" }
+      ],
+      "setting": "Indian school basement",
+      "synopsis": "Two friends discover a time machine in their school",
+      "totalPanels": 4
+    },
+    "aiXray": {
+      "model": "claude-sonnet",
+      "concept": "multimodal_ai",
+      "explanation": "The AI combined text generation (writing the story and dialogue) with image generation (drawing each panel) — this is called multimodal AI...",
+      "curriculumTag": "ai_applications_creative",
+      "aiPoints": 12
+    },
+    "creationId": "abc123",
+    "shareUrl": "/view/abc123"
+  }
+}
+```
+
+**Pipeline:** validate → rate limit → safety filter → Claude generates panel scripts → safety filter outputs → Replicate/Pollinations generates panel images (parallel, concurrency=3, 512x512) → save creation → track
+
+**Errors:**
+- `400 UNSAFE_CONTENT` — Input contains inappropriate content
+- `400 INVALID_INPUT` — Missing required fields or invalid style/panelCount
+- `429 RATE_LIMITED` — Too many requests
+- `502 AI_GENERATION_FAILED` — Claude or image generation API error
+
+---
+
 ## Creation Management Endpoints
 
 ### POST /api/creations
