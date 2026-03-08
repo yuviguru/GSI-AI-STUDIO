@@ -9,11 +9,13 @@ import { SurpriseButton } from '@/components/shared/SurpriseButton';
 import type { MusicInput } from '@/lib/validators';
 
 interface MusicPromptFormProps {
-  onSubmit: (input: MusicInput & { templateId?: string }) => void;
+  onSubmit: (input: MusicInput & { templateId?: string; remixedFromId?: string }) => void;
   isLoading: boolean;
   canCreate: boolean;
   cooldownSeconds: number;
   creationsRemaining: number;
+  defaultPrompt?: string;
+  remixFromId?: string;
 }
 
 const MOODS = [
@@ -51,10 +53,12 @@ export function MusicPromptForm({
   canCreate,
   cooldownSeconds,
   creationsRemaining,
+  defaultPrompt,
+  remixFromId,
 }: MusicPromptFormProps) {
   const [mood, setMood] = useState<string>('');
   const [genre, setGenre] = useState<string>('');
-  const [theme, setTheme] = useState('');
+  const [theme, setTheme] = useState(defaultPrompt ?? '');
   const [lyricsPrompt, setLyricsPrompt] = useState('');
   const [duration, setDuration] = useState(30);
   const [ageGroup, setAgeGroup] = useState<typeof AGE_GROUPS[number]>('10-12');
@@ -94,6 +98,7 @@ export function MusicPromptForm({
       instruments: instruments.length > 0 ? instruments : undefined,
       ageGroup: ageGroup as MusicInput['ageGroup'],
       templateId: selectedTemplateId,
+      remixedFromId: remixFromId,
     });
   };
 
@@ -117,6 +122,14 @@ export function MusicPromptForm({
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Remix banner */}
+      {remixFromId && (
+        <div className="flex items-center gap-2 rounded-2xl bg-brand-orange/10 px-4 py-3 text-sm font-medium text-brand-orange">
+          <RemixBannerIcon />
+          Remixed from another creation — make it your own!
+        </div>
+      )}
+
       {/* Mood selector grid */}
       <div>
         <label className="mb-2 block text-sm font-semibold text-gray-700">How should it feel?</label>
@@ -332,5 +345,16 @@ export function MusicPromptForm({
         </p>
       )}
     </div>
+  );
+}
+
+function RemixBannerIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="17 1 21 5 17 9" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <polyline points="7 23 3 19 7 15" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+    </svg>
   );
 }

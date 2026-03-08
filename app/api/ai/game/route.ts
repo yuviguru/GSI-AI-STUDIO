@@ -122,6 +122,7 @@ export async function POST(request: NextRequest) {
       aiMetadata: aiXray as unknown as Record<string, unknown>,
       aiConceptsTaught: ['decision_trees', 'branching_logic'],
       sessionId,
+      remixedFromId: input.remixedFromId,
     });
 
     // 11. Track creation for rate limiting

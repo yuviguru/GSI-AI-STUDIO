@@ -122,6 +122,8 @@ export interface Creation {
   aiConceptsTaught: string[];
   curriculumTags: string[];
   templateId?: string;
+  remixedFromId?: string;
+  remixCount?: number;
   isPublic: boolean;
   createdAt: Date;
   updatedAt: Date;

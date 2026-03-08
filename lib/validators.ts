@@ -9,6 +9,7 @@ export const storyInputSchema = z.object({
   pages: z.number().int().min(1).max(8).default(5),
   style: z.enum(['watercolor', 'cartoon', 'pixel-art', 'comic']).default('cartoon'),
   ageGroup: z.enum(['8-10', '10-12', '12-14', '14-17']),
+  remixedFromId: z.string().max(128).optional(),
 });
 
 /** Music generation input */
@@ -20,6 +21,7 @@ export const musicInputSchema = z.object({
   instruments: z.array(z.string()).max(4).optional(),
   lyricsPrompt: z.string().max(500).optional(),
   ageGroup: z.enum(['8-10', '10-12', '12-14', '14-17']),
+  remixedFromId: z.string().max(128).optional(),
 });
 
 /** Quiz generation input */
@@ -29,6 +31,7 @@ export const quizInputSchema = z.object({
   difficulty: z.enum(['beginner', 'intermediate', 'advanced']).default('intermediate'),
   questionCount: z.number().int().min(3).max(20).default(10),
   ageGroup: z.enum(['8-10', '10-12', '12-14', '14-17']),
+  remixedFromId: z.string().max(128).optional(),
 });
 
 /** Game generation input */
@@ -49,6 +52,7 @@ export const gameInputSchema = z.object({
   characterName: z.string().max(30).optional().default('You'),
   difficulty: z.enum(['easy', 'medium', 'hard']).default('medium'),
   ageGroup: z.enum(['8-10', '10-12', '12-14', '14-17']),
+  remixedFromId: z.string().max(128).optional(),
 });
 
 /** Comic generation input */
@@ -71,6 +75,7 @@ export const saveCreationSchema = z.object({
   aiMetadata: z.record(z.unknown()),
   aiConceptsTaught: z.array(z.string()),
   isPublic: z.boolean().default(true),
+  remixedFromId: z.string().max(128).optional(),
 });
 
 /** Kid profile input */

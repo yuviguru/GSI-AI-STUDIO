@@ -3,6 +3,8 @@ import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { listPublicCreations, getTopCreators } from '@/lib/firebase/creationService';
 import type { CreationType } from '@/types/creation.types';
 
+export const dynamic = 'force-dynamic';
+
 const VALID_SORT = ['trending', 'newest'] as const;
 type SortOption = (typeof VALID_SORT)[number];
 

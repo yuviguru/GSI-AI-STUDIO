@@ -10,6 +10,7 @@ import { GamePlayer } from '@/components/studios/game/GamePlayer';
 import { ComicViewer } from '@/components/studios/comic/ComicViewer';
 import { ShareButton } from '@/components/shared/ShareButton';
 import type { Creation, StoryContent, MusicContent, QuizContent, GameContent, ComicContent, CreationType } from '@/types/creation.types';
+import { RemixButton } from '@/components/shared/RemixButton';
 
 /** Serialized creation (dates as ISO strings from server component) */
 interface SerializedCreation extends Omit<Creation, 'createdAt' | 'updatedAt'> {
@@ -117,13 +118,15 @@ export function ViewerClient({ creation }: ViewerClientProps) {
         </div>
       )}
 
-      {/* Spacer + CTA */}
+      {/* Remix + CTA */}
       <motion.div
         className="mt-8 flex flex-col gap-3"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
       >
+        <RemixButton creation={creation} variant="full" />
+
         <Link
           href={studioLink}
           className={cn(

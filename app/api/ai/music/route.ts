@@ -120,6 +120,7 @@ export async function POST(request: NextRequest) {
       aiMetadata: aiXray as unknown as Record<string, unknown>,
       aiConceptsTaught: ['generative_ai', 'text_to_music', 'pattern_recognition_audio'],
       sessionId,
+      remixedFromId: input.remixedFromId,
     });
 
     // 11. Track creation for rate limiting

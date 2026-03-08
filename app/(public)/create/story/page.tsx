@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { StoryStudioClient } from './StoryStudioClient';
 
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function StoryStudioPage() {
-  return <StoryStudioClient />;
+  return (
+    <Suspense>
+      <StoryStudioClient />
+    </Suspense>
+  );
 }
