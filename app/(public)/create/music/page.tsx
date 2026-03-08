@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { MusicStudioClient } from './MusicStudioClient';
 
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function MusicLabPage() {
-  return <MusicStudioClient />;
+  return (
+    <Suspense>
+      <MusicStudioClient />
+    </Suspense>
+  );
 }

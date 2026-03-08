@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { QuizStudioClient } from './QuizStudioClient';
 
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function QuizMakerPage() {
-  return <QuizStudioClient />;
+  return (
+    <Suspense>
+      <QuizStudioClient />
+    </Suspense>
+  );
 }
