@@ -59,7 +59,25 @@ export interface GameContent {
   characterName: string;
 }
 
-export type CreationContent = StoryContent | MusicContent | QuizContent | GameContent;
+export interface ComicPanel {
+  panelNumber: number;
+  imageUrl: string;
+  caption?: string;
+  dialogue: Array<{ character: string; text: string; position: 'left' | 'right' | 'center' }>;
+  description: string;
+}
+
+export type ComicStyle = 'manga' | 'cartoon' | 'superhero' | 'indie' | 'chibi';
+
+export interface ComicContent {
+  panels: ComicPanel[];
+  characters: Array<{ name: string; description: string }>;
+  setting: string;
+  style: ComicStyle;
+  totalPanels: number;
+}
+
+export type CreationContent = StoryContent | MusicContent | QuizContent | GameContent | ComicContent;
 
 /** API response from POST /api/ai/story */
 export interface StoryGenerateResponse {

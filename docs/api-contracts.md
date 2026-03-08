@@ -259,6 +259,71 @@ Generate a text adventure game with branching scenes and choices.
 
 ---
 
+### POST /api/ai/comic
+
+Generate a multi-panel illustrated comic strip with dialogue and captions.
+
+**Request:**
+```json
+{
+  "premise": "Two friends discover a portal to a dinosaur world",
+  "characters": [
+    { "name": "Priya", "description": "A curious inventor" },
+    { "name": "Arjun", "description": "A brave adventurer" }
+  ],
+  "panelCount": 4,
+  "style": "manga",
+  "ageGroup": "10-12"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "comic": {
+      "title": "Portal to the Dino Age",
+      "panels": [
+        {
+          "panelNumber": 1,
+          "imageUrl": "https://storage.googleapis.com/.../panel-1.png",
+          "caption": "One ordinary afternoon...",
+          "dialogue": [
+            { "character": "Priya", "text": "What's that glowing behind the bushes?", "position": "left" },
+            { "character": "Arjun", "text": "Let's find out!", "position": "right" }
+          ],
+          "description": "Two kids in a park notice a glowing portal"
+        }
+      ],
+      "characters": [
+        { "name": "Priya", "description": "A curious inventor" }
+      ],
+      "setting": "A park that leads to prehistoric world",
+      "style": "manga",
+      "totalPanels": 4
+    },
+    "aiXray": {
+      "model": "claude-sonnet",
+      "concept": "Visual Storytelling & Multimodal AI",
+      "explanation": "The AI combined text generation with image generation to create a sequential visual narrative...",
+      "curriculumTag": "ai_multimodal_generation",
+      "aiPoints": 12
+    },
+    "creationId": "abc123",
+    "shareUrl": "https://gsiaistudio.com/view/abc123"
+  }
+}
+```
+
+**Errors:**
+- `400 UNSAFE_CONTENT` — Input contains inappropriate content
+- `400 INVALID_INPUT` — Missing required fields
+- `429 RATE_LIMITED` — Too many requests
+- `502 AI_GENERATION_FAILED` — Claude or Replicate API error
+
+---
+
 ## Creation Management Endpoints
 
 ### POST /api/creations

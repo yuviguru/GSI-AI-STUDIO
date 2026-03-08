@@ -55,6 +55,24 @@ export const gameInputSchema = z.object({
   remixedFromId: z.string().max(128).optional(),
 });
 
+/** Comic generation input */
+export const comicInputSchema = z.object({
+  premise: z.string().min(5, 'Tell us more about your comic idea!').max(500),
+  characters: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(50),
+        description: z.string().max(100).optional(),
+      })
+    )
+    .min(1, 'Add at least one character')
+    .max(4),
+  panelCount: z.union([z.literal(4), z.literal(6), z.literal(8)]).default(4),
+  style: z.enum(['manga', 'cartoon', 'superhero', 'indie', 'chibi']).default('cartoon'),
+  ageGroup: z.enum(['8-10', '10-12', '12-14', '14-17']),
+  remixedFromId: z.string().max(128).optional(),
+});
+
 /** Creation save input */
 export const saveCreationSchema = z.object({
   type: z.enum(['story', 'music', 'quiz', 'game', 'comic']),
@@ -82,5 +100,6 @@ export type StoryInput = z.infer<typeof storyInputSchema>;
 export type MusicInput = z.infer<typeof musicInputSchema>;
 export type QuizInput = z.infer<typeof quizInputSchema>;
 export type GameInput = z.infer<typeof gameInputSchema>;
+export type ComicInput = z.infer<typeof comicInputSchema>;
 export type SaveCreationInput = z.infer<typeof saveCreationSchema>;
 export type KidProfileInput = z.infer<typeof kidProfileSchema>;

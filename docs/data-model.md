@@ -77,7 +77,7 @@ Core collection storing all AI-generated creations.
 
 **Content field by type**:
 
-Story/Comic:
+Story:
 ```json
 {
   "pages": [
@@ -87,6 +87,30 @@ Story/Comic:
   "genre": "adventure",
   "characters": ["Luna", "Rex"],
   "setting": "magical forest"
+}
+```
+
+Comic:
+```json
+{
+  "panels": [
+    {
+      "panelNumber": 1,
+      "imageUrl": "https://...",
+      "caption": "Meanwhile, in the city...",
+      "dialogue": [
+        { "character": "Priya", "text": "Look at that!", "position": "left" },
+        { "character": "Arjun", "text": "Amazing!", "position": "right" }
+      ],
+      "description": "Two kids pointing at a glowing portal in the sky"
+    }
+  ],
+  "characters": [
+    { "name": "Priya", "description": "A curious 12-year-old inventor" }
+  ],
+  "setting": "A futuristic Indian city",
+  "style": "manga",
+  "totalPanels": 4
 }
 ```
 
