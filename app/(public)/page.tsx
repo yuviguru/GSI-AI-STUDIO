@@ -61,6 +61,16 @@ const studios = [
     bg: 'bg-emerald-50',
     hoverRing: 'hover:ring-emerald-200',
   },
+  {
+    href: '/create/comic',
+    emoji: '🖼️',
+    title: 'Comic Studio',
+    description: 'Create illustrated comic strips with AI',
+    gradient: 'from-pink-400 to-rose-500',
+    hoverShadow: 'hover:shadow-pink-200',
+    bg: 'bg-pink-50',
+    hoverRing: 'hover:ring-pink-200',
+  },
 ];
 
 const staggerContainer = {
@@ -155,7 +165,7 @@ export default function HomePage() {
           variants={fadeUp}
           className="mx-auto mt-4 max-w-md text-base leading-relaxed text-gray-500 sm:text-lg"
         >
-          Build stories, music, quizzes & games with AI — then peek behind the curtain to see how it works!
+          Build stories, comics, music, quizzes & games with AI — then peek behind the curtain to see how it works!
         </motion.p>
 
         <motion.div variants={fadeUp} className="mt-6 flex justify-center">
@@ -175,7 +185,7 @@ export default function HomePage() {
         initial="hidden"
         animate="show"
       >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {studios.map((studio) => (
             <motion.div key={studio.href} variants={fadeUp}>
               <StudioCard {...studio} />
