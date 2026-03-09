@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
         panelNumber: panel.panelNumber,
         imageUrl: imageUrls[i] ?? PLACEHOLDER_IMAGE,
         dialogue: panel.dialogue as ComicDialogue[],
-        caption: panel.caption || undefined,
+        caption: panel.caption || '',
         imagePrompt: panel.imagePrompt,
       })),
       characters: llmResponse.characters,

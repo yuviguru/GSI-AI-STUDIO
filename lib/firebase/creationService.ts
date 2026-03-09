@@ -7,6 +7,17 @@ const CREATIONS_COLLECTION = 'creations';
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 50;
 
+/** Recursively strip `undefined` values from an object so Firestore never rejects the write. */
+function stripUndefined<T>(obj: T): T {
+  if (obj === null || obj === undefined || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(stripUndefined) as unknown as T;
+  const cleaned: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+    if (value !== undefined) cleaned[key] = stripUndefined(value);
+  }
+  return cleaned as T;
+}
+
 /** Input for saving a new creation */
 export interface SaveCreationInput {
   type: CreationType;
@@ -82,7 +93,7 @@ export async function saveCreation(input: SaveCreationInput): Promise<{ id: stri
     updatedAt: now,
   };
 
-  await docRef.set(creationDoc);
+  await docRef.set(stripUndefined(creationDoc));
 
   // Fire-and-forget: increment remix count on original creation
   if (input.remixedFromId) {
