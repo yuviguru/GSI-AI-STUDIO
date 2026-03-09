@@ -13,6 +13,8 @@ const filters: Array<{ label: string; value: CreationType | null; emoji: string 
   { label: 'Stories', value: 'story', emoji: '📖' },
   { label: 'Music', value: 'music', emoji: '🎵' },
   { label: 'Quizzes', value: 'quiz', emoji: '🧠' },
+  { label: 'Comics', value: 'comic', emoji: '🎨' },
+  { label: 'Games', value: 'game', emoji: '🎮' },
 ];
 
 export function CreationFilters({ active, onFilterChange }: CreationFiltersProps) {
