@@ -170,6 +170,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Beat the AI rounds: server-side only (no client access)
+    match /beatTheAiRounds/{roundId} {
+      allow read, write: if false;
+    }
+
     // Challenges: public read, admin write
     match /challenges/{challengeId} {
       allow read: if true;
@@ -256,6 +261,98 @@ If a user's request could lead to inappropriate content, redirect creatively:
 - "Scary monster" → Make the monster friendly and misunderstood
 ```
 
+### Beat the AI Safety
+
+Beat the AI involves **kid-authored free text** (not just prompts to AI), requiring additional safety:
+
+- **Kid input filter**: Same profanity/safety filter as AI prompts. Kid's typed response is scanned before saving to Firestore. If flagged, show: "Let's keep it fun and friendly! Try writing something different."
+- **AI opponent response filter**: AI-generated response goes through standard output safety pipeline
+- **No kid-to-kid exposure (Phase 1)**: Rounds are private to the session. No public display of kid-authored text
+- **Rate limiting**: 5 Beat the AI rounds per session per day (shares the daily creation limit)
+- **Timer abuse**: Server validates round duration (must be ≥10 seconds, ≤ timeLimit + 30s buffer)
+- **Score manipulation**: Scores are self-reported (Phase 1). Server validates range (1-5 integers only). Phase 2 adds peer voting
+- **Prompt bank safety**: All prompts are pre-curated and reviewed. No user-generated prompts
+
+### MindX Safety
+
+MindX involves **voice input** (speaking module) and **free text answers** (thinking/reading modules), requiring additional safety:
+
+- **Voice input safety**: Speech-to-text transcripts go through same profanity/safety filter as text input. If flagged, show: "Let's keep our answers clean and thoughtful!"
+- **Answer text filter**: Free-text answers (describe, what-if, summarize) are scanned before sending to AI evaluator
+- **AI evaluation safety**: Claude evaluation prompts include child-safety instructions. Feedback must be encouraging, never harsh or discouraging
+- **Mic permission**: Graceful handling — if denied, fallback to text input. Never re-prompt aggressively
+- **No voice storage**: Voice audio is NOT stored. Only the speech-to-text transcript is saved. Audio is processed client-side via Web Speech API
+- **Rate limiting**: 3 MindX assessments per session per day
+- **Question bank safety**: All challenge content (passages, questions, scenarios) is pre-curated. India-culturally-relevant and age-appropriate
+- **Score integrity**: AI evaluation is server-side (not self-reported like Beat the AI). No score manipulation possible
+- **Mentor feedback tone**: Claude system prompt enforces positive, encouraging feedback. Never uses words like "wrong", "bad", "failed" — uses "keep growing", "next time try", "almost there"
+
+### GrowthMap Parent Data Access (Phase 2+)
+
+GrowthMap gives parents visibility into their child's learning data. Strict access controls protect child privacy:
+
+- **Parent-only access**: Only the authenticated parent linked to a kid profile can view that child's GrowthMap data
+- **No cross-family access**: Parent A cannot view Parent B's child's data, even if they know the kidId
+- **Server-side aggregation**: Raw data (individual answers, voice transcripts, proctoring events) is NEVER exposed to the parent dashboard. Only aggregated scores, bands, and AI-generated summaries
+- **Peer comparison opt-in**: Anonymized percentile rankings are OPT-IN only. Default is OFF. Parents explicitly consent via settings
+- **AI report safety**: Koko's Report is generated via Claude with strict system prompt:
+  - Never negative about the child
+  - Never diagnostic (no "your child may have..." medical/psychological claims)
+  - Never comparative in specific terms ("better than Priya")
+  - Focus on growth, encouragement, and actionable tips
+  - Disclaimer: "This is an AI-generated insight, not a professional assessment"
+- **Data retention**: Reports older than 12 months are archived. Parents can request full data export or deletion (DPDPA compliance)
+- **No third-party sharing**: GrowthMap data is never shared with schools, advertisers, or third parties unless parent explicitly consents
+- **Interest signals disclaimer**: "Interest signals are AI-detected patterns based on creation themes. They are not career advice or psychological profiles."
+
+### Cerebro Anti-Malpractice (Phase 2+)
+
+Cerebro involves **competitive exams with prizes**, making anti-malpractice the #1 security priority:
+
+#### Layer 1: Browser Lockdown (Client-Side)
+- **Full-screen enforcement**: Exam requires fullscreen mode. Exit fullscreen = warning. 3 exits = auto-submit
+- **Tab switch detection**: Page Visibility API logs every focus loss with timestamp. 3 tab switches = auto-submit
+- **Clipboard blocking**: `copy`, `cut`, `paste` events prevented via `event.preventDefault()`
+- **Right-click & DevTools**: Context menu disabled, F12/Ctrl+Shift+I detected via key events + `window.outerWidth` discrepancy
+- **Window resize detection**: Flags potential screen sharing or side-by-side browsing
+- **Keyboard shortcuts**: Block Ctrl+C, Ctrl+V, Ctrl+A during exam
+
+#### Layer 2: AI-Powered Anomaly Detection (Server-Side)
+- **Response time analysis**: Flag answers completed in < 3s for MCQ, < 10s for creative questions
+- **Answer pattern similarity**: After exam window closes, compute cosine similarity between all participant answer vectors. Flag pairs with > 0.85 similarity across 5+ questions
+- **Score-speed mismatch**: Perfect score + fastest time = auto-flag for manual review
+- **Typing cadence**: For text answers, detect paste patterns (0ms between characters vs natural 50-200ms gaps)
+- **IP/device clustering**: Flag multiple examSessionIds from same IP or device fingerprint
+- **Score consistency**: 3x improvement between rounds without proportional time investment = flag
+- **Geographic anomaly**: Registered school location vs IP geolocation mismatch = flag
+
+#### Layer 3: Procedural Safeguards
+- **Question bank size**: 200+ questions per category per age group. Each exam randomly selects 20-30
+- **Full randomization**: Question order, MCQ option order shuffled per participant
+- **Scheduled exam windows**: All participants in same time slot (reduces answer sharing)
+- **No retakes**: One attempt per round per competition
+- **Progressive proctoring**: Prelims = browser lockdown. Semis = + anomaly detection. Finals = + webcam proctoring
+- **Webcam proctoring (Finals)**: Face detection (must see one face), multiple face detection (flag if 2+ faces), basic gaze tracking
+
+#### Flag & Review System
+- **Green**: No anomalies — auto-approved for leaderboard
+- **Yellow**: 1-2 minor flags (1 tab switch, 1 fast answer) — auto-approved but logged
+- **Orange**: 3+ flags — held from leaderboard until admin review
+- **Red**: Critical flags (high similarity, webcam violation, device clustering) — auto-suspended, requires manual admin review + school coordinator confirmation
+
+#### Prize Winner Verification
+- Top 10 at each level: automatic response pattern review by anomaly detector
+- Top 3 prize winners: mandatory manual review + school coordinator identity confirmation
+- Prize eligibility: verified school + parent consent + consistent performance + clean proctoring record
+- Disqualification: Clear evidence of cheating results in competition ban
+
+#### Data Privacy for Competitions
+- Leaderboards show display names only (not full names)
+- School names visible only at school level and above (not to strangers)
+- Proctoring data (webcam feeds) are NOT stored — only events/flags are logged
+- IP addresses are hashed — raw IPs never stored
+- Typing cadence data deleted 30 days after competition ends
+
 ### Image Generation Safety
 
 - Use Replicate's built-in NSFW filter (enabled by default)
@@ -318,6 +415,12 @@ India's DPDPA 2023 classifies children (under 18) as requiring enhanced protecti
 | AI Generation | 5/day, 1/2min cooldown | 5/week | Unlimited |
 | Creation Save | 5/day | 10/week | Unlimited |
 | Auth (OTP) | N/A | 5/min | 5/min |
+| Beat the AI | 5/day | 5/week | Unlimited |
+| MindX | 3/day | 5/week | Unlimited |
+| Cerebro Exam | N/A | 1/exam window | 1/exam window |
+| Cerebro Submit | N/A | 30/min (per-question) | 30/min |
+| GrowthMap Dashboard | N/A | 10/hour | 10/hour |
+| GrowthMap Report | N/A | 3/day | 3/day |
 | Public Read | 100/min | 100/min | 100/min |
 
 Implementation: Firestore-based counter per session/user + Netlify rate limiting headers.

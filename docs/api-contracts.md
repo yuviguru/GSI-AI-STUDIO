@@ -617,5 +617,9 @@ Razorpay payment webhook.
 |-------------------|---------------------|-----------------|----------------|
 | AI Generation | 5/day, 1/2min | 5/week | Unlimited |
 | Creation Save | 5/day | 10/week | Unlimited |
+| Beat the AI | 5/day, 1/2min | 5/week | Unlimited |
+| MindX | 3/day | 5/week | Unlimited |
+| Cerebro | N/A | 1/exam window | 1/exam window |
+| GrowthMap | N/A | 10/hour | 10/hour |
 | Public Read | 100/min | 100/min | 100/min |
 | Auth | N/A | 5/min | 5/min |

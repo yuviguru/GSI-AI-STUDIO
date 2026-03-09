@@ -35,6 +35,45 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ─── Beat the AI Rounds ──────────────────────────────────
+    // Human vs AI challenge rounds — server-side only
+    match /beatTheAiRounds/{roundId} {
+      allow read, write: if false; // Server-side only via Admin SDK
+    }
+
+    // ─── MindX Assessments ──────────────────────────────────
+    // MindX skill assessments — server-side only
+    match /skillArenaAssessments/{assessmentId} {
+      allow read, write: if false; // Server-side only via Admin SDK
+    }
+
+    // ─── Cerebro Competitions (Phase 2+) ─────────────────────
+    // Competition definitions — public read, admin write
+    match /competitions/{competitionId} {
+      allow read: if true;
+      allow write: if false; // Server-side only via Admin SDK
+    }
+
+    // ─── Cerebro Exam Sessions (Phase 2+) ──────────────────
+    // Individual exam attempts — server-side only (anti-cheat)
+    match /examSessions/{examSessionId} {
+      allow read, write: if false; // Server-side only via Admin SDK
+    }
+
+    // ─── Cerebro Leaderboards (Phase 2+) ───────────────────
+    // Aggregated leaderboard data — public read
+    match /leaderboards/{leaderboardId} {
+      allow read: if true;
+      allow write: if false; // Server-side only via Cloud Functions
+    }
+
+    // ─── GrowthMap Reports (Phase 2+) ──────────────────────
+    // Parent insight reports — parent can only read their own kids' reports
+    match /growthMapReports/{reportId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow write: if false; // Server-side only via Cloud Functions
+    }
+
     // ─── Challenges (Phase 2+) ──────────────────────────────
     match /challenges/{challengeId} {
       allow read: if true;

@@ -27,6 +27,18 @@ firestore/
 │           └── {kidId}
 ├── sessions/               # Phase 1: anonymous sessions for rate limiting
 │   └── {sessionId}
+├── beatTheAiRounds/        # Human vs AI creative challenge rounds
+│   └── {roundId}
+├── skillArenaAssessments/  # MindX skill assessments + mentor feedback
+│   └── {assessmentId}
+├── competitions/           # Phase 2: Cerebro competitive exam competitions
+│   └── {competitionId}
+├── examSessions/           # Phase 2: Cerebro exam attempts + proctoring data
+│   └── {examSessionId}
+├── leaderboards/           # Phase 2: Cerebro leaderboard data per competition
+│   └── {leaderboardId}
+├── growthMapReports/       # Phase 2: GrowthMap parent insight reports
+│   └── {reportId}
 ├── challenges/             # Phase 2: weekly creation challenges
 │   └── {challengeId}
 ├── curriculum/             # CBSE AI & CT curriculum mapping
@@ -252,6 +264,254 @@ CBSE AI & CT curriculum mapping.
 | xrayPrompt | string | yes | AI X-Ray explanation template for this concept |
 | order | number | yes | Display order within category |
 | cbseReference | string | no | CBSE curriculum document reference |
+
+---
+
+### beatTheAiRounds
+
+Human vs AI creative challenge rounds. Kids write their own response to a prompt, then AI generates its version. Both are compared side-by-side.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | auto | Round ID |
+| category | string | yes | `story_sprint` \| `quiz_whiz` \| `caption_battle` \| `rhyme_time` |
+| prompt | map | yes | `{text, theme, timeLimit, category, isIndiaThemed}` — the challenge prompt |
+| kidResponse | string | yes | Kid's raw text response (no AI assistance) |
+| aiResponse | string | yes | AI-generated response to same prompt |
+| kidScores | map | yes | `{creativity, funFactor, accuracy, heart}` — kid's self-rating (1-5 each) |
+| aiScores | map | yes | `{creativity, funFactor, accuracy, heart}` — kid's rating of AI (1-5 each) |
+| kidAvgScore | number | yes | Calculated average of kidScores |
+| aiAvgScore | number | yes | Calculated average of aiScores |
+| result | string | yes | `kid_wins` \| `ai_wins` \| `tie` |
+| timeUsedSeconds | number | yes | Seconds the kid took to respond |
+| aiDifficulty | string | yes | `easy` \| `medium` \| `hard` — based on kid's skill level |
+| skillXpEarned | map | yes | `{creativity: 5, storytelling: 8, ...}` — XP earned this round |
+| aiPointsEarned | number | yes | Points earned (15 base + 10 bonus if kid wins) |
+| aiXray | map | yes | `{concept, explanation, curriculumTag}` |
+| sessionId | string | yes (P1) | Anonymous session ID |
+| userId | string | no (P2) | User ID (Phase 2+) |
+| completedAt | timestamp | yes | When round was completed |
+| createdAt | timestamp | yes | When round started |
+
+**Kid Skills (6 skills, leveled by XP)**:
+
+| Skill | Primary Category | Also Leveled By |
+|-------|-----------------|-----------------|
+| creativity | All categories | `creativity` score ≥ 4 |
+| storytelling | story_sprint | `funFactor` score ≥ 4 |
+| wordplay | caption_battle, rhyme_time | — |
+| knowledge | quiz_whiz | `accuracy` score ≥ 4 |
+| speedThinking | All (if >50% time left) | — |
+| culturalConnect | India-themed prompts | `heart` score ≥ 4 |
+
+**Skill Levels**: Beginner (0-50 XP), Apprentice (51-150), Creator (151-300), Master (301-500), Legend (501+)
+
+**Session fields (extended)**: `beatTheAiSkills` map `{creativity: {xp, level}, ...}` + `beatTheAiStats` map `{totalRounds, wins, losses, ties, currentStreak, longestStreak}`
+
+**Indexes**:
+- `sessionId` + `createdAt` (desc) — user's rounds in Phase 1
+- `category` + `result` — stats aggregation by category
+- `sessionId` + `result` — win/loss/tie stats per session
+
+---
+
+### skillArenaAssessments
+
+MindX skill assessments. Kids complete 5 challenges per module (Speaking, Listening, Thinking, Reading), AI evaluates responses and Koko provides mentor feedback.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | auto | Assessment ID |
+| module | string | yes | `speaking` \| `listening` \| `thinking` \| `reading` |
+| difficulty | string | yes | `easy` \| `medium` \| `hard` |
+| challenges | array\<map\> | yes | 5 challenges with questions + kid's answers (see below) |
+| score | number | yes | Overall score 0-100 |
+| band | number | yes | Band level 1-5 |
+| bandTitle | string | yes | `Starter` \| `Explorer` \| `Achiever` \| `Expert` \| `Champion` |
+| mentorFeedback | map | yes | `{strengths[], growthAreas[], tips[], recommendedPractice, encouragement}` |
+| aiXray | map | yes | `{concept, explanation, curriculumTag}` |
+| timeUsedSeconds | number | yes | Total time taken |
+| aiPointsEarned | number | yes | Points earned (20 base + bonuses) |
+| previousBand | number | no | Previous band for this module (for improvement tracking) |
+| sessionId | string | yes (P1) | Anonymous session ID |
+| userId | string | no (P2) | User ID (Phase 2+) |
+| completedAt | timestamp | yes | When assessment was completed |
+| createdAt | timestamp | yes | When assessment started |
+
+**Challenge structure** (inside `challenges` array):
+```json
+{
+  "type": "read_aloud | describe | respond | comprehension | follow_instructions | key_points | logic | what_if | odd_one_out | analogy | inference | vocabulary | summarize",
+  "question": { "text": "...", "audioText": "...", "options": ["a","b","c","d"], "passage": "..." },
+  "kidAnswer": { "text": "...", "selectedOption": "b", "voiceTranscript": "..." },
+  "score": 18,
+  "maxScore": 20,
+  "feedback": "Great fluency! Try slowing down on longer words."
+}
+```
+
+**5-Band Scoring**:
+
+| Band | Title | Score Range | Badge |
+|------|-------|-------------|-------|
+| 1 | Starter | 0-20 | seed |
+| 2 | Explorer | 21-40 | compass |
+| 3 | Achiever | 41-60 | star |
+| 4 | Expert | 61-80 | medal |
+| 5 | Champion | 81-100 | crown |
+
+**Session fields (extended)**: `skillArenaProgress` map `{speaking: {band, score, assessments}, listening: {...}, thinking: {...}, reading: {...}}` + `skillArenaStats` map `{totalAssessments, averageBand, moduleBreakdown}`
+
+**Indexes**:
+- `sessionId` + `createdAt` (desc) — user's assessments in Phase 1
+- `module` + `band` — stats aggregation by module
+- `sessionId` + `module` + `createdAt` (desc) — module history per session
+
+---
+
+### competitions (Phase 2+)
+
+Cerebro competition definitions. Admin-created, scheduled exam competitions with multi-round elimination.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | auto | Competition ID |
+| title | string | yes | Competition name (e.g., "AI Olympiad 2026 — Season 1") |
+| description | string | yes | Competition details |
+| status | string | yes | `upcoming` \| `registration` \| `prelims` \| `semifinals` \| `finals` \| `completed` |
+| ageGroups | array\<string\> | yes | `['junior', 'middle', 'senior']` |
+| rounds | array\<map\> | yes | Round definitions (see below) |
+| questionConfig | map | yes | `{totalQuestions, mcqPercent, creativePercent, reasoningPercent, applicationPercent, timeLimitMinutes}` |
+| prizesByLevel | map | yes | `{school: [...], district: [...], city: [...], state: [...], national: [...]}` |
+| registrationStart | timestamp | yes | Registration opens |
+| registrationEnd | timestamp | yes | Registration closes |
+| participantCount | number | yes | Total registered (default 0) |
+| createdBy | string | yes | Admin user ID |
+| createdAt | timestamp | yes | Creation timestamp |
+
+**Round structure** (inside `rounds` array):
+```json
+{
+  "round": 1,
+  "name": "Prelims",
+  "examWindow": { "start": "2026-04-15T10:00:00Z", "end": "2026-04-15T11:00:00Z" },
+  "advancePercent": 50,
+  "proctorLevel": "browser_lockdown",
+  "status": "upcoming"
+}
+```
+
+**Indexes**:
+- `status` + `registrationStart` (desc) — active/upcoming competitions
+- `ageGroups` + `status` — competitions by age group
+
+---
+
+### examSessions (Phase 2+)
+
+Individual exam attempts with answers, scores, proctoring data, and anti-malpractice flags.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | auto | Exam session ID |
+| competitionId | string | yes | Competition reference |
+| roundNumber | number | yes | Which round (1=prelims, 2=semis, 3=finals) |
+| userId | string | yes | Authenticated user ID |
+| kidId | string | yes | Kid profile ID |
+| ageGroup | string | yes | `junior` \| `middle` \| `senior` |
+| questions | array\<map\> | yes | Questions served (randomized, with shuffled options) |
+| answers | array\<map\> | yes | Answers submitted per question |
+| score | number | yes | Total score (0-100) |
+| rank | number | no | Rank within same competition + round + ageGroup |
+| timeUsedSeconds | number | yes | Total time taken |
+| proctorEvents | array\<map\> | yes | Proctoring events log (see below) |
+| flags | map | yes | `{level: 'green'|'yellow'|'orange'|'red', details: [...], reviewStatus: 'pending'|'approved'|'suspended'}` |
+| deviceFingerprint | string | yes | Browser/device fingerprint hash |
+| ipHash | string | yes | Hashed IP address |
+| typingCadence | array\<map\> | no | Keystroke timing data for text answers |
+| schoolId | string | yes | Kid's school ID (for leaderboard grouping) |
+| district | string | yes | School's district |
+| city | string | yes | School's city |
+| state | string | yes | School's state |
+| startedAt | timestamp | yes | Exam start time |
+| completedAt | timestamp | no | Exam completion time |
+| createdAt | timestamp | yes | Session creation time |
+
+**Proctor event structure**:
+```json
+{
+  "type": "tab_switch | fullscreen_exit | copy_attempt | devtools_open | resize | webcam_violation",
+  "timestamp": "2026-04-15T10:15:23Z",
+  "details": "Tab switched to chrome://newtab"
+}
+```
+
+**Answer structure**:
+```json
+{
+  "questionId": "q-uuid",
+  "selectedOption": "b",
+  "text": "...",
+  "timeUsedSeconds": 45,
+  "score": 5,
+  "maxScore": 5,
+  "keystrokeTimings": [12, 45, 23, 67, ...]
+}
+```
+
+**Indexes**:
+- `competitionId` + `roundNumber` + `ageGroup` + `score` (desc) — leaderboard queries
+- `competitionId` + `userId` — check if user already attempted
+- `flags.level` + `flags.reviewStatus` — admin flag review queue
+- `competitionId` + `schoolId` + `score` (desc) — school-level leaderboard
+
+---
+
+### leaderboards (Phase 2+)
+
+Pre-aggregated leaderboard data per competition, round, and geographic level. Updated by Cloud Function after exam window closes.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | auto | Leaderboard ID (composite: `{competitionId}_{round}_{ageGroup}_{level}_{scope}`) |
+| competitionId | string | yes | Competition reference |
+| roundNumber | number | yes | Round number |
+| ageGroup | string | yes | `junior` \| `middle` \| `senior` |
+| level | string | yes | `school` \| `district` \| `city` \| `state` \| `national` |
+| scope | string | yes | Specific school/district/city/state name or "all" for national |
+| entries | array\<map\> | yes | Top participants `[{rank, kidName, schoolName, score, flagLevel}]` |
+| totalParticipants | number | yes | Total participants in this scope |
+| updatedAt | timestamp | yes | Last aggregation time |
+
+**Indexes**:
+- `competitionId` + `roundNumber` + `ageGroup` + `level` + `scope` — leaderboard lookup
+
+---
+
+### growthMapReports (Phase 2+)
+
+GrowthMap parent insight reports. AI-generated periodic reports with aggregated child analytics.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | auto | Report ID |
+| kidId | string | yes | Kid profile ID |
+| userId | string | yes | Parent user ID |
+| period | string | yes | `weekly` \| `monthly` |
+| periodStart | timestamp | yes | Start of reporting period |
+| periodEnd | timestamp | yes | End of reporting period |
+| activityPulse | map | yes | `{sessionsCount, creationsCount, timeSpentMinutes, streak, activeDays[]}` |
+| strengthRadar | map | yes | `{creativity, language, reasoning, aiKnowledge, collaboration, persistence}` — each 0-100 |
+| interestSignals | array\<map\> | yes | `[{signal, evidence, strength, suggestion}]` — detected interests |
+| learningProgress | map | yes | `{conceptsLearned, conceptsTotal, mindxBands: {speaking, listening, thinking, reading}, cerebroResults[]}` |
+| kokoReport | map | yes | `{summary, highlights[], parentTips[], goalSuggestions[], encouragement}` |
+| peerComparison | map | no | `{creativity: percentile, language: percentile, ...}` — opt-in only |
+| previousStrengthRadar | map | no | Previous period's radar for comparison |
+| createdAt | timestamp | yes | Report generation time |
+
+**Indexes**:
+- `kidId` + `period` + `periodStart` (desc) — child's reports
+- `userId` + `createdAt` (desc) — parent's all reports
 
 ---
 
