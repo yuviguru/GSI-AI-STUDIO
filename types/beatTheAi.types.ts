@@ -36,9 +36,12 @@ export interface BeatTheAiXray {
   curriculumTag: string;
 }
 
+export type BeatTheAiRoundStatus = 'pending' | 'revealed' | 'completed';
+
 /** Firestore document in beatTheAiRounds collection */
 export interface BeatTheAiRound {
   id: string;
+  status: BeatTheAiRoundStatus;
   category: BeatTheAiCategory;
   prompt: BeatTheAiPrompt;
   kidResponse: string;
@@ -114,15 +117,27 @@ export interface BeatTheAiStartResponse {
   aiDifficulty: BeatTheAiDifficulty;
 }
 
-/** Request to POST /api/beat-the-ai/submit */
-export interface BeatTheAiSubmitRequest {
+/** Phase 1: Kid submits their response text */
+export interface BeatTheAiSubmitResponseRequest {
   roundId: string;
   kidResponse: string;
+  timeUsedSeconds: number;
+}
+
+/** Phase 1 response: AI's response revealed */
+export interface BeatTheAiSubmitResponseResult {
+  aiResponse: string;
+  aiXray: BeatTheAiXray;
+}
+
+/** Phase 2: Kid submits ratings for both sides */
+export interface BeatTheAiSubmitRatingsRequest {
+  roundId: string;
   kidScores: BeatTheAiScores;
   aiScores: BeatTheAiScores;
 }
 
-/** Response from POST /api/beat-the-ai/submit */
+/** Phase 2 response: Full results with XP and points */
 export interface BeatTheAiSubmitResponse {
   roundId: string;
   aiResponse: string;
@@ -132,6 +147,7 @@ export interface BeatTheAiSubmitResponse {
   aiPointsEarned: number;
   skillXpEarned: Partial<Record<BeatTheAiSkillId, number>>;
   aiXray: BeatTheAiXray;
+  levelUps: BeatTheAiSkillId[];
 }
 
 /** Response from GET /api/beat-the-ai/stats */
@@ -166,3 +182,93 @@ export interface BeatTheAiCategoryInfo {
   minChars: number;
   maxChars: number;
 }
+
+// ─── Constants ──────────────────────────────────────────────
+
+export const BEAT_THE_AI_CATEGORIES: BeatTheAiCategoryInfo[] = [
+  {
+    id: 'story_sprint',
+    name: 'Story Sprint',
+    description: 'Write a short story in 3 minutes!',
+    icon: '📖',
+    primarySkill: 'storytelling',
+    timeLimit: 180,
+    minChars: 50,
+    maxChars: 2000,
+  },
+  {
+    id: 'quiz_whiz',
+    name: 'Quiz Whiz',
+    description: 'Create quiz questions that stump AI!',
+    icon: '🧠',
+    primarySkill: 'knowledge',
+    timeLimit: 240,
+    minChars: 30,
+    maxChars: 2000,
+  },
+  {
+    id: 'caption_battle',
+    name: 'Caption Battle',
+    description: 'Write the wittiest caption!',
+    icon: '💬',
+    primarySkill: 'wordplay',
+    timeLimit: 90,
+    minChars: 10,
+    maxChars: 500,
+  },
+  {
+    id: 'rhyme_time',
+    name: 'Rhyme Time',
+    description: 'Write a poem that rhymes better!',
+    icon: '🎵',
+    primarySkill: 'wordplay',
+    timeLimit: 120,
+    minChars: 20,
+    maxChars: 1000,
+  },
+];
+
+export const SKILL_INFO: Record<BeatTheAiSkillId, BeatTheAiSkillInfo> = {
+  creativity: {
+    id: 'creativity',
+    name: 'Creativity',
+    icon: '🎨',
+    description: 'Original ideas and unexpected twists',
+    color: 'text-purple-500',
+  },
+  storytelling: {
+    id: 'storytelling',
+    name: 'Storytelling',
+    icon: '📚',
+    description: 'Narrative flow and character voice',
+    color: 'text-blue-500',
+  },
+  wordplay: {
+    id: 'wordplay',
+    name: 'Wordplay',
+    icon: '✨',
+    description: 'Wit, humor, puns, and rhymes',
+    color: 'text-amber-500',
+  },
+  knowledge: {
+    id: 'knowledge',
+    name: 'Knowledge',
+    icon: '🔬',
+    description: 'Facts, accuracy, and topic depth',
+    color: 'text-green-500',
+  },
+  speedThinking: {
+    id: 'speedThinking',
+    name: 'Speed Thinking',
+    icon: '⚡',
+    description: 'Quick responses under pressure',
+    color: 'text-red-500',
+  },
+  culturalConnect: {
+    id: 'culturalConnect',
+    name: 'Cultural Connect',
+    icon: '🇮🇳',
+    description: 'Indian cultural references and local flavor',
+    color: 'text-orange-500',
+  },
+};
