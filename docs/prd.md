@@ -62,32 +62,59 @@ India's CBSE mandate (October 2025 announcement) requires AI & CT curriculum fro
 #### F1: Story Studio
 **User Story**: As a young creator, I want to describe a story idea and have AI write and illustrate it so that I can create a shareable storybook in minutes
 **Priority**: P0
-**Description**: Text-based story creation where kids provide a premise/characters/setting, Claude generates narrative with illustrations via Replicate (SDXL/Flux). Outputs a shareable storybook with pages. Includes comic mode (panel-by-panel with dialogue bubbles). AI generates age-appropriate, safe content only.
+**Description**: Text-based story creation where kids provide a premise/characters/setting, AI generates narrative (Groq → Claude fallback) with illustrations via Replicate → Pollinations fallback. Outputs a shareable storybook with pages. AI generates age-appropriate, safe content only.
+**Status**: ✅ Implemented
 **AI Concepts Taught**: Prompt engineering, natural language generation, text-to-image AI, human-AI collaboration
 
 #### F2: Music Lab
 **User Story**: As a kid who loves music, I want to pick a mood and genre and have AI create a song so that I can tweak it and share my creation
 **Priority**: P0
-**Description**: Kids select mood, genre, and theme → AI generates melody/beats → kids can adjust lyrics, instruments, tempo. Uses Suno/MusicGen API for audio generation. Outputs shareable audio with visual waveform.
+**Description**: Kids select mood, genre, and theme → AI generates melody/beats via Lyria (Gemini) → Replicate MusicGen → Mock silence fallback chain. Outputs shareable audio with visual waveform.
+**Status**: ✅ Implemented
 **AI Concepts Taught**: Pattern recognition, audio AI, model training concepts, creative AI parameters
 
 #### F3: Quiz & Game Maker
 **User Story**: As a student, I want to pick a topic and have AI generate a quiz or game so that I can challenge my friends
 **Priority**: P0
-**Description**: Kids choose a topic/subject → Claude generates questions, rules, and game mechanics → outputs a playable, shareable quiz or simple game. Supports multiple formats: trivia, true/false, fill-in-the-blank, simple adventure games.
+**Description**: Kids choose a topic/subject → AI generates questions, rules, and game mechanics → outputs a playable, shareable quiz or simple game. Supports multiple formats: trivia, true/false, fill-in-the-blank, adventure games.
+**Status**: ✅ Implemented (Quiz Maker + Game Studio as separate studios)
 **AI Concepts Taught**: Logic and structured data, AI decision-making, knowledge representation, rule-based systems
 
 #### F4: AI X-Ray (Learning Layer)
 **User Story**: As a student learning about AI, I want to see what the AI did behind the scenes so that I understand how it works
 **Priority**: P0
-**Description**: After every creation, a 30-second "AI X-Ray" popup explains what happened: what model was used, how the prompt was interpreted, what choices the AI made. Maps to CBSE AI & CT curriculum standards. Gamified with "AI Knowledge Points" earned per concept understood.
+**Description**: After every creation, a 30-second "AI X-Ray" popup explains what happened: what model was used, how the prompt was interpreted, what choices the AI made. Maps to CBSE AI & CT curriculum standards. Gamified with "AI Points" earned per concept understood.
+**Status**: ✅ Implemented (AI X-Ray + AI Points + 12-badge system)
 **AI Concepts Taught**: Meta-learning about AI processes, model types, training data, bias awareness
 
 #### F5: Share & Showcase
 **User Story**: As a creator, I want to share my creations via a link so that friends and family can see what I made
 **Priority**: P0
 **Description**: Every creation gets a unique shareable URL (hosted on Netlify). WhatsApp-optimized share cards with preview image. No login required to view. Includes "Made with GSI AI Studio" branding for organic growth.
+**Status**: ✅ Implemented (Share + Download + Remix + Explore feed)
 **Metrics**: Share rate, view count per creation, viral coefficient
+
+### Phase 1.5 Features (Implemented — Platform Polish)
+
+#### F6: Game Studio
+**Status**: ✅ Implemented
+**Description**: Choose-your-own-adventure game creation. Kids provide a theme → AI generates branching narrative with multiple scenes, choices, and endings. Interactive player with scene-by-scene navigation.
+
+#### F7: Comic Studio
+**Status**: ✅ Implemented
+**Description**: Multi-panel comic creation. Kids describe characters and plot → AI generates panel-by-panel story with dialogue bubbles, captions, and illustrations. Supports manga, cartoon, superhero, indie, and chibi styles.
+
+#### F8: Koko Mascot & Fun UI
+**Status**: ✅ Implemented
+**Description**: Lottie-animated AI mentor mascot (Koko) with 7 expressions. Appears on landing page, progress screens, celebrations, and empty states. Includes Web Audio synthesized sound effects and canvas-confetti celebrations.
+
+#### F9: AI Points & Badge System
+**Status**: ✅ Implemented
+**Description**: Firestore-backed points system with optimistic localStorage caching. 12-badge catalog with automatic unlock detection via Firestore transactions. Points awarded per creation (10-20 based on type). Celebration modal for badge unlocks and milestones.
+
+#### F10: Templates, Download & Remix
+**Status**: ✅ Implemented
+**Description**: Template carousel in each studio for inspiration. Download/export for all creation types. Remix flow that loads original prompt into studio with attribution. Explore public feed with filters.
 
 ### Phase 2 Features (Weeks 5-12 — GSI AI Creators App)
 

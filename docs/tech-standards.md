@@ -15,8 +15,10 @@
 - **Forms**: react-hook-form + zod validation
 - **PWA**: next-pwa (service worker, manifest, offline shell)
 - **Firebase**: firebase client SDK (auth, firestore, storage)
-- **Animations**: Framer Motion (creation previews, page transitions)
-- **Audio**: Tone.js or Howler.js (Music Lab playback)
+- **Animations**: Framer Motion (creation previews, page transitions), Lottie (`lottie-react` for Koko mascot)
+- **Audio**: Web Audio API (synthesized sound effects in `lib/sounds.ts`), base64 data URIs for music playback
+- **Confetti**: canvas-confetti (celebration animations)
+- **Data fetching**: SWR (stale-while-revalidate for creation data)
 
 ### File Naming
 - Components: `PascalCase.tsx` (e.g., `StoryStudio.tsx`)
@@ -226,20 +228,64 @@ describe('generateStory', () => {
 ## Git Conventions
 
 ### Branch Naming
-- Feature: `feature/story-studio`
-- Bug fix: `fix/rate-limit-bypass`
-- Hotfix: `hotfix/safety-filter-gap`
-
-### Commit Messages
-Format: `type(scope): description`
-
-Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+Format: `<TICKET-ID>-<title-in-kebab-case-max-6-words>`
 
 Examples:
-- `feat(story): add multi-page story generation`
-- `fix(safety): block unsafe image prompts`
-- `chore(deps): update firebase SDK`
+- `CLA-14-ai-points-persistence-badge-system`
+- `CLA-7-fun-kid-ui-overhaul`
+- `CLA-34-docs-architecture-audit`
+
+Always branch from `main`: `git checkout main && git pull && git checkout -b ...`
+
+### Commit Messages
+Format: `<TICKET-ID>: <imperative description>`
+
+Examples:
+- `CLA-14: implement badge catalog and points persistence`
+- `CLA-7: add Koko mascot with Lottie animations`
+- `CLA-34: sync data-model.md with session points schema`
 
 ### Release Strategy
-- Phase 1: Direct push to main → Netlify auto-deploys
-- Phase 2+: PR-based with preview deploys on Netlify
+- PR-based workflow with feature branches per ticket
+- Netlify auto-deploys preview on PR, production on merge to main
+
+## Established Patterns
+
+### Multi-Provider Fallback Chain
+AI services use ordered fallback chains configured by environment variables:
+```
+Text: Groq (GROQ_API_KEY) → Claude (ANTHROPIC_API_KEY)
+Images: ComfyUI (COMFYUI_URL) → Replicate (REPLICATE_API_TOKEN) → Pollinations (free)
+Music: Lyria (GEMINI_API_KEY) → Replicate MusicGen → Mock silence
+```
+Each provider implements the same interface. First available provider is used.
+
+### Optimistic localStorage + Firestore Sync
+Used by AiPointsContext for AI Points and badges:
+1. Read from localStorage on mount (instant display)
+2. GET from server to sync truth
+3. On actions, update localStorage optimistically → PATCH server in background
+4. Server uses Firestore transactions for atomicity
+
+### Web Audio Synthesized Sounds
+`lib/sounds.ts` generates 5 sounds via oscillators + gain envelopes (zero asset files):
+- `pointsEarned`: ascending 2-note beep
+- `badgeUnlocked`: 3-note arpeggio
+- `creationComplete`: sine sweep
+- `buttonTap`: single high tone
+- `celebrate`: C major chord + ascending scale
+
+Respects `gsi-sound-muted` localStorage key. Safari AudioContext suspension handled.
+
+### Lottie Mascot Pattern
+`components/mascot/Mascot.tsx` loads Koko expressions on-demand from `public/lottie/koko-*.json`:
+- 7 expressions: happy, thinking, celebrating, waving, surprised, painting, singing
+- 3 sizes: sm (64px), md (120px), lg (200px)
+- Module-level cache prevents re-fetching
+- Bobbing animation via Framer Motion
+
+### 3-Step Studio Pattern
+All 5 creation studios follow: PromptForm → Progress → Viewer
+- PromptForm: premise textarea + suggestion chips + template carousel + collapsible options
+- Progress: Mascot (context-appropriate expression) + rotating messages
+- Viewer: Creation display + Share/Download/AI X-Ray/Create Another buttons

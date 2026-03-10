@@ -19,7 +19,7 @@
 
 ### Creation Studio Layout
 
-All three studios (Story, Music, Quiz) follow the same 3-step pattern:
+All five studios (Story, Music, Quiz, Game, Comic) follow the same 3-step pattern:
 
 ```
 ┌─────────────────────────────────────────┐
@@ -543,30 +543,42 @@ Parent-facing dashboard aggregating child's activity, strengths, interests, and 
 
 ### Phase 1 (Playground — No Auth)
 
-Mobile: Bottom tab bar with 3 studio icons + "My Creations" (session-based)
-Desktop: Top nav with studio links + logo
+**Header**: Sticky top bar with GSI AI Studio logo, MuteToggle (volume icon), and AiPointsBadge (shows current points + badge count).
+
+**Bottom Navigation** (mobile): 3-tab fixed bar with modal sheet for studio selection.
 
 ```
 ┌─────────────────────────────────────┐
-│  🎨 GSI AI Studio                   │
+│  🎨 GSI AI Studio    🔇  ⭐ 150pts │  ← Header (sticky)
 ├─────────────────────────────────────┤
 │                                     │
-│  What do you want to create today?  │
+│  [Page Content]                     │
 │                                     │
-│  ┌─────────┐ ┌─────────┐ ┌───────┐ │
-│  │  📖     │ │  🎵     │ │  🎮   │ │
-│  │ Story   │ │ Music   │ │ Quiz  │ │
-│  │ Studio  │ │  Lab    │ │ Maker │ │
-│  └─────────┘ └─────────┘ └───────┘ │
-│                                     │
-│  Recent Creations                   │
-│  ┌─────────┐ ┌─────────┐           │
-│  │ thumb   │ │ thumb   │           │
-│  │ title   │ │ title   │           │
-│  └─────────┘ └─────────┘           │
 └─────────────────────────────────────┘
-│  📖 Story  │  🎵 Music  │  🎮 Quiz  │  ← bottom tabs (mobile)
+│  ➕ Create  │  🔍 Explore │  ✨ My Stuff │  ← BottomNav (fixed)
 ```
+
+**Create+ Sheet**: Tapping "Create" opens a bottom modal with all 5 studios:
+```
+┌─────────────────────────────────────┐
+│  Create Something Amazing!          │
+│  ┌──────────┐ ┌──────────┐         │
+│  │ 📖 Story │ │ 🎵 Music │         │
+│  │  Studio  │ │   Lab    │         │
+│  └──────────┘ └──────────┘         │
+│  ┌──────────┐ ┌──────────┐         │
+│  │ 🎮 Quiz  │ │ 🕹️ Game  │         │
+│  │  Maker   │ │  Studio  │         │
+│  └──────────┘ └──────────┘         │
+│  ┌──────────┐                      │
+│  │ 🎨 Comic │                      │
+│  │  Studio  │                      │
+│  └──────────┘                      │
+└─────────────────────────────────────┘
+```
+
+**Explore** (`/explore`): Public creation feed with filter tabs and infinite scroll.
+**My Stuff** (`/creations`): Session-based gallery of user's own creations.
 
 ### Phase 2 (Authenticated)
 Add: Profile avatar (top right), Dashboard link, Portfolio link, Challenges tab
@@ -653,6 +665,105 @@ When a creation is shared on WhatsApp, the link preview shows:
 - Quizzes: Interactive playable quiz
 - Games: Interactive choose-your-own-adventure player
 - Footer: "Made with GSI AI Studio — Create your own! [Try Now]"
+
+---
+
+## Koko Mascot System
+
+**Koko** is the AI mentor mascot — a Lottie-animated character that appears throughout the platform.
+
+### Expressions (7)
+`happy`, `thinking`, `celebrating`, `waving`, `surprised`, `painting`, `singing`
+
+### Sizes
+`sm` (64px), `md` (120px), `lg` (200px)
+
+### Usage Contexts
+- **Landing page**: Waving Koko with speech bubble ("What will you create today?")
+- **Progress screens**: Context-appropriate expression per studio:
+  - Story: painting, Music: singing, Quiz: thinking, Game: thinking, Comic: painting
+- **Celebrations**: Celebrating expression with confetti
+- **Empty states**: Waving Koko with encouragement
+
+### Component
+`components/mascot/Mascot.tsx` — On-demand Lottie loading from `public/lottie/koko-*.json`, module-level cache, Framer Motion bobbing animation.
+
+`components/mascot/MascotSpeechBubble.tsx` — Mascot + speech bubble wrapper with configurable position.
+
+---
+
+## Celebrations & Feedback
+
+### Confetti Celebration
+`components/celebrations/ConfettiCelebration.tsx` — canvas-confetti wrapper with 3 modes:
+- **burst**: Single center burst (first creation, badge unlock)
+- **rain**: Falling confetti (milestone reached)
+- **sides**: Dual side cannons (high achievement)
+
+### Celebration Modal
+`components/learning/CelebrationModal.tsx` — Full-screen overlay (Framer Motion) with two modes:
+1. **Badge unlock**: Shows badge icon, name, description, Koko celebrating, auto-dismiss 3.5s
+2. **Milestone celebration**: Shows milestone message (first creation, 50/100 points, 5/10 creations)
+
+### Milestone Detection
+Tracked in `AiPointsContext` — milestones stored in `localStorage['gsi-milestones-shown']` to prevent re-showing:
+- First creation, 50 points, 100 points, 5 creations, 10 creations
+
+### Sound Effects
+`lib/sounds.ts` — 5 Web Audio API synthesized sounds (zero asset files):
+- `pointsEarned`: ascending 2-note beep
+- `badgeUnlocked`: 3-note arpeggio
+- `creationComplete`: sine sweep
+- `buttonTap`: single high tone
+- `celebrate`: C major chord + ascending scale
+
+Mute toggle: `components/layout/MuteToggle.tsx`, respects `localStorage['gsi-sound-muted']`.
+
+---
+
+## AI Points & Badge Gallery
+
+### AiPointsBadge
+Shown in header — displays current point total + badge count. Tap to open Badge Gallery.
+
+### Badge Gallery
+`components/learning/BadgeGallery.tsx` — Bottom sheet modal showing all 12 badges:
+- Unlocked badges: full color with checkmark
+- Locked badges: grayscale with progress hint ("Create 5 stories to unlock!")
+- Badge catalog defined in `lib/badges.ts`
+
+---
+
+## Template Carousel & Daily Spark
+
+### Template System
+Each studio has a template carousel in the PromptForm step:
+- Horizontal scrollable cards with emoji + title + short description
+- Tapping a template pre-fills the prompt textarea
+- Templates defined per-studio in studio components
+
+### Daily Spark
+Rotating suggestion chips below the prompt textarea — provides random inspiration ideas.
+
+---
+
+## Download & Export
+
+After creation, the viewer includes a Download button:
+- Stories: Downloads as image (html2canvas)
+- Music: Downloads audio file
+- Comics: Downloads panel images
+- Tracks download count via `POST /api/creations/:id/download`
+
+---
+
+## Remix Flow
+
+Remix button on shared/public creations:
+- Loads the original creation's prompt into the appropriate studio
+- Sets `remixedFromId` on the new creation
+- Shows "Remixed from [original title]" attribution
+- Increments remix count on the original creation
 
 ---
 

@@ -13,7 +13,8 @@ Reusable React hooks for session management, auth, AI generation, and creation C
 - `useCreation(id?)` — Creation CRUD: fetch, save, delete, list with pagination
 - `useAiGeneration()` — AI generation state: loading, progress messages, error handling, retry
 - `useShare(creationId)` — Share link generation and WhatsApp/clipboard sharing
-- `useAiPoints()` — AI Points tracking and badge unlocks (Phase 2)
+- `useAiPoints()` — AI Points tracking and badge unlocks (Phase 1.5, via AiPointsContext)
+- `useCreations()` — Fetch user's creations list with SWR caching
 - `useCurriculum(grade?)` — Fetch curriculum topics for grade level
 
 ## Local Patterns

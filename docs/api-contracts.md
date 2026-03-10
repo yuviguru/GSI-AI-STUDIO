@@ -2,10 +2,10 @@
 
 ## Base URL
 
-- Development: `http://localhost:8888/.netlify/functions` (Netlify Dev)
+- Development: `http://localhost:3000/api` (Next.js dev server)
 - Production: `https://gsiaistudio.com/api`
 
-Netlify Functions are deployed as serverless endpoints under `/api/*` via Next.js API routes or Netlify Functions directory.
+All endpoints are Next.js API routes (`app/api/`) deployed via Netlify.
 
 ## Authentication
 
@@ -58,6 +58,9 @@ Error responses:
 | `UNAUTHORIZED` | 401 | Missing or invalid auth token |
 | `FORBIDDEN` | 403 | Insufficient permissions |
 | `SESSION_EXPIRED` | 401 | Anonymous session expired |
+| `COOLDOWN` | 429 | Cooldown period between creations |
+| `SESSION_NOT_FOUND` | 404 | Session ID not found in Firestore |
+| `SESSION_EXPIRED` | 401 | Anonymous session has expired |
 | `CREATION_LIMIT` | 429 | Daily creation limit reached |
 
 ---
@@ -77,7 +80,8 @@ Generate an AI story with illustrations.
   "genre": "adventure",
   "pages": 5,
   "style": "watercolor",
-  "ageGroup": "8-10"
+  "ageGroup": "8-10",
+  "remixedFromId": "optional-creation-id"
 }
 ```
 
@@ -103,16 +107,20 @@ Generate an AI story with illustrations.
       "explanation": "The AI read your story idea and created a narrative by predicting what words should come next...",
       "curriculumTag": "ai_basics_nlg",
       "aiPoints": 10
-    }
+    },
+    "creationId": "abc123",
+    "shareUrl": "/view/abc123"
   }
 }
 ```
 
+**Pipeline:** validate → rate limit → safety filter → Claude generates story → safety filter output → Replicate/Pollinations generates illustrations → save creation → track
+
 **Errors:**
 - `400 UNSAFE_CONTENT` — Input contains inappropriate content
 - `400 INVALID_INPUT` — Missing required fields
-- `429 RATE_LIMITED` — Too many requests
-- `502 AI_GENERATION_FAILED` — Claude or Replicate API error
+- `429 RATE_LIMITED` / `429 COOLDOWN` — Too many requests or cooldown active
+- `502 AI_GENERATION_FAILED` — Claude or image generation API error
 
 ---
 
@@ -129,7 +137,8 @@ Generate an AI music track.
   "duration": 30,
   "instruments": ["piano", "guitar"],
   "lyricsPrompt": "A song about best friends going on an adventure",
-  "ageGroup": "10-12"
+  "ageGroup": "10-12",
+  "remixedFromId": "optional-creation-id"
 }
 ```
 
@@ -151,11 +160,15 @@ Generate an AI music track.
       "concept": "pattern_recognition_audio",
       "explanation": "The AI learned musical patterns from millions of songs to create melodies that match your mood...",
       "curriculumTag": "ml_pattern_recognition",
-      "aiPoints": 10
-    }
+      "aiPoints": 15
+    },
+    "creationId": "def456",
+    "shareUrl": "/view/def456"
   }
 }
 ```
+
+**Provider chain**: Lyria RealTime (if GEMINI_API_KEY) → Replicate MusicGen (if token) → Mock fallback. Audio returned as base64 data URI.
 
 ---
 
@@ -170,7 +183,8 @@ Generate an AI quiz or game.
   "format": "trivia",
   "difficulty": "intermediate",
   "questionCount": 10,
-  "ageGroup": "12-14"
+  "ageGroup": "12-14",
+  "remixedFromId": "optional-creation-id"
 }
 ```
 
@@ -201,7 +215,9 @@ Generate an AI quiz or game.
       "explanation": "The AI organized facts about the Solar System into a structured format with questions, answers, and distractors...",
       "curriculumTag": "ai_basics_knowledge_rep",
       "aiPoints": 10
-    }
+    },
+    "creationId": "ghi789",
+    "shareUrl": "/view/ghi789"
   }
 }
 ```
@@ -423,6 +439,63 @@ List creations with filters.
 }
 ```
 
+### DELETE /api/creations/:id
+
+Soft-delete (archive) a creation. Requires ownership via session ID.
+
+**Headers:** `X-Session-Id: <session_id>`
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": { "archived": true }
+}
+```
+
+**Errors:**
+- `404 NOT_FOUND` — Creation not found
+- `403 FORBIDDEN` — Not the owner of this creation
+
+---
+
+### POST /api/creations/:id/download
+
+Track a download event (fire-and-forget). Increments `downloadCount` on the creation.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": { "tracked": true }
+}
+```
+
+---
+
+### GET /api/creations/public
+
+List public creations for the Explore feed. No session required.
+
+**Query Params:**
+- `type` (string) — Filter by creation type
+- `sort` (string) — `trending` | `newest` (default: `newest`)
+- `leaderboard` (boolean) — If true, include top 5 creators
+- `limit` (number) — Results per page (default: 20, max: 50)
+- `cursor` (string) — Pagination cursor
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "items": [ ... ],
+    "nextCursor": "xyz789",
+    "hasMore": true
+  }
+}
+```
+
 ---
 
 ## Session Endpoints (Phase 1)
@@ -451,6 +524,75 @@ Create or refresh an anonymous session.
   }
 }
 ```
+
+### GET /api/sessions/points
+
+Load AI Points, badges, and concepts for a session.
+
+**Headers:** `X-Session-Id: <session_id>`
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "aiPoints": 75,
+    "badges": ["first_spark", "story_wizard"],
+    "conceptsLearned": ["natural_language_generation", "text_to_image"],
+    "creationsByType": { "story": 4, "music": 1, "quiz": 2 },
+    "shareCount": 3
+  }
+}
+```
+
+---
+
+### PATCH /api/sessions/points
+
+Apply a points action (add points, learn concept, track creation, track share). Returns updated state and any newly unlocked badges.
+
+**Headers:** `X-Session-Id: <session_id>`
+
+**Request (add_points):**
+```json
+{
+  "action": "add_points",
+  "points": 10,
+  "concept": "natural_language_generation"
+}
+```
+
+**Request (track_creation):**
+```json
+{
+  "action": "track_creation",
+  "creationType": "story"
+}
+```
+
+**Request (track_share):**
+```json
+{
+  "action": "track_share"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "aiPoints": 85,
+    "badges": ["first_spark", "story_wizard", "creative_machine"],
+    "newBadges": ["creative_machine"],
+    "conceptsLearned": ["natural_language_generation", "text_to_image"],
+    "creationsByType": { "story": 5, "music": 1, "quiz": 2 },
+    "shareCount": 3
+  }
+}
+```
+
+Badge unlocks are detected atomically in a Firestore transaction. `newBadges` contains only badges unlocked by this specific action.
 
 ---
 
