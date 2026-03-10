@@ -148,6 +148,7 @@ export function BottomNav() {
           {/* Explore tab */}
           <Link
             href="/explore"
+            onClick={closeSheet}
             className={cn(
               'relative flex flex-1 flex-col items-center justify-center gap-0.5',
               'text-xs font-medium transition-colors',
@@ -168,6 +169,7 @@ export function BottomNav() {
           {/* My Stuff tab */}
           <Link
             href="/creations"
+            onClick={closeSheet}
             className={cn(
               'relative flex flex-1 flex-col items-center justify-center gap-0.5',
               'text-xs font-medium transition-colors',
