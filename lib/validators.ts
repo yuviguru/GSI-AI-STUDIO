@@ -97,23 +97,15 @@ export const beatTheAiStartSchema = z.object({
   category: beatTheAiCategoryEnum,
 });
 
-const scoresSchema = z.object({
-  creativity: z.number().int().min(1, 'Rate 1-5').max(5),
-  funFactor: z.number().int().min(1, 'Rate 1-5').max(5),
-  accuracy: z.number().int().min(1, 'Rate 1-5').max(5),
-  heart: z.number().int().min(1, 'Rate 1-5').max(5),
-});
-
 export const beatTheAiSubmitResponseSchema = z.object({
   roundId: z.string().min(1),
   kidResponse: z.string().min(10, 'Write at least 10 characters!').max(2000),
   timeUsedSeconds: z.number().int().min(0),
 });
 
-export const beatTheAiSubmitRatingsSchema = z.object({
+export const beatTheAiJudgeSchema = z.object({
   roundId: z.string().min(1),
-  kidScores: scoresSchema,
-  aiScores: scoresSchema,
+  judge: z.literal(true),
 });
 
 export type StoryInput = z.infer<typeof storyInputSchema>;
@@ -125,4 +117,4 @@ export type SaveCreationInput = z.infer<typeof saveCreationSchema>;
 export type KidProfileInput = z.infer<typeof kidProfileSchema>;
 export type BeatTheAiStartInput = z.infer<typeof beatTheAiStartSchema>;
 export type BeatTheAiSubmitResponseInput = z.infer<typeof beatTheAiSubmitResponseSchema>;
-export type BeatTheAiSubmitRatingsInput = z.infer<typeof beatTheAiSubmitRatingsSchema>;
+export type BeatTheAiJudgeInput = z.infer<typeof beatTheAiJudgeSchema>;

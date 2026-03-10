@@ -225,16 +225,28 @@ describe('calculateAvgScore', () => {
 // ─── determineResult ─────────────────────────────────────
 
 describe('determineResult', () => {
-  it('kid wins when kid avg is higher', () => {
+  it('kid wins when kid avg > 50% of AI avg', () => {
+    // AI avg 4.0, threshold 2.0 → kid 3.0 > 2.0 → kid wins
+    expect(determineResult(3.0, 4.0)).toBe('kid_wins');
+  });
+
+  it('kid wins when kid avg is higher than AI', () => {
     expect(determineResult(4.5, 3.2)).toBe('kid_wins');
   });
 
-  it('ai wins when ai avg is higher', () => {
-    expect(determineResult(3.0, 4.1)).toBe('ai_wins');
+  it('kid wins with genuine effort (2.5 vs 4.0)', () => {
+    // AI avg 4.0, threshold 2.0 → kid 2.5 > 2.0 → kid wins
+    expect(determineResult(2.5, 4.0)).toBe('kid_wins');
   });
 
-  it('tie when equal', () => {
-    expect(determineResult(3.5, 3.5)).toBe('tie');
+  it('ai wins when kid avg < 50% of AI avg', () => {
+    // AI avg 4.0, threshold 2.0 → kid 1.5 < 2.0 → AI wins
+    expect(determineResult(1.5, 4.0)).toBe('ai_wins');
+  });
+
+  it('tie when kid avg exactly at 50% threshold', () => {
+    // AI avg 4.0, threshold 2.0 → kid exactly 2.0 → tie
+    expect(determineResult(2.0, 4.0)).toBe('tie');
   });
 });
 

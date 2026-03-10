@@ -5,7 +5,6 @@ import type {
   BeatTheAiCategory,
   BeatTheAiDifficulty,
   BeatTheAiPrompt,
-  BeatTheAiScores,
   BeatTheAiSubmitResponse,
   BeatTheAiSubmitResponseResult,
   BeatTheAiStartResponse,
@@ -18,7 +17,7 @@ export type BeatTheAiPhase =
   | 'challenging'
   | 'submitting'
   | 'revealing'
-  | 'rating'
+  | 'judging'
   | 'results';
 
 interface BeatTheAiState {
@@ -133,17 +132,16 @@ export function useBeatTheAi() {
     [state.roundId]
   );
 
-  const submitRatings = useCallback(
-    async (kidScores: BeatTheAiScores, aiScores: BeatTheAiScores) => {
-      setState((s) => ({ ...s, phase: 'rating', isLoading: true, error: null }));
+  const requestJudge = useCallback(
+    async () => {
+      setState((s) => ({ ...s, phase: 'judging', isLoading: true, error: null }));
 
       try {
         const data = await apiFetch<BeatTheAiSubmitResponse>('/api/beat-the-ai/submit', {
           method: 'POST',
           body: JSON.stringify({
             roundId: state.roundId,
-            kidScores,
-            aiScores,
+            judge: true,
           }),
         });
 
@@ -158,7 +156,7 @@ export function useBeatTheAi() {
           ...s,
           phase: 'revealing',
           isLoading: false,
-          error: err instanceof Error ? err.message : 'Failed to submit ratings',
+          error: err instanceof Error ? err.message : 'Failed to get AI judgment',
         }));
       }
     },
@@ -173,7 +171,7 @@ export function useBeatTheAi() {
     ...state,
     startRound,
     submitResponse,
-    submitRatings,
+    requestJudge,
     playAgain,
   };
 }

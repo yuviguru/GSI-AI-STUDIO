@@ -130,7 +130,7 @@ export function BeatTheAiClient() {
           </motion.div>
         )}
 
-        {(game.phase === 'revealing' || game.phase === 'rating') &&
+        {(game.phase === 'revealing' || game.phase === 'judging') &&
           game.aiResponse && (
             <motion.div
               key="revealing"
@@ -143,7 +143,7 @@ export function BeatTheAiClient() {
               <SideBySideReveal
                 kidResponse={game.kidResponse}
                 aiResponse={game.aiResponse}
-                onRate={game.submitRatings}
+                onJudge={game.requestJudge}
                 isLoading={game.isLoading}
               />
             </motion.div>

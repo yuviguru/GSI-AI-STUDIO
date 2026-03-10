@@ -2,12 +2,13 @@ import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import {
   beatTheAiSubmitResponseSchema,
-  beatTheAiSubmitRatingsSchema,
+  beatTheAiJudgeSchema,
 } from '@/lib/validators';
 import { adminDb } from '@/lib/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
-import { filterInput, filterOutput } from '@/lib/safety/inputFilter';
+import { filterInput } from '@/lib/safety/inputFilter';
 import { generateAiResponse } from '@/lib/beat-the-ai/aiOpponent';
+import { judgeResponses } from '@/lib/beat-the-ai/aiJudge';
 import {
   calculateSkillXp,
   calculateAvgScore,
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
     // Detect phase by request body shape
     if ('kidResponse' in body) {
       return handlePhase1(sessionId, body);
-    } else if ('kidScores' in body) {
+    } else if ('judge' in body) {
       return handlePhase2(sessionId, body);
     }
 
@@ -108,9 +109,9 @@ async function handlePhase1(sessionId: string, body: unknown) {
   return apiSuccess(response);
 }
 
-/** Phase 2: Kid submits ratings → Calculate scores, XP, points */
+/** Phase 2: AI judges both responses → Calculate scores, XP, points */
 async function handlePhase2(sessionId: string, body: unknown) {
-  const input = beatTheAiSubmitRatingsSchema.parse(body);
+  const input = beatTheAiJudgeSchema.parse(body);
 
   const roundRef = adminDb.collection(ROUNDS_COLLECTION).doc(input.roundId);
   const roundDoc = await roundRef.get();
@@ -130,9 +131,12 @@ async function handlePhase2(sessionId: string, body: unknown) {
     const response: BeatTheAiSubmitResponse = {
       roundId: input.roundId,
       aiResponse: round.aiResponse as string,
+      kidScores: round.kidScores,
+      aiScores: round.aiScores,
       kidAvgScore: round.kidAvgScore as number,
       aiAvgScore: round.aiAvgScore as number,
       result: round.result,
+      feedback: round.feedback,
       aiPointsEarned: round.aiPointsEarned as number,
       skillXpEarned: round.skillXpEarned,
       aiXray: round.aiXray,
@@ -142,12 +146,22 @@ async function handlePhase2(sessionId: string, body: unknown) {
   }
 
   if (round.status !== 'revealed') {
-    throw new AppException('INVALID_STATE', 'Round not ready for rating', 400);
+    throw new AppException('INVALID_STATE', 'Round not ready for judging', 400);
   }
 
-  // Calculate scores and result
-  const kidAvgScore = calculateAvgScore(input.kidScores);
-  const aiAvgScore = calculateAvgScore(input.aiScores);
+  // AI judges both responses
+  const judgeResult = await judgeResponses(
+    round.prompt as BeatTheAiPrompt,
+    round.kidResponse as string,
+    round.aiResponse as string,
+    round.category,
+  );
+
+  const { kidScores, aiScores, feedback } = judgeResult;
+
+  // Calculate scores and result using AI-assigned scores
+  const kidAvgScore = calculateAvgScore(kidScores);
+  const aiAvgScore = calculateAvgScore(aiScores);
   const result = determineResult(kidAvgScore, aiAvgScore);
   const aiPointsEarned = calculateAiPoints(result);
 
@@ -180,7 +194,7 @@ async function handlePhase2(sessionId: string, body: unknown) {
         category: round.category,
         prompt: round.prompt as BeatTheAiPrompt,
         result,
-        kidScores: input.kidScores as BeatTheAiScores,
+        kidScores: kidScores as BeatTheAiScores,
         timeUsedSeconds: round.timeUsedSeconds as number,
       },
       stats.currentStreak
@@ -233,11 +247,12 @@ async function handlePhase2(sessionId: string, body: unknown) {
 
     tx.update(roundRef, {
       status: 'completed',
-      kidScores: input.kidScores,
-      aiScores: input.aiScores,
+      kidScores,
+      aiScores,
       kidAvgScore,
       aiAvgScore,
       result,
+      feedback,
       skillXpEarned: txSkillXpEarned,
       aiPointsEarned,
       levelUps: txLevelUps,
@@ -257,9 +272,12 @@ async function handlePhase2(sessionId: string, body: unknown) {
   const response: BeatTheAiSubmitResponse = {
     roundId: input.roundId,
     aiResponse: round.aiResponse as string,
+    kidScores,
+    aiScores,
     kidAvgScore,
     aiAvgScore,
     result,
+    feedback,
     aiPointsEarned,
     skillXpEarned,
     aiXray: round.aiXray,

@@ -123,9 +123,11 @@ export function calculateAvgScore(scores: BeatTheAiScores): number {
 
 /** Determine round result from average scores */
 export function determineResult(kidAvg: number, aiAvg: number): BeatTheAiResult {
-  if (kidAvg > aiAvg) return 'kid_wins';
-  if (aiAvg > kidAvg) return 'ai_wins';
-  return 'tie';
+  // Kid wins if their avg >= 50% of AI avg (generous, confidence-boosting)
+  const threshold = aiAvg * 0.5;
+  if (kidAvg > threshold) return 'kid_wins';
+  if (kidAvg === threshold) return 'tie';
+  return 'ai_wins';
 }
 
 /** Calculate AI points earned for a round */

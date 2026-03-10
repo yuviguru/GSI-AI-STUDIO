@@ -7,6 +7,7 @@ import type {
   BeatTheAiSubmitResponse,
   BeatTheAiXray,
   BeatTheAiSkillId,
+  BeatTheAiScores,
 } from '@/types/beatTheAi.types';
 import { SKILL_INFO } from '@/types/beatTheAi.types';
 import { Mascot } from '@/components/mascot/Mascot';
@@ -44,14 +45,41 @@ const RESULT_CONFIG = {
   },
 };
 
+const CRITERIA_LABELS: Record<keyof BeatTheAiScores, string> = {
+  creativity: 'Creativity',
+  funFactor: 'Fun Factor',
+  accuracy: 'Accuracy',
+  heart: 'Heart & Soul',
+};
+
+function ScoreBar({ label, kidScore, aiScore }: { label: string; kidScore: number; aiScore: number }) {
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-[11px] text-gray-500">
+        <span>{label}</span>
+        <span>{kidScore} vs {aiScore}</span>
+      </div>
+      <div className="flex gap-1 h-2">
+        <div
+          className="rounded-l-full bg-purple-400 transition-all"
+          style={{ width: `${(kidScore / 5) * 50}%` }}
+        />
+        <div
+          className="rounded-r-full bg-cyan-400 transition-all"
+          style={{ width: `${(aiScore / 5) * 50}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function ResultsScreen({ result, prompt, aiXray, onPlayAgain, onViewStats }: ResultsScreenProps) {
   const config = RESULT_CONFIG[result.result];
   const xray = aiXray ?? result.aiXray;
 
   useEffect(() => {
-    // Trigger confetti on kid win
     if (config.confetti) {
-      // Small delay for animation timing
+      // Confetti triggered via component prop
     }
   }, [config.confetti]);
 
@@ -71,17 +99,52 @@ export function ResultsScreen({ result, prompt, aiXray, onPlayAgain, onViewStats
       </motion.div>
 
       {/* Score comparison */}
-      <div className="flex items-center justify-center gap-6 rounded-xl bg-white p-4 shadow-sm">
-        <div className="text-center">
-          <p className="text-xs text-gray-500">Your Score</p>
-          <p className="text-2xl font-bold text-purple-600">{result.kidAvgScore.toFixed(1)}</p>
+      <div className="rounded-xl bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-center gap-6 mb-4">
+          <div className="text-center">
+            <p className="text-xs text-gray-500">Your Score</p>
+            <p className="text-2xl font-bold text-purple-600">{result.kidAvgScore.toFixed(1)}</p>
+          </div>
+          <div className="text-lg font-bold text-gray-300">vs</div>
+          <div className="text-center">
+            <p className="text-xs text-gray-500">AI Score</p>
+            <p className="text-2xl font-bold text-cyan-600">{result.aiAvgScore.toFixed(1)}</p>
+          </div>
         </div>
-        <div className="text-lg font-bold text-gray-300">vs</div>
-        <div className="text-center">
-          <p className="text-xs text-gray-500">AI Score</p>
-          <p className="text-2xl font-bold text-cyan-600">{result.aiAvgScore.toFixed(1)}</p>
+        {/* Detailed score breakdown */}
+        <div className="space-y-2 border-t border-gray-100 pt-3">
+          {(Object.keys(CRITERIA_LABELS) as (keyof BeatTheAiScores)[]).map((key) => (
+            <ScoreBar
+              key={key}
+              label={CRITERIA_LABELS[key]}
+              kidScore={result.kidScores[key]}
+              aiScore={result.aiScores[key]}
+            />
+          ))}
         </div>
       </div>
+
+      {/* AI Feedback */}
+      {result.feedback && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="space-y-3"
+        >
+          {/* Kid feedback */}
+          <div className="rounded-xl border border-purple-100 bg-gradient-to-br from-purple-50 to-pink-50 p-4">
+            <h3 className="mb-1.5 text-sm font-bold text-purple-700">What the AI thinks of your work</h3>
+            <p className="text-sm text-gray-700">{result.feedback.kidFeedback}</p>
+          </div>
+
+          {/* Pro tip */}
+          <div className="rounded-xl border border-amber-100 bg-amber-50/80 p-3">
+            <p className="text-xs font-bold text-amber-700">Pro Tip</p>
+            <p className="text-xs text-gray-700">{result.feedback.tip}</p>
+          </div>
+        </motion.div>
+      )}
 
       {/* Skill XP earned */}
       {Object.keys(result.skillXpEarned).length > 0 && (

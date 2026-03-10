@@ -55,6 +55,7 @@ export interface BeatTheAiRound {
   aiDifficulty: BeatTheAiDifficulty;
   skillXpEarned: Partial<Record<BeatTheAiSkillId, number>>;
   aiPointsEarned: number;
+  feedback: BeatTheAiFeedback;
   aiXray: BeatTheAiXray;
   sessionId: string;
   userId?: string;
@@ -130,20 +131,29 @@ export interface BeatTheAiSubmitResponseResult {
   aiXray: BeatTheAiXray;
 }
 
-/** Phase 2: Kid submits ratings for both sides */
-export interface BeatTheAiSubmitRatingsRequest {
-  roundId: string;
-  kidScores: BeatTheAiScores;
-  aiScores: BeatTheAiScores;
+/** AI judge feedback for the kid */
+export interface BeatTheAiFeedback {
+  kidFeedback: string;   // Encouraging feedback for the kid (2-3 sentences)
+  aiFeedback: string;    // Brief note on what the AI did well/differently
+  tip: string;           // One actionable tip for next time
 }
 
-/** Phase 2 response: Full results with XP and points */
+/** Phase 2: Request AI to judge both responses */
+export interface BeatTheAiJudgeRequest {
+  roundId: string;
+  judge: true;
+}
+
+/** Phase 2 response: Full results with AI-judged scores, feedback, XP */
 export interface BeatTheAiSubmitResponse {
   roundId: string;
   aiResponse: string;
+  kidScores: BeatTheAiScores;
+  aiScores: BeatTheAiScores;
   kidAvgScore: number;
   aiAvgScore: number;
   result: BeatTheAiResult;
+  feedback: BeatTheAiFeedback;
   aiPointsEarned: number;
   skillXpEarned: Partial<Record<BeatTheAiSkillId, number>>;
   aiXray: BeatTheAiXray;
