@@ -479,7 +479,7 @@ List public creations for the Explore feed. No session required.
 
 **Query Params:**
 - `type` (string) — Filter by creation type
-- `sort` (string) — `trending` | `newest` (default: `trending`)
+- `sort` (string) — `trending` | `newest` (default: `newest`)
 - `leaderboard` (boolean) — If true, include top 5 creators
 - `limit` (number) — Results per page (default: 20, max: 50)
 - `cursor` (string) — Pagination cursor
@@ -538,7 +538,6 @@ Load AI Points, badges, and concepts for a session.
   "data": {
     "aiPoints": 75,
     "badges": ["first_spark", "story_wizard"],
-    "newBadges": [],
     "conceptsLearned": ["natural_language_generation", "text_to_image"],
     "creationsByType": { "story": 4, "music": 1, "quiz": 2 },
     "shareCount": 3
