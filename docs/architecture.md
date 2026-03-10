@@ -26,10 +26,11 @@ GSI AI Studio is a serverless PWA built on Next.js (Netlify) + Firebase, designe
 │  │  └── /dashboard/* — User dashboard (Phase 2)       │  │
 │  └────────────────────────────────────────────────────┘  │
 │  ┌────────────────────────────────────────────────────┐  │
-│  │  Netlify Functions (Edge/Serverless)                │  │
-│  │  ├── /api/ai/generate — AI proxy (rate limiting)   │  │
-│  │  ├── /api/share — Create shareable links           │  │
-│  │  └── /api/og — Dynamic OG image generation         │  │
+│  │  Next.js API Routes (Serverless on Netlify)        │  │
+│  │  ├── /api/ai/* — AI generation (5 studios)        │  │
+│  │  ├── /api/creations/* — CRUD + explore + download │  │
+│  │  ├── /api/sessions/* — Rate limiting + points     │  │
+│  │  └── /api/share/* — Shareable links               │  │
 │  └────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────┘
           │                 │                 │
@@ -50,10 +51,14 @@ GSI AI Studio is a serverless PWA built on Next.js (Netlify) + Firebase, designe
 ┌──────────────────────────────────────────────────────────┐
 │                   EXTERNAL AI SERVICES                    │
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐ │
-│  │  Claude API  │ │  Replicate   │ │  Suno / MusicGen │ │
-│  │  (Text/Logic)│ │  (SDXL/Flux) │ │  (Audio Gen)     │ │
-│  │  - Stories   │ │  - Story art │ │  - Music creation│ │
-│  │  - Quizzes   │ │  - Thumbnails│ │  - Sound effects │ │
+│  │  LLM (Text)  │ │  Image Gen   │ │  Music Gen       │ │
+│  │  Groq →      │ │  ComfyUI →   │ │  Lyria →         │ │
+│  │  Claude      │ │  Replicate → │ │  Replicate →     │ │
+│  │  (fallback)  │ │  Pollinations│ │  Mock (fallback) │ │
+│  │  - Stories   │ │  (fallback)  │ │                  │ │
+│  │  - Quizzes   │ │  - Story art │ │  - Music creation│ │
+│  │  - Games     │ │  - Comic art │ │                  │ │
+│  │  - Comics    │ │  - Game art  │ │                  │ │
 │  │  - AI X-Ray  │ │              │ │                  │ │
 │  └──────────────┘ └──────────────┘ └──────────────────┘ │
 └──────────────────────────────────────────────────────────┘
@@ -65,9 +70,12 @@ GSI AI Studio is a serverless PWA built on Next.js (Netlify) + Firebase, designe
 **Tech**: Next.js 14+ (App Router), React, Tailwind CSS, next-pwa
 **Host**: Netlify
 **Responsibilities**:
-- Creation studio UIs (Story, Music, Quiz/Game)
+- Creation studio UIs (Story, Music, Quiz, Game, Comic — 5 studios)
 - AI X-Ray learning popups
+- AI Points, badges, and celebration system
+- Koko mascot with expressions and speech bubbles
 - Shareable creation viewer (SSR for OG tags/SEO)
+- Explore feed (public creations) and My Creations gallery
 - PWA shell (installable, offline-capable basics)
 - Anonymous session management (Phase 1)
 - Authenticated user flows (Phase 2+)
@@ -80,17 +88,21 @@ app/
 │   ├── create/         # Creation studios
 │   │   ├── story/      # Story Studio
 │   │   ├── music/      # Music Lab
-│   │   └── quiz/       # Quiz & Game Maker
-│   ├── view/[id]/      # Public creation viewer (SSR)
-│   └── learn/          # AI learning content
+│   │   ├── quiz/       # Quiz Maker
+│   │   ├── game/       # Game Studio (text adventures)
+│   │   └── comic/      # Comic Studio (multi-panel)
+│   ├── explore/        # Public creations feed
+│   ├── creations/      # My Creations gallery
+│   └── view/[id]/      # Public creation viewer (SSR)
 ├── (auth)/             # Phase 2: authenticated pages
 │   ├── dashboard/      # User dashboard
 │   ├── portfolio/      # Creator portfolio
 │   └── settings/       # Account settings
-├── api/                # Netlify Functions (serverless)
-│   ├── ai/             # AI generation proxy
-│   ├── share/          # Share link creation
-│   └── og/             # Dynamic OG images
+├── api/                # Next.js API routes (serverless on Netlify)
+│   ├── ai/             # AI generation (story, music, quiz, game, comic)
+│   ├── creations/      # Creation CRUD + public feed + downloads
+│   ├── sessions/       # Session management + points/badges
+│   └── share/          # Share link creation
 └── layout.tsx          # Root layout with PWA manifest
 ```
 
@@ -171,17 +183,26 @@ Generated Image → [NSFW Detection] → Cloud Storage → Frontend
 
 ## External Integrations
 
-| Service | Purpose | Auth Method | Phase |
-|---------|---------|-------------|-------|
-| Claude API (Anthropic) | Text generation, quiz logic, AI X-Ray explanations | API key (server-side) | 1 |
-| Replicate API | SDXL/Flux image generation | API token (server-side) | 1 |
-| Suno / MusicGen | Music and audio generation | API key (server-side) | 1 |
-| Firebase Auth | Phone OTP authentication | Firebase SDK | 2 |
-| Firebase Firestore | Database | Firebase SDK | 1 |
-| Firebase Cloud Storage | Media file storage | Firebase SDK | 1 |
-| Razorpay | Payments (UPI, cards, wallets) | API key + webhook | 2 |
-| WhatsApp Share API | Social sharing | URL scheme (client-side) | 1 |
-| Google Classroom API | School distribution | OAuth | 3 |
+| Service | Purpose | Auth Method | Phase | Fallback |
+|---------|---------|-------------|-------|----------|
+| Groq (llama-3.3-70b) | Primary LLM text generation | API key (server-side) | 1 | → Claude |
+| Claude API (Anthropic) | Fallback LLM text generation | API key (server-side) | 1 | — |
+| ComfyUI (FLUX.1 Schnell) | Local image generation | URL (localhost:8000) | 1 | → Replicate |
+| Replicate API (SDXL) | Cloud image generation | API token (server-side) | 1 | → Pollinations |
+| Pollinations.ai | Free image generation (no key) | None (public API) | 1 | → SVG placeholder |
+| Lyria RealTime (Google) | Music generation (WebSocket) | API key (GEMINI_API_KEY) | 1 | → Replicate MusicGen |
+| Replicate MusicGen | Music generation fallback | API token (server-side) | 1 | → Mock silence |
+| Firebase Auth | Phone OTP authentication | Firebase SDK | 2 | — |
+| Firebase Firestore | Database | Firebase SDK | 1 | — |
+| Firebase Cloud Storage | Media file storage | Firebase SDK | 1 | — |
+| Razorpay | Payments (UPI, cards, wallets) | API key + webhook | 2 | — |
+| WhatsApp Share API | Social sharing | URL scheme (client-side) | 1 | — |
+| Google Classroom API | School distribution | OAuth | 3 | — |
+
+**Provider Chain Logic**:
+- **Text (LLM)**: Groq (if GROQ_API_KEY) → Claude Sonnet (if ANTHROPIC_API_KEY)
+- **Images**: ComfyUI (if COMFYUI_URL) → Replicate SDXL (if token) → Pollinations.ai (free, always works) → SVG placeholder
+- **Music**: Lyria RealTime (if GEMINI_API_KEY) → Replicate MusicGen (if token valid) → Mock (silence)
 
 ## Deployment
 

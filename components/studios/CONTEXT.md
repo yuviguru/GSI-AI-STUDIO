@@ -9,11 +9,12 @@ Creation studio UI components — the core interactive experience where kids cre
 @import /docs/api-contracts.md#ai-generation-endpoints
 @import /docs/security.md#ai-content-safety
 
-## Studios
-- **Story Studio** (`story/`): Text premise → Claude generates narrative → Replicate generates illustrations → shareable storybook
-- **Music Lab** (`music/`): Mood/genre/theme → Suno generates audio → kid tweaks → shareable track
-- **Quiz Maker** (`quiz/`): Topic → Claude generates questions → playable/shareable quiz game
-- **Game Studio** (`game/`): Premise → Claude generates branching scene graph → interactive choose-your-own-adventure
+## Studios (5)
+- **Story Studio** (`story/`): Text premise → Groq/Claude generates narrative → Replicate/Pollinations generates illustrations → shareable storybook
+- **Music Lab** (`music/`): Mood/genre/theme → Lyria/Replicate MusicGen generates audio → shareable track
+- **Quiz Maker** (`quiz/`): Topic → Groq/Claude generates questions → playable/shareable quiz game
+- **Game Studio** (`game/`): Premise → Groq/Claude generates branching scene graph → interactive choose-your-own-adventure
+- **Comic Studio** (`comic/`): Characters/plot → Groq/Claude generates panel scripts → Replicate/Pollinations generates panel art → multi-panel comic with dialogue
 
 ## Local Patterns
 - All studios follow the 3-step pattern: INSPIRE → CREATE → SHARE & LEARN
@@ -27,6 +28,8 @@ Creation studio UI components — the core interactive experience where kids cre
 @see /lib/ai/storyGenerator.ts      # Story generation pipeline
 @see /lib/ai/musicGenerator.ts      # Music generation pipeline
 @see /lib/ai/quizGenerator.ts       # Quiz generation pipeline
+@see /lib/ai/gameGenerator.ts       # Game generation pipeline
+@see /lib/ai/comicGenerator.ts      # Comic generation pipeline
 @see /lib/ai/validateSceneGraph.ts  # Game scene graph validation
 @see /lib/ai/prompts/               # System prompts for each studio
 @see /hooks/useAiGeneration.ts      # AI generation state management

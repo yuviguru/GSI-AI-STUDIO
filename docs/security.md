@@ -48,7 +48,7 @@ Session limits:
      │ ID Token in header
      ▼
 ┌─────────────────┐    verify token    ┌──────────────┐
-│ Netlify Function │──────────────────▶│ Firebase     │
+│ Next.js API Route │──────────────────▶│ Firebase     │
 │ (Server)         │◀──────────────────│ Admin SDK    │
 │                  │   decoded user    │              │
 └─────────────────┘                    └──────────────┘
@@ -128,88 +128,89 @@ async function verifyCreationOwner(creationId: string, userId: string, kidId?: s
 
 ### Firestore Security Rules
 
+Phase 1 uses **server-side only writes** via Firebase Admin SDK for all collections. Client-side writes are disabled. The actual deployed `firestore.rules`:
+
 ```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Creations: public read for published, write via server only
+    // Creations: public read for published, server-side write only
     match /creations/{creationId} {
-      allow read: if resource.data.isPublic == true || isOwner();
-      allow create: if isAuthenticated() && validCreation();
-      allow update: if isOwner();
-      allow delete: if false; // No client-side deletion
-
-      function isOwner() {
-        return request.auth != null && request.auth.uid == resource.data.userId;
-      }
-
-      function validCreation() {
-        return request.resource.data.keys().hasAll(['type', 'title', 'content']);
-      }
+      allow read: if resource.data.isPublic == true || resource.data.status == 'published';
+      allow write: if false; // Server-side only via Admin SDK
     }
 
-    // Users: owner read/write only
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-
-      // Kid profiles: parent access only
-      match /kids/{kidId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-    }
-
-    // Sessions: server-side only (no client access)
+    // Sessions: rate limiting — server-side only
     match /sessions/{sessionId} {
-      allow read, write: if false;
+      allow read, write: if false; // Server-side only via Admin SDK
     }
 
-    // Curriculum: public read
+    // Users (Phase 2+): owner read only, server-side write
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false; // Server-side only
+
+      match /kids/{kidId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if false;
+      }
+    }
+
+    // Curriculum: public read, no client write
     match /curriculum/{topicId} {
       allow read: if true;
       allow write: if false;
     }
 
-    // Beat the AI rounds: server-side only (no client access)
+    // Beat the AI rounds: server-side only
     match /beatTheAiRounds/{roundId} {
       allow read, write: if false;
     }
 
-    // Challenges: public read, admin write
+    // MindX assessments: server-side only
+    match /skillArenaAssessments/{assessmentId} {
+      allow read, write: if false;
+    }
+
+    // Cerebro competitions (Phase 2+): public read
+    match /competitions/{competitionId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Cerebro exam sessions (Phase 2+): server-side only
+    match /examSessions/{examSessionId} {
+      allow read, write: if false;
+    }
+
+    // Cerebro leaderboards (Phase 2+): public read
+    match /leaderboards/{leaderboardId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // GrowthMap reports (Phase 2+): parent reads own kids' reports
+    match /growthMapReports/{reportId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
+    // Challenges (Phase 2+): public read
     match /challenges/{challengeId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if false;
     }
 
-    // Schools: scoped access
+    // Schools (Phase 3): authenticated read
     match /schools/{schoolId} {
-      allow read: if isSchoolMember(schoolId);
-      allow write: if isSchoolAdmin(schoolId);
-
-      match /{subcollection}/{docId} {
-        allow read: if isSchoolMember(schoolId);
-        allow write: if isSchoolTeacher(schoolId);
-      }
+      allow read: if request.auth != null;
+      allow write: if false;
     }
 
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isAdmin() {
-      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-
-    function isSchoolMember(schoolId) {
-      return request.auth != null; // Simplified — check school membership in practice
-    }
-
-    function isSchoolAdmin(schoolId) {
-      return request.auth != null; // Simplified — check admin role in practice
-    }
-
-    function isSchoolTeacher(schoolId) {
-      return request.auth != null; // Simplified — check teacher role in practice
+    // Default: deny all
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
@@ -229,8 +230,8 @@ All AI-generated content must be safe for children ages 8-17. This is enforced a
 User Input → [1. Client-side blocklist] → [2. Server profanity filter] → [3. Claude safety prompt] → AI Generation
 ```
 
-1. **Client-side blocklist**: Basic word filter to catch obvious inappropriate input before sending to server. UX-friendly: "Let's try a different idea!"
-2. **Server profanity filter**: Comprehensive filter using a curated blocklist. Rejects request with `UNSAFE_CONTENT` error.
+1. **Server blocklist** (`lib/safety/blocklist.ts`): 28 regex patterns covering violence, sexual content, substances, self-harm, hate speech, and PII requests. Case-insensitive word-boundary matching. Rejects request with `UNSAFE_CONTENT` error and kid-friendly message.
+2. **Input validation** (`lib/safety/inputFilter.ts → filterInput()`): Minimum 3-char length check + blocklist scan. Throws `AppException('UNSAFE_CONTENT')`.
 3. **Claude safety prompt**: System prompt instructs Claude to refuse inappropriate requests and generate only child-safe content.
 
 ### Output Safety Pipeline
@@ -239,9 +240,9 @@ User Input → [1. Client-side blocklist] → [2. Server profanity filter] → [
 AI Output → [4. Content classifier] → [5. PII detection] → [6. Image NSFW check] → User
 ```
 
-4. **Content classifier**: Claude-based review of generated text for age-appropriateness
-5. **PII detection**: Scan output for phone numbers, addresses, emails (should never appear)
-6. **Image NSFW check**: Replicate's built-in safety filter + custom check
+4. **PII redaction** (`lib/safety/inputFilter.ts → filterOutput()`): Regex scan for 10-digit phone numbers, emails, physical addresses, and 12-digit Aadhaar numbers. Replaces matches with `[REDACTED]`.
+5. **Image prompt filter** (`lib/safety/inputFilter.ts → filterImagePrompt()`): 14 unsafe keywords (gun, weapon, knife, blood, gore, nude, naked, sexy, drug, alcohol, cigarette, smoking, kill, death). Throws on match.
+6. **Image NSFW check**: Replicate's built-in safety filter (enabled by default) + forced illustration/cartoon style
 
 ### Claude System Prompt Safety Rules
 
@@ -441,7 +442,7 @@ Implementation: Firestore-based counter per session/user + Netlify rate limiting
 ### API Key Protection
 - All AI service API keys stored in Netlify environment variables
 - Never exposed to client-side code
-- All AI calls proxied through Netlify Functions
+- All AI calls proxied through Next.js API Routes
 - Firebase Admin SDK credentials in Netlify env vars
 
 ### Security Headers

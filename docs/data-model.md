@@ -81,6 +81,8 @@ Core collection storing all AI-generated creations.
 | likeCount | number | yes | Phase 2: community likes (default 0) |
 | aiConceptsTaught | array\<string\> | yes | AI concepts covered `["prompt_engineering", "nlg"]` |
 | curriculumTags | array\<string\> | no | CBSE curriculum mapping tags |
+| downloadCount | number | yes | Number of downloads (default 0) |
+| templateId | string | no | ID of the template used for creation (if any) |
 | remixedFromId | string | no | ID of original creation this was remixed from |
 | remixCount | number | no | Denormalized count of remixes (default 0) |
 | isPublic | boolean | yes | Whether creation is publicly viewable |
@@ -190,7 +192,7 @@ Game:
 
 ### sessions
 
-Anonymous session tracking for Phase 1 rate limiting.
+Anonymous session tracking for Phase 1 rate limiting, AI Points, and badges.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -201,10 +203,35 @@ Anonymous session tracking for Phase 1 rate limiting.
 | ipHash | string | no | Hashed IP for rate limiting (not raw IP) |
 | createdAt | timestamp | yes | Session start |
 | expiresAt | timestamp | yes | Session expiry (24 hours) |
+| aiPoints | number | no | AI Knowledge Points earned (default 0). Added Phase 1.5. |
+| badges | array\<string\> | no | Earned badge IDs (default []). See Badge Catalog below. |
+| conceptsLearned | array\<string\> | no | AI concepts discovered, e.g. `["natural_language_generation", "text_to_image"]` |
+| creationsByType | map | no | Denormalized creation counts per type `{story: 3, music: 1, quiz: 2}` |
+| shareCount | number | no | Total shares across all creations (default 0) |
 
 **Rate Limits (Phase 1)**:
 - 5 creations per session per day
 - 1 creation per 2 minutes (cooldown)
+
+**Badge Catalog (12 badges)**:
+
+| ID | Name | Criteria |
+|----|------|----------|
+| `first_spark` | First Spark | 1 total creation |
+| `story_wizard` | Story Wizard | 3 stories |
+| `music_maestro` | Music Maestro | 3 songs |
+| `quiz_champion` | Quiz Champion | 3 quizzes |
+| `creative_machine` | Creative Machine | 5 total creations |
+| `triple_threat` | Triple Threat | 1 story + 1 song + 1 quiz |
+| `ai_explorer` | AI Explorer | 5 concepts learned |
+| `sharing_star` | Sharing Star | 1 share |
+| `knowledge_seeker` | Knowledge Seeker | 10 concepts learned |
+| `maker_milestone` | Maker Milestone | 10 total creations |
+| `point_collector` | Point Collector | 100 AI Points |
+| `super_creator` | Super Creator | 15 total creations |
+
+Badge unlock detection runs server-side via `checkBadgeUnlocks()` in Firestore transactions.
+See `lib/badges.ts` for the full catalog and unlock logic.
 
 ---
 
