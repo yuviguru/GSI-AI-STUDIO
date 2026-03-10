@@ -149,85 +149,83 @@ async function handlePhase2(sessionId: string, body: unknown) {
   const kidAvgScore = calculateAvgScore(input.kidScores);
   const aiAvgScore = calculateAvgScore(input.aiScores);
   const result = determineResult(kidAvgScore, aiAvgScore);
-
-  // Load session for skills and stats
-  const sessionRef = adminDb.collection(SESSIONS_COLLECTION).doc(sessionId);
-  const sessionDoc = await sessionRef.get();
-  const sessionData = sessionDoc.exists ? sessionDoc.data()! : {};
-
-  // Build current skills
-  let oldSkills: BeatTheAiSkills = getDefaultSkills();
-  if (sessionData.beatTheAiSkills) {
-    for (const [id, stored] of Object.entries(sessionData.beatTheAiSkills as Record<string, { xp: number }>)) {
-      if (id in oldSkills) {
-        oldSkills[id as keyof BeatTheAiSkills] = getSkillLevel(stored.xp);
-      }
-    }
-  }
-
-  // Get current stats for streak calculation
-  const stats = sessionData.beatTheAiStats ?? {
-    totalRounds: 0, wins: 0, losses: 0, ties: 0,
-    currentStreak: 0, longestStreak: 0, byCategory: {},
-  };
-
-  // Calculate skill XP earned
-  const skillXpEarned = calculateSkillXp(
-    {
-      category: round.category,
-      prompt: round.prompt as BeatTheAiPrompt,
-      result,
-      kidScores: input.kidScores as BeatTheAiScores,
-      timeUsedSeconds: round.timeUsedSeconds as number,
-    },
-    stats.currentStreak
-  );
-
-  // Calculate AI points
   const aiPointsEarned = calculateAiPoints(result);
 
-  // Build updated skills
-  const newSkills = { ...oldSkills };
-  for (const [skillId, xpGained] of Object.entries(skillXpEarned)) {
-    const current = newSkills[skillId as BeatTheAiSkillId];
-    newSkills[skillId as BeatTheAiSkillId] = getSkillLevel(current.xp + xpGained);
-  }
+  const sessionRef = adminDb.collection(SESSIONS_COLLECTION).doc(sessionId);
 
-  // Detect level-ups
-  const levelUps = detectLevelUp(oldSkills, newSkills);
+  // Read session inside transaction so concurrent round completions are serialized
+  const { skillXpEarned, levelUps } = await adminDb.runTransaction(async (tx) => {
+    const sessionDoc = await tx.get(sessionRef);
+    const sessionData = sessionDoc.exists ? sessionDoc.data()! : {};
 
-  // Update streak
-  const newStreak = result === 'kid_wins' ? stats.currentStreak + 1 : 0;
-  const longestStreak = Math.max(stats.longestStreak, newStreak);
+    // Build current skills from transactional read
+    const oldSkills: BeatTheAiSkills = getDefaultSkills();
+    if (sessionData.beatTheAiSkills) {
+      for (const [id, stored] of Object.entries(sessionData.beatTheAiSkills as Record<string, { xp: number }>)) {
+        if (id in oldSkills) {
+          oldSkills[id as keyof BeatTheAiSkills] = getSkillLevel(stored.xp);
+        }
+      }
+    }
 
-  // Update category stats
-  const catKey = round.category as string;
-  const catStats = stats.byCategory[catKey] ?? { rounds: 0, wins: 0 };
+    // Get current stats for streak calculation
+    const stats = sessionData.beatTheAiStats ?? {
+      totalRounds: 0, wins: 0, losses: 0, ties: 0,
+      currentStreak: 0, longestStreak: 0, byCategory: {},
+    };
 
-  // Prepare session update
-  const skillsForFirestore: Record<string, { xp: number; level: number }> = {};
-  for (const [id, skill] of Object.entries(newSkills)) {
-    skillsForFirestore[id] = { xp: skill.xp, level: skill.level };
-  }
-
-  const updatedStats = {
-    totalRounds: stats.totalRounds + 1,
-    wins: stats.wins + (result === 'kid_wins' ? 1 : 0),
-    losses: stats.losses + (result === 'ai_wins' ? 1 : 0),
-    ties: stats.ties + (result === 'tie' ? 1 : 0),
-    currentStreak: newStreak,
-    longestStreak,
-    byCategory: {
-      ...stats.byCategory,
-      [catKey]: {
-        rounds: catStats.rounds + 1,
-        wins: catStats.wins + (result === 'kid_wins' ? 1 : 0),
+    // Calculate skill XP earned
+    const txSkillXpEarned = calculateSkillXp(
+      {
+        category: round.category,
+        prompt: round.prompt as BeatTheAiPrompt,
+        result,
+        kidScores: input.kidScores as BeatTheAiScores,
+        timeUsedSeconds: round.timeUsedSeconds as number,
       },
-    },
-  };
+      stats.currentStreak
+    );
 
-  // Update session and round atomically
-  await adminDb.runTransaction(async (tx) => {
+    // Build updated skills
+    const newSkills = { ...oldSkills };
+    for (const [skillId, xpGained] of Object.entries(txSkillXpEarned)) {
+      const current = newSkills[skillId as BeatTheAiSkillId];
+      newSkills[skillId as BeatTheAiSkillId] = getSkillLevel(current.xp + xpGained);
+    }
+
+    // Detect level-ups
+    const txLevelUps = detectLevelUp(oldSkills, newSkills);
+
+    // Update streak
+    const newStreak = result === 'kid_wins' ? stats.currentStreak + 1 : 0;
+    const longestStreak = Math.max(stats.longestStreak, newStreak);
+
+    // Update category stats
+    const catKey = round.category as string;
+    const catStats = stats.byCategory[catKey] ?? { rounds: 0, wins: 0 };
+
+    // Prepare session update
+    const skillsForFirestore: Record<string, { xp: number; level: number }> = {};
+    for (const [id, skill] of Object.entries(newSkills)) {
+      skillsForFirestore[id] = { xp: skill.xp, level: skill.level };
+    }
+
+    const updatedStats = {
+      totalRounds: stats.totalRounds + 1,
+      wins: stats.wins + (result === 'kid_wins' ? 1 : 0),
+      losses: stats.losses + (result === 'ai_wins' ? 1 : 0),
+      ties: stats.ties + (result === 'tie' ? 1 : 0),
+      currentStreak: newStreak,
+      longestStreak,
+      byCategory: {
+        ...stats.byCategory,
+        [catKey]: {
+          rounds: catStats.rounds + 1,
+          wins: catStats.wins + (result === 'kid_wins' ? 1 : 0),
+        },
+      },
+    };
+
     tx.update(sessionRef, {
       beatTheAiSkills: skillsForFirestore,
       beatTheAiStats: updatedStats,
@@ -240,11 +238,13 @@ async function handlePhase2(sessionId: string, body: unknown) {
       kidAvgScore,
       aiAvgScore,
       result,
-      skillXpEarned,
+      skillXpEarned: txSkillXpEarned,
       aiPointsEarned,
-      levelUps,
+      levelUps: txLevelUps,
       completedAt: Timestamp.now(),
     });
+
+    return { skillXpEarned: txSkillXpEarned, levelUps: txLevelUps };
   });
 
   // Award AI points (separate transaction via existing system)
