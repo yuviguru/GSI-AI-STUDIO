@@ -19,8 +19,10 @@ const SKILL_ORDER: BeatTheAiSkillId[] = [
 
 const SIZE = 200;
 const CENTER = SIZE / 2;
-const MAX_LEVEL = 5;
 const RADIUS = 70;
+const GRID_RINGS = 5; // Number of concentric grid rings
+const MIN_R = 10; // Minimum radius so chart isn't invisible at 0 XP
+const MAX_XP = 501; // Legend threshold — XP beyond this still shows full radius
 
 function polarToCartesian(angle: number, radius: number): [number, number] {
   const rad = ((angle - 90) * Math.PI) / 180;
@@ -30,10 +32,11 @@ function polarToCartesian(angle: number, radius: number): [number, number] {
 export function SkillRadarChart({ skills }: SkillRadarChartProps) {
   const angleStep = 360 / SKILL_ORDER.length;
 
-  // Build polygon points from skill levels
+  // Build polygon points from continuous XP progress (not integer levels)
   const points = SKILL_ORDER.map((skillId, i) => {
-    const level = skills[skillId]?.level ?? 1;
-    const r = (level / MAX_LEVEL) * RADIUS;
+    const xp = skills[skillId]?.xp ?? 0;
+    const progress = Math.min(xp / MAX_XP, 1); // 0..1
+    const r = MIN_R + progress * (RADIUS - MIN_R);
     return polarToCartesian(i * angleStep, r);
   });
 
@@ -47,7 +50,7 @@ export function SkillRadarChart({ skills }: SkillRadarChartProps) {
       <svg viewBox={`0 0 ${SIZE} ${SIZE}`} width={SIZE} height={SIZE}>
         {/* Grid rings */}
         {rings.map((ring) => {
-          const r = (ring / MAX_LEVEL) * RADIUS;
+          const r = (ring / GRID_RINGS) * RADIUS;
           const ringPoints = SKILL_ORDER.map((_, i) => polarToCartesian(i * angleStep, r));
           return (
             <polygon

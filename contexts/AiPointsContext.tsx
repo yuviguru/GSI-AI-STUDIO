@@ -73,6 +73,7 @@ interface AiPointsState {
   addPoints: (amount: number, concept?: string) => Promise<void>;
   trackCreation: (creationType: string) => Promise<void>;
   trackShare: () => Promise<void>;
+  reloadFromServer: () => Promise<void>;
   dismissBadgeCelebration: () => void;
   dismissCelebration: () => void;
 }
@@ -219,6 +220,23 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
     await patchPoints({ action: 'track_share' });
   }, [patchPoints]);
 
+  // Re-fetch state from Firestore (used when points are updated server-side, e.g. Beat the AI)
+  const reloadFromServer = useCallback(async () => {
+    const sessionId = getSessionId();
+    if (!sessionId) return;
+    try {
+      const res = await fetch('/api/sessions/points', {
+        headers: { 'X-Session-Id': sessionId },
+      });
+      const json: ApiResponse<PointsResponse> = await res.json();
+      if (json.success && json.data) {
+        applySnapshot(json.data);
+      }
+    } catch {
+      // non-blocking
+    }
+  }, [applySnapshot]);
+
   const dismissBadgeCelebration = useCallback(() => {
     // Dequeue only the first badge so subsequent unlocks are still shown one at a time
     setNewBadges((prev) => prev.slice(1));
@@ -249,6 +267,7 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
         addPoints,
         trackCreation,
         trackShare,
+        reloadFromServer,
         dismissBadgeCelebration,
         dismissCelebration,
       }}

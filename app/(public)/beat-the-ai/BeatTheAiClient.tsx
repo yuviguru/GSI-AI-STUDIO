@@ -3,13 +3,14 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useBeatTheAi } from '@/hooks/useBeatTheAi';
 import { useSkills } from '@/hooks/useSkills';
+import { useAiPoints } from '@/contexts/AiPointsContext';
 import { CategoryPicker } from '@/components/beat-the-ai/CategoryPicker';
 import { ChallengeArena } from '@/components/beat-the-ai/ChallengeArena';
 import { SideBySideReveal } from '@/components/beat-the-ai/SideBySideReveal';
 import { ResultsScreen } from '@/components/beat-the-ai/ResultsScreen';
 import { StatsBoard } from '@/components/beat-the-ai/StatsBoard';
 import { Mascot } from '@/components/mascot/Mascot';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const transition = { duration: 0.2, ease: 'easeOut' };
 const variants = {
@@ -21,7 +22,15 @@ const variants = {
 export function BeatTheAiClient() {
   const game = useBeatTheAi();
   const skillsData = useSkills();
+  const { reloadFromServer: reloadPoints } = useAiPoints();
   const [showStats, setShowStats] = useState(false);
+
+  // Sync AI points header when results arrive (server already persisted)
+  useEffect(() => {
+    if (game.phase === 'results') {
+      reloadPoints();
+    }
+  }, [game.phase, reloadPoints]);
 
   if (showStats) {
     return (
@@ -164,10 +173,12 @@ export function BeatTheAiClient() {
               aiXray={game.aiXray}
               onPlayAgain={() => {
                 skillsData.refreshSkills();
+                reloadPoints();
                 game.playAgain();
               }}
               onViewStats={() => {
                 skillsData.refreshSkills();
+                reloadPoints();
                 setShowStats(true);
               }}
             />
