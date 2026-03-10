@@ -125,6 +125,22 @@ async function handlePhase2(sessionId: string, body: unknown) {
     throw new AppException('FORBIDDEN', 'Not your round', 403);
   }
 
+  // Idempotent: if round already completed, return stored results (handles retry after partial failure)
+  if (round.status === 'completed') {
+    const response: BeatTheAiSubmitResponse = {
+      roundId: input.roundId,
+      aiResponse: round.aiResponse as string,
+      kidAvgScore: round.kidAvgScore as number,
+      aiAvgScore: round.aiAvgScore as number,
+      result: round.result,
+      aiPointsEarned: round.aiPointsEarned as number,
+      skillXpEarned: round.skillXpEarned,
+      aiXray: round.aiXray,
+      levelUps: round.levelUps ?? [],
+    };
+    return apiSuccess(response);
+  }
+
   if (round.status !== 'revealed') {
     throw new AppException('INVALID_STATE', 'Round not ready for rating', 400);
   }
@@ -226,6 +242,7 @@ async function handlePhase2(sessionId: string, body: unknown) {
       result,
       skillXpEarned,
       aiPointsEarned,
+      levelUps,
       completedAt: Timestamp.now(),
     });
   });
