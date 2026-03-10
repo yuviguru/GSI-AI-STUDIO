@@ -16,7 +16,7 @@ const STUDIO_LINKS: Record<CreationType, string> = {
   music: '/create/music',
   quiz: '/create/quiz',
   game: '/create/game',
-  comic: '/create/story',
+  comic: '/create/comic',
 };
 
 export function RemixButton({ creation, className, variant = 'full' }: RemixButtonProps) {

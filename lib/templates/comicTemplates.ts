@@ -1,0 +1,122 @@
+import type { Template } from './types';
+
+export const COMIC_TEMPLATES: Template[] = [
+  // Superhero
+  {
+    id: 'comic-rooftop-hero',
+    emoji: '🦸',
+    title: 'Rooftop Hero',
+    description: 'A kid with secret powers saves their neighborhood',
+    promptText: 'A regular school kid discovers they can control wind, and uses their power to save their Mumbai neighborhood from a sudden storm — but nobody must know their secret identity',
+    category: 'Superhero',
+    type: 'comic',
+    settings: { style: 'superhero' },
+  },
+  {
+    id: 'comic-cape-club',
+    emoji: '🌟',
+    title: 'The Cape Club',
+    description: 'A team of kid superheroes with silly powers',
+    promptText: 'Five kids form a superhero team, but their powers are hilariously useless — one can only talk to pigeons, another turns invisible only when sneezing. Together they accidentally save the day',
+    category: 'Superhero',
+    type: 'comic',
+    settings: { style: 'superhero' },
+  },
+  // Action & Adventure
+  {
+    id: 'comic-treasure-map',
+    emoji: '🗺️',
+    title: 'The Treasure Map',
+    description: 'Find hidden treasure in an ancient fort',
+    promptText: 'Two best friends find a crumbling treasure map inside an old book at a Rajasthan fort, leading them through booby-trapped corridors and secret rooms to an unexpected treasure',
+    category: 'Action',
+    type: 'comic',
+    settings: { style: 'cartoon' },
+  },
+  {
+    id: 'comic-train-chase',
+    emoji: '🚂',
+    title: 'The Great Train Chase',
+    description: 'A thrilling chase on the Indian railways',
+    promptText: 'A kid spots a thief stealing a precious artifact on the Rajdhani Express and chases them through the moving train, from sleeper class to the engine, with help from fellow passengers',
+    category: 'Action',
+    type: 'comic',
+    settings: { style: 'manga' },
+  },
+  // Comedy
+  {
+    id: 'comic-school-swap',
+    emoji: '😂',
+    title: 'The Teacher Swap',
+    description: 'What if students became teachers for a day?',
+    promptText: 'The principal announces students and teachers must swap roles for a day — kids teach math and science while teachers sit in class. Everything goes hilariously wrong',
+    category: 'Comedy',
+    type: 'comic',
+    settings: { style: 'cartoon' },
+  },
+  {
+    id: 'comic-cooking-disaster',
+    emoji: '🍳',
+    title: 'Kitchen Catastrophe',
+    description: 'Cooking goes hilariously wrong',
+    promptText: 'Two siblings try to cook a surprise birthday dinner for their parents but everything goes wrong — the dal explodes, the roti catches fire, and the cat eats the dessert',
+    category: 'Comedy',
+    type: 'comic',
+    settings: { style: 'cartoon' },
+  },
+  // Sci-Fi
+  {
+    id: 'comic-robot-classmate',
+    emoji: '🤖',
+    title: 'Robot Classmate',
+    description: 'A robot joins your class as a new student',
+    promptText: 'A new student joins the class but turns out to be a robot built by ISRO for a school experiment. The robot is great at math but hilariously confused by lunch break and playground games',
+    category: 'Sci-Fi',
+    type: 'comic',
+    settings: { style: 'manga' },
+  },
+  {
+    id: 'comic-alien-exchange',
+    emoji: '👽',
+    title: 'Alien Exchange Student',
+    description: 'An alien kid visits Earth on a student exchange',
+    promptText: 'An alien from Planet Zorbax joins an Indian school as an exchange student. They find cricket confusing, samosas delicious, and homework equally terrible across the galaxy',
+    category: 'Sci-Fi',
+    type: 'comic',
+    settings: { style: 'chibi' },
+  },
+  // Mystery
+  {
+    id: 'comic-vanishing-lunch',
+    emoji: '🔍',
+    title: 'The Vanishing Lunches',
+    description: 'Someone is stealing tiffin boxes at school',
+    promptText: 'Lunch boxes keep disappearing from the classroom. A kid detective sets up an elaborate trap using a decoy tiffin, hidden cameras, and their trusty dog to catch the sneaky culprit',
+    category: 'Mystery',
+    type: 'comic',
+    settings: { style: 'indie' },
+  },
+  // Fantasy
+  {
+    id: 'comic-magic-auto',
+    emoji: '🛺',
+    title: 'The Magic Auto',
+    description: 'An auto-rickshaw that travels through time',
+    promptText: 'A kid hops into an old auto-rickshaw in Delhi that can travel through time — one honk takes them to Mughal era, two honks to the future, and three honks to a world of talking animals',
+    category: 'Fantasy',
+    type: 'comic',
+    settings: { style: 'cartoon' },
+  },
+  {
+    id: 'comic-diwali-dragons',
+    emoji: '🐉',
+    title: 'Diwali Dragons',
+    description: 'Dragons appear during Diwali celebrations',
+    promptText: 'During Diwali, the sparklers and firecrackers accidentally wake up tiny friendly dragons sleeping under the city. Now the whole neighborhood must help them find their way home before sunrise',
+    category: 'Fantasy',
+    type: 'comic',
+    settings: { style: 'manga' },
+  },
+];
+
+export const COMIC_CATEGORIES = [...new Set(COMIC_TEMPLATES.map((t) => t.category))];

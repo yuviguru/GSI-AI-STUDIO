@@ -3,6 +3,7 @@ import type { Template } from './types';
 import { STORY_TEMPLATES, STORY_CATEGORIES } from './storyTemplates';
 import { MUSIC_TEMPLATES, MUSIC_CATEGORIES } from './musicTemplates';
 import { QUIZ_TEMPLATES, QUIZ_CATEGORIES } from './quizTemplates';
+import { COMIC_TEMPLATES, COMIC_CATEGORIES } from './comicTemplates';
 
 export type { Template } from './types';
 export { getDailySpark } from './dailySpark';
@@ -11,12 +12,14 @@ const TEMPLATES_BY_TYPE: Record<string, Template[]> = {
   story: STORY_TEMPLATES,
   music: MUSIC_TEMPLATES,
   quiz: QUIZ_TEMPLATES,
+  comic: COMIC_TEMPLATES,
 };
 
 const CATEGORIES_BY_TYPE: Record<string, string[]> = {
   story: STORY_CATEGORIES,
   music: MUSIC_CATEGORIES,
   quiz: QUIZ_CATEGORIES,
+  comic: COMIC_CATEGORIES,
 };
 
 /** Get all templates for a creation type */

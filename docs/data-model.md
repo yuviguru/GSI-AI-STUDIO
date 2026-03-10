@@ -89,7 +89,7 @@ Core collection storing all AI-generated creations.
 
 **Content field by type**:
 
-Story/Comic:
+Story:
 ```json
 {
   "pages": [
@@ -99,6 +99,33 @@ Story/Comic:
   "genre": "adventure",
   "characters": ["Luna", "Rex"],
   "setting": "magical forest"
+}
+```
+
+Comic:
+```json
+{
+  "title": "The Time Machine Mystery",
+  "style": "manga",
+  "panels": [
+    {
+      "panelNumber": 1,
+      "imageUrl": "data:image/png;base64,...",
+      "dialogue": [
+        { "character": "Priya", "text": "Arjun, look what I found!", "position": "left" },
+        { "character": "Arjun", "text": "No way — is that a portal?!", "position": "right" }
+      ],
+      "caption": "After school one Tuesday...",
+      "imagePrompt": "manga style: two kids in school uniforms discovering a glowing portal in a basement"
+    }
+  ],
+  "characters": [
+    { "name": "Priya", "description": "tall girl with red hair and blue jacket" },
+    { "name": "Arjun", "description": "stocky boy with glasses and green hoodie" }
+  ],
+  "setting": "Indian school basement",
+  "synopsis": "Two friends discover a time machine in their school",
+  "totalPanels": 4
 }
 ```
 
