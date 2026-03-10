@@ -15,8 +15,10 @@
 - **Forms**: react-hook-form + zod validation
 - **PWA**: next-pwa (service worker, manifest, offline shell)
 - **Firebase**: firebase client SDK (auth, firestore, storage)
-- **Animations**: Framer Motion (creation previews, page transitions)
-- **Audio**: Tone.js or Howler.js (Music Lab playback)
+- **Animations**: Framer Motion (page transitions), Lottie via lottie-react (Koko mascot), canvas-confetti (celebrations)
+- **Audio**: Web Audio API for sound effects (zero-asset synthesis via `/lib/sounds.ts`). Music playback via native `<audio>` element
+- **PDF Export**: jsPDF for client-side PDF generation (stories, quizzes)
+- **Server State**: SWR for data fetching with localStorage optimistic cache
 
 ### File Naming
 - Components: `PascalCase.tsx` (e.g., `StoryStudio.tsx`)
@@ -46,9 +48,10 @@ export function StoryPromptForm({ onSubmit, isGenerating }: StoryPromptFormProps
 
 ### State Management
 - **Local state**: `useState` for component-level state
-- **Shared state**: React Context for auth, session, and creation state
-- **Server state**: SWR or React Query for Firestore data fetching
+- **Shared state**: React Context for auth, session, and creation state. `AiPointsContext` for points/badges/milestones
+- **Server state**: SWR for API data fetching (creations, points). Optimistic updates via localStorage cache
 - **No global store** — keep state as close to usage as possible
+- **localStorage keys**: `gsi-session-id`, `gsi-ai-points`, `gsi-sound-muted`, `gsi-onboarding-complete`, `gsi-milestones-shown`
 
 ### Error Handling (Frontend)
 ```typescript

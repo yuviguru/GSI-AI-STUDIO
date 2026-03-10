@@ -45,6 +45,13 @@ export interface Session {
   fingerprint?: string;
   creationCount: number;
   lastCreationAt?: Date;
+  ipHash?: string;
   createdAt: Date;
   expiresAt: Date;
+  // Phase 1.5: Points & badges (optional for backward compat)
+  aiPoints?: number;
+  badges?: string[];
+  conceptsLearned?: string[];
+  creationsByType?: Record<string, number>;
+  shareCount?: number;
 }

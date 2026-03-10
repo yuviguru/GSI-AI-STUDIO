@@ -12,22 +12,25 @@ Serverless API endpoints via Next.js API routes, deployed as Netlify Functions.
 ## Structure
 ```
 api/
-├── ai/                 # AI generation proxy endpoints
-│   ├── story/route.ts  # POST — generate story + illustrations
-│   ├── music/route.ts  # POST — generate music track
-│   └── quiz/route.ts   # POST — generate quiz/game
+├── ai/                     # AI generation proxy endpoints
+│   ├── story/route.ts      # POST — generate story + illustrations
+│   ├── music/route.ts      # POST — generate music track
+│   ├── quiz/route.ts       # POST — generate quiz
+│   ├── game/route.ts       # POST — generate text adventure game
+│   └── comic/route.ts      # POST — generate multi-panel comic
 ├── creations/
-│   ├── route.ts        # GET (list), POST (save)
-│   └── [id]/route.ts   # GET (single creation)
+│   ├── route.ts            # GET (list by session), POST (save)
+│   ├── public/route.ts     # GET — public feed + leaderboard
+│   └── [id]/
+│       ├── route.ts        # GET (single), DELETE (archive)
+│       └── download/route.ts # POST — track download event
+├── download/
+│   └── [id]/route.ts       # POST — alternative download tracking
 ├── sessions/
-│   └── route.ts        # POST — create/refresh anonymous session
-├── auth/
-│   ├── profile/route.ts # POST — create/update user profile
-│   └── kids/route.ts    # POST — add kid profile
+│   ├── route.ts            # POST — create/refresh anonymous session
+│   └── points/route.ts     # GET (load), PATCH (update) — AI points & badges
 ├── share/
-│   └── [id]/route.ts   # POST — generate share link + OG image
-└── webhooks/
-    └── razorpay/route.ts # POST — payment webhook (Phase 2)
+│   └── [id]/route.ts       # POST — generate share link + WhatsApp URL
 ```
 
 ## Local Patterns

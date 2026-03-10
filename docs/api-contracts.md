@@ -77,7 +77,8 @@ Generate an AI story with illustrations.
   "genre": "adventure",
   "pages": 5,
   "style": "watercolor",
-  "ageGroup": "8-10"
+  "ageGroup": "8-10",
+  "remixedFromId": "optional-original-creation-id"
 }
 ```
 
@@ -88,12 +89,15 @@ Generate an AI story with illustrations.
   "data": {
     "story": {
       "title": "Luna's Ocean Adventure",
+      "moral": "Curiosity leads to wonderful discoveries",
+      "genre": "adventure",
+      "characters": ["Luna the cat", "Finn the fish"],
+      "setting": "underwater kingdom",
       "pages": [
         {
           "pageNumber": 1,
           "text": "Deep beneath the waves, Luna the cat discovered...",
-          "imageUrl": "https://storage.googleapis.com/gsi-ai-studio/creations/abc123/page-1.png",
-          "imagePrompt": "watercolor illustration of a cat in diving gear exploring coral reef"
+          "imageUrl": "data:image/png;base64,..."
         }
       ]
     },
@@ -140,14 +144,17 @@ Generate an AI music track.
   "data": {
     "music": {
       "title": "Best Friends Forever",
-      "audioUrl": "https://storage.googleapis.com/gsi-ai-studio/creations/def456/track.mp3",
+      "audioUrl": "data:audio/wav;base64,...",
       "duration": 32,
+      "genre": "pop",
+      "mood": "happy",
       "lyrics": "We're heading out the door...",
+      "instruments": ["piano", "guitar"],
       "bpm": 120,
       "waveformData": [0.1, 0.3, 0.8, ...]
     },
     "aiXray": {
-      "model": "suno-v3",
+      "model": "lyria-realtime",
       "concept": "pattern_recognition_audio",
       "explanation": "The AI learned musical patterns from millions of songs to create melodies that match your mood...",
       "curriculumTag": "ml_pattern_recognition",
@@ -184,12 +191,10 @@ Generate an AI quiz or game.
       "format": "trivia",
       "questions": [
         {
-          "id": "q1",
           "question": "Which planet is known as the Red Planet?",
           "options": ["Venus", "Mars", "Jupiter", "Saturn"],
-          "correctAnswer": "Mars",
-          "explanation": "Mars appears red due to iron oxide (rust) on its surface.",
-          "difficulty": "easy"
+          "answer": "Mars",
+          "explanation": "Mars appears red due to iron oxide (rust) on its surface."
         }
       ],
       "totalQuestions": 10,
@@ -399,17 +404,14 @@ Get a single creation (public view).
 
 ### GET /api/creations
 
-List creations with filters.
+List creations for the current session.
+
+**Headers:** `X-Session-Id: <session_id>`
 
 **Query Params:**
 - `type` (string) — Filter by creation type
-- `sessionId` (string) — Filter by session (Phase 1)
-- `userId` (string) — Filter by user (Phase 2)
-- `kidId` (string) — Filter by kid profile (Phase 2)
-- `isPublic` (boolean) — Public creations only
-- `sort` (string) — `recent` | `popular` (default: `recent`)
-- `limit` (number) — Results per page (default: 20, max: 50)
 - `cursor` (string) — Pagination cursor (Firestore document ID)
+- `limit` (number) — Results per page (default: 20, max: 50)
 
 **Response (200):**
 ```json
@@ -420,6 +422,89 @@ List creations with filters.
     "nextCursor": "xyz789",
     "hasMore": true
   }
+}
+```
+
+---
+
+### GET /api/creations/public
+
+List public creations (no auth required). Used for the Explore feed.
+
+**Query Params:**
+- `type` (string) — Filter by creation type
+- `sort` (string) — `trending` | `newest` (default: `newest`)
+- `cursor` (string) — Pagination cursor
+- `limit` (number) — Results per page
+- `leaderboard` (string) — If `true`, returns top creators instead of creations
+
+**Response (200) — creations:**
+```json
+{
+  "success": true,
+  "data": {
+    "items": [ ... ],
+    "nextCursor": "xyz789",
+    "hasMore": true
+  }
+}
+```
+
+**Response (200) — leaderboard:**
+```json
+{
+  "success": true,
+  "data": {
+    "creators": [ { "sessionId": "...", "count": 5, "types": ["story", "music"] } ]
+  }
+}
+```
+
+---
+
+### DELETE /api/creations/:id
+
+Soft-delete (archive) a creation. Requires matching session ownership.
+
+**Headers:** `X-Session-Id: <session_id>`
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": null
+}
+```
+
+**Errors:**
+- `401 UNAUTHORIZED` — Missing session
+- `403 FORBIDDEN` — Session doesn't own this creation
+
+---
+
+### POST /api/creations/:id/download
+
+Track a download event (fire-and-forget). Increments `downloadCount` on the creation.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": null
+}
+```
+
+---
+
+### POST /api/download/:id
+
+Alternative download tracking endpoint. Same behavior as `POST /api/creations/:id/download`.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": { "tracked": true }
 }
 ```
 
@@ -451,6 +536,104 @@ Create or refresh an anonymous session.
   }
 }
 ```
+
+---
+
+### GET /api/sessions/points
+
+Load current AI points, badges, and learning data for a session.
+
+**Headers:** `X-Session-Id: <session_id>`
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "aiPoints": 85,
+    "badges": ["first_creation", "prolific_creator"],
+    "conceptsLearned": ["natural_language_generation", "pattern_recognition"],
+    "creationsByType": { "story": 3, "music": 1, "quiz": 2 },
+    "shareCount": 2
+  }
+}
+```
+
+---
+
+### PATCH /api/sessions/points
+
+Apply a points action. Returns updated data plus any newly unlocked badge IDs.
+
+**Headers:** `X-Session-Id: <session_id>`
+
+**Request (add_points):**
+```json
+{
+  "action": "add_points",
+  "points": 10,
+  "concept": "natural_language_generation"
+}
+```
+
+**Request (learn_concept):**
+```json
+{
+  "action": "learn_concept",
+  "concept": "pattern_recognition"
+}
+```
+
+**Request (track_creation):**
+```json
+{
+  "action": "track_creation",
+  "creationType": "story"
+}
+```
+
+**Request (track_share):**
+```json
+{
+  "action": "track_share"
+}
+```
+
+**Valid Actions:** `add_points`, `learn_concept`, `track_creation`, `track_share`
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "aiPoints": 95,
+    "badges": ["first_creation", "prolific_creator", "music_maestro"],
+    "conceptsLearned": ["natural_language_generation", "pattern_recognition"],
+    "creationsByType": { "story": 3, "music": 1, "quiz": 2 },
+    "shareCount": 2,
+    "newBadges": ["music_maestro"]
+  }
+}
+```
+
+**Errors:**
+- `400 INVALID_INPUT` — Invalid action or missing required fields
+- `401 UNAUTHORIZED` — Missing session
+- `404 SESSION_NOT_FOUND` — Session not found
+
+---
+
+### AI Points Values
+
+Points awarded per creation type:
+
+| Creation Type | AI Points |
+|---------------|-----------|
+| Story | 10 |
+| Quiz | 10 |
+| Comic | 12 |
+| Music | 15 |
+| Game | 15 |
 
 ---
 

@@ -5,15 +5,18 @@ Creation studio UI components — the core interactive experience where kids cre
 
 ## Load References
 @import /docs/ux-patterns.md#creation-studio-layout
+@import /docs/ux-patterns.md#daily-spark-and-template-discovery
 @import /docs/ux-patterns.md#ai-x-ray-popup
+@import /docs/ux-patterns.md#game-player
 @import /docs/api-contracts.md#ai-generation-endpoints
 @import /docs/security.md#ai-content-safety
 
 ## Studios
-- **Story Studio** (`story/`): Text premise → Claude generates narrative → Replicate generates illustrations → shareable storybook
-- **Music Lab** (`music/`): Mood/genre/theme → Suno generates audio → kid tweaks → shareable track
-- **Quiz Maker** (`quiz/`): Topic → Claude generates questions → playable/shareable quiz game
-- **Game Studio** (`game/`): Premise → Claude generates branching scene graph → interactive choose-your-own-adventure
+- **Story Studio** (`story/`): Text premise → LLM generates narrative → image provider generates illustrations → shareable storybook
+- **Music Lab** (`music/`): Mood/genre/theme → audio provider generates music → kid tweaks → shareable track
+- **Quiz Maker** (`quiz/`): Topic → LLM generates questions → playable/shareable quiz game
+- **Game Studio** (`game/`): Premise → LLM generates branching scene graph → interactive choose-your-own-adventure
+- **Comic Studio** (`comic/`): Premise + characters → LLM generates panel scripts → image provider generates panels → comic with dialogue bubbles
 
 ## Local Patterns
 - All studios follow the 3-step pattern: INSPIRE → CREATE → SHARE & LEARN

@@ -9,7 +9,7 @@ GSI AI Studio is an AI creation + learning platform for Indian kids (ages 8-17) 
 - **Database**: Firebase Firestore (NoSQL)
 - **Auth**: Firebase Auth (Phone OTP) — Phase 2+; anonymous sessions Phase 1
 - **Storage**: Firebase Cloud Storage (media files)
-- **AI**: Claude API (text/logic), Replicate (SDXL/Flux images), Suno/MusicGen (audio)
+- **AI**: Claude/Groq (text/logic), ComfyUI/Replicate/Pollinations (images), Lyria/Replicate/Mock (audio)
 - **Hosting**: Netlify (frontend + functions), Firebase (backend services)
 - **Payments**: Razorpay (Phase 2+)
 
@@ -42,7 +42,11 @@ app/
 │   ├── create/
 │   │   ├── story/          # Story Studio
 │   │   ├── music/          # Music Lab
-│   │   └── quiz/           # Quiz & Game Maker
+│   │   ├── quiz/           # Quiz Maker
+│   │   ├── game/           # Game Studio
+│   │   └── comic/          # Comic Studio
+│   ├── creations/          # My Creations gallery
+│   ├── explore/            # Explore feed + leaderboard
 │   ├── view/[id]/          # Public creation viewer (SSR)
 │   └── learn/              # AI curriculum content
 ├── (auth)/                 # Phase 2: authenticated pages
@@ -61,19 +65,35 @@ components/
 ├── studios/                # Creation studio components
 │   ├── story/              # Story Studio components
 │   ├── music/              # Music Lab components
-│   └── quiz/               # Quiz Maker components
+│   ├── quiz/               # Quiz Maker components
+│   ├── game/               # Game Studio components
+│   └── comic/              # Comic Studio components
 ├── creation/               # Creation display/viewer components
 ├── learning/               # AI X-Ray and curriculum components
+├── mascot/                 # Koko mascot Lottie animations
+├── celebrations/           # Confetti celebration animations
+├── onboarding/             # First-time onboarding carousel
+├── explore/                # Explore feed + leaderboard
 ├── layout/                 # Header, Footer, Navigation
-└── shared/                 # Shared components (ShareButton, LoadingAnimation)
+└── shared/                 # ShareButton, RemixButton, TemplateCarousel, SurpriseButton, DownloadButton
 lib/
 ├── firebase/               # Firebase client + admin SDK setup
-├── ai/                     # AI service integrations
+├── ai/                     # AI service integrations (provider fallback chains)
 │   ├── prompts/            # System prompts for each studio
-│   ├── storyGenerator.ts   # Claude + Replicate story pipeline
-│   ├── musicGenerator.ts   # Suno/MusicGen music pipeline
-│   └── quizGenerator.ts    # Claude quiz generation
+│   ├── claudeClient.ts     # Claude API client wrapper
+│   ├── groqClient.ts       # Groq (Llama) fallback client
+│   ├── replicateClient.ts  # Replicate API client wrapper
+│   ├── pollinationsClient.ts # Pollinations.ai (free) image client
+│   ├── comfyuiClient.ts    # ComfyUI self-hosted image client
+│   └── musicClient.ts      # Music generation (Lyria/Replicate/Mock)
 ├── safety/                 # Content safety filters
+├── export/                 # PDF generation + print utilities
+│   ├── pdfGenerator.ts     # jsPDF-based story/quiz PDF export
+│   └── printUtils.ts       # Hidden iframe print dialog
+├── templates/              # Creation templates + Daily Spark
+│   └── dailySpark.ts       # Deterministic daily template selection
+├── badges.ts               # Badge definitions + unlock criteria
+├── sounds.ts               # Web Audio API sound synthesis
 ├── utils.ts                # General utilities
 └── validators.ts           # Zod validation schemas
 hooks/
@@ -82,10 +102,13 @@ hooks/
 ├── useCreation.ts          # Creation CRUD operations
 └── useAiGeneration.ts      # AI generation with loading/error states
 types/
-├── creation.types.ts       # Creation interfaces
-├── user.types.ts           # User/Kid profile types
-├── ai.types.ts             # AI request/response types
-└── api.types.ts            # API response types
+├── creation.types.ts       # Creation interfaces (Story, Music, Quiz, Game, Comic)
+├── user.types.ts           # User/Kid profile/Session types
+├── api.types.ts            # API response types
+├── beatTheAi.types.ts      # Beat the AI challenge types
+├── mindx.types.ts          # MindX skill assessment types
+├── cerebro.types.ts        # Cerebro competition types
+└── growthMap.types.ts       # GrowthMap parent dashboard types
 ```
 
 ## Global Standards

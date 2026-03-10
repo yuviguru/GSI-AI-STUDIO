@@ -78,9 +78,11 @@ Core collection storing all AI-generated creations.
 | shareUrl | string | no | Public shareable URL slug |
 | viewCount | number | yes | Number of views (default 0) |
 | shareCount | number | yes | Number of shares (default 0) |
+| downloadCount | number | yes | Number of downloads (default 0) |
 | likeCount | number | yes | Phase 2: community likes (default 0) |
 | aiConceptsTaught | array\<string\> | yes | AI concepts covered `["prompt_engineering", "nlg"]` |
 | curriculumTags | array\<string\> | no | CBSE curriculum mapping tags |
+| templateId | string | no | Template ID if created from a template |
 | remixedFromId | string | no | ID of original creation this was remixed from |
 | remixCount | number | no | Denormalized count of remixes (default 0) |
 | isPublic | boolean | yes | Whether creation is publicly viewable |
@@ -98,7 +100,9 @@ Story:
   ],
   "genre": "adventure",
   "characters": ["Luna", "Rex"],
-  "setting": "magical forest"
+  "setting": "magical forest",
+  "title": "Luna's Adventure",
+  "moral": "Friendship conquers all"
 }
 ```
 
@@ -167,7 +171,9 @@ Game:
         { "text": "Enter the cave", "nextSceneId": "scene_2" },
         { "text": "Explore outside", "nextSceneId": "scene_3" }
       ],
-      "isEnding": false
+      "isEnding": false,
+      "endingType": "success | neutral | try_again",
+      "endingMessage": "Congratulations! You found the treasure!"
     }
   ],
   "startSceneId": "scene_1",
@@ -190,7 +196,7 @@ Game:
 
 ### sessions
 
-Anonymous session tracking for Phase 1 rate limiting.
+Anonymous session tracking for Phase 1 rate limiting and Phase 1.5 points/badges.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -201,6 +207,11 @@ Anonymous session tracking for Phase 1 rate limiting.
 | ipHash | string | no | Hashed IP for rate limiting (not raw IP) |
 | createdAt | timestamp | yes | Session start |
 | expiresAt | timestamp | yes | Session expiry (24 hours) |
+| aiPoints | number | no | AI Knowledge Points earned (default 0). Added Phase 1.5 |
+| badges | array\<string\> | no | Earned badge IDs. Added Phase 1.5 |
+| conceptsLearned | array\<string\> | no | AI concepts learned via X-Ray. Added Phase 1.5 |
+| creationsByType | map | no | Count of creations per type `{story: 3, music: 1}`. Added Phase 1.5 |
+| shareCount | number | no | Number of shares from this session. Added Phase 1.5 |
 
 **Rate Limits (Phase 1)**:
 - 5 creations per session per day
@@ -581,16 +592,27 @@ School accounts for B2B.
 ## Security Rules (Firestore)
 
 ```
-Phase 1:
-- creations: read=public (isPublic==true), write=via server only (Netlify Functions)
-- sessions: read/write=via server only
+Phase 1 (current implementation):
+- creations: read=public (isPublic==true OR status=='published'), write=server only (Admin SDK)
+- sessions: read/write=server only (Admin SDK)
+- curriculum: read=public, write=none
+- beatTheAiRounds: read/write=server only (Admin SDK)
+- skillArenaAssessments: read/write=server only (Admin SDK)
 
 Phase 2+:
-- users/{userId}: read/write=owner only (request.auth.uid == userId)
-- users/{userId}/kids: read/write=parent only
-- creations: read=public OR owner, write=authenticated + owner
-- challenges: read=public, write=admin only
+- users/{userId}: read=owner only (request.auth.uid == userId), write=server only
+- users/{userId}/kids: read=parent only, write=server only
+- competitions: read=public, write=server only
+- examSessions: read/write=server only
+- leaderboards: read=public, write=server only (Cloud Functions)
+- growthMapReports: read=owner (userId match), write=server only (Cloud Functions)
+- challenges: read=public, write=server only
+
+Phase 3:
+- schools: read=authenticated, write=server only
 ```
+
+See `firestore.rules` for exact rule definitions.
 
 ## Migration Strategy
 

@@ -16,7 +16,9 @@ firebase/
 ├── admin.ts            # Firebase Admin SDK initialization (server-side only)
 ├── auth.ts             # Auth utilities: sendOtp, verifyToken, getCurrentUser
 ├── firestore.ts        # Firestore utilities: getDoc, setDoc, query helpers
-└── storage.ts          # Cloud Storage utilities: upload, getUrl, delete
+├── storage.ts          # Cloud Storage utilities: upload, getUrl, delete
+├── creationService.ts  # Creation CRUD, listing, download tracking, view counting
+└── sessionService.ts   # Session management, rate limiting, points/badges
 ```
 
 ## Local Patterns

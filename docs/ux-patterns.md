@@ -19,7 +19,7 @@
 
 ### Creation Studio Layout
 
-All three studios (Story, Music, Quiz) follow the same 3-step pattern:
+All five studios (Story, Music, Quiz, Game, Comic) follow the same 3-step pattern:
 
 ```
 ┌─────────────────────────────────────────┐
@@ -94,6 +94,68 @@ Appears after every creation. Dismissable but incentivized with AI Points.
 │  [ Got it! ] [ Tell me more → ]     │
 └─────────────────────────────────────┘
 ```
+
+---
+
+### Daily Spark & Template Discovery
+
+Every studio includes a rotating **Daily Spark** — a single prompt template that changes daily and is the same for all users that day. Below it, a template carousel with category filters.
+
+- **Daily Spark**: Highlighted with special badge + gradient background. Deterministic per day (date-based hash)
+- **Categories**: All, Adventure, Fantasy, Sci-Fi, Funny, etc. (studio-specific)
+- **Display modes**: Horizontal scroll carousel (compact) or grid view ("See all")
+- **30+ sparks per type**: Ensures unique daily inspiration for a full month
+- **"Surprise Me!" button**: Random template selection with animated spinner (600ms)
+
+### Koko Mascot
+
+Animated AI mascot (Lottie animations) that appears throughout the experience:
+- **7 expressions**: happy, thinking, celebrating, waving, surprised, painting, singing
+- **Cache strategy**: Module-level Lottie data cache to prevent re-fetching on expression switches
+- **Assets**: `/public/lottie/koko-*.json`
+- **Fallback**: Animated pulse placeholder while loading
+- **Appears in**: Creation loading states, AI X-Ray, Beat the AI results, MindX evaluation, celebrations
+
+### Celebration Animations
+
+Confetti celebrations triggered on milestones and achievements:
+- **Three variants**: `burst` (100 particles), `rain` (repeated drops), `sides` (dual cannons)
+- **Brand colors**: `#7C3AED, #F97316, #06B6D4, #FBBF24, #34D399`
+- **Trigger logic**: Only fires on false→true transition (prevents multiple fires)
+- **Respects**: `prefers-reduced-motion` media query
+- **Milestones**: First creation, 50 points, 100 points, 5 creations, 10 creations
+- **Sound effects**: Web Audio API synthesis (pointsEarned, badgeUnlocked, creationComplete, celebrate)
+
+### Download & Export
+
+Export options available on creation preview:
+- **PDF export**: Story PDFs (title page + story pages + branding), Quiz PDFs (questions + answer key)
+- **Print**: Hidden iframe approach with formatted layout, waits for images to load
+- **Audio download**: Direct download for music creations
+- **Download tracking**: Fire-and-forget POST to increment `downloadCount`
+
+### Remix/Fork
+
+Any public creation can be remixed:
+- **Remix button**: Available on creation cards and detail view (full button or compact icon)
+- **Behavior**: Navigates to studio with `?remix=<id>&prompt=<original>` — pre-fills prompt form
+- **Original credit**: Remixed creations store `remixedFromId` linking to the original
+
+### Game Player
+
+Interactive scene-based game viewer:
+- **Scene transitions**: Fade animation with slide direction (left for next, right for previous)
+- **Choice buttons**: Large touch targets with hover/focus states
+- **Path history**: Collapsible sidebar showing breadcrumb trail of decisions
+- **Ending screen**: Shows ending type emoji (victory/neutral/try_again), scene count, share/restart buttons
+
+### Onboarding Flow
+
+First-time user carousel (shown once):
+- **Full-screen modal carousel** with swipe support, dot indicators, skip button
+- **Slides**: Welcome, Create, Learn, Share — each with gradient background + illustration
+- **Completion**: Stored in `localStorage` (`gsi-onboarding-complete`) — never shown again
+- **Swipe threshold**: 50px offset or 300px/s velocity
 
 ---
 
@@ -651,7 +713,9 @@ When a creation is shared on WhatsApp, the link preview shows:
 - Storybooks: Page-flip animation, tap/swipe to navigate
 - Music: Waveform visualizer + play controls
 - Quizzes: Interactive playable quiz
-- Games: Interactive choose-your-own-adventure player
+- Games: Interactive choose-your-own-adventure player (scene navigation with choices)
+- Comics: Panel-by-panel view with dialogue bubbles
+- Actions bar: Share, Download/Export, Remix, AI X-Ray
 - Footer: "Made with GSI AI Studio — Create your own! [Try Now]"
 
 ---

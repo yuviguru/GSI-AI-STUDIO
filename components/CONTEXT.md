@@ -12,14 +12,20 @@ Reusable React components for the GSI AI Studio UI, organized by domain.
 ```
 components/
 ├── ui/                 # Base UI primitives (shadcn/ui — Button, Input, Card, Dialog)
-├── studios/            # Creation studio components (Story, Music, Quiz)
+├── studios/            # Creation studio components
 │   ├── story/          # StoryPromptForm, StoryViewer, PageFlip
 │   ├── music/          # MusicPromptForm, MusicPlayer, WaveformVisualizer
-│   └── quiz/           # QuizPromptForm, QuizPlayer, ScoreCard
+│   ├── quiz/           # QuizPromptForm, QuizPlayer, ScoreCard
+│   ├── game/           # GamePromptForm, GamePlayer (scene navigation)
+│   └── comic/          # ComicPromptForm, ComicViewer (panel display)
 ├── creation/           # CreationCard, CreationGrid, CreationViewer
 ├── learning/           # AiXrayPopup, CurriculumBadge, PointsDisplay
+├── mascot/             # Koko mascot (Lottie animations, 7 expressions)
+├── celebrations/       # ConfettiCelebration (burst, rain, sides variants)
+├── onboarding/         # OnboardingCarousel (first-time flow)
+├── explore/            # Leaderboard, FeaturedSection
 ├── layout/             # Header, Footer, BottomNav, Sidebar
-└── shared/             # ShareButton, LoadingAnimation, EmptyState
+└── shared/             # ShareButton, RemixButton, TemplateCarousel, SurpriseButton, DownloadButton, LoadingAnimation, EmptyState
 ```
 
 ## Local Patterns

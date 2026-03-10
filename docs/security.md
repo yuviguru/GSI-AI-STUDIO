@@ -240,7 +240,7 @@ AI Output → [4. Content classifier] → [5. PII detection] → [6. Image NSFW 
 ```
 
 4. **Content classifier**: Claude-based review of generated text for age-appropriateness
-5. **PII detection**: Scan output for phone numbers, addresses, emails (should never appear)
+5. **PII detection**: Scan output for phone numbers, addresses, emails, and Aadhaar numbers (12-digit pattern). All matches are redacted before returning to client
 6. **Image NSFW check**: Replicate's built-in safety filter + custom check
 
 ### Claude System Prompt Safety Rules
@@ -355,11 +355,12 @@ Cerebro involves **competitive exams with prizes**, making anti-malpractice the 
 
 ### Image Generation Safety
 
-- Use Replicate's built-in NSFW filter (enabled by default)
+Applied consistently across all image providers (ComfyUI, Replicate, Pollinations):
 - Append safety keywords to all image prompts: "child-friendly, colorful, safe for children, illustration style"
 - Negative prompts: "violence, weapons, blood, scary, realistic human faces, nudity"
 - Style constraint: Force illustration/cartoon styles (never photorealistic)
 - Post-generation: Log all image prompts for audit
+- Provider-specific: Replicate's built-in NSFW filter (enabled by default)
 
 ---
 
@@ -468,13 +469,26 @@ Referrer-Policy: strict-origin-when-cross-origin
 
 ```bash
 # .env.local (never commit)
-ANTHROPIC_API_KEY=sk-ant-...
-REPLICATE_API_TOKEN=r8_...
-SUNO_API_KEY=...
+# Text LLM (at least one required)
+ANTHROPIC_API_KEY=sk-ant-...       # Claude — primary text provider
+GROQ_API_KEY=gsk_...               # Groq (Llama) — free fallback
+
+# Image generation (at least one, or Pollinations is used as free default)
+COMFYUI_URL=http://localhost:8188  # Self-hosted FLUX — optional
+REPLICATE_API_TOKEN=r8_...         # Replicate SDXL — optional
+# Pollinations.ai requires no key    — always-available fallback
+
+# Audio/music generation (at least one, or mock audio is used)
+GEMINI_API_KEY=...                 # Google Lyria RealTime — free
+# Replicate also supports MusicGen    — uses REPLICATE_API_TOKEN above
+
+# Firebase
 FIREBASE_SERVICE_ACCOUNT=<base64-encoded-json>
+NEXT_PUBLIC_FIREBASE_CONFIG=<json>  # This one is public (client-side)
+
+# Phase 2+ (not yet active)
 RAZORPAY_KEY_ID=...
 RAZORPAY_KEY_SECRET=...
-NEXT_PUBLIC_FIREBASE_CONFIG=<json>  # This one is public (client-side)
 ```
 
 ---

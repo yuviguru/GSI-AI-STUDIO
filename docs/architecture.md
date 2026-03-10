@@ -2,7 +2,7 @@
 
 ## System Overview
 
-GSI AI Studio is a serverless PWA built on Next.js (Netlify) + Firebase, designed for zero-ops overhead as a solo developer project. The frontend handles all UI and creation workflows, Firebase provides auth/database/storage/functions, and external AI APIs (Claude, Replicate, Suno) power the creation engines. The architecture prioritizes fast iteration, low cost, and progressive enhancement from anonymous playground to authenticated creator platform.
+GSI AI Studio is a serverless PWA built on Next.js (Netlify) + Firebase, designed for zero-ops overhead as a solo developer project. The frontend handles all UI and creation workflows, Firebase provides auth/database/storage/functions, and external AI APIs power the creation engines. AI providers use an intelligent fallback chain: Claude/Groq for text, ComfyUI/Replicate/Pollinations for images, and Lyria/Replicate/Mock for audio. The architecture prioritizes fast iteration, low cost, and progressive enhancement from anonymous playground to authenticated creator platform.
 
 ### Architecture Diagram
 
@@ -50,11 +50,11 @@ GSI AI Studio is a serverless PWA built on Next.js (Netlify) + Firebase, designe
 ┌──────────────────────────────────────────────────────────┐
 │                   EXTERNAL AI SERVICES                    │
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐ │
-│  │  Claude API  │ │  Replicate   │ │  Suno / MusicGen │ │
-│  │  (Text/Logic)│ │  (SDXL/Flux) │ │  (Audio Gen)     │ │
-│  │  - Stories   │ │  - Story art │ │  - Music creation│ │
-│  │  - Quizzes   │ │  - Thumbnails│ │  - Sound effects │ │
-│  │  - AI X-Ray  │ │              │ │                  │ │
+│  │  Text/Logic  │ │  Images      │ │  Audio           │ │
+│  │  (fallback)  │ │  (fallback)  │ │  (fallback)      │ │
+│  │  1. Claude   │ │  1. ComfyUI  │ │  1. Google Lyria │ │
+│  │  2. Groq     │ │  2. Replicate│ │  2. Replicate    │ │
+│  │     (Llama)  │ │  3. Pollinat.│ │  3. Mock audio   │ │
 │  └──────────────┘ └──────────────┘ └──────────────────┘ │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -65,11 +65,16 @@ GSI AI Studio is a serverless PWA built on Next.js (Netlify) + Firebase, designe
 **Tech**: Next.js 14+ (App Router), React, Tailwind CSS, next-pwa
 **Host**: Netlify
 **Responsibilities**:
-- Creation studio UIs (Story, Music, Quiz/Game)
+- Creation studio UIs (Story, Music, Quiz, Game, Comic)
 - AI X-Ray learning popups
 - Shareable creation viewer (SSR for OG tags/SEO)
 - PWA shell (installable, offline-capable basics)
 - Anonymous session management (Phase 1)
+- Points, badges, and milestone celebrations (Phase 1.5)
+- Explore feed and leaderboard (Phase 1.5)
+- Download/export pipeline (PDF, print)
+- Onboarding flow for first-time users
+- Koko mascot with Lottie animations
 - Authenticated user flows (Phase 2+)
 
 **Key Directories**:
@@ -80,17 +85,23 @@ app/
 │   ├── create/         # Creation studios
 │   │   ├── story/      # Story Studio
 │   │   ├── music/      # Music Lab
-│   │   └── quiz/       # Quiz & Game Maker
+│   │   ├── quiz/       # Quiz Maker
+│   │   ├── game/       # Game Studio
+│   │   └── comic/      # Comic Studio
+│   ├── creations/      # My Creations gallery
+│   ├── explore/        # Explore feed + leaderboard
 │   ├── view/[id]/      # Public creation viewer (SSR)
 │   └── learn/          # AI learning content
 ├── (auth)/             # Phase 2: authenticated pages
 │   ├── dashboard/      # User dashboard
 │   ├── portfolio/      # Creator portfolio
 │   └── settings/       # Account settings
-├── api/                # Netlify Functions (serverless)
-│   ├── ai/             # AI generation proxy
+├── api/                # Serverless API routes
+│   ├── ai/             # AI generation (story, music, quiz, game, comic)
+│   ├── creations/      # CRUD + download tracking + public feed
+│   ├── sessions/       # Session management + points/badges
 │   ├── share/          # Share link creation
-│   └── og/             # Dynamic OG images
+│   └── download/       # Download tracking
 └── layout.tsx          # Root layout with PWA manifest
 ```
 
@@ -131,19 +142,22 @@ app/
 ```
 1. Kid opens Story Studio → Next.js (no login required)
 2. Kid enters story premise + characters → Frontend form
-3. Frontend calls POST /api/ai/generate → Netlify Function
-4. Netlify Function:
-   a. Applies safety filter to input (block inappropriate content)
-   b. Calls Claude API with kid-safe system prompt
-   c. Receives story text → calls Replicate API for illustrations
-   d. Applies safety filter to output
-   e. Returns story + images → Frontend
+3. Frontend calls POST /api/ai/story → API Route
+4. API Route:
+   a. Validates input + checks rate limit (Firestore session)
+   b. Applies safety filter to input (block inappropriate content)
+   c. Calls text LLM (Claude or Groq fallback) with kid-safe system prompt
+   d. Receives story JSON → calls image provider for illustrations
+      - ComfyUI (self-hosted FLUX) → Replicate (SDXL) → Pollinations (free)
+   e. Applies safety filter to output
+   f. Saves creation to Firestore (creations collection)
+   g. Returns story + images + creationId + shareUrl → Frontend
 5. Frontend renders interactive storybook preview
-6. Kid clicks "Share" → POST /api/share
-   a. Stores creation in Firestore (creations collection)
-   b. Uploads images to Cloud Storage
-   c. Returns shareable URL
-7. Shared link opens SSR page with OG tags → /view/[creationId]
+6. Points tracked via PATCH /api/sessions/points (track_creation + add_points)
+7. Kid clicks "Share" → POST /api/share/:id
+   a. Generates WhatsApp share URL with OG metadata
+   b. Returns shareUrl + whatsappUrl
+8. Shared link opens SSR page with OG tags → /view/[creationId]
 ```
 
 ### Auth Flow (Phase 2 — Phone OTP)
@@ -158,29 +172,76 @@ app/
 8. Auth token included in API calls for rate limiting
 ```
 
+### Points & Badges Flow (Phase 1.5)
+```
+1. Creation completed → Frontend calls PATCH /api/sessions/points
+   a. action: "track_creation" (creationType)
+   b. action: "add_points" (points + concept from aiXray)
+2. Server atomically updates session document in Firestore
+3. Server checks badge unlock criteria against updated data
+4. Returns updated points + any newBadges[]
+5. Frontend shows celebration (confetti + sound) for new badges
+6. Milestone achievements (50pts, 100pts, etc.) trigger CelebrationModal
+```
+
+### Export/Download Pipeline (Phase 1.5)
+```
+Download Button → Client-side generation:
+  Story → PDF (jsPDF with embedded images, A4 layout) or Print (hidden iframe)
+  Quiz  → PDF (questions + answer key)
+  Music → Direct audio file download
+  All   → POST /api/creations/:id/download (fire-and-forget tracking)
+```
+
 ### AI Safety Pipeline
 ```
-Input → [Profanity Filter] → [Age-Appropriate Check] → Claude API
+Input → [Profanity Filter] → [Age-Appropriate Check] → LLM (Claude/Groq)
   ↓
-Claude Response → [Content Safety Filter] → [PII Detection] → Frontend
+LLM Response → [Content Safety Filter] → [PII Detection + Aadhaar Redaction] → Frontend
   ↓
-Image Prompt → [Safety Keywords Block] → Replicate API
+Image Prompt → [Safety Keywords Append] → Image Provider (ComfyUI/Replicate/Pollinations)
   ↓
-Generated Image → [NSFW Detection] → Cloud Storage → Frontend
+Generated Image → [Style Enforcement: cartoon/illustration] → Base64 Data URI → Frontend
 ```
 
 ## External Integrations
 
+### AI Provider Fallback Chains
+
+Each AI capability has a priority-ordered provider chain. The system auto-selects based on which API keys are configured:
+
+**Text/Logic Generation:**
+1. Claude API (Anthropic) — primary, highest quality (`ANTHROPIC_API_KEY`)
+2. Groq (Llama 3.3 70B) — free alternative, fast (`GROQ_API_KEY`)
+
+**Image Generation:**
+1. ComfyUI — self-hosted FLUX.1 Schnell GGUF, free (`COMFYUI_URL`)
+2. Replicate — SDXL, paid per-image (`REPLICATE_API_TOKEN`)
+3. Pollinations.ai — free, no API key needed (always-available fallback)
+
+**Audio/Music Generation:**
+1. Google Lyria RealTime — free via Gemini API (`GEMINI_API_KEY`)
+2. Replicate MusicGen — paid (`REPLICATE_API_TOKEN`)
+3. Mock audio — programmatic WAV generation, zero-API fallback
+
+### All Integrations
+
 | Service | Purpose | Auth Method | Phase |
 |---------|---------|-------------|-------|
-| Claude API (Anthropic) | Text generation, quiz logic, AI X-Ray explanations | API key (server-side) | 1 |
-| Replicate API | SDXL/Flux image generation | API token (server-side) | 1 |
-| Suno / MusicGen | Music and audio generation | API key (server-side) | 1 |
-| Firebase Auth | Phone OTP authentication | Firebase SDK | 2 |
+| Claude API (Anthropic) | Text generation, quiz logic, AI X-Ray | API key (server-side) | 1 |
+| Groq (Llama 3.3) | Text generation fallback (free) | API key (server-side) | 1 |
+| ComfyUI (self-hosted) | FLUX image generation (free) | URL-based (server-side) | 1 |
+| Replicate API | SDXL image + MusicGen audio | API token (server-side) | 1 |
+| Pollinations.ai | Free image generation fallback | None (public API) | 1 |
+| Google Lyria RealTime | Music generation (free) | Gemini API key (server-side) | 1 |
 | Firebase Firestore | Database | Firebase SDK | 1 |
 | Firebase Cloud Storage | Media file storage | Firebase SDK | 1 |
-| Razorpay | Payments (UPI, cards, wallets) | API key + webhook | 2 |
+| jsPDF | Client-side PDF generation for exports | npm package (client-side) | 1 |
+| canvas-confetti | Celebration animations | npm package (client-side) | 1 |
+| Lottie (lottie-react) | Koko mascot animations | npm package (client-side) | 1 |
 | WhatsApp Share API | Social sharing | URL scheme (client-side) | 1 |
+| Firebase Auth | Phone OTP authentication | Firebase SDK | 2 |
+| Razorpay | Payments (UPI, cards, wallets) | API key + webhook | 2 |
 | Google Classroom API | School distribution | OAuth | 3 |
 
 ## Deployment

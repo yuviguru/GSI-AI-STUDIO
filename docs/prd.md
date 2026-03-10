@@ -89,6 +89,19 @@ India's CBSE mandate (October 2025 announcement) requires AI & CT curriculum fro
 **Description**: Every creation gets a unique shareable URL (hosted on Netlify). WhatsApp-optimized share cards with preview image. No login required to view. Includes "Made with GSI AI Studio" branding for organic growth.
 **Metrics**: Share rate, view count per creation, viral coefficient
 
+### Phase 1.5 Features (Completed — Enhanced Playground)
+
+- **Game Studio** ✅: Text adventure game creation with branching scenes and choices
+- **Comic Studio** ✅: Multi-panel illustrated comics with dialogue bubbles (manga, cartoon, superhero, indie, chibi styles)
+- **Download/Export** ✅: PDF export (stories, quizzes), print via hidden iframe, audio download, download tracking
+- **Remix/Fork** ✅: Remix any public creation with pre-filled prompts, `remixedFromId` linking
+- **My Creations Gallery** ✅: Session-based creation gallery with type filters
+- **Explore Feed & Leaderboard** ✅: Public creation feed (trending/newest), top creators leaderboard
+- **AI Points & Badges** ✅: Points per creation (10-15), 12 unlockable badges, session-level tracking with Firestore persistence
+- **Onboarding Flow** ✅: First-time carousel (Welcome, Create, Learn, Share), stored in localStorage
+- **Fun Kid UI + Koko Mascot** ✅: Lottie-animated mascot with 7 expressions, confetti celebrations, Web Audio sound effects
+- **Creation Templates & Daily Spark** ✅: 30+ daily sparks per type, template carousel with categories, "Surprise Me!" random selection
+
 ### Phase 2 Features (Weeks 5-12 — GSI AI Creators App)
 
 - **User Accounts**: Phone OTP login (Firebase Auth), parent creates account, adds kid profiles
@@ -145,7 +158,7 @@ India's CBSE mandate (October 2025 announcement) requires AI & CT curriculum fro
 ## Open Questions
 
 - [ ] Exact CBSE AI & CT curriculum framework details (resource materials expected by end of 2025)
-- [ ] Music generation API final selection (Suno vs MusicGen vs alternatives)
+- [x] Music generation API: Resolved — using Google Lyria RealTime (free) → Replicate MusicGen → Mock fallback chain
 - [ ] Pricing validation with target parents (₹299/mo resonance testing)
 - [ ] Data retention policy for anonymous Phase 1 creations
-- [ ] WhatsApp Business API vs simple share links for Phase 1
+- [x] WhatsApp sharing: Resolved — using simple WhatsApp Share URL scheme (no Business API needed)
