@@ -118,3 +118,25 @@ export type KidProfileInput = z.infer<typeof kidProfileSchema>;
 export type BeatTheAiStartInput = z.infer<typeof beatTheAiStartSchema>;
 export type BeatTheAiSubmitResponseInput = z.infer<typeof beatTheAiSubmitResponseSchema>;
 export type BeatTheAiJudgeInput = z.infer<typeof beatTheAiJudgeSchema>;
+
+// ─── MindX — Skill Arena ────────────────────────────────────
+
+const skillArenaModuleEnum = z.enum(['speaking', 'listening', 'thinking', 'reading']);
+
+export const skillArenaStartSchema = z.object({
+  module: skillArenaModuleEnum,
+});
+
+export const skillArenaEvaluateSchema = z.object({
+  assessmentId: z.string().min(1),
+  answers: z.array(z.object({
+    challengeId: z.string().min(1),
+    text: z.string().max(2000).optional(),
+    voiceTranscript: z.string().max(2000).optional(),
+    selectedOption: z.string().max(200).optional(),
+    timeUsedSeconds: z.number().int().min(0),
+  })).min(1).max(10),
+});
+
+export type SkillArenaStartInput = z.infer<typeof skillArenaStartSchema>;
+export type SkillArenaEvaluateInput = z.infer<typeof skillArenaEvaluateSchema>;
