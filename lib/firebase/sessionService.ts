@@ -22,6 +22,17 @@ interface SessionDoc {
   conceptsLearned?: string[];
   creationsByType?: Record<string, number>;
   shareCount?: number;
+  // Beat the AI skill & stats fields (Phase 1.5)
+  beatTheAiSkills?: Record<string, { xp: number; level: number }>;
+  beatTheAiStats?: {
+    totalRounds: number;
+    wins: number;
+    losses: number;
+    ties: number;
+    currentStreak: number;
+    longestStreak: number;
+    byCategory: Record<string, { rounds: number; wins: number }>;
+  };
 }
 
 // ─── Points types ─────────────────────────────────────────────────────────────

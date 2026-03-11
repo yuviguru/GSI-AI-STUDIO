@@ -87,6 +87,27 @@ export const kidProfileSchema = z.object({
   avatar: z.string().max(30).optional(),
 });
 
+// ─── Beat the AI ─────────────────────────────────────────────
+
+const beatTheAiCategoryEnum = z.enum([
+  'story_sprint', 'quiz_whiz', 'caption_battle', 'rhyme_time',
+]);
+
+export const beatTheAiStartSchema = z.object({
+  category: beatTheAiCategoryEnum,
+});
+
+export const beatTheAiSubmitResponseSchema = z.object({
+  roundId: z.string().min(1),
+  kidResponse: z.string().min(10, 'Write at least 10 characters!').max(2000),
+  timeUsedSeconds: z.number().int().min(0),
+});
+
+export const beatTheAiJudgeSchema = z.object({
+  roundId: z.string().min(1),
+  judge: z.literal(true),
+});
+
 export type StoryInput = z.infer<typeof storyInputSchema>;
 export type MusicInput = z.infer<typeof musicInputSchema>;
 export type QuizInput = z.infer<typeof quizInputSchema>;
@@ -94,3 +115,6 @@ export type GameInput = z.infer<typeof gameInputSchema>;
 export type ComicInput = z.infer<typeof comicInputSchema>;
 export type SaveCreationInput = z.infer<typeof saveCreationSchema>;
 export type KidProfileInput = z.infer<typeof kidProfileSchema>;
+export type BeatTheAiStartInput = z.infer<typeof beatTheAiStartSchema>;
+export type BeatTheAiSubmitResponseInput = z.infer<typeof beatTheAiSubmitResponseSchema>;
+export type BeatTheAiJudgeInput = z.infer<typeof beatTheAiJudgeSchema>;

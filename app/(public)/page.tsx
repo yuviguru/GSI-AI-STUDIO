@@ -194,6 +194,37 @@ export default function HomePage() {
         </div>
       </motion.section>
 
+      {/* Beat the AI challenge card */}
+      <motion.section
+        className="mx-auto max-w-lg px-4 pb-6 sm:max-w-3xl"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.div variants={fadeUp}>
+          <Link href="/beat-the-ai" className="group block">
+            <div className="relative overflow-hidden rounded-2xl border border-purple-100 bg-gradient-to-r from-purple-50 to-indigo-50 p-5 transition-shadow hover:shadow-lg hover:shadow-purple-100">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-100 text-3xl">
+                  🤖
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-display text-base font-bold text-gray-900">
+                    Beat the AI
+                  </h3>
+                  <p className="mt-0.5 text-sm text-gray-500">
+                    Can your creativity beat artificial intelligence?
+                  </p>
+                </div>
+                <span className="text-sm font-semibold text-purple-600 transition-transform group-hover:translate-x-1">
+                  Play →
+                </span>
+              </div>
+            </div>
+          </Link>
+        </motion.div>
+      </motion.section>
+
       {/* Recent Creations — empty state */}
       <section className="mx-auto max-w-lg px-4 pb-10 sm:max-w-3xl">
         <h2 className="font-display text-lg font-bold text-gray-900">
