@@ -225,6 +225,37 @@ export default function HomePage() {
         </motion.div>
       </motion.section>
 
+      {/* MindX Skill Arena card */}
+      <motion.section
+        className="mx-auto max-w-lg px-4 pb-6 sm:max-w-3xl"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.div variants={fadeUp}>
+          <Link href="/skill-arena" className="group block">
+            <div className="relative overflow-hidden rounded-2xl border border-cyan-100 bg-gradient-to-r from-cyan-50 to-blue-50 p-5 transition-shadow hover:shadow-lg hover:shadow-cyan-100">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-100 text-3xl">
+                  🧠
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-display text-base font-bold text-gray-900">
+                    MindX Skill Arena
+                  </h3>
+                  <p className="mt-0.5 text-sm text-gray-500">
+                    Test your skills and get AI-powered feedback
+                  </p>
+                </div>
+                <span className="text-sm font-semibold text-cyan-600 transition-transform group-hover:translate-x-1">
+                  Try →
+                </span>
+              </div>
+            </div>
+          </Link>
+        </motion.div>
+      </motion.section>
+
       {/* Recent Creations — empty state */}
       <section className="mx-auto max-w-lg px-4 pb-10 sm:max-w-3xl">
         <h2 className="font-display text-lg font-bold text-gray-900">
