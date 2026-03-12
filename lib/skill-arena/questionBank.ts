@@ -9,27 +9,43 @@ import type {
 // ─── Speaking Challenges ──────────────────────────────────
 
 const SPEAKING_CHALLENGES: Omit<SkillArenaChallenge, 'id'>[] = [
-  // read_aloud
+  // ── read_aloud (12) ──
   { type: 'read_aloud', module: 'speaking', question: { text: 'Read the following passage clearly and with expression', passage: 'The mango tree in our school garden is the oldest tree in the neighbourhood. Every summer, it gives us the sweetest mangoes. The children gather under its shade during recess, sharing stories and laughter.', timeLimit: 60, isIndiaThemed: true } },
   { type: 'read_aloud', module: 'speaking', question: { text: 'Read this passage aloud with clear pronunciation', passage: 'The Indian Space Research Organisation launched its first rocket in 1963. Since then, ISRO has sent missions to the Moon and Mars, making India proud on the world stage.', timeLimit: 60, isIndiaThemed: true } },
   { type: 'read_aloud', module: 'speaking', question: { text: 'Read the following passage with feeling', passage: 'The rain came suddenly, turning the dusty streets into little rivers. Children ran out of their houses, splashing in puddles and catching raindrops on their tongues. The monsoon had finally arrived.', timeLimit: 60, isIndiaThemed: true } },
   { type: 'read_aloud', module: 'speaking', question: { text: 'Read this passage clearly at a steady pace', passage: 'Robots are machines that can be programmed to do tasks. Some robots help doctors perform surgeries. Others explore the deep ocean or outer space where humans cannot easily go.', timeLimit: 60, isIndiaThemed: false } },
   { type: 'read_aloud', module: 'speaking', question: { text: 'Read the passage with expression and proper pauses', passage: 'The Taj Mahal stands as one of the most beautiful buildings in the world. Built by Emperor Shah Jahan, it took over twenty years and thousands of workers to complete this marble wonder.', timeLimit: 60, isIndiaThemed: true } },
   { type: 'read_aloud', module: 'speaking', question: { text: 'Read this clearly and confidently', passage: 'The butterfly begins its life as a tiny egg. It hatches into a caterpillar, then wraps itself in a cocoon. Weeks later, it emerges as a beautiful butterfly with colourful wings.', timeLimit: 60, isIndiaThemed: false } },
+  { type: 'read_aloud', module: 'speaking', question: { text: 'Read aloud with proper emphasis', passage: 'The Himalayas are the highest mountain range in the world, stretching across five countries. Mount Everest, the tallest peak, rises to 8,849 metres. Every year, hundreds of climbers attempt to reach its summit.', timeLimit: 60, isIndiaThemed: true } },
+  { type: 'read_aloud', module: 'speaking', question: { text: 'Read this passage with clear articulation', passage: 'Coral reefs are sometimes called the rainforests of the ocean. They cover less than one percent of the ocean floor but support nearly 25 percent of all marine species. Rising sea temperatures threaten these colourful underwater ecosystems.', timeLimit: 60, isIndiaThemed: false } },
+  { type: 'read_aloud', module: 'speaking', question: { text: 'Read the following paragraph at a natural pace', passage: 'Every morning, the dabbawala picks up thousands of lunchboxes from homes in Mumbai. By midday, each box reaches the correct office worker across the city. This delivery system has been running since 1890 with almost no errors.', timeLimit: 60, isIndiaThemed: true } },
+  { type: 'read_aloud', module: 'speaking', question: { text: 'Read this passage clearly and with expression', passage: 'Marie Curie was the first woman to win a Nobel Prize. She discovered two new elements, polonium and radium, and her work helped develop X-ray machines used in hospitals today. Her courage and curiosity changed science forever.', timeLimit: 60, isIndiaThemed: false } },
+  { type: 'read_aloud', module: 'speaking', question: { text: 'Read the passage with feeling and proper pauses', passage: 'On the banks of the Ganges in Varanasi, thousands of tiny clay lamps float on the water every evening. The flickering lights create a golden glow against the dark sky. This ancient ritual of Ganga Aarti draws visitors from around the world.', timeLimit: 60, isIndiaThemed: true } },
+  { type: 'read_aloud', module: 'speaking', question: { text: 'Read this passage at a steady, clear pace', passage: 'Artificial intelligence is changing the way we live, work, and learn. From voice assistants to self-driving cars, AI is becoming part of everyday life. Understanding how AI works will be one of the most important skills for the future.', timeLimit: 60, isIndiaThemed: false } },
 
-  // describe
+  // ── describe (10) ──
   { type: 'describe', module: 'speaking', question: { text: 'Describe what you think a typical morning looks like at a busy Indian railway station. Include sounds, sights, and feelings.', timeLimit: 90, isIndiaThemed: true } },
   { type: 'describe', module: 'speaking', question: { text: 'Describe your favourite festival and explain why it is special to you.', timeLimit: 90, isIndiaThemed: true } },
   { type: 'describe', module: 'speaking', question: { text: 'Describe what you think life would be like on Mars. What would you see, eat, and do?', timeLimit: 90, isIndiaThemed: false } },
   { type: 'describe', module: 'speaking', question: { text: 'Describe your school playground during lunch break. What activities are happening?', timeLimit: 90, isIndiaThemed: false } },
   { type: 'describe', module: 'speaking', question: { text: 'Describe a street food market in India. What can you see, smell, and hear?', timeLimit: 90, isIndiaThemed: true } },
+  { type: 'describe', module: 'speaking', question: { text: 'Describe what happens during a cricket match in your neighbourhood. Talk about the players, the crowd, and the atmosphere.', timeLimit: 90, isIndiaThemed: true } },
+  { type: 'describe', module: 'speaking', question: { text: 'Describe your dream school. What subjects would be taught? What would the classrooms and campus look like?', timeLimit: 90, isIndiaThemed: false } },
+  { type: 'describe', module: 'speaking', question: { text: 'Describe what you see when you look out of your window on a rainy day. Use vivid words to paint a picture.', timeLimit: 90, isIndiaThemed: false } },
+  { type: 'describe', module: 'speaking', question: { text: 'Describe a visit to a local vegetable market (sabzi mandi) early in the morning. Include colours, sounds, and people.', timeLimit: 90, isIndiaThemed: true } },
+  { type: 'describe', module: 'speaking', question: { text: 'Describe what it would be like to live underwater in an ocean city. What would your house, school, and transport look like?', timeLimit: 90, isIndiaThemed: false } },
 
-  // respond
+  // ── respond (10) ──
   { type: 'respond', module: 'speaking', question: { text: 'If you could have any superpower for one day, what would it be and what would you do with it? Explain your answer.', timeLimit: 60, isIndiaThemed: false } },
   { type: 'respond', module: 'speaking', question: { text: 'Do you think animals should be kept in zoos? Share your opinion and reasons.', timeLimit: 60, isIndiaThemed: false } },
   { type: 'respond', module: 'speaking', question: { text: 'What is the most interesting thing you have learned recently? Why did it interest you?', timeLimit: 60, isIndiaThemed: false } },
   { type: 'respond', module: 'speaking', question: { text: 'If you could invite any famous Indian person (living or from history) for dinner, who would it be and what would you ask them?', timeLimit: 60, isIndiaThemed: true } },
   { type: 'respond', module: 'speaking', question: { text: 'Do you think AI will replace teachers one day? Share your thoughts.', timeLimit: 60, isIndiaThemed: false } },
+  { type: 'respond', module: 'speaking', question: { text: 'Should students be allowed to use mobile phones in school? Give reasons for your answer.', timeLimit: 60, isIndiaThemed: false } },
+  { type: 'respond', module: 'speaking', question: { text: 'Is it better to read books on paper or on a screen? Explain your preference.', timeLimit: 60, isIndiaThemed: false } },
+  { type: 'respond', module: 'speaking', question: { text: 'If you could travel back in time to any period in Indian history, when would you go and why?', timeLimit: 60, isIndiaThemed: true } },
+  { type: 'respond', module: 'speaking', question: { text: 'Some people say homework is unnecessary. Do you agree or disagree? Give your reasons.', timeLimit: 60, isIndiaThemed: false } },
+  { type: 'respond', module: 'speaking', question: { text: 'What is one invention that you think has changed the world the most? Explain your choice.', timeLimit: 60, isIndiaThemed: false } },
 ];
 
 // ─── Listening Challenges ─────────────────────────────────
