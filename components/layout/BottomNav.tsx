@@ -21,6 +21,7 @@ export function BottomNav() {
 
   const isStudioActive = pathname.startsWith('/create/');
   const isBeatAiActive = pathname === '/beat-the-ai';
+  const isMindxActive = pathname === '/mindx';
   const isExploreActive = pathname === '/explore';
   const isMyStuffActive = pathname === '/creations';
 
@@ -165,6 +166,27 @@ export function BottomNav() {
             )}
             <span className="text-lg leading-none">🤖</span>
             <span>Beat AI</span>
+          </Link>
+
+          {/* MindX tab */}
+          <Link
+            href="/mindx"
+            onClick={closeSheet}
+            className={cn(
+              'relative flex flex-1 flex-col items-center justify-center gap-0.5',
+              'text-xs font-medium transition-colors',
+              isMindxActive ? 'text-brand-purple' : 'text-gray-400',
+            )}
+          >
+            {isMindxActive && (
+              <motion.span
+                layoutId="bottomnav-indicator"
+                className="absolute -top-px left-3 right-3 h-0.5 rounded-full bg-brand-purple"
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              />
+            )}
+            <span className="text-lg leading-none">🧠</span>
+            <span>MindX</span>
           </Link>
 
           {/* Explore tab */}
