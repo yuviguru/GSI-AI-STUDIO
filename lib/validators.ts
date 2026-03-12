@@ -90,7 +90,9 @@ export const kidProfileSchema = z.object({
 // ─── Beat the AI ─────────────────────────────────────────────
 
 const beatTheAiCategoryEnum = z.enum([
-  'story_sprint', 'quiz_whiz', 'caption_battle', 'rhyme_time',
+  'story_sprint', 'rhyme_time',
+  'fact_or_bluff', 'comeback_king', 'explain_it', 'debate_champ',
+  'math_wizard', 'science_detective', 'code_cracker',
 ]);
 
 export const beatTheAiStartSchema = z.object({
@@ -99,7 +101,7 @@ export const beatTheAiStartSchema = z.object({
 
 export const beatTheAiSubmitResponseSchema = z.object({
   roundId: z.string().min(1),
-  kidResponse: z.string().min(10, 'Write at least 10 characters!').max(2000),
+  kidResponse: z.string().min(3, 'Write at least 3 characters!').max(2000),
   timeUsedSeconds: z.number().int().min(0),
 });
 

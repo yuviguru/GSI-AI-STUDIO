@@ -17,23 +17,53 @@ const CATEGORY_RUBRIC: Record<BeatTheAiCategory, string> = {
 - accuracy: Story structure (beginning, middle, end) and coherence
 - heart: Emotional depth, personal voice, and cultural references`,
 
-  quiz_whiz: `For quiz questions, judge:
-- creativity: Originality and cleverness of the questions
-- funFactor: How interesting and engaging the questions are to answer
-- accuracy: Correctness of answers and quality of explanations
-- heart: Educational value and relevance to the topic`,
-
-  caption_battle: `For captions, judge:
-- creativity: Originality and unexpected humor
-- funFactor: How funny and entertaining it is
-- accuracy: Relevance to the described scene
-- heart: Personal flair and relatable humor`,
-
   rhyme_time: `For poems, judge:
 - creativity: Original imagery and word choices
 - funFactor: How enjoyable and musical it sounds
 - accuracy: Rhyme quality and rhythm/meter
 - heart: Emotional depth and personal feeling`,
+
+  fact_or_bluff: `For facts/bluffs, judge:
+- creativity: How surprising and original the claim is
+- funFactor: How entertaining and intriguing it is to read
+- accuracy: If a real fact — is it actually true? If a bluff — is it convincingly written?
+- heart: How engaging the writing style is, use of interesting details`,
+
+  comeback_king: `For comebacks, judge:
+- creativity: Originality and cleverness of the response
+- funFactor: How funny and witty the comeback is
+- accuracy: Relevance to what the friend said
+- heart: Personal flair, friendliness, and personality shown`,
+
+  explain_it: `For explanations, judge:
+- creativity: Use of clever analogies and comparisons
+- funFactor: How fun and engaging the explanation is
+- accuracy: Scientific/factual correctness of the explanation
+- heart: How much care is shown in making it truly understandable`,
+
+  debate_champ: `For debates, judge:
+- creativity: Originality of arguments and examples used
+- funFactor: How persuasive and engaging the argument is
+- accuracy: Logical soundness and use of supporting evidence
+- heart: Passion, conviction, and personal connection shown`,
+
+  math_wizard: `For math challenges, judge:
+- creativity: Originality of approach and problem-solving strategy
+- funFactor: How clearly and engagingly the reasoning is presented
+- accuracy: Mathematical correctness of calculations and logic
+- heart: Clarity of explanation and effort shown in working`,
+
+  science_detective: `For science hypotheses, judge:
+- creativity: Originality of the hypothesis and thinking
+- funFactor: How interesting and thought-provoking the response is
+- accuracy: Scientific plausibility and use of real scientific principles
+- heart: Curiosity shown and depth of scientific thinking`,
+
+  code_cracker: `For puzzles/riddles, judge:
+- creativity: Elegance and cleverness of the solution approach
+- funFactor: How satisfying and clear the solution presentation is
+- accuracy: Correctness of the answer
+- heart: Quality of the explanation and logical reasoning shown`,
 };
 
 // ─── Judge Response Schema ───────────────────────────────────

@@ -136,9 +136,9 @@ describe('calculateSkillXp', () => {
     expect(xp.creativity).toBeUndefined();
   });
 
-  it('gives quiz_whiz primary skill to knowledge', () => {
-    const round = makeRound({ category: 'quiz_whiz', result: 'ai_wins', kidScores: { creativity: 1, funFactor: 1, accuracy: 1, heart: 1 }, timeUsedSeconds: 230 });
-    round.prompt = { ...round.prompt, category: 'quiz_whiz', timeLimit: 240, isIndiaThemed: false };
+  it('gives explain_it primary skill to knowledge', () => {
+    const round = makeRound({ category: 'explain_it', result: 'ai_wins', kidScores: { creativity: 1, funFactor: 1, accuracy: 1, heart: 1 }, timeUsedSeconds: 100 });
+    round.prompt = { ...round.prompt, category: 'explain_it', timeLimit: 120, isIndiaThemed: false };
     const xp = calculateSkillXp(round, 0);
     expect(xp.knowledge).toBeGreaterThanOrEqual(5);
   });
