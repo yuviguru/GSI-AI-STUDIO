@@ -77,10 +77,22 @@ export async function POST(request: NextRequest) {
     const { band, bandTitle } = scoreToBand(evalResult.score);
 
     // Firestore transaction: update assessment + session progress
+    // Re-read assessment inside transaction to guard against race conditions
+    // (two concurrent requests both passing the pre-check above)
     const sessionRef = adminDb.collection(SESSIONS_COLLECTION).doc(sessionId);
 
     const { previousBand, improved, aiPointsEarned } = await adminDb.runTransaction(async (tx) => {
-      const sessionDoc = await tx.get(sessionRef);
+      // Re-check assessment status under transaction lock to prevent double-counting
+      const [assessmentSnap, sessionDoc] = await Promise.all([
+        tx.get(assessmentRef),
+        tx.get(sessionRef),
+      ]);
+
+      const assessmentData = assessmentSnap.data()!;
+      if (assessmentData.status !== 'pending') {
+        throw new AppException('INVALID_STATE', 'Assessment already processed', 409);
+      }
+
       const sessionData = sessionDoc.exists ? sessionDoc.data()! : {};
 
       // Get current module progress
