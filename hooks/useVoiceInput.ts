@@ -5,8 +5,6 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 interface UseVoiceInputOptions {
   /** Language for speech recognition (default: 'en-IN') */
   lang?: string;
-  /** Auto-stop after this many seconds of silence */
-  maxSilenceSeconds?: number;
 }
 
 interface UseVoiceInputReturn {
@@ -36,7 +34,7 @@ function getSpeechRecognition(): any {
 }
 
 export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInputReturn {
-  const { lang = 'en-IN', maxSilenceSeconds = 5 } = options;
+  const { lang = 'en-IN' } = options;
 
   const [isSupported] = useState(() => getSpeechRecognition() !== null);
   const [isRecording, setIsRecording] = useState(false);
@@ -45,28 +43,19 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
-  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track whether user explicitly stopped vs browser killed the session
   const intentionalStopRef = useRef(false);
   // Accumulated final transcript across restarts
   const finalTranscriptRef = useRef('');
 
-  const clearSilenceTimer = useCallback(() => {
-    if (silenceTimerRef.current) {
-      clearTimeout(silenceTimerRef.current);
-      silenceTimerRef.current = null;
-    }
-  }, []);
-
   const stopRecording = useCallback(() => {
     intentionalStopRef.current = true;
-    clearSilenceTimer();
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       recognitionRef.current = null;
     }
     setIsRecording(false);
-  }, [clearSilenceTimer]);
+  }, []);
 
   const startRecording = useCallback(() => {
     const SR = getSpeechRecognition();
@@ -92,8 +81,6 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       recognition.onresult = (event: any) => {
-        clearSilenceTimer();
-
         let interim = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const result = event.results[i];
@@ -108,20 +95,6 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
         }
 
         setTranscript((finalTranscript + interim).trim());
-
-        // Reset silence timer — stop after silence ONLY once we have some speech
-        silenceTimerRef.current = setTimeout(() => {
-          intentionalStopRef.current = true;
-          if (recognitionRef.current) {
-            // Detach handlers to prevent onend auto-restart
-            recognitionRef.current.onresult = null;
-            recognitionRef.current.onerror = null;
-            recognitionRef.current.onend = null;
-            recognitionRef.current.stop();
-            recognitionRef.current = null;
-          }
-          setIsRecording(false);
-        }, maxSilenceSeconds * 1000);
       };
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -141,7 +114,6 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
       };
 
       recognition.onend = () => {
-        clearSilenceTimer();
         // Chrome kills continuous recognition periodically (network timeout,
         // silence, or internal limit). Auto-restart unless user explicitly stopped.
         if (!intentionalStopRef.current) {
@@ -170,10 +142,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
       setError('Could not start voice recording. Please try again.');
       recognitionRef.current = null;
     }
-
-    // No initial silence timer — wait for user to actually speak first.
-    // The silence timer only starts after the first onresult event.
-  }, [lang, maxSilenceSeconds, clearSilenceTimer]);
+  }, [lang]);
 
   const reset = useCallback(() => {
     stopRecording();
@@ -192,9 +161,8 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
         recognitionRef.current.abort();
         recognitionRef.current = null;
       }
-      clearSilenceTimer();
     };
-  }, [clearSilenceTimer]);
+  }, []);
 
   return {
     isSupported,
