@@ -13,7 +13,7 @@ interface SpeakingInputProps {
 
 export function SpeakingInput({ value, onChange, disabled }: SpeakingInputProps) {
   const { isSupported, isRecording, transcript, error, startRecording, stopRecording, reset } =
-    useVoiceInput({ lang: 'en-IN', maxSilenceSeconds: 5 });
+    useVoiceInput({ lang: 'en-IN', maxSilenceSeconds: 8 });
 
   const [useFallback, setUseFallback] = useState(!isSupported);
 

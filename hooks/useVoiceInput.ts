@@ -46,6 +46,10 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track whether user explicitly stopped vs browser killed the session
+  const intentionalStopRef = useRef(false);
+  // Accumulated final transcript across restarts
+  const finalTranscriptRef = useRef('');
 
   const clearSilenceTimer = useCallback(() => {
     if (silenceTimerRef.current) {
@@ -55,6 +59,7 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
   }, []);
 
   const stopRecording = useCallback(() => {
+    intentionalStopRef.current = true;
     clearSilenceTimer();
     if (recognitionRef.current) {
       recognitionRef.current.stop();
@@ -72,65 +77,94 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
 
     setError(null);
     setTranscript('');
-
-    const recognition = new SR();
-    recognition.lang = lang;
-    recognition.interimResults = true;
-    recognition.continuous = true;
-    recognition.maxAlternatives = 1;
-
-    let finalTranscript = '';
+    intentionalStopRef.current = false;
+    finalTranscriptRef.current = '';
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    recognition.onresult = (event: any) => {
-      clearSilenceTimer();
+    function createRecognition(SR: any, existingFinal: string) {
+      const recognition = new SR();
+      recognition.lang = lang;
+      recognition.interimResults = true;
+      recognition.continuous = true;
+      recognition.maxAlternatives = 1;
 
-      let interim = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        if (result && result[0]) {
-          if (result.isFinal) {
-            finalTranscript += result[0].transcript + ' ';
-          } else {
-            interim += result[0].transcript;
+      let finalTranscript = existingFinal;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      recognition.onresult = (event: any) => {
+        clearSilenceTimer();
+
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          if (result && result[0]) {
+            if (result.isFinal) {
+              finalTranscript += result[0].transcript + ' ';
+              finalTranscriptRef.current = finalTranscript;
+            } else {
+              interim += result[0].transcript;
+            }
           }
         }
-      }
 
-      setTranscript((finalTranscript + interim).trim());
+        setTranscript((finalTranscript + interim).trim());
 
-      // Reset silence timer
-      silenceTimerRef.current = setTimeout(() => {
-        stopRecording();
-      }, maxSilenceSeconds * 1000);
-    };
+        // Reset silence timer — stop after silence ONLY once we have some speech
+        silenceTimerRef.current = setTimeout(() => {
+          intentionalStopRef.current = true;
+          if (recognitionRef.current) {
+            recognitionRef.current.stop();
+            recognitionRef.current = null;
+          }
+          setIsRecording(false);
+        }, maxSilenceSeconds * 1000);
+      };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    recognition.onerror = (event: any) => {
-      if (event.error === 'no-speech') {
-        setError('No speech detected. Try again.');
-      } else if (event.error === 'not-allowed') {
-        setError('Microphone access denied. Please allow mic access.');
-      } else {
-        setError(`Speech error: ${event.error}`);
-      }
-      setIsRecording(false);
-    };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      recognition.onerror = (event: any) => {
+        // 'no-speech' and 'aborted' are recoverable — don't kill recording
+        if (event.error === 'no-speech' || event.error === 'aborted') {
+          // Browser will fire onend next — let auto-restart handle it
+          return;
+        }
+        if (event.error === 'not-allowed') {
+          setError('Microphone access denied. Please allow mic access.');
+        } else {
+          setError(`Speech error: ${event.error}`);
+        }
+        intentionalStopRef.current = true;
+        setIsRecording(false);
+      };
 
-    recognition.onend = () => {
-      setIsRecording(false);
-      clearSilenceTimer();
-    };
+      recognition.onend = () => {
+        clearSilenceTimer();
+        // Chrome kills continuous recognition periodically (network timeout,
+        // silence, or internal limit). Auto-restart unless user explicitly stopped.
+        if (!intentionalStopRef.current) {
+          try {
+            const newRecognition = createRecognition(SR, finalTranscriptRef.current);
+            recognitionRef.current = newRecognition;
+            newRecognition.start();
+          } catch {
+            // Can't restart — stop cleanly
+            setIsRecording(false);
+          }
+          return;
+        }
+        setIsRecording(false);
+      };
 
+      return recognition;
+    }
+
+    const recognition = createRecognition(SR, '');
     recognitionRef.current = recognition;
     recognition.start();
     setIsRecording(true);
 
-    // Auto-stop after silence
-    silenceTimerRef.current = setTimeout(() => {
-      stopRecording();
-    }, maxSilenceSeconds * 1000);
-  }, [lang, maxSilenceSeconds, clearSilenceTimer, stopRecording]);
+    // No initial silence timer — wait for user to actually speak first.
+    // The silence timer only starts after the first onresult event.
+  }, [lang, maxSilenceSeconds, clearSilenceTimer]);
 
   const reset = useCallback(() => {
     stopRecording();
