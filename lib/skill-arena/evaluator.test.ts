@@ -89,8 +89,8 @@ describe('evaluateAssessment — MCQ auto-scoring', () => {
 
     const result = await evaluateAssessment('thinking', challenges, answers, 'medium');
 
-    // 2/3 correct × 20 each = 40 (raw sum, not normalized)
-    expect(result.score).toBe(40);
+    // 2/3 correct × 20 each = 40 raw, normalized: round(40/60 * 100) = 67
+    expect(result.score).toBe(67);
   });
 
   it('generates mentor feedback for all-MCQ assessment without AI call', async () => {
