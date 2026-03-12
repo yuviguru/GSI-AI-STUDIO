@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { TextAnswer } from './TextAnswer';
@@ -17,24 +17,21 @@ export function SpeakingInput({ value, onChange, disabled }: SpeakingInputProps)
 
   const [useFallback, setUseFallback] = useState(!isSupported);
 
-  // Sync transcript to parent
+  // Sync transcript to parent via useEffect (not during render)
+  useEffect(() => {
+    if (transcript && transcript !== value) {
+      onChange(transcript);
+    }
+  }, [transcript]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleToggleRecording = () => {
     if (isRecording) {
       stopRecording();
-      // Commit transcript to value
-      if (transcript.trim()) {
-        onChange(transcript.trim());
-      }
     } else {
       reset();
       startRecording();
     }
   };
-
-  // When transcript updates, update value too
-  if (isRecording && transcript && transcript !== value) {
-    onChange(transcript);
-  }
 
   if (useFallback) {
     return (
@@ -56,6 +53,9 @@ export function SpeakingInput({ value, onChange, disabled }: SpeakingInputProps)
       </div>
     );
   }
+
+  // Show transcript directly when recording, parent value otherwise
+  const displayText = isRecording ? (transcript || 'Listening...') : (value || '');
 
   return (
     <div className="space-y-3">
@@ -80,11 +80,11 @@ export function SpeakingInput({ value, onChange, disabled }: SpeakingInputProps)
       </div>
 
       {/* Live transcript */}
-      {(value || isRecording) && (
+      {(displayText || isRecording) && (
         <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
           <p className="text-xs font-medium text-gray-500">What I heard:</p>
           <p className="mt-1 text-sm text-gray-800">
-            {value || (isRecording ? 'Listening...' : '')}
+            {displayText}
           </p>
         </div>
       )}
