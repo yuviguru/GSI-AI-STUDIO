@@ -113,6 +113,10 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
         silenceTimerRef.current = setTimeout(() => {
           intentionalStopRef.current = true;
           if (recognitionRef.current) {
+            // Detach handlers to prevent onend auto-restart
+            recognitionRef.current.onresult = null;
+            recognitionRef.current.onerror = null;
+            recognitionRef.current.onend = null;
             recognitionRef.current.stop();
             recognitionRef.current = null;
           }
@@ -159,8 +163,13 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
 
     const recognition = createRecognition(SR, '');
     recognitionRef.current = recognition;
-    recognition.start();
-    setIsRecording(true);
+    try {
+      recognition.start();
+      setIsRecording(true);
+    } catch {
+      setError('Could not start voice recording. Please try again.');
+      recognitionRef.current = null;
+    }
 
     // No initial silence timer — wait for user to actually speak first.
     // The silence timer only starts after the first onresult event.
@@ -172,11 +181,16 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
     setError(null);
   }, [stopRecording]);
 
-  // Cleanup on unmount
+  // Cleanup on unmount — detach handlers and abort to fully release Chrome's speech service
   useEffect(() => {
     return () => {
+      intentionalStopRef.current = true;
       if (recognitionRef.current) {
-        recognitionRef.current.stop();
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.onend = null;
+        recognitionRef.current.abort();
+        recognitionRef.current = null;
       }
       clearSilenceTimer();
     };
