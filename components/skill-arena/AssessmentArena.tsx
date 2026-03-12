@@ -20,7 +20,6 @@ interface AssessmentArenaProps {
   challenges: SkillArenaChallenge[];
   currentIndex: number;
   onSubmitAnswer: (answer: SkillArenaAnswer) => void;
-  onFinish: () => void;
   hasAnsweredCurrent: boolean;
   isLastChallenge: boolean;
 }
@@ -37,7 +36,6 @@ export function AssessmentArena({
   challenges,
   currentIndex,
   onSubmitAnswer,
-  onFinish,
   hasAnsweredCurrent,
   isLastChallenge,
 }: AssessmentArenaProps) {
@@ -80,7 +78,6 @@ export function AssessmentArena({
         challenge={challenge}
         module={module}
         onSubmit={onSubmitAnswer}
-        onFinish={onFinish}
         isLast={isLastChallenge}
         hasAnswered={hasAnsweredCurrent}
       />
@@ -92,12 +89,11 @@ interface ChallengeCardProps {
   challenge: SkillArenaChallenge;
   module: SkillArenaModule;
   onSubmit: (answer: SkillArenaAnswer) => void;
-  onFinish: () => void;
   isLast: boolean;
   hasAnswered: boolean;
 }
 
-function ChallengeCard({ challenge, module, onSubmit, onFinish, isLast, hasAnswered }: ChallengeCardProps) {
+function ChallengeCard({ challenge, module, onSubmit, isLast, hasAnswered }: ChallengeCardProps) {
   const [textValue, setTextValue] = useState('');
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const startTimeRef = useRef(Date.now());
@@ -137,12 +133,7 @@ function ChallengeCard({ challenge, module, onSubmit, onFinish, isLast, hasAnswe
     }
 
     onSubmit(answer);
-
-    if (isLast) {
-      // Small delay before triggering evaluation
-      setTimeout(() => onFinish(), 300);
-    }
-  }, [challenge.id, selectedOption, textValue, module, onSubmit, onFinish, isLast]);
+  }, [challenge.id, selectedOption, textValue, module, onSubmit]);
 
   // Countdown timer
   useEffect(() => {

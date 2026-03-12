@@ -115,7 +115,6 @@ export function SkillArenaClient() {
               challenges={arena.challenges}
               currentIndex={arena.currentChallengeIndex}
               onSubmitAnswer={arena.submitAnswer}
-              onFinish={arena.submitAllAnswers}
               hasAnsweredCurrent={arena.hasAnsweredCurrent}
               isLastChallenge={arena.isLastChallenge}
             />

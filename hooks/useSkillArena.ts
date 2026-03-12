@@ -119,30 +119,12 @@ export function useSkillArena() {
     }
   }, []);
 
-  const submitAnswer = useCallback((answer: SkillArenaAnswer) => {
-    setState((s) => {
-      const newAnswers = [...s.answers, answer];
-      const nextIndex = s.currentChallengeIndex + 1;
-      const isLast = nextIndex >= s.challenges.length;
-
-      return {
-        ...s,
-        answers: newAnswers,
-        currentChallengeIndex: isLast ? s.currentChallengeIndex : nextIndex,
-      };
-    });
-  }, []);
-
-  const submitAllAnswers = useCallback(async () => {
-    setState((s) => ({ ...s, phase: 'evaluating', isLoading: true, error: null }));
-
+  // Core evaluation function that takes answers as params (no stale closure)
+  const submitAllWithAnswers = useCallback(async (assessmentId: string, answers: SkillArenaAnswer[]) => {
     try {
       const data = await apiFetch<SkillArenaEvaluateResponse>('/api/skill-arena/evaluate', {
         method: 'POST',
-        body: JSON.stringify({
-          assessmentId: state.assessmentId,
-          answers: state.answers,
-        }),
+        body: JSON.stringify({ assessmentId, answers }),
       });
 
       setState((s) => ({
@@ -167,7 +149,43 @@ export function useSkillArena() {
         error: err instanceof Error ? err.message : 'Failed to evaluate',
       }));
     }
-  }, [state.assessmentId, state.answers]);
+  }, []);
+
+  const submitAnswer = useCallback((answer: SkillArenaAnswer) => {
+    setState((s) => {
+      const newAnswers = [...s.answers, answer];
+      const nextIndex = s.currentChallengeIndex + 1;
+      const isLast = nextIndex >= s.challenges.length;
+
+      if (isLast) {
+        // Auto-trigger evaluation with the complete answers array.
+        // Use queueMicrotask so evaluation runs after this state update commits,
+        // avoiding the stale closure bug where setTimeout + separate callback
+        // could read pre-update state.
+        const id = s.assessmentId!;
+        queueMicrotask(() => submitAllWithAnswers(id, newAnswers));
+        return { ...s, answers: newAnswers, phase: 'evaluating' as const, isLoading: true };
+      }
+
+      return {
+        ...s,
+        answers: newAnswers,
+        currentChallengeIndex: nextIndex,
+      };
+    });
+  }, [submitAllWithAnswers]);
+
+  // Manual fallback (e.g. "Submit All" button) — captures latest state via updater
+  const submitAllAnswers = useCallback(async () => {
+    let capturedId = '';
+    let capturedAnswers: SkillArenaAnswer[] = [];
+    setState((s) => {
+      capturedId = s.assessmentId!;
+      capturedAnswers = s.answers;
+      return { ...s, phase: 'evaluating', isLoading: true, error: null };
+    });
+    await submitAllWithAnswers(capturedId, capturedAnswers);
+  }, [submitAllWithAnswers]);
 
   const goToNextChallenge = useCallback(() => {
     setState((s) => {
