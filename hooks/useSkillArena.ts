@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type {
   SkillArenaModule,
   SkillArenaDifficulty,
@@ -89,6 +89,8 @@ const initialState: SkillArenaState = {
 
 export function useSkillArena() {
   const [state, setState] = useState<SkillArenaState>(initialState);
+  // Guard against React strict mode double-firing the evaluation
+  const evaluatingRef = useRef(false);
 
   const startAssessment = useCallback(async (module: SkillArenaModule) => {
     setState((s) => ({ ...s, phase: 'loading', module, isLoading: true, error: null }));
@@ -158,12 +160,9 @@ export function useSkillArena() {
       const isLast = nextIndex >= s.challenges.length;
 
       if (isLast) {
-        // Auto-trigger evaluation with the complete answers array.
-        // Use queueMicrotask so evaluation runs after this state update commits,
-        // avoiding the stale closure bug where setTimeout + separate callback
-        // could read pre-update state.
-        const id = s.assessmentId!;
-        queueMicrotask(() => submitAllWithAnswers(id, newAnswers));
+        // Set phase to 'evaluating' — the useEffect below will trigger the API call.
+        // We do NOT fire side effects (queueMicrotask/fetch) inside setState updaters
+        // because React strict mode runs updaters twice, causing double API calls.
         return { ...s, answers: newAnswers, phase: 'evaluating' as const, isLoading: true };
       }
 
@@ -173,7 +172,19 @@ export function useSkillArena() {
         currentChallengeIndex: nextIndex,
       };
     });
-  }, [submitAllWithAnswers]);
+  }, []);
+
+  // Trigger evaluation when phase transitions to 'evaluating'.
+  // The ref prevents double-firing in React strict mode.
+  useEffect(() => {
+    if (state.phase === 'evaluating' && !evaluatingRef.current) {
+      evaluatingRef.current = true;
+      submitAllWithAnswers(state.assessmentId!, state.answers);
+    }
+    if (state.phase !== 'evaluating') {
+      evaluatingRef.current = false;
+    }
+  }, [state.phase, state.assessmentId, state.answers, submitAllWithAnswers]);
 
   // Manual fallback (e.g. "Submit All" button) — captures latest state via updater
   const submitAllAnswers = useCallback(async () => {
