@@ -52,9 +52,9 @@ describe('getAllChallenges', () => {
 // ─── getChallengesForModule ──────────────────────────────
 
 describe('getChallengesForModule', () => {
-  it('returns 5 challenges by default', () => {
+  it('returns 10 challenges by default', () => {
     const challenges = getChallengesForModule('thinking', 'medium');
-    expect(challenges).toHaveLength(5);
+    expect(challenges).toHaveLength(10);
   });
 
   it('returns requested number of challenges', () => {

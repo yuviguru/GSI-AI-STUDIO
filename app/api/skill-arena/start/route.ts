@@ -10,7 +10,7 @@ import type { SkillArenaStartResponse } from '@/types/mindx.types';
 
 const ASSESSMENTS_COLLECTION = 'skillArenaAssessments';
 const SESSIONS_COLLECTION = 'sessions';
-const MAX_ASSESSMENTS_PER_DAY = 3;
+const MAX_ASSESSMENTS_PER_DAY = 10;
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     if (todayCount.data().count >= MAX_ASSESSMENTS_PER_DAY) {
       throw new AppException(
         'RATE_LIMITED',
-        "You've used all 3 assessments for today. Come back tomorrow!",
+        "You've used all 10 assessments for today. Come back tomorrow!",
         429
       );
     }

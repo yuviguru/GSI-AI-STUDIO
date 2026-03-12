@@ -91,7 +91,7 @@ function shouldUseGroq(): boolean {
   return !!process.env.GROQ_API_KEY && !process.env.ANTHROPIC_API_KEY?.startsWith('sk-ant-api');
 }
 
-/** Evaluate a complete assessment (5 challenges + answers) */
+/** Evaluate a complete assessment (challenges + answers) */
 export async function evaluateAssessment(
   module: SkillArenaModule,
   challenges: SkillArenaChallenge[],
@@ -147,7 +147,10 @@ export async function evaluateAssessment(
     };
   });
 
-  const totalScore = challengeResults.reduce((sum, r) => sum + r.score, 0);
+  const totalRaw = challengeResults.reduce((sum, r) => sum + r.score, 0);
+  const maxPossible = challengeResults.length * 20;
+  // Normalize to 0-100 regardless of number of questions
+  const totalScore = maxPossible > 0 ? Math.round((totalRaw / maxPossible) * 100) : 0;
 
   const xrayConcept = MODULE_XRAY_CONCEPTS[module];
 
@@ -288,9 +291,11 @@ function validateChallengeType(module: SkillArenaModule, type: string): SkillAre
 function generateLocalFeedback(
   module: SkillArenaModule,
   totalScore: number,
-  _challenges: SkillArenaChallenge[],
+  challenges: SkillArenaChallenge[],
 ): SkillArenaMentorFeedback {
   const types = getTypesForModule(module);
+  const maxPossible = challenges.length * 20;
+  const pct = maxPossible > 0 ? (totalScore / maxPossible) * 100 : 0;
   const encouragements = [
     'Great job completing this assessment! Every attempt makes you stronger!',
     'Well done! Keep practising and you will see amazing improvement!',
@@ -298,10 +303,10 @@ function generateLocalFeedback(
   ];
 
   return {
-    strengths: totalScore >= 60
+    strengths: pct >= 60
       ? ['Good accuracy on the questions!', 'You showed strong understanding.']
       : ['Great effort completing the assessment!', 'You gave it a solid try.'],
-    growthAreas: totalScore >= 60
+    growthAreas: pct >= 60
       ? ['Try to read each question even more carefully.']
       : ['Take your time reading each option before answering.', 'Review the topics and try again!'],
     tips: ['Practice a little bit every day — even 10 minutes helps!'],
