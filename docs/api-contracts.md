@@ -753,6 +753,183 @@ Razorpay payment webhook.
 
 ---
 
+## MindX — Skill Arena Endpoints
+
+### POST /api/skill-arena/start
+
+Start a new assessment for a module. Returns 5 challenges adapted to the kid's current band.
+
+**Request:**
+```json
+{
+  "module": "speaking" // "speaking" | "listening" | "thinking" | "reading"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "assessmentId": "abc123",
+    "module": "speaking",
+    "difficulty": "medium",
+    "challenges": [
+      {
+        "id": "ch_1",
+        "type": "read_aloud",
+        "module": "speaking",
+        "question": {
+          "text": "Read the following passage aloud clearly",
+          "passage": "The mango tree in our school garden...",
+          "timeLimit": 60,
+          "isIndiaThemed": true
+        }
+      }
+    ],
+    "totalChallenges": 5,
+    "estimatedTime": "8 minutes"
+  }
+}
+```
+
+**Errors:** `RATE_LIMITED` (3/day), `INVALID_INPUT`, `SESSION_NOT_FOUND`
+
+**Difficulty Adaptation:** Band 1-2 → easy, Band 3 → medium, Band 4-5 → hard. First assessment defaults to medium.
+
+---
+
+### POST /api/skill-arena/evaluate
+
+Submit all 5 answers for AI evaluation. Returns scores, band, mentor feedback, and AI points.
+
+**Request:**
+```json
+{
+  "assessmentId": "abc123",
+  "answers": [
+    {
+      "challengeId": "ch_1",
+      "voiceTranscript": "The mango tree in our school garden...",
+      "timeUsedSeconds": 45
+    },
+    {
+      "challengeId": "ch_2",
+      "selectedOption": "B",
+      "timeUsedSeconds": 30
+    },
+    {
+      "challengeId": "ch_3",
+      "text": "I think the character felt worried because...",
+      "timeUsedSeconds": 55
+    }
+  ]
+}
+```
+
+**Answer fields** (at least one required per answer):
+- `text` — Free-text answer (thinking/reading modules)
+- `voiceTranscript` — Speech-to-text transcript (speaking module)
+- `selectedOption` — MCQ selection (listening/thinking/reading modules)
+- `timeUsedSeconds` — Time taken for this challenge
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "assessmentId": "abc123",
+    "score": 72,
+    "band": 4,
+    "bandTitle": "Expert",
+    "challengeResults": [
+      { "challengeId": "ch_1", "score": 16, "maxScore": 20, "feedback": "Great fluency!" }
+    ],
+    "mentorFeedback": {
+      "strengths": ["Clear pronunciation", "Good pacing"],
+      "growthAreas": ["Try adding more expression when reading"],
+      "tips": ["Practice reading to a friend or family member"],
+      "recommendedPractice": "describe",
+      "encouragement": "You're doing amazing! Keep practicing!"
+    },
+    "aiPointsEarned": 30,
+    "previousBand": 3,
+    "improved": true,
+    "aiXray": {
+      "concept": "speech_recognition_nlp",
+      "explanation": "AI uses speech recognition to convert your voice into text...",
+      "curriculumTag": "ai_applications_nlp"
+    }
+  }
+}
+```
+
+**Errors:** `INVALID_INPUT`, `NOT_FOUND` (assessment), `UNAUTHORIZED` (not owner), `UNSAFE_CONTENT`
+
+**Idempotent:** If assessment already completed, returns stored results without re-evaluating.
+
+**Scoring:** MCQs auto-scored (20 pts if correct, 0 if wrong). Open-ended scored by AI (0-20 per challenge). Total 0-100.
+
+**Points:** +20 base, +10 for Band 3+, +20 for Band 5, +15 first assessment per module, +10 if improved from previous band.
+
+---
+
+### GET /api/skill-arena/progress
+
+Get band scores across all 4 modules.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "modules": {
+      "speaking": { "module": "speaking", "band": 3, "bandTitle": "Achiever", "score": 55, "assessments": 4, "trend": "improving" },
+      "listening": { "module": "listening", "band": 0, "bandTitle": "Starter", "score": 0, "assessments": 0, "trend": "new" },
+      "thinking": { "module": "thinking", "band": 4, "bandTitle": "Expert", "score": 72, "assessments": 6, "trend": "stable" },
+      "reading": { "module": "reading", "band": 2, "bandTitle": "Explorer", "score": 38, "assessments": 2, "trend": "improving" }
+    },
+    "overallBand": 3,
+    "totalAssessments": 12,
+    "totalPointsEarned": 280,
+    "strongestModule": "thinking",
+    "recommendedModule": "listening"
+  }
+}
+```
+
+---
+
+### GET /api/skill-arena/history
+
+Get past assessments for the session. Cursor-paginated.
+
+**Query params:** `limit` (10-50, default 20), `cursor` (optional)
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": "abc123",
+        "module": "speaking",
+        "score": 72,
+        "band": 4,
+        "bandTitle": "Expert",
+        "difficulty": "medium",
+        "aiPointsEarned": 30,
+        "completedAt": "2026-03-11T10:30:00Z"
+      }
+    ],
+    "nextCursor": "def456"
+  }
+}
+```
+
+---
+
 ## Rate Limits
 
 | Endpoint Category | Phase 1 (Anonymous) | Phase 2 (Free) | Phase 2 (Paid) |

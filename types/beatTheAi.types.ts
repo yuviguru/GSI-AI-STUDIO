@@ -1,6 +1,15 @@
 /** Beat the AI types — Human vs AI creative challenge rounds + skill progression */
 
-export type BeatTheAiCategory = 'story_sprint' | 'quiz_whiz' | 'caption_battle' | 'rhyme_time';
+export type BeatTheAiCategory =
+  | 'story_sprint'
+  | 'rhyme_time'
+  | 'fact_or_bluff'
+  | 'comeback_king'
+  | 'explain_it'
+  | 'debate_champ'
+  | 'math_wizard'
+  | 'science_detective'
+  | 'code_cracker';
 
 export type BeatTheAiResult = 'kid_wins' | 'ai_wins' | 'tie';
 
@@ -87,9 +96,14 @@ export const SKILL_LEVELS = [
 /** Category → primary skill mapping */
 export const CATEGORY_PRIMARY_SKILL: Record<BeatTheAiCategory, BeatTheAiSkillId> = {
   story_sprint: 'storytelling',
-  quiz_whiz: 'knowledge',
-  caption_battle: 'wordplay',
   rhyme_time: 'wordplay',
+  fact_or_bluff: 'creativity',
+  comeback_king: 'wordplay',
+  explain_it: 'knowledge',
+  debate_champ: 'storytelling',
+  math_wizard: 'speedThinking',
+  science_detective: 'knowledge',
+  code_cracker: 'creativity',
 };
 
 /** Score criteria → skill mapping (for bonus XP when score ≥ 4) */
@@ -203,28 +217,8 @@ export const BEAT_THE_AI_CATEGORIES: BeatTheAiCategoryInfo[] = [
     icon: '📖',
     primarySkill: 'storytelling',
     timeLimit: 180,
-    minChars: 50,
-    maxChars: 2000,
-  },
-  {
-    id: 'quiz_whiz',
-    name: 'Quiz Whiz',
-    description: 'Create quiz questions that stump AI!',
-    icon: '🧠',
-    primarySkill: 'knowledge',
-    timeLimit: 240,
     minChars: 30,
     maxChars: 2000,
-  },
-  {
-    id: 'caption_battle',
-    name: 'Caption Battle',
-    description: 'Write the wittiest caption!',
-    icon: '💬',
-    primarySkill: 'wordplay',
-    timeLimit: 90,
-    minChars: 10,
-    maxChars: 500,
   },
   {
     id: 'rhyme_time',
@@ -233,8 +227,78 @@ export const BEAT_THE_AI_CATEGORIES: BeatTheAiCategoryInfo[] = [
     icon: '🎵',
     primarySkill: 'wordplay',
     timeLimit: 120,
-    minChars: 20,
+    minChars: 10,
     maxChars: 1000,
+  },
+  {
+    id: 'fact_or_bluff',
+    name: 'Fact or Bluff',
+    description: 'Write a surprising fact — or a convincing bluff!',
+    icon: '🤔',
+    primarySkill: 'creativity',
+    timeLimit: 90,
+    minChars: 10,
+    maxChars: 300,
+  },
+  {
+    id: 'comeback_king',
+    name: 'Comeback King',
+    description: 'Hit back with the wittiest one-liner!',
+    icon: '👑',
+    primarySkill: 'wordplay',
+    timeLimit: 60,
+    minChars: 5,
+    maxChars: 150,
+  },
+  {
+    id: 'explain_it',
+    name: 'Explain It',
+    description: 'Make a tricky topic super simple!',
+    icon: '💡',
+    primarySkill: 'knowledge',
+    timeLimit: 120,
+    minChars: 10,
+    maxChars: 500,
+  },
+  {
+    id: 'debate_champ',
+    name: 'Debate Champ',
+    description: 'Argue your side and win the debate!',
+    icon: '🎤',
+    primarySkill: 'storytelling',
+    timeLimit: 120,
+    minChars: 15,
+    maxChars: 600,
+  },
+  {
+    id: 'math_wizard',
+    name: 'Math Wizard',
+    description: 'Crunch numbers and explain your thinking!',
+    icon: '🧮',
+    primarySkill: 'speedThinking',
+    timeLimit: 90,
+    minChars: 5,
+    maxChars: 400,
+  },
+  {
+    id: 'science_detective',
+    name: 'Science Detective',
+    description: 'What would happen if...? Write your hypothesis!',
+    icon: '🔬',
+    primarySkill: 'knowledge',
+    timeLimit: 120,
+    minChars: 10,
+    maxChars: 500,
+  },
+  {
+    id: 'code_cracker',
+    name: 'Code Cracker',
+    description: 'Solve the puzzle before AI does!',
+    icon: '🧩',
+    primarySkill: 'creativity',
+    timeLimit: 90,
+    minChars: 3,
+    maxChars: 300,
   },
 ];
 
@@ -282,3 +346,27 @@ export const SKILL_INFO: Record<BeatTheAiSkillId, BeatTheAiSkillInfo> = {
     color: 'text-orange-500',
   },
 };
+
+// ─── Daily Themes ────────────────────────────────────────────
+
+export interface DailyTheme {
+  dayOfWeek: number; // 0=Sunday, 1=Monday, …6=Saturday
+  category: BeatTheAiCategory | 'random';
+  themeName: string;
+  tagline: string;
+}
+
+export const DAILY_THEMES: DailyTheme[] = [
+  { dayOfWeek: 0, category: 'random',             themeName: 'Surprise Sunday',    tagline: 'Anything goes!' },
+  { dayOfWeek: 1, category: 'math_wizard',         themeName: 'Maths Monday',       tagline: 'Crunch numbers, beat the bot!' },
+  { dayOfWeek: 2, category: 'fact_or_bluff',       themeName: 'Truth Tuesday',      tagline: 'Real or fake? You decide!' },
+  { dayOfWeek: 3, category: 'code_cracker',        themeName: 'Puzzle Wednesday',   tagline: 'Crack the code before AI does!' },
+  { dayOfWeek: 4, category: 'science_detective',   themeName: 'Science Thursday',   tagline: 'Think like a scientist!' },
+  { dayOfWeek: 5, category: 'rhyme_time',          themeName: 'Rhyme Friday',       tagline: 'End the week in verse!' },
+  { dayOfWeek: 6, category: 'story_sprint',        themeName: 'Story Saturday',     tagline: 'Spin a tale, beat the AI!' },
+];
+
+/** Get today's daily theme based on local date */
+export function getDailyTheme(): DailyTheme {
+  return DAILY_THEMES[new Date().getDay()]!;
+}

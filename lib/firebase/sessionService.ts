@@ -33,6 +33,9 @@ interface SessionDoc {
     longestStreak: number;
     byCategory: Record<string, { rounds: number; wins: number }>;
   };
+  // MindX — Skill Arena fields (Phase 1.5)
+  skillArenaProgress?: Record<string, { band: number; score: number; assessments: number }>;
+  skillArenaStats?: { totalAssessments: number; averageBand: number };
 }
 
 // ─── Points types ─────────────────────────────────────────────────────────────

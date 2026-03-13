@@ -90,7 +90,9 @@ export const kidProfileSchema = z.object({
 // ─── Beat the AI ─────────────────────────────────────────────
 
 const beatTheAiCategoryEnum = z.enum([
-  'story_sprint', 'quiz_whiz', 'caption_battle', 'rhyme_time',
+  'story_sprint', 'rhyme_time',
+  'fact_or_bluff', 'comeback_king', 'explain_it', 'debate_champ',
+  'math_wizard', 'science_detective', 'code_cracker',
 ]);
 
 export const beatTheAiStartSchema = z.object({
@@ -99,7 +101,7 @@ export const beatTheAiStartSchema = z.object({
 
 export const beatTheAiSubmitResponseSchema = z.object({
   roundId: z.string().min(1),
-  kidResponse: z.string().min(10, 'Write at least 10 characters!').max(2000),
+  kidResponse: z.string().min(3, 'Write at least 3 characters!').max(2000),
   timeUsedSeconds: z.number().int().min(0),
 });
 
@@ -118,3 +120,25 @@ export type KidProfileInput = z.infer<typeof kidProfileSchema>;
 export type BeatTheAiStartInput = z.infer<typeof beatTheAiStartSchema>;
 export type BeatTheAiSubmitResponseInput = z.infer<typeof beatTheAiSubmitResponseSchema>;
 export type BeatTheAiJudgeInput = z.infer<typeof beatTheAiJudgeSchema>;
+
+// ─── MindX — Skill Arena ────────────────────────────────────
+
+const skillArenaModuleEnum = z.enum(['speaking', 'listening', 'thinking', 'reading']);
+
+export const skillArenaStartSchema = z.object({
+  module: skillArenaModuleEnum,
+});
+
+export const skillArenaEvaluateSchema = z.object({
+  assessmentId: z.string().min(1),
+  answers: z.array(z.object({
+    challengeId: z.string().min(1),
+    text: z.string().max(2000).optional(),
+    voiceTranscript: z.string().max(2000).optional(),
+    selectedOption: z.string().max(200).optional(),
+    timeUsedSeconds: z.number().int().min(0),
+  })).min(1).max(10),
+});
+
+export type SkillArenaStartInput = z.infer<typeof skillArenaStartSchema>;
+export type SkillArenaEvaluateInput = z.infer<typeof skillArenaEvaluateSchema>;
