@@ -10,7 +10,7 @@ export function Header() {
     <header
       className={cn(
         'sticky top-0 z-40 w-full',
-        'border-b border-gray-100 bg-white/80 backdrop-blur-md',
+        'border-b border-brand-warm-border bg-brand-warm-bg/80 backdrop-blur-md',
       )}
     >
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Rocket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MascotSpeechBubble } from '@/components/mascot/MascotSpeechBubble';
@@ -26,50 +26,50 @@ const studios = [
     emoji: '📖',
     title: 'Story Studio',
     description: 'Write & illustrate amazing AI stories',
-    gradient: 'from-violet-500 to-purple-600',
-    hoverShadow: 'hover:shadow-violet-200',
-    bg: 'bg-violet-50',
-    hoverRing: 'hover:ring-violet-200',
+    cta: 'Launch Story →',
+    accentColor: 'text-violet-600',
+    accentBg: 'bg-violet-100/60',
+    ctaBg: 'bg-violet-50 text-violet-700 hover:bg-violet-100',
   },
   {
     href: '/create/music',
     emoji: '🎵',
     title: 'Music Lab',
     description: 'Create songs & beats with AI',
-    gradient: 'from-orange-400 to-rose-500',
-    hoverShadow: 'hover:shadow-orange-200',
-    bg: 'bg-orange-50',
-    hoverRing: 'hover:ring-orange-200',
+    cta: 'Launch Music →',
+    accentColor: 'text-orange-600',
+    accentBg: 'bg-orange-100/60',
+    ctaBg: 'bg-orange-50 text-orange-700 hover:bg-orange-100',
   },
   {
     href: '/create/quiz',
     emoji: '🎮',
     title: 'Quiz Maker',
     description: 'Build quizzes & challenge friends',
-    gradient: 'from-cyan-400 to-blue-500',
-    hoverShadow: 'hover:shadow-cyan-200',
-    bg: 'bg-cyan-50',
-    hoverRing: 'hover:ring-cyan-200',
+    cta: 'Launch Quiz →',
+    accentColor: 'text-cyan-600',
+    accentBg: 'bg-cyan-100/60',
+    ctaBg: 'bg-cyan-50 text-cyan-700 hover:bg-cyan-100',
   },
   {
     href: '/create/game',
     emoji: '🕹️',
     title: 'Game Studio',
     description: 'Create text adventures with AI',
-    gradient: 'from-emerald-400 to-teal-500',
-    hoverShadow: 'hover:shadow-emerald-200',
-    bg: 'bg-emerald-50',
-    hoverRing: 'hover:ring-emerald-200',
+    cta: 'Launch Game →',
+    accentColor: 'text-emerald-600',
+    accentBg: 'bg-emerald-100/60',
+    ctaBg: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
   },
   {
     href: '/create/comic',
     emoji: '🎨',
     title: 'Comic Studio',
     description: 'Draw illustrated comics with AI',
-    gradient: 'from-orange-400 to-amber-500',
-    hoverShadow: 'hover:shadow-orange-200',
-    bg: 'bg-orange-50',
-    hoverRing: 'hover:ring-orange-200',
+    cta: 'Launch Comic →',
+    accentColor: 'text-amber-600',
+    accentBg: 'bg-amber-100/60',
+    ctaBg: 'bg-amber-50 text-amber-700 hover:bg-amber-100',
   },
 ];
 
@@ -85,6 +85,7 @@ const fadeUp = {
 
 export default function HomePage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     try {
@@ -110,42 +111,44 @@ export default function HomePage() {
         )}
       </AnimatePresence>
 
-      {/* Background blobs */}
+      {/* Background blobs — softened */}
       <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-brand-purple/8 blur-3xl" />
-        <div className="absolute -right-32 top-1/3 h-80 w-80 rounded-full bg-brand-orange/8 blur-3xl" />
-        <div className="absolute -left-20 bottom-1/4 h-72 w-72 rounded-full bg-brand-cyan/8 blur-3xl" />
+        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-brand-purple/5 blur-3xl" />
+        <div className="absolute -right-32 top-1/3 h-80 w-80 rounded-full bg-brand-orange/5 blur-3xl" />
+        <div className="absolute -left-20 bottom-1/4 h-72 w-72 rounded-full bg-brand-cyan/5 blur-3xl" />
       </div>
 
-      {/* Floating emojis */}
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        {floatingItems.map((item, i) => (
-          <motion.span
-            key={i}
-            className={cn('absolute select-none opacity-20', item.size)}
-            style={{ left: item.x, top: item.y }}
-            animate={{ y: [0, -14, 0] }}
-            transition={{
-              duration: 3.5,
-              repeat: Infinity,
-              delay: item.delay,
-              ease: 'easeInOut',
-            }}
-          >
-            {item.emoji}
-          </motion.span>
-        ))}
-      </div>
+      {/* Floating emojis — hidden when prefers-reduced-motion */}
+      {!prefersReducedMotion && (
+        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+          {floatingItems.map((item, i) => (
+            <motion.span
+              key={i}
+              className={cn('absolute select-none opacity-20', item.size)}
+              style={{ left: item.x, top: item.y }}
+              animate={{ y: [0, -14, 0] }}
+              transition={{
+                duration: 3.5,
+                repeat: Infinity,
+                delay: item.delay,
+                ease: 'easeInOut',
+              }}
+            >
+              {item.emoji}
+            </motion.span>
+          ))}
+        </div>
+      )}
 
       {/* Hero */}
       <motion.section
         className="px-4 pb-4 pt-10 text-center sm:pt-16"
         variants={staggerContainer}
-        initial="hidden"
+        initial={prefersReducedMotion ? false : 'hidden'}
         animate="show"
       >
         <motion.div variants={fadeUp}>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-purple/10 px-3 py-1 text-xs font-semibold text-brand-purple">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
             <Rocket className="h-3.5 w-3.5" />
             Free to create — no login needed
           </span>
@@ -165,7 +168,8 @@ export default function HomePage() {
           variants={fadeUp}
           className="mx-auto mt-4 max-w-md text-base leading-relaxed text-gray-500 sm:text-lg"
         >
-          Build stories, music, quizzes, games & comics with AI — then peek behind the curtain to see how it works!
+          Build stories, music, quizzes, games & comics with AI — then peek
+          behind the curtain to see how it works!
         </motion.p>
 
         <motion.div variants={fadeUp} className="mt-6 flex justify-center">
@@ -180,15 +184,18 @@ export default function HomePage() {
 
       {/* Studio cards */}
       <motion.section
-        className="mx-auto max-w-lg px-4 pb-8 pt-4 sm:max-w-3xl lg:max-w-5xl"
+        className="mx-auto max-w-lg px-4 pb-8 pt-4 sm:max-w-3xl lg:max-w-4xl"
         variants={staggerContainer}
-        initial="hidden"
+        initial={prefersReducedMotion ? false : 'hidden'}
         animate="show"
       >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {studios.map((studio) => (
             <motion.div key={studio.href} variants={fadeUp}>
-              <StudioCard {...studio} />
+              <StudioCard
+                {...studio}
+                prefersReducedMotion={!!prefersReducedMotion}
+              />
             </motion.div>
           ))}
         </div>
@@ -198,14 +205,18 @@ export default function HomePage() {
       <motion.section
         className="mx-auto max-w-lg px-4 pb-6 sm:max-w-3xl"
         variants={staggerContainer}
-        initial="hidden"
+        initial={prefersReducedMotion ? false : 'hidden'}
         animate="show"
       >
         <motion.div variants={fadeUp}>
-          <Link href="/beat-the-ai" className="group block">
-            <div className="relative overflow-hidden rounded-2xl border border-purple-100 bg-gradient-to-r from-purple-50 to-indigo-50 p-5 transition-shadow hover:shadow-lg hover:shadow-purple-100">
+          <Link
+            href="/beat-the-ai"
+            className="group block rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple focus-visible:ring-offset-2"
+            aria-label="Beat the AI challenge"
+          >
+            <div className="relative overflow-hidden rounded-3xl border border-brand-warm-border bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
               <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-100 text-3xl">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-100/60 text-3xl">
                   🤖
                 </div>
                 <div className="flex-1">
@@ -217,7 +228,7 @@ export default function HomePage() {
                   </p>
                 </div>
                 <span className="text-sm font-semibold text-purple-600 transition-transform group-hover:translate-x-1">
-                  Play →
+                  Accept Challenge →
                 </span>
               </div>
             </div>
@@ -229,14 +240,18 @@ export default function HomePage() {
       <motion.section
         className="mx-auto max-w-lg px-4 pb-6 sm:max-w-3xl"
         variants={staggerContainer}
-        initial="hidden"
+        initial={prefersReducedMotion ? false : 'hidden'}
         animate="show"
       >
         <motion.div variants={fadeUp}>
-          <Link href="/skill-arena" className="group block">
-            <div className="relative overflow-hidden rounded-2xl border border-cyan-100 bg-gradient-to-r from-cyan-50 to-blue-50 p-5 transition-shadow hover:shadow-lg hover:shadow-cyan-100">
+          <Link
+            href="/skill-arena"
+            className="group block rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple focus-visible:ring-offset-2"
+            aria-label="MindX Skill Arena"
+          >
+            <div className="relative overflow-hidden rounded-3xl border border-brand-warm-border bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
               <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-100 text-3xl">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-100/60 text-3xl">
                   🧠
                 </div>
                 <div className="flex-1">
@@ -248,7 +263,7 @@ export default function HomePage() {
                   </p>
                 </div>
                 <span className="text-sm font-semibold text-cyan-600 transition-transform group-hover:translate-x-1">
-                  Try →
+                  Test Your Skills →
                 </span>
               </div>
             </div>
@@ -261,13 +276,14 @@ export default function HomePage() {
         <h2 className="font-display text-lg font-bold text-gray-900">
           Recent Creations
         </h2>
-        <div className="mt-3 flex flex-col items-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50 px-6 py-10 text-center">
+        <div className="mt-3 flex flex-col items-center rounded-3xl border-2 border-dashed border-brand-warm-border bg-amber-50/30 px-6 py-10 text-center">
           <span className="text-4xl">🚀</span>
           <p className="mt-3 font-display text-base font-bold text-gray-700">
-            No creations yet!
+            No adventures yet!
           </p>
           <p className="mt-1 text-sm text-gray-400">
-            Your AI masterpieces will show up here.
+            Create your first story, song, or game and watch your masterpieces
+            appear here.
           </p>
           <Link
             href="/create/story"
@@ -276,9 +292,10 @@ export default function HomePage() {
               'bg-brand-purple text-sm font-semibold text-white',
               'shadow-lg shadow-brand-purple/25',
               'transition-transform hover:scale-105 active:scale-95',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple focus-visible:ring-offset-2',
             )}
           >
-            Create Your First Story ✨
+            Begin Your First Adventure ✨
           </Link>
         </div>
       </section>
@@ -291,37 +308,40 @@ function StudioCard({
   emoji,
   title,
   description,
-  gradient,
-  hoverShadow,
-  bg,
-  hoverRing,
+  cta,
+  accentBg,
+  ctaBg,
+  prefersReducedMotion,
 }: {
   href: string;
   emoji: string;
   title: string;
   description: string;
-  gradient: string;
-  hoverShadow: string;
-  bg: string;
-  hoverRing: string;
+  cta: string;
+  accentColor: string;
+  accentBg: string;
+  ctaBg: string;
+  prefersReducedMotion: boolean;
 }) {
   return (
-    <Link href={href} className="group block">
+    <Link
+      href={href}
+      className="group block rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple focus-visible:ring-offset-2"
+      aria-label={title}
+    >
       <motion.div
         className={cn(
-          'relative rounded-2xl border border-gray-100 bg-white p-5 text-center',
-          'ring-1 ring-transparent transition-shadow',
-          hoverRing,
-          hoverShadow,
+          'relative rounded-3xl border border-brand-warm-border bg-white p-5 text-center',
+          'shadow-sm transition-shadow hover:shadow-md',
         )}
-        whileHover={{ y: -6, scale: 1.02 }}
-        whileTap={{ scale: 0.97 }}
+        whileHover={prefersReducedMotion ? undefined : { y: -6, scale: 1.02 }}
+        whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
         transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       >
         <div
           className={cn(
             'mx-auto flex h-14 w-14 items-center justify-center rounded-2xl text-3xl',
-            bg,
+            accentBg,
           )}
         >
           {emoji}
@@ -334,13 +354,17 @@ function StudioCard({
           {description}
         </p>
 
+        <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-amber-500">
+          ⭐ +10 XP
+        </span>
+
         <div
           className={cn(
-            'mt-4 rounded-full bg-gradient-to-r py-1.5 text-xs font-semibold text-white',
-            gradient,
+            'mt-3 flex h-12 items-center justify-center rounded-full text-sm font-semibold transition-colors',
+            ctaBg,
           )}
         >
-          Start Creating →
+          {cta}
         </div>
       </motion.div>
     </Link>
