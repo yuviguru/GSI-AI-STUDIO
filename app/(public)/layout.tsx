@@ -9,14 +9,10 @@ import { CelebrationModal } from '@/components/learning/CelebrationModal';
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <AiPointsProvider>
-      <div className="flex min-h-screen flex-col bg-brand-warm-bg">
+      <div className="flex min-h-screen flex-col bg-sky-50">
         <SessionInit />
-        <main className="flex-1 pb-nav">
-          <div className="min-h-full border-b border-brand-warm-border bg-white">
-            <Header />
-            {children}
-          </div>
-        </main>
+        <Header />
+        <main className="flex-1 pb-nav">{children}</main>
         <BottomNav />
       </div>
       <CelebrationModal />
