@@ -11,8 +11,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
     <AiPointsProvider>
       <div className="flex min-h-screen flex-col bg-brand-warm-bg">
         <SessionInit />
-        <main className="mx-auto w-full max-w-6xl flex-1 px-3 pb-nav pt-3 sm:px-5 sm:pt-5">
-          <div className="overflow-hidden rounded-[2rem] border border-brand-warm-border bg-white shadow-sm">
+        <main className="flex-1 pb-nav">
+          <div className="min-h-full border-b border-brand-warm-border bg-white">
             <Header />
             {children}
           </div>
