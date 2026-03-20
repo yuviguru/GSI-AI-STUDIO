@@ -8,12 +8,15 @@
 
 ## Design System
 
-- **Colors**: Vibrant, playful palette — primary purple (#7C3AED), secondary orange (#F97316), accent cyan (#06B6D4). Dark mode optional Phase 2.
-- **Typography**: Inter (UI), Comic Neue or Nunito (kid-facing content). Large touch targets, generous line heights.
-- **Spacing**: 4px base grid. Spacing scale: 4/8/12/16/24/32/48/64.
+> **Full specification**: See `docs/design-system.md` for complete visual tokens, component specs, and implementation details.
+
+- **Colors**: Electric Indigo primary (`#5B5FFF`), Teal Mint secondary (`#20C997`), Warm Orange accent (`#FF9F43`), Soft Purple AI (`#8A5CFF`). Background `#F7F8FC`.
+- **Typography**: Satoshi (headings/display), Figtree (body/UI), JetBrains Mono (XP/scores/stats). Large touch targets (44px min), generous line heights.
+- **Spacing**: 8-point grid. Scale: 4/8/12/16/24/32/48/64.
 - **Breakpoints**: sm(640), md(768), lg(1024), xl(1280). Design mobile-first.
-- **Border Radius**: Rounded-xl (12px) for cards, rounded-full for buttons and avatars. Soft, friendly feel.
-- **Shadows**: Subtle, colorful shadows (e.g., `shadow-purple-200`) for depth without heaviness.
+- **Border Radius**: Cards 16–24px, buttons 16px, badges 8px. Soft, rounded feel everywhere.
+- **Shadows**: Soft floating shadows — `shadow-card`, `shadow-elevated`, `shadow-button`. Never harsh or dark.
+- **Gradients**: Primary (`#5B5FFF → #8A5CFF`), Gamification (`#20C997 → #5B5FFF`), Reward (`#FF9F43 → #FFD166`). Per-studio gradients defined in `globals.css`.
 
 ## Core UX Patterns
 
