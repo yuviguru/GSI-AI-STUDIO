@@ -4,7 +4,7 @@ import Link from 'next/link';
 
 export function ShowAllAppsWidget() {
   return (
-    <Link href="/create/story" className="group block">
+    <Link href="/explore" className="group block">
       <div className="flex h-full flex-col rounded-xl bg-white p-5 shadow-card transition-shadow hover:shadow-card-hover">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-xl">

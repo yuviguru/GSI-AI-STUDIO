@@ -5,7 +5,7 @@ import Link from 'next/link';
 const CATEGORIES = [
   { label: 'Stories', emoji: '📖', bg: 'bg-violet-100', text: 'text-violet-700', href: '/create/story' },
   { label: 'Music',   emoji: '🎵', bg: 'bg-orange-100', text: 'text-orange-700', href: '/create/music' },
-  { label: 'Games',   emoji: '🎮', bg: 'bg-cyan-100',   text: 'text-cyan-700',   href: '/create/quiz'  },
+  { label: 'Games',   emoji: '🎮', bg: 'bg-cyan-100',   text: 'text-cyan-700',   href: '/create/game'  },
   { label: 'Comics',  emoji: '🎨', bg: 'bg-amber-100',  text: 'text-amber-700',  href: '/create/comic' },
   { label: 'Quiz',    emoji: '❓', bg: 'bg-emerald-100', text: 'text-emerald-700', href: '/create/quiz' },
 ];

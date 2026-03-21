@@ -6,7 +6,7 @@ import Link from 'next/link';
 const TABS = [
   { label: 'Stories',  href: '/create/story',  emoji: '📖', activeBg: 'bg-violet-500',  inactiveBg: 'bg-violet-100',  inactiveText: 'text-violet-700' },
   { label: 'Music',    href: '/create/music',  emoji: '🎵', activeBg: 'bg-orange-500',  inactiveBg: 'bg-orange-100',  inactiveText: 'text-orange-700' },
-  { label: 'Games',    href: '/create/quiz',   emoji: '🎮', activeBg: 'bg-cyan-500',    inactiveBg: 'bg-cyan-100',    inactiveText: 'text-cyan-700'   },
+  { label: 'Games',    href: '/create/game',   emoji: '🎮', activeBg: 'bg-cyan-500',    inactiveBg: 'bg-cyan-100',    inactiveText: 'text-cyan-700'   },
   { label: 'Comics',   href: '/create/comic',  emoji: '🎨', activeBg: 'bg-amber-500',   inactiveBg: 'bg-amber-100',   inactiveText: 'text-amber-700'  },
   { label: 'List',     href: '/creations',     emoji: '📋', activeBg: 'bg-gray-700',    inactiveBg: 'bg-gray-100',    inactiveText: 'text-gray-600'   },
 ];
