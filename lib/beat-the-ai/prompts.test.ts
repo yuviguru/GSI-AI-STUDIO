@@ -2,17 +2,34 @@ import { describe, it, expect } from 'vitest';
 import { ALL_PROMPTS, getRandomPrompt } from './prompts';
 import type { BeatTheAiCategory } from '@/types/beatTheAi.types';
 
-const CATEGORIES: BeatTheAiCategory[] = ['story_sprint', 'quiz_whiz', 'caption_battle', 'rhyme_time'];
+const CATEGORIES: BeatTheAiCategory[] = [
+  'story_sprint', 'rhyme_time',
+  'fact_or_bluff', 'comeback_king', 'explain_it', 'debate_champ',
+  'math_wizard', 'science_detective', 'code_cracker',
+];
+
+/** Expected time limit per category */
+const EXPECTED_TIME_LIMITS: Record<BeatTheAiCategory, number> = {
+  story_sprint: 180,
+  rhyme_time: 120,
+  fact_or_bluff: 90,
+  comeback_king: 60,
+  explain_it: 120,
+  debate_champ: 120,
+  math_wizard: 90,
+  science_detective: 120,
+  code_cracker: 90,
+};
 
 describe('ALL_PROMPTS', () => {
-  it('has 80+ total prompts', () => {
-    expect(ALL_PROMPTS.length).toBeGreaterThanOrEqual(80);
+  it('has 170+ total prompts', () => {
+    expect(ALL_PROMPTS.length).toBeGreaterThanOrEqual(170);
   });
 
   it('has at least 20 prompts per category', () => {
     for (const cat of CATEGORIES) {
       const count = ALL_PROMPTS.filter((p) => p.category === cat).length;
-      expect(count).toBeGreaterThanOrEqual(20);
+      expect(count, `${cat} should have ≥20 prompts, has ${count}`).toBeGreaterThanOrEqual(20);
     }
   });
 
@@ -32,35 +49,20 @@ describe('ALL_PROMPTS', () => {
     }
   });
 
-  it('story_sprint prompts have 180s time limit', () => {
-    ALL_PROMPTS.filter((p) => p.category === 'story_sprint').forEach((p) => {
-      expect(p.timeLimit).toBe(180);
-    });
-  });
-
-  it('quiz_whiz prompts have 240s time limit', () => {
-    ALL_PROMPTS.filter((p) => p.category === 'quiz_whiz').forEach((p) => {
-      expect(p.timeLimit).toBe(240);
-    });
-  });
-
-  it('caption_battle prompts have 90s time limit', () => {
-    ALL_PROMPTS.filter((p) => p.category === 'caption_battle').forEach((p) => {
-      expect(p.timeLimit).toBe(90);
-    });
-  });
-
-  it('rhyme_time prompts have 120s time limit', () => {
-    ALL_PROMPTS.filter((p) => p.category === 'rhyme_time').forEach((p) => {
-      expect(p.timeLimit).toBe(120);
-    });
+  it('each category has correct time limit', () => {
+    for (const cat of CATEGORIES) {
+      const expected = EXPECTED_TIME_LIMITS[cat];
+      ALL_PROMPTS.filter((p) => p.category === cat).forEach((p) => {
+        expect(p.timeLimit, `${cat} prompt should have ${expected}s time limit`).toBe(expected);
+      });
+    }
   });
 
   it('has a mix of India-themed and non-India-themed prompts', () => {
     const indiaThemed = ALL_PROMPTS.filter((p) => p.isIndiaThemed).length;
     const nonIndiaThemed = ALL_PROMPTS.filter((p) => !p.isIndiaThemed).length;
-    expect(indiaThemed).toBeGreaterThan(10);
-    expect(nonIndiaThemed).toBeGreaterThan(10);
+    expect(indiaThemed).toBeGreaterThan(20);
+    expect(nonIndiaThemed).toBeGreaterThan(20);
   });
 });
 
