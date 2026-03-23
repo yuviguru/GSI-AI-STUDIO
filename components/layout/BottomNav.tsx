@@ -1,237 +1,89 @@
 'use client';
 
-import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X } from 'lucide-react';
+import { BookOpen, Footprints, Apple, Smile, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const studioItems = [
-  { href: '/create/story', label: 'Story Studio', emoji: '📖', color: 'text-violet-500' },
-  { href: '/create/music', label: 'Music Lab', emoji: '🎵', color: 'text-orange-500' },
-  { href: '/create/quiz', label: 'Quiz Maker', emoji: '🎮', color: 'text-cyan-500' },
-  { href: '/create/game', label: 'Game Studio', emoji: '🕹️', color: 'text-emerald-500' },
-  { href: '/create/comic', label: 'Comic Studio', emoji: '🎨', color: 'text-amber-500' },
+/* ─── Tab definitions ─────────────────────────────────────────────────────── */
+
+const LEFT_TABS = [
+  { href: '/',            Icon: BookOpen },
+  { href: '/beat-the-ai', Icon: Footprints },
 ] as const;
+
+const RIGHT_TABS = [
+  { href: '/explore',   Icon: Apple },
+  { href: '/creations', Icon: Smile },
+] as const;
+
+/* ─── Bottom Navigation ───────────────────────────────────────────────────── */
 
 export function BottomNav() {
   const pathname = usePathname();
-  const [sheetOpen, setSheetOpen] = useState(false);
 
-  const isStudioActive = pathname.startsWith('/create/');
-  const isBeatAiActive = pathname === '/beat-the-ai';
-  const isMindXActive = pathname === '/skill-arena';
-  const isExploreActive = pathname === '/explore';
-  const isMyStuffActive = pathname === '/creations';
-
-  const toggleSheet = useCallback(() => {
-    setSheetOpen((prev) => !prev);
-  }, []);
-
-  const closeSheet = useCallback(() => {
-    setSheetOpen(false);
-  }, []);
+  const isActive = (href: string) => {
+    if (href === '/') return pathname === '/';
+    return pathname === href || pathname.startsWith(href + '/');
+  };
 
   return (
-    <>
-      {/* Backdrop overlay */}
-      <AnimatePresence>
-        {sheetOpen && (
-          <motion.div
-            className="fixed inset-0 z-40 bg-black/30"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={closeSheet}
-          />
-        )}
-      </AnimatePresence>
+    <nav
+      className={cn(
+        'fixed bottom-0 left-0 right-0 z-50 pb-3',
+        'pointer-events-none',
+        'safe-area-bottom',
+      )}
+    >
+      <div className="relative mx-auto flex max-w-sm items-end justify-center gap-0 px-4">
 
-      {/* Create+ bottom sheet */}
-      <AnimatePresence>
-        {sheetOpen && (
-          <motion.div
-            className={cn(
-              'fixed bottom-14 left-0 right-0 z-50',
-              'mx-auto max-w-lg rounded-t-2xl bg-white px-4 pb-3 pt-4 shadow-xl',
-              'safe-area-bottom',
-            )}
-            initial={{ y: '100%', opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: '100%', opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-display text-sm font-bold text-gray-900">
-                Choose a Studio
-              </h3>
-              <button
-                onClick={closeSheet}
-                className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-              >
-                <X className="h-4 w-4" />
-              </button>
+        {/* ── Left pill ──────────────────────────────────────────────── */}
+        <div className="pointer-events-auto flex items-center gap-6 rounded-2xl bg-white px-8 py-4 shadow-[0_4px_24px_rgba(0,0,0,0.08)]">
+          {LEFT_TABS.map((tab) => {
+            const active = isActive(tab.href);
+            return (
+              <Link key={tab.href} href={tab.href}>
+                <tab.Icon
+                  className={cn(
+                    'h-6 w-6 transition-colors',
+                    active ? 'text-brand-primary' : 'text-gray-400',
+                  )}
+                  strokeWidth={active ? 2.2 : 1.5}
+                />
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* ── Center floating button ─────────────────────────────────── */}
+        <div className="pointer-events-auto relative z-10 -mx-3 -mb-1">
+          {/* Glow / soft shadow behind */}
+          <div className="absolute inset-0 scale-125 rounded-full bg-brand-primary/20 blur-xl" />
+          <Link href="/create/story" className="relative block">
+            <div className="flex h-[60px] w-[60px] items-center justify-center rounded-full bg-gradient-to-br from-[#6B8BF5] to-[#4F6CE5] shadow-xl transition-transform active:scale-95">
+              <Plus className="h-7 w-7 text-white" strokeWidth={2.5} />
             </div>
-
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-              {studioItems.map((studio) => {
-                const isActive = pathname === studio.href || pathname.startsWith(studio.href + '/');
-                return (
-                  <Link
-                    key={studio.href}
-                    href={studio.href}
-                    onClick={closeSheet}
-                    className={cn(
-                      'flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 transition-colors',
-                      isActive
-                        ? 'bg-brand-purple/10 ring-1 ring-brand-purple/20'
-                        : 'hover:bg-gray-50',
-                    )}
-                  >
-                    <span className="text-2xl">{studio.emoji}</span>
-                    <span
-                      className={cn(
-                        'text-center text-[11px] font-semibold leading-tight',
-                        isActive ? 'text-brand-purple' : studio.color,
-                      )}
-                    >
-                      {studio.label}
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Bottom navigation bar — 3 tabs */}
-      <nav
-        className={cn(
-          'fixed bottom-0 left-0 right-0 z-50',
-          'border-t border-gray-100 bg-white/90 backdrop-blur-md',
-          'safe-area-bottom',
-        )}
-      >
-        <div className="mx-auto flex h-14 max-w-lg items-stretch">
-          {/* Create+ tab */}
-          <button
-            onClick={toggleSheet}
-            className={cn(
-              'relative flex flex-1 flex-col items-center justify-center gap-0.5',
-              'text-xs font-medium transition-colors',
-              isStudioActive || sheetOpen ? 'text-brand-purple' : 'text-gray-400',
-            )}
-          >
-            {(isStudioActive || sheetOpen) && (
-              <motion.span
-                layoutId="bottomnav-indicator"
-                className="absolute -top-px left-3 right-3 h-0.5 rounded-full bg-brand-purple"
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              />
-            )}
-            <span
-              className={cn(
-                'flex h-6 w-6 items-center justify-center rounded-full transition-colors',
-                sheetOpen
-                  ? 'bg-brand-purple text-white'
-                  : isStudioActive
-                    ? 'bg-brand-purple/10 text-brand-purple'
-                    : 'text-gray-400',
-              )}
-            >
-              {sheetOpen ? <X className="h-3.5 w-3.5" /> : <Plus className="h-4 w-4" />}
-            </span>
-            <span>Create+</span>
-          </button>
-
-          {/* Beat the AI tab */}
-          <Link
-            href="/beat-the-ai"
-            onClick={closeSheet}
-            className={cn(
-              'relative flex flex-1 flex-col items-center justify-center gap-0.5',
-              'text-xs font-medium transition-colors',
-              isBeatAiActive ? 'text-brand-purple' : 'text-gray-400',
-            )}
-          >
-            {isBeatAiActive && (
-              <motion.span
-                layoutId="bottomnav-indicator"
-                className="absolute -top-px left-3 right-3 h-0.5 rounded-full bg-brand-purple"
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              />
-            )}
-            <span className="text-lg leading-none">🤖</span>
-            <span>Beat AI</span>
-          </Link>
-
-          {/* MindX tab */}
-          <Link
-            href="/skill-arena"
-            onClick={closeSheet}
-            className={cn(
-              'relative flex flex-1 flex-col items-center justify-center gap-0.5',
-              'text-xs font-medium transition-colors',
-              isMindXActive ? 'text-brand-purple' : 'text-gray-400',
-            )}
-          >
-            {isMindXActive && (
-              <motion.span
-                layoutId="bottomnav-indicator"
-                className="absolute -top-px left-3 right-3 h-0.5 rounded-full bg-brand-purple"
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              />
-            )}
-            <span className="text-lg leading-none">🧠</span>
-            <span>MindX</span>
-          </Link>
-
-          {/* Explore tab */}
-          <Link
-            href="/explore"
-            onClick={closeSheet}
-            className={cn(
-              'relative flex flex-1 flex-col items-center justify-center gap-0.5',
-              'text-xs font-medium transition-colors',
-              isExploreActive ? 'text-brand-purple' : 'text-gray-400',
-            )}
-          >
-            {isExploreActive && (
-              <motion.span
-                layoutId="bottomnav-indicator"
-                className="absolute -top-px left-3 right-3 h-0.5 rounded-full bg-brand-purple"
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              />
-            )}
-            <span className="text-lg leading-none">🔍</span>
-            <span>Explore</span>
-          </Link>
-
-          {/* My Stuff tab */}
-          <Link
-            href="/creations"
-            onClick={closeSheet}
-            className={cn(
-              'relative flex flex-1 flex-col items-center justify-center gap-0.5',
-              'text-xs font-medium transition-colors',
-              isMyStuffActive ? 'text-brand-purple' : 'text-gray-400',
-            )}
-          >
-            {isMyStuffActive && (
-              <motion.span
-                layoutId="bottomnav-indicator"
-                className="absolute -top-px left-3 right-3 h-0.5 rounded-full bg-brand-purple"
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              />
-            )}
-            <span className="text-lg leading-none">✨</span>
-            <span>My Stuff</span>
           </Link>
         </div>
-      </nav>
-    </>
+
+        {/* ── Right pill ─────────────────────────────────────────────── */}
+        <div className="pointer-events-auto flex items-center gap-6 rounded-2xl bg-white px-8 py-4 shadow-[0_4px_24px_rgba(0,0,0,0.08)]">
+          {RIGHT_TABS.map((tab) => {
+            const active = isActive(tab.href);
+            return (
+              <Link key={tab.href} href={tab.href}>
+                <tab.Icon
+                  className={cn(
+                    'h-6 w-6 transition-colors',
+                    active ? 'text-brand-primary' : 'text-gray-400',
+                  )}
+                  strokeWidth={active ? 2.2 : 1.5}
+                />
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </nav>
   );
 }

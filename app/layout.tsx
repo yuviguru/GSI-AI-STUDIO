@@ -1,16 +1,32 @@
 import type { Metadata, Viewport } from 'next';
-import { Nunito, Inter } from 'next/font/google';
+import localFont from 'next/font/local';
+import { Figtree, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 
-const nunito = Nunito({
-  subsets: ['latin'],
+/**
+ * Font loading — Design System §5
+ * Display: Satoshi (local, variable weight)
+ * Body: Figtree (Google Fonts, variable weight)
+ * Mono: JetBrains Mono (Google Fonts, for XP/scores/stats)
+ */
+const satoshi = localFont({
+  src: [
+    { path: './fonts/Satoshi-Variable.woff2', style: 'normal' },
+    { path: './fonts/Satoshi-VariableItalic.woff2', style: 'italic' },
+  ],
   variable: '--font-display',
   display: 'swap',
 });
 
-const inter = Inter({
+const figtree = Figtree({
   subsets: ['latin'],
   variable: '--font-body',
+  display: 'swap',
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
   display: 'swap',
 });
 
@@ -29,7 +45,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#7C3AED',
+  themeColor: '#5B5FFF',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -37,7 +53,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${nunito.variable} ${inter.variable}`}>
+    <html lang="en" className={`${satoshi.variable} ${figtree.variable} ${jetbrainsMono.variable}`}>
       <body>{children}</body>
     </html>
   );

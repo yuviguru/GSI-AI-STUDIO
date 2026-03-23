@@ -2,19 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * GSI AI Studio — Global Styles
+ * Design System: docs/design-system.md
+ */
+
 @layer base {
   :root {
-    --brand-purple: 124 58 237;
-    --brand-orange: 249 115 22;
-    --brand-cyan: 6 182 212;
+    /* Brand tokens (HSL for shadcn compatibility) */
+    --brand-primary: 238 100% 68%;     /* #5B5FFF Electric Indigo */
+    --brand-secondary: 161 73% 46%;    /* #20C997 Teal Mint */
+    --brand-accent: 30 100% 63%;       /* #FF9F43 Warm Orange */
+    --brand-ai: 259 100% 68%;          /* #8A5CFF Soft Purple */
 
-    --background: 0 0% 100%;
-    --foreground: 0 0% 5%;
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 46%;
-    --border: 240 6% 90%;
-    --ring: 262 83% 58%;
-    --radius: 0.75rem;
+    /* Neutral tokens */
+    --background: 230 33% 98%;         /* #F7F8FC */
+    --foreground: 240 25% 15%;         /* #1E1E2F */
+    --surface: 0 0% 100%;             /* #FFFFFF */
+    --soft: 230 100% 96%;             /* #EEF1FF */
+    --muted: 230 33% 96%;             /* ~F7F8FC lighter */
+    --muted-foreground: 220 9% 46%;    /* #6B7280 */
+    --border: 220 13% 91%;            /* #E5E7EB */
+    --ring: 238 100% 68%;             /* brand-primary */
+    --radius: 1rem;                    /* 16px default */
+
+    /* State colors */
+    --success: 161 73% 46%;
+    --warning: 30 100% 63%;
+    --error: 0 100% 71%;               /* #FF6B6B */
+    --info: 238 100% 68%;
   }
 
   * {
@@ -22,7 +38,93 @@
   }
 
   body {
-    @apply bg-background text-foreground font-body antialiased;
+    @apply bg-brand-background text-brand-text font-body antialiased;
+  }
+
+  /* Heading defaults — use font-display (Satoshi) */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  /* --- Card base (Design System §11) --- */
+  .card {
+    @apply bg-brand-surface rounded-lg shadow-card;
+  }
+  .card-hover {
+    @apply transition-all duration-300 ease-out;
+  }
+  .card-hover:hover {
+    @apply shadow-card-hover -translate-y-1;
+  }
+
+  /* --- Button base (Design System §10) --- */
+  .btn {
+    @apply inline-flex items-center justify-center font-body font-semibold
+           rounded-lg transition-all duration-200 ease-out
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2
+           disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-brand-primary text-white shadow-button
+           hover:brightness-110 hover:shadow-button-hover
+           active:scale-[0.98];
+  }
+  .btn-secondary {
+    @apply btn bg-white border-2 border-brand-primary text-brand-primary
+           hover:bg-brand-soft;
+  }
+  .btn-ghost {
+    @apply btn bg-transparent text-brand-primary
+           hover:bg-brand-soft;
+  }
+  .btn-reward {
+    @apply btn text-white shadow-button
+           hover:brightness-110 hover:shadow-button-hover
+           active:scale-[0.98];
+    background: linear-gradient(135deg, #FF9F43, #FFD166);
+  }
+
+  /* Button sizes */
+  .btn-sm { @apply text-body px-4 py-2 min-h-[36px]; }
+  .btn-md { @apply text-body px-5 py-3 min-h-[44px]; }
+  .btn-lg { @apply text-body-lg px-7 py-3.5 min-h-[52px]; }
+
+  /* --- Gradient backgrounds (Design System §4) --- */
+  .gradient-primary {
+    background: linear-gradient(135deg, #5B5FFF, #8A5CFF);
+  }
+  .gradient-gamification {
+    background: linear-gradient(135deg, #20C997, #5B5FFF);
+  }
+  .gradient-reward {
+    background: linear-gradient(135deg, #FF9F43, #FFD166);
+  }
+  .gradient-ai {
+    background: linear-gradient(135deg, #8A5CFF, #5B5FFF);
+  }
+
+  /* Studio-specific gradients */
+  .gradient-story { background: linear-gradient(135deg, #8A5CFF, #5B5FFF); }
+  .gradient-music { background: linear-gradient(135deg, #FF9F43, #FF6B6B); }
+  .gradient-quiz  { background: linear-gradient(135deg, #5B5FFF, #20C997); }
+  .gradient-game  { background: linear-gradient(135deg, #20C997, #5B5FFF); }
+  .gradient-comic { background: linear-gradient(135deg, #FF9F43, #FFD166); }
+
+  /* --- Progress bar (Design System §13) --- */
+  .progress-bar {
+    @apply h-2 rounded-full overflow-hidden;
+    background: #EEF1FF;
+  }
+  .progress-bar-fill {
+    @apply h-full rounded-full transition-all duration-500 ease-out;
+    background: linear-gradient(135deg, #5B5FFF, #8A5CFF);
+  }
+
+  /* --- Numeric display — JetBrains Mono (Design System §5) --- */
+  .numeric {
+    @apply font-mono font-medium tabular-nums;
   }
 }
 
@@ -37,5 +139,15 @@
 
   .pb-nav {
     padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Gradient text utility */
+  .text-gradient-primary {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #5B5FFF, #8A5CFF);
+  }
+  .text-gradient-reward {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #FF9F43, #FFD166);
   }
 }
