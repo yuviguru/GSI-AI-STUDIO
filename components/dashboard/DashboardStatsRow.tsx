@@ -40,7 +40,7 @@ function BadgesStatCard({ count }: { count: number }) {
         <div>
           <p className="text-sm font-medium text-brand-text-secondary">Badges</p>
           <span className="mt-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-brand-soft font-mono text-[9px] font-bold text-brand-primary">
-            {count || BADGE_EMOJIS.length}
+            {count}
           </span>
         </div>
         <Link href="/creations" className="text-[11px] font-semibold text-brand-text-secondary hover:text-brand-primary">

@@ -8,13 +8,13 @@ import { cn } from '@/lib/utils';
 /* ─── Tab definitions ─────────────────────────────────────────────────────── */
 
 const LEFT_TABS = [
-  { href: '/',            Icon: BookOpen },
-  { href: '/beat-the-ai', Icon: Footprints },
+  { href: '/',            Icon: BookOpen,   label: 'Home' },
+  { href: '/beat-the-ai', Icon: Footprints, label: 'Beat the AI' },
 ] as const;
 
 const RIGHT_TABS = [
-  { href: '/explore',   Icon: Apple },
-  { href: '/creations', Icon: Smile },
+  { href: '/explore',   Icon: Apple, label: 'Explore' },
+  { href: '/creations', Icon: Smile, label: 'My Creations' },
 ] as const;
 
 /* ─── Bottom Navigation ───────────────────────────────────────────────────── */
@@ -42,7 +42,7 @@ export function BottomNav() {
           {LEFT_TABS.map((tab) => {
             const active = isActive(tab.href);
             return (
-              <Link key={tab.href} href={tab.href}>
+              <Link key={tab.href} href={tab.href} aria-label={tab.label}>
                 <tab.Icon
                   className={cn(
                     'h-6 w-6 transition-colors',
@@ -59,7 +59,7 @@ export function BottomNav() {
         <div className="pointer-events-auto relative z-10 -mx-3 -mb-1">
           {/* Glow / soft shadow behind */}
           <div className="absolute inset-0 scale-125 rounded-full bg-brand-primary/20 blur-xl" />
-          <Link href="/create/story" className="relative block">
+          <Link href="/create/story" className="relative block" aria-label="Create new">
             <div className="flex h-[60px] w-[60px] items-center justify-center rounded-full bg-gradient-to-br from-[#6B8BF5] to-[#4F6CE5] shadow-xl transition-transform active:scale-95">
               <Plus className="h-7 w-7 text-white" strokeWidth={2.5} />
             </div>
@@ -71,7 +71,7 @@ export function BottomNav() {
           {RIGHT_TABS.map((tab) => {
             const active = isActive(tab.href);
             return (
-              <Link key={tab.href} href={tab.href}>
+              <Link key={tab.href} href={tab.href} aria-label={tab.label}>
                 <tab.Icon
                   className={cn(
                     'h-6 w-6 transition-colors',
