@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AiPointsBadge } from '@/components/learning/AiPointsBadge';
+import { useAuth } from '@/hooks/useAuth';
+import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
 
 /* ─── Studio sub-items for Create+ ─────────────────────────────────────────── */
 
@@ -83,6 +85,8 @@ const BOTTOM_ITEMS: NavItem[] = [
 export function SidebarNav() {
   const pathname = usePathname();
   const [createOpen, setCreateOpen] = useState(false);
+  const [showAuthFlow, setShowAuthFlow] = useState(false);
+  const { user, isAuthenticated, loading: authLoading, signOut } = useAuth();
   const isStudioActive = pathname.startsWith('/create/');
 
   const toggleCreate = useCallback(() => {
@@ -229,17 +233,74 @@ export function SidebarNav() {
 
         {/* ── User / AI Points ───────────────────────────────────────── */}
         <div className="border-t border-gray-100 px-1 py-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-primary/10 text-base">
-              🧑
+          {!authLoading && isAuthenticated ? (
+            /* Authenticated: show user info + sign out */
+            <div className="space-y-2">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-primary/10 text-sm font-bold text-brand-primary">
+                  {(user?.name || user?.displayName || 'U').charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-brand-text">
+                    {user?.name || user?.displayName || 'User'}
+                  </p>
+                  <AiPointsBadge />
+                </div>
+              </div>
+              <button
+                onClick={() => signOut()}
+                className="w-full rounded-lg px-3 py-1.5 text-left text-xs text-red-500 transition hover:bg-red-50"
+              >
+                Sign Out
+              </button>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-brand-text">Student</p>
-              <AiPointsBadge />
+          ) : !authLoading ? (
+            /* Not authenticated: show sign in */
+            <button
+              onClick={() => setShowAuthFlow(true)}
+              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-brand-primary transition hover:bg-brand-primary/8"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-primary/10 text-base">
+                👤
+              </div>
+              <span>Sign In</span>
+            </button>
+          ) : (
+            /* Loading */
+            <div className="flex items-center gap-2.5 px-3 py-2.5">
+              <div className="h-9 w-9 animate-pulse rounded-full bg-gray-100" />
+              <div className="h-4 w-20 animate-pulse rounded bg-gray-100" />
             </div>
-          </div>
+          )}
         </div>
       </nav>
+
+      {/* Auth flow modal */}
+      <AnimatePresence>
+        {showAuthFlow && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowAuthFlow(false);
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-sm rounded-3xl bg-white"
+            >
+              <PhoneAuthFlow
+                onComplete={() => setShowAuthFlow(false)}
+                onClose={() => setShowAuthFlow(false)}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </aside>
   );
 }
