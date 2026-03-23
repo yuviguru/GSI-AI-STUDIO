@@ -17,8 +17,7 @@ export interface UserDoc {
   planExpiresAt?: Date;
   kidIds: string[]; // Kid Firebase UIDs or auto-IDs (max 4 for parents)
   schoolId?: string; // For teachers: assigned school
-  ageVerifiedAt: Date;
-  dateOfBirth: string; // YYYY-MM-DD (age gate only, not displayed)
+  consentedAt: Date; // When parent confirmed 18+ and agreed to T&C
   preferences?: {
     language: 'en' | 'hi';
     notifications: boolean;

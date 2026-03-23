@@ -19,8 +19,7 @@ interface UserDocFirestore {
   planExpiresAt?: Timestamp;
   kidIds: string[];
   schoolId?: string;
-  ageVerifiedAt: Timestamp;
-  dateOfBirth: string;
+  consentedAt: Timestamp; // When parent confirmed they are 18+ and agreed to T&C
   preferences?: {
     language: 'en' | 'hi';
     notifications: boolean;
@@ -46,15 +45,15 @@ export interface CreateUserInput {
   phone: string;
   name: string;
   role: UserRole;
-  dateOfBirth: string; // YYYY-MM-DD
 }
 
 /**
  * Create a new user document after phone auth registration.
+ * Age verification is handled client-side via consent checkbox.
  * Called from POST /api/auth/register.
  */
 export async function createUser(input: CreateUserInput): Promise<UserDocFirestore> {
-  const { uid, phone, name, role, dateOfBirth } = input;
+  const { uid, phone, name, role } = input;
 
   // Check if user already exists
   const existing = await adminDb.collection(USERS_COLLECTION).doc(uid).get();
@@ -70,8 +69,7 @@ export async function createUser(input: CreateUserInput): Promise<UserDocFiresto
     role,
     plan: 'free',
     kidIds: [],
-    ageVerifiedAt: now,
-    dateOfBirth,
+    consentedAt: now,
     createdAt: now,
     updatedAt: now,
   };

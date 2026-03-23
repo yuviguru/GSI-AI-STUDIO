@@ -7,18 +7,13 @@ import { getRecaptchaVerifier, sendPhoneOtp, auth } from '@/lib/firebase/client'
 import type { ConfirmationResult } from 'firebase/auth';
 import { useAuth } from '@/hooks/useAuth';
 
-type Step = 'age-gate' | 'phone' | 'otp' | 'name' | 'success';
+type Step = 'phone' | 'name' | 'success';
 
 interface PhoneAuthFlowProps {
   onComplete?: () => void;
   onClose?: () => void;
   defaultRole?: 'parent' | 'teacher';
 }
-
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
 
 const stepVariants = {
   enter: { opacity: 0, x: 30 },
@@ -30,20 +25,17 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent' }: P
   const { refreshProfile } = useAuth();
 
   // ── State ─────────────────────────────────────────────────────────────
-  const [step, setStep] = useState<Step>('age-gate');
+  const [step, setStep] = useState<Step>('phone');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Age gate
-  const [birthYear, setBirthYear] = useState('');
-  const [birthMonth, setBirthMonth] = useState('');
-  const [birthDay, setBirthDay] = useState('');
-
-  // Phone
+  // Consent + Phone
+  const [consentChecked, setConsentChecked] = useState(false);
   const [phone, setPhone] = useState('');
   const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
+  const [otpSent, setOtpSent] = useState(false);
 
-  // OTP
+  // OTP (inline below phone)
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -55,48 +47,16 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent' }: P
   // reCAPTCHA container ref
   const recaptchaContainerRef = useRef<HTMLDivElement>(null);
 
-  // ── Age Gate ──────────────────────────────────────────────────────────
-
-  function getDateOfBirth(): string {
-    const y = birthYear.padStart(4, '0');
-    const m = birthMonth.padStart(2, '0');
-    const d = birthDay.padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
-
-  function calculateAge(): number {
-    const dob = new Date(getDateOfBirth());
-    const today = new Date();
-    let age = today.getFullYear() - dob.getFullYear();
-    const monthDiff = today.getMonth() - dob.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-      age--;
-    }
-    return age;
-  }
-
-  function handleAgeGate() {
-    setError(null);
-    if (!birthYear || !birthMonth || !birthDay) {
-      setError('Please enter your full date of birth');
-      return;
-    }
-    const age = calculateAge();
-    if (age < 18) {
-      setError('You must be 18 or older to create an account. Please ask a parent or guardian to set up the account for you.');
-      return;
-    }
-    if (age > 120) {
-      setError('Please enter a valid date of birth');
-      return;
-    }
-    setStep('phone');
-  }
-
   // ── Phone OTP ─────────────────────────────────────────────────────────
 
   async function handleSendOtp() {
     setError(null);
+
+    if (!consentChecked) {
+      setError('Please confirm you are a parent/guardian and agree to the terms');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -108,8 +68,11 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent' }: P
       const verifier = getRecaptchaVerifier('recaptcha-container');
       const result = await sendPhoneOtp(cleanPhone, verifier);
       setConfirmation(result);
-      setStep('otp');
+      setOtpSent(true);
       setResendCooldown(30);
+
+      // Auto-focus first OTP input
+      setTimeout(() => otpRefs.current[0]?.focus(), 100);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to send OTP';
       if (message.includes('too-many-requests')) {
@@ -131,7 +94,7 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent' }: P
     return () => clearTimeout(timer);
   }, [resendCooldown]);
 
-  // ── OTP Verification ──────────────────────────────────────────────────
+  // ── OTP Input ─────────────────────────────────────────────────────────
 
   const handleOtpChange = useCallback((index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
@@ -139,7 +102,6 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent' }: P
     newOtp[index] = value.slice(-1);
     setOtp(newOtp);
 
-    // Auto-focus next input
     if (value && index < 5) {
       otpRefs.current[index + 1]?.focus();
     }
@@ -167,7 +129,6 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent' }: P
 
     try {
       await confirmation.confirm(code);
-      // Firebase Auth user is now set — check if user already registered
       const user = auth.currentUser;
       if (!user) throw new Error('Authentication failed');
 
@@ -177,11 +138,9 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent' }: P
       });
 
       if (res.ok) {
-        // User already registered — go straight to success
         await refreshProfile();
         setStep('success');
       } else {
-        // New user — collect name
         setStep('name');
       }
     } catch (err) {
@@ -200,10 +159,18 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent' }: P
     }
   }
 
+  function handleChangeNumber() {
+    setOtpSent(false);
+    setConfirmation(null);
+    setOtp(['', '', '', '', '', '']);
+    setError(null);
+  }
+
   async function handleResendOtp() {
     if (resendCooldown > 0) return;
     setOtp(['', '', '', '', '', '']);
-    setStep('phone');
+    setError(null);
+    await handleSendOtp();
   }
 
   // ── Name & Registration ───────────────────────────────────────────────
@@ -228,11 +195,7 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent' }: P
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          name: name.trim(),
-          role,
-          dateOfBirth: getDateOfBirth(),
-        }),
+        body: JSON.stringify({ name: name.trim(), role }),
       });
 
       if (!res.ok) {
@@ -257,12 +220,9 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent' }: P
     return () => clearTimeout(timer);
   }, [step, onComplete]);
 
-  // ── Year options (18+ means born before current year - 18) ────────────
-
-  const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 80 }, (_, i) => currentYear - 18 - i);
-
   // ── Render ────────────────────────────────────────────────────────────
+
+  const canSendOtp = consentChecked && phone.replace(/\D/g, '').length === 10 && !loading;
 
   return (
     <div className="mx-auto w-full max-w-sm px-4 py-6">
@@ -270,68 +230,126 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent' }: P
       <div id="recaptcha-container" ref={recaptchaContainerRef} />
 
       <AnimatePresence mode="wait">
-        {/* ─── Step 1: Age Gate ─── */}
-        {step === 'age-gate' && (
+        {/* ─── Step 1: Phone + Consent + Inline OTP ─── */}
+        {step === 'phone' && (
           <motion.div
-            key="age-gate"
+            key="phone"
             variants={stepVariants}
             initial="enter"
             animate="center"
             exit="exit"
             transition={{ duration: 0.2 }}
-            className="space-y-5"
+            className="space-y-4"
           >
             <div className="text-center">
-              <span className="text-4xl">👨‍👩‍👧‍👦</span>
-              <h2 className="mt-2 text-xl font-bold text-gray-900">Are you a parent or guardian?</h2>
+              <span className="text-4xl">📱</span>
+              <h2 className="mt-2 text-xl font-bold text-gray-900">Sign in to GSI AI Studio</h2>
               <p className="mt-1 text-sm text-gray-500">
-                A parent or guardian must set up the account.
+                {otpSent
+                  ? `Enter the code sent to +91 ${phone}`
+                  : "We'll send a verification code via SMS"}
               </p>
             </div>
 
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-700">
-                Your date of birth
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                <select
-                  value={birthDay}
-                  onChange={(e) => setBirthDay(e.target.value)}
-                  className="rounded-xl border border-gray-200 px-3 py-3 text-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+            {/* Phone input */}
+            <div className="flex items-center gap-2">
+              <span className="flex items-center rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm font-medium text-gray-600">
+                🇮🇳 +91
+              </span>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => {
+                  setPhone(e.target.value.replace(/\D/g, '').slice(0, 10));
+                  if (otpSent) handleChangeNumber();
+                }}
+                placeholder="10-digit number"
+                className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                autoFocus={!otpSent}
+                maxLength={10}
+                disabled={otpSent}
+              />
+              {otpSent && (
+                <button
+                  onClick={handleChangeNumber}
+                  className="text-xs text-purple-600 hover:text-purple-700"
                 >
-                  <option value="">Day</option>
-                  {Array.from({ length: 31 }, (_, i) => (
-                    <option key={i + 1} value={String(i + 1)}>
-                      {i + 1}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={birthMonth}
-                  onChange={(e) => setBirthMonth(e.target.value)}
-                  className="rounded-xl border border-gray-200 px-3 py-3 text-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
-                >
-                  <option value="">Month</option>
-                  {MONTHS.map((month, i) => (
-                    <option key={month} value={String(i + 1)}>
-                      {month}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={birthYear}
-                  onChange={(e) => setBirthYear(e.target.value)}
-                  className="rounded-xl border border-gray-200 px-3 py-3 text-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
-                >
-                  <option value="">Year</option>
-                  {yearOptions.map((year) => (
-                    <option key={year} value={String(year)}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  Change
+                </button>
+              )}
             </div>
+
+            {/* OTP input — shown inline after sending */}
+            <AnimatePresence>
+              {otpSent && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-3 overflow-hidden"
+                >
+                  <div className="flex justify-center gap-2">
+                    {otp.map((digit, i) => (
+                      <input
+                        key={i}
+                        ref={(el) => { otpRefs.current[i] = el; }}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleOtpChange(i, e.target.value)}
+                        onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                        className={cn(
+                          'h-12 w-10 rounded-xl border text-center text-lg font-bold transition',
+                          'focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100',
+                          digit ? 'border-purple-300 bg-purple-50' : 'border-gray-200'
+                        )}
+                      />
+                    ))}
+                  </div>
+
+                  {loading && (
+                    <p className="text-center text-sm text-gray-500">Verifying...</p>
+                  )}
+
+                  <div className="text-center">
+                    <button
+                      onClick={handleResendOtp}
+                      disabled={resendCooldown > 0}
+                      className={cn(
+                        'text-xs',
+                        resendCooldown > 0 ? 'text-gray-400' : 'text-purple-600 hover:text-purple-700'
+                      )}
+                    >
+                      {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend OTP'}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Consent checkbox — shown before OTP is sent */}
+            {!otpSent && (
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={consentChecked}
+                  onChange={(e) => setConsentChecked(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                />
+                <span className="text-xs leading-relaxed text-gray-500">
+                  I am a parent/guardian, 18 years or older, and I agree to the{' '}
+                  <a href="/terms" className="text-purple-600 underline hover:text-purple-700">
+                    Terms &amp; Conditions
+                  </a>
+                  {' '}and{' '}
+                  <a href="/privacy" className="text-purple-600 underline hover:text-purple-700">
+                    Privacy Policy
+                  </a>
+                </span>
+              </label>
+            )}
 
             {error && (
               <p className="rounded-lg bg-red-50 p-3 text-center text-sm text-red-600">
@@ -339,12 +357,21 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent' }: P
               </p>
             )}
 
-            <button
-              onClick={handleAgeGate}
-              className="w-full rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700 active:scale-[0.98]"
-            >
-              Continue
-            </button>
+            {/* Send OTP button — only shown before OTP is sent */}
+            {!otpSent && (
+              <button
+                onClick={handleSendOtp}
+                disabled={!canSendOtp}
+                className={cn(
+                  'w-full rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition active:scale-[0.98]',
+                  canSendOtp
+                    ? 'bg-purple-600 hover:bg-purple-700'
+                    : 'bg-gray-300 cursor-not-allowed'
+                )}
+              >
+                {loading ? 'Sending...' : 'Send OTP'}
+              </button>
+            )}
 
             {onClose && (
               <button
@@ -357,141 +384,7 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent' }: P
           </motion.div>
         )}
 
-        {/* ─── Step 2: Phone Input ─── */}
-        {step === 'phone' && (
-          <motion.div
-            key="phone"
-            variants={stepVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.2 }}
-            className="space-y-5"
-          >
-            <div className="text-center">
-              <span className="text-4xl">📱</span>
-              <h2 className="mt-2 text-xl font-bold text-gray-900">Enter your phone number</h2>
-              <p className="mt-1 text-sm text-gray-500">
-                We&apos;ll send a verification code via SMS
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="flex items-center rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm font-medium text-gray-600">
-                🇮🇳 +91
-              </span>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                placeholder="10-digit number"
-                className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
-                autoFocus
-                maxLength={10}
-              />
-            </div>
-
-            {error && (
-              <p className="rounded-lg bg-red-50 p-3 text-center text-sm text-red-600">
-                {error}
-              </p>
-            )}
-
-            <button
-              onClick={handleSendOtp}
-              disabled={loading || phone.replace(/\D/g, '').length !== 10}
-              className={cn(
-                'w-full rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition active:scale-[0.98]',
-                loading || phone.replace(/\D/g, '').length !== 10
-                  ? 'bg-gray-300 cursor-not-allowed'
-                  : 'bg-purple-600 hover:bg-purple-700'
-              )}
-            >
-              {loading ? 'Sending...' : 'Send OTP'}
-            </button>
-
-            <button
-              onClick={() => setStep('age-gate')}
-              className="w-full text-center text-sm text-gray-400 hover:text-gray-600"
-            >
-              ← Back
-            </button>
-          </motion.div>
-        )}
-
-        {/* ─── Step 3: OTP Verification ─── */}
-        {step === 'otp' && (
-          <motion.div
-            key="otp"
-            variants={stepVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.2 }}
-            className="space-y-5"
-          >
-            <div className="text-center">
-              <span className="text-4xl">🔐</span>
-              <h2 className="mt-2 text-xl font-bold text-gray-900">Enter verification code</h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Sent to +91 {phone}
-              </p>
-            </div>
-
-            <div className="flex justify-center gap-2">
-              {otp.map((digit, i) => (
-                <input
-                  key={i}
-                  ref={(el) => { otpRefs.current[i] = el; }}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={1}
-                  value={digit}
-                  onChange={(e) => handleOtpChange(i, e.target.value)}
-                  onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                  className={cn(
-                    'h-12 w-10 rounded-xl border text-center text-lg font-bold transition',
-                    'focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100',
-                    digit ? 'border-purple-300 bg-purple-50' : 'border-gray-200'
-                  )}
-                  autoFocus={i === 0}
-                />
-              ))}
-            </div>
-
-            {error && (
-              <p className="rounded-lg bg-red-50 p-3 text-center text-sm text-red-600">
-                {error}
-              </p>
-            )}
-
-            {loading && (
-              <p className="text-center text-sm text-gray-500">Verifying...</p>
-            )}
-
-            <div className="text-center">
-              <button
-                onClick={handleResendOtp}
-                disabled={resendCooldown > 0}
-                className={cn(
-                  'text-sm',
-                  resendCooldown > 0 ? 'text-gray-400' : 'text-purple-600 hover:text-purple-700'
-                )}
-              >
-                {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend OTP'}
-              </button>
-            </div>
-
-            <button
-              onClick={() => { setStep('phone'); setError(null); }}
-              className="w-full text-center text-sm text-gray-400 hover:text-gray-600"
-            >
-              ← Change number
-            </button>
-          </motion.div>
-        )}
-
-        {/* ─── Step 4: Name ─── */}
+        {/* ─── Step 2: Name (new users only) ─── */}
         {step === 'name' && (
           <motion.div
             key="name"
@@ -539,7 +432,7 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent' }: P
           </motion.div>
         )}
 
-        {/* ─── Step 5: Success ─── */}
+        {/* ─── Step 3: Success ─── */}
         {step === 'success' && (
           <motion.div
             key="success"
