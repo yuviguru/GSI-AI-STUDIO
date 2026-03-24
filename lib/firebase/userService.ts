@@ -12,7 +12,7 @@ const SESSIONS_COLLECTION = 'sessions';
 interface UserDocFirestore {
   id: string;
   phone: string;
-  name: string;
+  name?: string;
   email?: string;
   role: UserRole;
   plan: UserPlan;
@@ -43,7 +43,6 @@ interface UserDocFirestore {
 export interface CreateUserInput {
   uid: string;
   phone: string;
-  name: string;
   role: UserRole;
 }
 
@@ -53,7 +52,7 @@ export interface CreateUserInput {
  * Called from POST /api/auth/register.
  */
 export async function createUser(input: CreateUserInput): Promise<UserDocFirestore> {
-  const { uid, phone, name, role } = input;
+  const { uid, phone, role } = input;
 
   // Check if user already exists
   const existing = await adminDb.collection(USERS_COLLECTION).doc(uid).get();
@@ -65,7 +64,6 @@ export async function createUser(input: CreateUserInput): Promise<UserDocFiresto
   const userDoc: UserDocFirestore = {
     id: uid,
     phone,
-    name,
     role,
     plan: 'free',
     kidIds: [],

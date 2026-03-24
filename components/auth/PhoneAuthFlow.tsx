@@ -6,16 +6,12 @@ import { cn } from '@/lib/utils';
 import { getRecaptchaVerifier, sendPhoneOtp, auth } from '@/lib/firebase/client';
 import type { ConfirmationResult } from 'firebase/auth';
 import { useAuth } from '@/hooks/useAuth';
-import { KidProfileSetup } from '@/components/profile/KidProfileSetup';
 
-type Step = 'phone' | 'name' | 'success' | 'kid-setup';
+type Step = 'phone' | 'success';
 
 interface PhoneAuthFlowProps {
   onComplete?: () => void;
   onClose?: () => void;
-  defaultRole?: 'parent' | 'teacher';
-  /** Skip straight to kid profile setup after auth (for returning users with no kids) */
-  skipToKidSetup?: boolean;
 }
 
 const stepVariants = {
@@ -24,10 +20,14 @@ const stepVariants = {
   exit: { opacity: 0, x: -30 },
 };
 
-export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent', skipToKidSetup }: PhoneAuthFlowProps) {
+/**
+ * Phone OTP auth flow — simplified.
+ * No name collection. Auto-registers after OTP verification.
+ * The layout gate handles kid profile setup after auth.
+ */
+export function PhoneAuthFlow({ onComplete, onClose }: PhoneAuthFlowProps) {
   const { refreshProfile } = useAuth();
 
-  // ── State ─────────────────────────────────────────────────────────────
   const [step, setStep] = useState<Step>('phone');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -38,30 +38,23 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent', ski
   const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
   const [otpSent, setOtpSent] = useState(false);
 
-  // OTP (inline below phone)
+  // OTP
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  // Name
-  const [name, setName] = useState('');
-  const [role] = useState<'parent' | 'teacher'>(defaultRole);
-
-  // reCAPTCHA container ref
   const recaptchaContainerRef = useRef<HTMLDivElement>(null);
 
-  // ── Phone OTP ─────────────────────────────────────────────────────────
+  // ── Send OTP ──────────────────────────────────────────────────────────
 
   async function handleSendOtp() {
     setError(null);
-
     if (!consentChecked) {
       setError('Please confirm you are a parent/guardian and agree to the terms');
       return;
     }
 
     setLoading(true);
-
     try {
       const cleanPhone = phone.replace(/\D/g, '');
       if (cleanPhone.length !== 10) {
@@ -73,8 +66,6 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent', ski
       setConfirmation(result);
       setOtpSent(true);
       setResendCooldown(30);
-
-      // Auto-focus first OTP input
       setTimeout(() => otpRefs.current[0]?.focus(), 100);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to send OTP';
@@ -90,7 +81,7 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent', ski
     }
   }
 
-  // Resend cooldown timer
+  // Resend cooldown
   useEffect(() => {
     if (resendCooldown <= 0) return;
     const timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
@@ -104,10 +95,7 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent', ski
     const newOtp = [...otp];
     newOtp[index] = value.slice(-1);
     setOtp(newOtp);
-
-    if (value && index < 5) {
-      otpRefs.current[index + 1]?.focus();
-    }
+    if (value && index < 5) otpRefs.current[index + 1]?.focus();
   }, [otp]);
 
   const handleOtpKeyDown = useCallback((index: number, e: React.KeyboardEvent) => {
@@ -119,11 +107,11 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent', ski
   // Auto-verify when all 6 digits entered
   useEffect(() => {
     const code = otp.join('');
-    if (code.length === 6 && confirmation) {
-      verifyOtp(code);
-    }
+    if (code.length === 6 && confirmation) verifyOtp(code);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [otp, confirmation]);
+
+  // ── Verify OTP + auto-register ────────────────────────────────────────
 
   async function verifyOtp(code: string) {
     if (!confirmation) return;
@@ -135,17 +123,26 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent', ski
       const user = auth.currentUser;
       if (!user) throw new Error('Authentication failed');
 
+      // Auto-register: create user doc if it doesn't exist (silent, no user input)
       const token = await user.getIdToken();
-      const res = await fetch('/api/auth/me', {
+      const meRes = await fetch('/api/auth/me', {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (res.ok) {
-        await refreshProfile();
-        setStep('success');
-      } else {
-        setStep('name');
+      if (!meRes.ok) {
+        // New user — auto-register with default role
+        await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ role: 'parent' }),
+        });
       }
+
+      await refreshProfile();
+      setStep('success');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Invalid OTP';
       if (message.includes('invalid-verification-code')) {
@@ -176,78 +173,24 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent', ski
     await handleSendOtp();
   }
 
-  // ── Name & Registration ───────────────────────────────────────────────
-
-  async function handleRegister() {
-    setError(null);
-    if (!name.trim() || name.trim().length < 2) {
-      setError('Please enter your name (at least 2 characters)');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const user = auth.currentUser;
-      if (!user) throw new Error('Not authenticated');
-
-      const token = await user.getIdToken();
-
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name: name.trim(), role }),
-      });
-
-      if (!res.ok) {
-        const json = await res.json();
-        throw new Error(json.error?.message || 'Registration failed');
-      }
-
-      await refreshProfile();
-      setIsNewUser(true);
-      setStep('success');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // ── After success, auto-transition to kid setup for new users ────────
-
-  const [isNewUser, setIsNewUser] = useState(false);
+  // ── Auto-dismiss success → layout gate handles kid setup ──────────────
 
   useEffect(() => {
     if (step !== 'success') return;
-    if (isNewUser) {
-      // New user → go to kid profile setup after a brief celebration
-      const timer = setTimeout(() => setStep('kid-setup'), 1500);
-      return () => clearTimeout(timer);
-    }
-    // Returning user → just close
-    const timer = setTimeout(() => onComplete?.(), 2000);
+    const timer = setTimeout(() => onComplete?.(), 1500);
     return () => clearTimeout(timer);
-  }, [step, onComplete, isNewUser]);
-
-  // If skipToKidSetup is set, start there directly
-  useEffect(() => {
-    if (skipToKidSetup) setStep('kid-setup');
-  }, [skipToKidSetup]);
-
-  // ── Render ────────────────────────────────────────────────────────────
+  }, [step, onComplete]);
 
   const canSendOtp = consentChecked && phone.replace(/\D/g, '').length === 10 && !loading;
 
+  // ── Render ────────────────────────────────────────────────────────────
+
   return (
     <div className="mx-auto w-full max-w-sm px-4 py-6">
-      {/* Invisible reCAPTCHA container */}
       <div id="recaptcha-container" ref={recaptchaContainerRef} />
 
       <AnimatePresence mode="wait">
-        {/* ─── Step 1: Phone + Consent + Inline OTP ─── */}
+        {/* ─── Phone + Consent + Inline OTP ─── */}
         {step === 'phone' && (
           <motion.div
             key="phone"
@@ -287,16 +230,13 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent', ski
                 disabled={otpSent}
               />
               {otpSent && (
-                <button
-                  onClick={handleChangeNumber}
-                  className="text-xs text-purple-600 hover:text-purple-700"
-                >
+                <button onClick={handleChangeNumber} className="text-xs text-purple-600 hover:text-purple-700">
                   Change
                 </button>
               )}
             </div>
 
-            {/* OTP input — shown inline after sending */}
+            {/* OTP input — inline after sending */}
             <AnimatePresence>
               {otpSent && (
                 <motion.div
@@ -325,19 +265,12 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent', ski
                       />
                     ))}
                   </div>
-
-                  {loading && (
-                    <p className="text-center text-sm text-gray-500">Verifying...</p>
-                  )}
-
+                  {loading && <p className="text-center text-sm text-gray-500">Verifying...</p>}
                   <div className="text-center">
                     <button
                       onClick={handleResendOtp}
                       disabled={resendCooldown > 0}
-                      className={cn(
-                        'text-xs',
-                        resendCooldown > 0 ? 'text-gray-400' : 'text-purple-600 hover:text-purple-700'
-                      )}
+                      className={cn('text-xs', resendCooldown > 0 ? 'text-gray-400' : 'text-purple-600 hover:text-purple-700')}
                     >
                       {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend OTP'}
                     </button>
@@ -346,7 +279,7 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent', ski
               )}
             </AnimatePresence>
 
-            {/* Consent checkbox — shown before OTP is sent */}
+            {/* Consent checkbox — before OTP sent */}
             {!otpSent && (
               <label className="flex items-start gap-2.5 cursor-pointer">
                 <input
@@ -369,21 +302,16 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent', ski
             )}
 
             {error && (
-              <p className="rounded-lg bg-red-50 p-3 text-center text-sm text-red-600">
-                {error}
-              </p>
+              <p className="rounded-lg bg-red-50 p-3 text-center text-sm text-red-600">{error}</p>
             )}
 
-            {/* Send OTP button — only shown before OTP is sent */}
             {!otpSent && (
               <button
                 onClick={handleSendOtp}
                 disabled={!canSendOtp}
                 className={cn(
                   'w-full rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition active:scale-[0.98]',
-                  canSendOtp
-                    ? 'bg-purple-600 hover:bg-purple-700'
-                    : 'bg-gray-300 cursor-not-allowed'
+                  canSendOtp ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-300 cursor-not-allowed'
                 )}
               >
                 {loading ? 'Sending...' : 'Send OTP'}
@@ -391,65 +319,14 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent', ski
             )}
 
             {onClose && (
-              <button
-                onClick={onClose}
-                className="w-full text-center text-sm text-gray-400 hover:text-gray-600"
-              >
+              <button onClick={onClose} className="w-full text-center text-sm text-gray-400 hover:text-gray-600">
                 Maybe later
               </button>
             )}
           </motion.div>
         )}
 
-        {/* ─── Step 2: Name (new users only) ─── */}
-        {step === 'name' && (
-          <motion.div
-            key="name"
-            variants={stepVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.2 }}
-            className="space-y-5"
-          >
-            <div className="text-center">
-              <span className="text-4xl">✨</span>
-              <h2 className="mt-2 text-xl font-bold text-gray-900">Almost there!</h2>
-              <p className="mt-1 text-sm text-gray-500">What should we call you?</p>
-            </div>
-
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Your name"
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
-              autoFocus
-              maxLength={50}
-            />
-
-            {error && (
-              <p className="rounded-lg bg-red-50 p-3 text-center text-sm text-red-600">
-                {error}
-              </p>
-            )}
-
-            <button
-              onClick={handleRegister}
-              disabled={loading || name.trim().length < 2}
-              className={cn(
-                'w-full rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition active:scale-[0.98]',
-                loading || name.trim().length < 2
-                  ? 'bg-gray-300 cursor-not-allowed'
-                  : 'bg-purple-600 hover:bg-purple-700'
-              )}
-            >
-              {loading ? 'Creating account...' : 'Create Account'}
-            </button>
-          </motion.div>
-        )}
-
-        {/* ─── Step 3: Success ─── */}
+        {/* ─── Success ─── */}
         {step === 'success' && (
           <motion.div
             key="success"
@@ -467,27 +344,8 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent', ski
             >
               <span className="text-6xl">🎉</span>
             </motion.div>
-            <h2 className="text-xl font-bold text-gray-900">Welcome!</h2>
-            <p className="text-sm text-gray-500">
-              {isNewUser ? 'Now let\'s set up your kid\'s profile!' : 'Your account is ready. Let\'s start creating!'}
-            </p>
-          </motion.div>
-        )}
-
-        {/* ─── Step 4: Kid Profile Setup (new users) ─── */}
-        {step === 'kid-setup' && (
-          <motion.div
-            key="kid-setup"
-            variants={stepVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.2 }}
-          >
-            <KidProfileSetup
-              onComplete={() => onComplete?.()}
-              onClose={() => onComplete?.()}
-            />
+            <h2 className="text-xl font-bold text-gray-900">You&apos;re in!</h2>
+            <p className="text-sm text-gray-500">Setting things up...</p>
           </motion.div>
         )}
       </AnimatePresence>

@@ -11,8 +11,8 @@ const VALID_ROLES: UserRole[] = ['parent', 'teacher'];
  * Create a user profile after successful Firebase Phone Auth.
  * Requires a valid Firebase ID token in the Authorization header.
  *
- * Age verification is handled client-side via a consent checkbox
- * ("I am a parent/guardian, 18+ years old, and agree to T&C").
+ * No name is collected — the parent is just the account holder.
+ * Age verification is handled client-side via consent checkbox.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -31,30 +31,23 @@ export async function POST(request: NextRequest) {
       throw new AppException('INVALID_AUTH', 'Phone number not found in auth token', 400);
     }
 
-    // 2. Parse and validate request body
-    const body = await request.json();
-    const { name, role } = body;
-
-    if (!name || typeof name !== 'string' || name.trim().length < 2) {
-      throw new AppException('INVALID_INPUT', 'Name must be at least 2 characters', 400);
-    }
-
-    if (!role || !VALID_ROLES.includes(role)) {
-      throw new AppException('INVALID_INPUT', `Role must be one of: ${VALID_ROLES.join(', ')}`, 400);
+    // 2. Parse request body (role is optional, defaults to parent)
+    let role: UserRole = 'parent';
+    try {
+      const body = await request.json();
+      if (body.role && VALID_ROLES.includes(body.role)) {
+        role = body.role;
+      }
+    } catch {
+      // Empty body is fine — defaults to parent
     }
 
     // 3. Create user document
-    const userDoc = await createUser({
-      uid,
-      phone,
-      name: name.trim(),
-      role,
-    });
+    const userDoc = await createUser({ uid, phone, role });
 
     return apiSuccess({
       id: userDoc.id,
       phone: userDoc.phone,
-      name: userDoc.name,
       role: userDoc.role,
       plan: userDoc.plan,
       kidIds: userDoc.kidIds,

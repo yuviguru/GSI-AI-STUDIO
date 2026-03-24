@@ -18,7 +18,9 @@ import { cn } from '@/lib/utils';
 import { AiPointsBadge } from '@/components/learning/AiPointsBadge';
 import { useAuth } from '@/hooks/useAuth';
 import { useKidProfile } from '@/hooks/useKidProfile';
+import { getAvatarEmoji } from '@/components/profile/AvatarPicker';
 import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
+import { ProfilePicker } from '@/components/profile/ProfilePicker';
 
 /* ─── Studio sub-items for Create+ ─────────────────────────────────────────── */
 
@@ -87,9 +89,9 @@ export function SidebarNav() {
   const pathname = usePathname();
   const [createOpen, setCreateOpen] = useState(false);
   const [showAuthFlow, setShowAuthFlow] = useState(false);
-  const [showKidSetup, setShowKidSetup] = useState(false);
-  const { user, isAuthenticated, loading: authLoading, signOut } = useAuth();
-  const { kids } = useKidProfile();
+  const [showPicker, setShowPicker] = useState(false);
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { activeKid } = useKidProfile();
   const isStudioActive = pathname.startsWith('/create/');
 
   const toggleCreate = useCallback(() => {
@@ -234,38 +236,25 @@ export function SidebarNav() {
           })}
         </div>
 
-        {/* ── User / AI Points ───────────────────────────────────────── */}
+        {/* ── User / Active Kid ─────────────────────────────────────── */}
         <div className="border-t border-gray-100 px-1 py-4">
-          {!authLoading && isAuthenticated ? (
-            /* Authenticated: show user info + sign out */
-            <div className="space-y-2">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-primary/10 text-sm font-bold text-brand-primary">
-                  {(user?.name || user?.displayName || 'U').charAt(0).toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-brand-text">
-                    {user?.name || user?.displayName || 'User'}
-                  </p>
-                  <AiPointsBadge />
-                </div>
+          {!authLoading && isAuthenticated && activeKid ? (
+            /* Authenticated with active kid: show kid avatar → opens picker */
+            <button
+              onClick={() => setShowPicker(true)}
+              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition hover:bg-gray-50"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-blue-100 text-xl">
+                {getAvatarEmoji(activeKid.avatar)}
               </div>
-              {kids.length === 0 && (
-                <button
-                  onClick={() => setShowKidSetup(true)}
-                  className="w-full rounded-lg px-3 py-1.5 text-left text-xs font-medium text-purple-600 transition hover:bg-purple-50"
-                >
-                  + Add Kid Profile
-                </button>
-              )}
-              <button
-                onClick={() => signOut()}
-                className="w-full rounded-lg px-3 py-1.5 text-left text-xs text-red-500 transition hover:bg-red-50"
-              >
-                Sign Out
-              </button>
-            </div>
-          ) : !authLoading ? (
+              <div className="min-w-0 flex-1 text-left">
+                <p className="truncate text-sm font-semibold text-brand-text">
+                  {activeKid.name}
+                </p>
+                <AiPointsBadge />
+              </div>
+            </button>
+          ) : !authLoading && !isAuthenticated ? (
             /* Not authenticated: show sign in */
             <button
               onClick={() => setShowAuthFlow(true)}
@@ -286,30 +275,19 @@ export function SidebarNav() {
         </div>
       </nav>
 
-      {/* Kid setup modal */}
+      {/* Profile Picker overlay */}
       <AnimatePresence>
-        {showKidSetup && (
+        {showPicker && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setShowKidSetup(false);
-            }}
+            className="fixed inset-0 z-50 bg-white"
           >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-sm rounded-3xl bg-white"
-            >
-              <PhoneAuthFlow
-                skipToKidSetup
-                onComplete={() => setShowKidSetup(false)}
-                onClose={() => setShowKidSetup(false)}
-              />
-            </motion.div>
+            <ProfilePicker
+              onSelect={() => setShowPicker(false)}
+              onClose={() => setShowPicker(false)}
+            />
           </motion.div>
         )}
       </AnimatePresence>

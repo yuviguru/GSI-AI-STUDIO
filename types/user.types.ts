@@ -10,7 +10,7 @@ export type UserPlan = 'free' | 'creator' | 'family';
 export interface UserDoc {
   id: string; // Firebase Auth UID (phone-based)
   phone: string; // +91XXXXXXXXXX
-  name: string;
+  name?: string; // Optional — parent name not collected during signup
   email?: string;
   role: UserRole;
   plan: UserPlan;

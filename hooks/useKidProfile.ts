@@ -32,10 +32,18 @@ interface KidProfileState {
   kids: KidProfileSummary[];
   /** Loading state */
   loading: boolean;
+  /** True if parent has at least one kid profile */
+  hasKids: boolean;
+  /** True if authenticated but has no kid profiles (needs forced setup) */
+  needsProfileSetup: boolean;
+  /** True if authenticated and has kids but none selected yet (needs picker) */
+  needsProfileSelection: boolean;
   /** Switch active kid */
   switchKid: (kidId: string) => void;
   /** Refresh kids list from server */
   refreshKids: () => Promise<void>;
+  /** Clear active kid selection (returns to picker) */
+  clearActiveKid: () => void;
 }
 
 const ACTIVE_KID_KEY = 'gsi-active-kid-id';
@@ -46,8 +54,12 @@ const KidProfileContext = createContext<KidProfileState>({
   activeKid: null,
   kids: [],
   loading: false,
+  hasKids: false,
+  needsProfileSetup: false,
+  needsProfileSelection: false,
   switchKid: () => {},
   refreshKids: async () => {},
+  clearActiveKid: () => {},
 });
 
 export function useKidProfile(): KidProfileState {
@@ -87,12 +99,15 @@ export function KidProfileProvider({ children }: KidProfileProviderProps) {
         if (json.success && Array.isArray(json.data)) {
           setKids(json.data);
 
-          // Restore active kid from localStorage, or default to first
+          // Restore active kid from localStorage only (don't auto-select first)
+          // The ProfilePicker gate handles selection if none is saved
           const savedKidId = localStorage.getItem(ACTIVE_KID_KEY);
-          const savedKid = json.data.find(
-            (k: KidProfileSummary) => k.id === savedKidId
-          );
-          setActiveKid(savedKid || json.data[0] || null);
+          if (savedKidId) {
+            const savedKid = json.data.find(
+              (k: KidProfileSummary) => k.id === savedKidId
+            );
+            setActiveKid(savedKid || null);
+          }
         }
       }
     } catch {
@@ -118,12 +133,25 @@ export function KidProfileProvider({ children }: KidProfileProviderProps) {
     [kids]
   );
 
+  const clearActiveKid = useCallback(() => {
+    setActiveKid(null);
+    localStorage.removeItem(ACTIVE_KID_KEY);
+  }, []);
+
+  const hasKids = kids.length > 0;
+  const needsProfileSetup = isAuthenticated && !loading && kids.length === 0;
+  const needsProfileSelection = isAuthenticated && !loading && kids.length > 0 && !activeKid;
+
   const value: KidProfileState = {
     activeKid,
     kids,
     loading,
+    hasKids,
+    needsProfileSetup,
+    needsProfileSelection,
     switchKid,
     refreshKids: fetchKids,
+    clearActiveKid,
   };
 
   const { createElement } = require('react');
