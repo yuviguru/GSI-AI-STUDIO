@@ -37,14 +37,25 @@ let recaptchaVerifier: RecaptchaVerifier | null = null;
 /**
  * Get or create an invisible reCAPTCHA verifier.
  * Must be called in a browser context with a valid DOM container.
+ *
+ * Handles cleanup of previous reCAPTCHA instances to avoid
+ * "reCAPTCHA has already been rendered in this element" errors.
  */
 export function getRecaptchaVerifier(containerId: string): RecaptchaVerifier {
+  // Clear any existing verifier
   if (recaptchaVerifier) {
     try {
       recaptchaVerifier.clear();
     } catch {
       // Ignore if already cleared
     }
+    recaptchaVerifier = null;
+  }
+
+  // Also clear the DOM container (reCAPTCHA injects iframes that persist)
+  const container = document.getElementById(containerId);
+  if (container) {
+    container.innerHTML = '';
   }
 
   recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
