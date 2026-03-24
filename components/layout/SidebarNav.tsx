@@ -16,6 +16,11 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AiPointsBadge } from '@/components/learning/AiPointsBadge';
+import { useAuth } from '@/hooks/useAuth';
+import { useKidProfile } from '@/hooks/useKidProfile';
+import { getAvatarEmoji } from '@/components/profile/AvatarPicker';
+import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
+import { ProfilePicker } from '@/components/profile/ProfilePicker';
 
 /* ─── Studio sub-items for Create+ ─────────────────────────────────────────── */
 
@@ -83,6 +88,10 @@ const BOTTOM_ITEMS: NavItem[] = [
 export function SidebarNav() {
   const pathname = usePathname();
   const [createOpen, setCreateOpen] = useState(false);
+  const [showAuthFlow, setShowAuthFlow] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { activeKid } = useKidProfile();
   const isStudioActive = pathname.startsWith('/create/');
 
   const toggleCreate = useCallback(() => {
@@ -227,19 +236,88 @@ export function SidebarNav() {
           })}
         </div>
 
-        {/* ── User / AI Points ───────────────────────────────────────── */}
+        {/* ── User / Active Kid ─────────────────────────────────────── */}
         <div className="border-t border-gray-100 px-1 py-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-primary/10 text-base">
-              🧑
+          {!authLoading && isAuthenticated && activeKid ? (
+            /* Authenticated with active kid: show kid avatar → opens picker */
+            <button
+              onClick={() => setShowPicker(true)}
+              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition hover:bg-gray-50"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-blue-100 text-xl">
+                {getAvatarEmoji(activeKid.avatar)}
+              </div>
+              <div className="min-w-0 flex-1 text-left">
+                <p className="truncate text-sm font-semibold text-brand-text">
+                  {activeKid.name}
+                </p>
+                <AiPointsBadge />
+              </div>
+            </button>
+          ) : !authLoading && !isAuthenticated ? (
+            /* Not authenticated: show sign in */
+            <button
+              onClick={() => setShowAuthFlow(true)}
+              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-brand-primary transition hover:bg-brand-primary/8"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-primary/10 text-base">
+                👤
+              </div>
+              <span>Sign In</span>
+            </button>
+          ) : (
+            /* Loading */
+            <div className="flex items-center gap-2.5 px-3 py-2.5">
+              <div className="h-9 w-9 animate-pulse rounded-full bg-gray-100" />
+              <div className="h-4 w-20 animate-pulse rounded bg-gray-100" />
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-brand-text">Student</p>
-              <AiPointsBadge />
-            </div>
-          </div>
+          )}
         </div>
       </nav>
+
+      {/* Profile Picker overlay */}
+      <AnimatePresence>
+        {showPicker && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-white"
+          >
+            <ProfilePicker
+              onSelect={() => setShowPicker(false)}
+              onClose={() => setShowPicker(false)}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Auth flow modal */}
+      <AnimatePresence>
+        {showAuthFlow && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowAuthFlow(false);
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-sm rounded-3xl bg-white"
+            >
+              <PhoneAuthFlow
+                onComplete={() => setShowAuthFlow(false)}
+                onClose={() => setShowAuthFlow(false)}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </aside>
   );
 }

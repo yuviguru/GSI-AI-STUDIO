@@ -16,16 +16,26 @@ service cloud.firestore {
       allow read, write: if false; // Server-side only via Admin SDK
     }
 
-    // ─── Users (Phase 2+) ───────────────────────────────────
+    // ─── Users (Phase 2) ─────────────────────────────────────
+    // Parents and teachers — read own profile only, write server-side
     match /users/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if false; // Server-side only
+    }
 
-      // Kid profiles (sub-collection)
-      match /kids/{kidId} {
-        allow read: if request.auth != null && request.auth.uid == userId;
-        allow write: if false; // Server-side only
-      }
+    // ─── Kids (Phase 2 — top-level collection) ───────────────
+    // Top-level kid profiles. Read by:
+    // - The kid themselves (if they have a Google Auth account)
+    // - Server-side for parent/teacher access (via Admin SDK)
+    match /kids/{kidId} {
+      allow read: if request.auth != null && request.auth.uid == kidId;
+      allow write: if false; // Server-side only
+    }
+
+    // ─── Invites (Phase 2) ───────────────────────────────────
+    // Parent-kid linking codes — server-side only
+    match /invites/{inviteId} {
+      allow read, write: if false; // Server-side only
     }
 
     // ─── Curriculum ──────────────────────────────────────────
@@ -47,43 +57,45 @@ service cloud.firestore {
       allow read, write: if false; // Server-side only via Admin SDK
     }
 
+    // ─── Schools (Phase 3) ──────────────────────────────────
+    match /schools/{schoolId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Server-side only
+
+      // Classes within a school
+      match /classes/{classId} {
+        allow read: if request.auth != null;
+        allow write: if false; // Server-side only
+      }
+    }
+
     // ─── Cerebro Competitions (Phase 2+) ─────────────────────
-    // Competition definitions — public read, admin write
     match /competitions/{competitionId} {
       allow read: if true;
-      allow write: if false; // Server-side only via Admin SDK
+      allow write: if false;
     }
 
     // ─── Cerebro Exam Sessions (Phase 2+) ──────────────────
-    // Individual exam attempts — server-side only (anti-cheat)
     match /examSessions/{examSessionId} {
-      allow read, write: if false; // Server-side only via Admin SDK
+      allow read, write: if false;
     }
 
     // ─── Cerebro Leaderboards (Phase 2+) ───────────────────
-    // Aggregated leaderboard data — public read
     match /leaderboards/{leaderboardId} {
       allow read: if true;
-      allow write: if false; // Server-side only via Cloud Functions
+      allow write: if false;
     }
 
     // ─── GrowthMap Reports (Phase 2+) ──────────────────────
-    // Parent insight reports — parent can only read their own kids' reports
     match /growthMapReports/{reportId} {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow write: if false; // Server-side only via Cloud Functions
+      allow write: if false;
     }
 
     // ─── Challenges (Phase 2+) ──────────────────────────────
     match /challenges/{challengeId} {
       allow read: if true;
-      allow write: if false; // Server-side only
-    }
-
-    // ─── Schools (Phase 3) ──────────────────────────────────
-    match /schools/{schoolId} {
-      allow read: if request.auth != null;
-      allow write: if false; // Server-side only
+      allow write: if false;
     }
 
     // Default: deny all

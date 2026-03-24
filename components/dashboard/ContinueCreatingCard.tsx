@@ -21,6 +21,11 @@ const STUDIO_EMOJIS: Record<string, string> = {
   comic: '🎨',
 };
 
+/**
+ * Shows a "Continue Creating" CTA if the user has an in-progress creation.
+ * NOTE: The write-side (saving in-progress state to localStorage) will be added
+ * when studio pages persist draft state. Until then this card renders nothing.
+ */
 export function ContinueCreatingCard() {
   const [creation, setCreation] = useState<InProgressCreation | null>(null);
 
@@ -29,7 +34,7 @@ export function ContinueCreatingCard() {
       const stored = localStorage.getItem(IN_PROGRESS_KEY);
       if (stored) setCreation(JSON.parse(stored) as InProgressCreation);
     } catch {
-      // ignore
+      // ignore malformed data
     }
   }, []);
 

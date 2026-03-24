@@ -135,19 +135,19 @@ describe('creationService', () => {
       expect(savedDoc.title).toBe('My Space Cat Story');
       expect(savedDoc.prompt).toBe('A cat who goes to space');
       expect(savedDoc.sessionId).toBe('session-123');
-      expect(savedDoc.status).toBe('published');
+      expect(savedDoc.status).toBe('draft');
       expect(savedDoc.viewCount).toBe(0);
       expect(savedDoc.shareCount).toBe(0);
       expect(savedDoc.likeCount).toBe(0);
-      expect(savedDoc.isPublic).toBe(true);
+      expect(savedDoc.isPublic).toBe(false);
       expect(savedDoc.aiConceptsTaught).toEqual(['nlg', 'prompt_engineering']);
     });
 
-    it('defaults isPublic to true', async () => {
+    it('defaults isPublic to false for anonymous creations', async () => {
       await saveCreation(validSaveInput);
 
       const savedDoc = mockSet.mock.calls[0]![0];
-      expect(savedDoc.isPublic).toBe(true);
+      expect(savedDoc.isPublic).toBe(false);
     });
 
     it('allows setting isPublic to false', async () => {
