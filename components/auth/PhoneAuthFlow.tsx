@@ -6,13 +6,16 @@ import { cn } from '@/lib/utils';
 import { getRecaptchaVerifier, sendPhoneOtp, auth } from '@/lib/firebase/client';
 import type { ConfirmationResult } from 'firebase/auth';
 import { useAuth } from '@/hooks/useAuth';
+import { KidProfileSetup } from '@/components/profile/KidProfileSetup';
 
-type Step = 'phone' | 'name' | 'success';
+type Step = 'phone' | 'name' | 'success' | 'kid-setup';
 
 interface PhoneAuthFlowProps {
   onComplete?: () => void;
   onClose?: () => void;
   defaultRole?: 'parent' | 'teacher';
+  /** Skip straight to kid profile setup after auth (for returning users with no kids) */
+  skipToKidSetup?: boolean;
 }
 
 const stepVariants = {
@@ -21,7 +24,7 @@ const stepVariants = {
   exit: { opacity: 0, x: -30 },
 };
 
-export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent' }: PhoneAuthFlowProps) {
+export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent', skipToKidSetup }: PhoneAuthFlowProps) {
   const { refreshProfile } = useAuth();
 
   // ── State ─────────────────────────────────────────────────────────────
@@ -204,6 +207,7 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent' }: P
       }
 
       await refreshProfile();
+      setIsNewUser(true);
       setStep('success');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
@@ -212,13 +216,26 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent' }: P
     }
   }
 
-  // ── Auto-dismiss success ──────────────────────────────────────────────
+  // ── After success, auto-transition to kid setup for new users ────────
+
+  const [isNewUser, setIsNewUser] = useState(false);
 
   useEffect(() => {
     if (step !== 'success') return;
-    const timer = setTimeout(() => onComplete?.(), 2500);
+    if (isNewUser) {
+      // New user → go to kid profile setup after a brief celebration
+      const timer = setTimeout(() => setStep('kid-setup'), 1500);
+      return () => clearTimeout(timer);
+    }
+    // Returning user → just close
+    const timer = setTimeout(() => onComplete?.(), 2000);
     return () => clearTimeout(timer);
-  }, [step, onComplete]);
+  }, [step, onComplete, isNewUser]);
+
+  // If skipToKidSetup is set, start there directly
+  useEffect(() => {
+    if (skipToKidSetup) setStep('kid-setup');
+  }, [skipToKidSetup]);
 
   // ── Render ────────────────────────────────────────────────────────────
 
@@ -451,7 +468,26 @@ export function PhoneAuthFlow({ onComplete, onClose, defaultRole = 'parent' }: P
               <span className="text-6xl">🎉</span>
             </motion.div>
             <h2 className="text-xl font-bold text-gray-900">Welcome!</h2>
-            <p className="text-sm text-gray-500">Your account is ready. Let&apos;s start creating!</p>
+            <p className="text-sm text-gray-500">
+              {isNewUser ? 'Now let\'s set up your kid\'s profile!' : 'Your account is ready. Let\'s start creating!'}
+            </p>
+          </motion.div>
+        )}
+
+        {/* ─── Step 4: Kid Profile Setup (new users) ─── */}
+        {step === 'kid-setup' && (
+          <motion.div
+            key="kid-setup"
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.2 }}
+          >
+            <KidProfileSetup
+              onComplete={() => onComplete?.()}
+              onClose={() => onComplete?.()}
+            />
           </motion.div>
         )}
       </AnimatePresence>

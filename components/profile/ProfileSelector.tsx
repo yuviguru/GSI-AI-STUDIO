@@ -20,8 +20,55 @@ export function ProfileSelector() {
   const { kids, activeKid, switchKid } = useKidProfile();
   const [showSetup, setShowSetup] = useState(false);
 
-  // Don't render if not authenticated or no kids
-  if (!isAuthenticated || kids.length === 0) return null;
+  // Don't render if not authenticated
+  if (!isAuthenticated) return null;
+
+  // Authenticated but no kids — show setup prompt
+  if (kids.length === 0) {
+    return (
+      <>
+        <div className="border-b border-gray-100 bg-white/80 backdrop-blur-md">
+          <div className="mx-auto flex max-w-5xl items-center gap-2 px-4 py-2">
+            <button
+              onClick={() => setShowSetup(true)}
+              className="flex items-center gap-2 rounded-xl bg-purple-50 px-3 py-2 text-xs font-medium text-purple-600 transition hover:bg-purple-100"
+            >
+              <span className="text-base">👶</span>
+              Set up your kid&apos;s profile to get started!
+            </button>
+          </div>
+        </div>
+
+        {/* Kid profile setup modal */}
+        <AnimatePresence>
+          {showSetup && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setShowSetup(false);
+              }}
+            >
+              <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                className="w-full max-w-sm rounded-t-3xl bg-white pb-safe sm:rounded-3xl"
+              >
+                <KidProfileSetup
+                  onComplete={() => setShowSetup(false)}
+                  onClose={() => setShowSetup(false)}
+                />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </>
+    );
+  }
 
   return (
     <>

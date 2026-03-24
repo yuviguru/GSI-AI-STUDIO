@@ -31,7 +31,7 @@ function StatCard({ label, value, icon, iconBg, cardBg }: StatCardProps) {
 
 /* ─── Badges stat card (same height as stat cards) ─────────────────────────── */
 
-const BADGE_EMOJIS = ['📖', '❤️', '🌈', '🔥'];
+const PLACEHOLDER_BADGES = ['🏆', '⭐', '🎯', '🔥'];
 
 function BadgesStatCard({ count }: { count: number }) {
   return (
@@ -39,7 +39,7 @@ function BadgesStatCard({ count }: { count: number }) {
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-brand-text-secondary">Badges</p>
-          <span className="mt-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-brand-soft font-mono text-[9px] font-bold text-brand-primary">
+          <span className="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-soft font-mono text-[9px] font-bold text-brand-primary">
             {count}
           </span>
         </div>
@@ -48,8 +48,13 @@ function BadgesStatCard({ count }: { count: number }) {
         </Link>
       </div>
       <div className="mt-3 flex items-center gap-2">
-        {BADGE_EMOJIS.map((emoji, i) => (
-          <div key={i} className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-lg">
+        {PLACEHOLDER_BADGES.map((emoji, i) => (
+          <div
+            key={i}
+            className={`flex h-9 w-9 items-center justify-center rounded-lg text-lg ${
+              i < count ? 'bg-amber-50' : 'bg-gray-100 opacity-40 grayscale'
+            }`}
+          >
             {emoji}
           </div>
         ))}
