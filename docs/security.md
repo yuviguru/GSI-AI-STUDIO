@@ -82,20 +82,20 @@ const isAuthenticated = !!user
 ### Server-Side Validation
 
 ```typescript
-// lib/firebase/admin.ts
-import { getAuth } from 'firebase-admin/auth'
+// lib/auth-utils.ts — verifyAuth(), hybridAuth(), requireRole()
 
-async function verifyAuth(request: NextRequest): Promise<DecodedIdToken> {
-  const token = request.headers.get('Authorization')?.replace('Bearer ', '')
-  if (!token) throw new AppException('UNAUTHORIZED', 'Missing auth token', 401)
+// Strict auth — throws 401 if not authenticated
+async function verifyAuth(request: NextRequest): Promise<DecodedIdToken>
 
-  try {
-    return await getAuth().verifyIdToken(token)
-  } catch {
-    throw new AppException('UNAUTHORIZED', 'Invalid auth token', 401)
-  }
-}
+// Hybrid auth — supports both anonymous (X-Session-Id) and authenticated (Bearer token)
+// Returns { type: 'anonymous', sessionId } or { type: 'authenticated', user }
+async function hybridAuth(request: NextRequest): Promise<HybridAuthResult>
+
+// Role guard — throws 403 if user doesn't have required role
+async function requireRole(request: NextRequest, roles: UserRole[]): Promise<DecodedIdToken>
 ```
+
+All existing API routes can adopt `hybridAuth()` to support both Phase 1 anonymous sessions and Phase 2 authenticated users without breaking changes.
 
 ---
 

@@ -598,14 +598,59 @@ Badge unlocks are detected atomically in a Firestore transaction. `newBadges` co
 
 ## Auth Endpoints (Phase 2+)
 
-### POST /api/auth/send-otp
+### Hybrid Auth Header
 
-Send OTP to phone number via Firebase Auth.
+All API routes use `hybridAuth()` to support both anonymous and authenticated requests:
+- Anonymous: `X-Session-Id: <session_id>` → returns `{ type: 'anonymous', sessionId }`
+- Authenticated: `Authorization: Bearer <firebase_id_token>` → returns `{ type: 'authenticated', user }` (verified via Firebase Admin SDK)
+- Routes that require auth use `verifyAuth()` (throws 401 if not authenticated)
+- Routes that require a specific role use `requireRole(roles)` (throws 403 if wrong role)
+
+---
+
+### POST /api/auth/register
+
+Create user profile after Firebase Phone Auth verification. Called once after first OTP verification.
+
+**Headers:** `Authorization: Bearer <firebase_id_token>`
 
 **Request:**
 ```json
 {
-  "phone": "+919876543210"
+  "name": "Meena Sharma",
+  "email": "meena@example.com",
+  "role": "parent"
+}
+```
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "userId": "firebase-uid",
+    "name": "Meena Sharma",
+    "phone": "+919876543210",
+    "role": "parent",
+    "plan": "free"
+  }
+}
+```
+
+**Idempotent:** If user doc already exists, returns existing user without error.
+
+---
+
+### POST /api/auth/claim-session
+
+Migrate anonymous session data (creations, points, badges) to an authenticated account.
+
+**Headers:** `Authorization: Bearer <firebase_id_token>`
+
+**Request:**
+```json
+{
+  "sessionId": "uuid-v4-session-id"
 }
 ```
 
@@ -614,13 +659,14 @@ Send OTP to phone number via Firebase Auth.
 {
   "success": true,
   "data": {
-    "verificationId": "firebase-verification-id",
-    "expiresIn": 120
+    "claimedCount": 3,
+    "pointsMigrated": 75,
+    "badgesMigrated": ["first_spark", "story_wizard"]
   }
 }
 ```
 
-**Note**: OTP verification is handled client-side via Firebase Auth SDK. Server receives the verified Firebase ID token in subsequent requests.
+**Idempotent:** Safe to call multiple times — skips already-claimed creations.
 
 ---
 
