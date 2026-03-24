@@ -86,9 +86,12 @@ export function SessionInit() {
 
         if (res.ok) {
           localStorage.setItem(CLAIM_KEY, sessionId!);
+        } else {
+          // Non-OK (e.g. 404 if user doc not created yet) — allow retry
+          claimAttempted.current = false;
         }
       } catch {
-        // Non-blocking — will retry on next page load
+        // Network error — will retry on next page load
         claimAttempted.current = false;
       }
     }

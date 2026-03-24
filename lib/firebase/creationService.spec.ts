@@ -135,7 +135,7 @@ describe('creationService', () => {
       expect(savedDoc.title).toBe('My Space Cat Story');
       expect(savedDoc.prompt).toBe('A cat who goes to space');
       expect(savedDoc.sessionId).toBe('session-123');
-      expect(savedDoc.status).toBe('published');
+      expect(savedDoc.status).toBe('draft');
       expect(savedDoc.viewCount).toBe(0);
       expect(savedDoc.shareCount).toBe(0);
       expect(savedDoc.likeCount).toBe(0);

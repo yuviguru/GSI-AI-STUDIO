@@ -29,23 +29,14 @@ export function LoginPrompt() {
       if (elapsed < DISMISSED_EXPIRY_DAYS * 24 * 60 * 60 * 1000) return undefined;
     }
 
-    // Check creation count — show after 2nd creation
-    const pointsCache = localStorage.getItem('gsi-ai-points');
-    if (pointsCache) {
-      try {
-        const data = JSON.parse(pointsCache);
-        const totalCreations = Object.values(data.creationsByType || {}).reduce(
-          (sum: number, count) => sum + (count as number),
-          0
-        );
-        if (totalCreations >= 2) {
-          // Delay showing to not interrupt the flow
-          const timer = setTimeout(() => setShowPrompt(true), 3000);
-          return () => clearTimeout(timer);
-        }
-      } catch {
-        // Ignore parse errors
-      }
+    // Check points as a proxy for usage — show after accumulating some points
+    // gsi-ai-points stores a plain number string (e.g. "42"), not JSON
+    const pointsStr = localStorage.getItem('gsi-ai-points');
+    const points = parseInt(pointsStr ?? '0', 10);
+    // ~20 points = roughly 2 creations (10 points each)
+    if (points >= 20) {
+      const timer = setTimeout(() => setShowPrompt(true), 3000);
+      return () => clearTimeout(timer);
     }
 
     return undefined;

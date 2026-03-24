@@ -131,7 +131,7 @@ export function PhoneAuthFlow({ onComplete, onClose }: PhoneAuthFlowProps) {
 
       if (!meRes.ok) {
         // New user — auto-register with default role
-        await fetch('/api/auth/register', {
+        const registerRes = await fetch('/api/auth/register', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -139,6 +139,11 @@ export function PhoneAuthFlow({ onComplete, onClose }: PhoneAuthFlowProps) {
           },
           body: JSON.stringify({ role: 'parent' }),
         });
+
+        if (!registerRes.ok) {
+          const registerJson = await registerRes.json().catch(() => ({}));
+          throw new Error(registerJson.error?.message || 'Account setup failed. Please try again.');
+        }
       }
 
       await refreshProfile();

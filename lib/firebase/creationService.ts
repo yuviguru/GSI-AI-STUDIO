@@ -70,7 +70,7 @@ export async function saveCreation(input: SaveCreationInput): Promise<{ id: stri
     id,
     type: input.type,
     title: input.title,
-    status: 'published' as const,
+    status: (input.isPublic ?? false) ? 'published' : 'draft' as const,
     prompt: input.prompt,
     content: input.content,
     media: input.media ?? [],
@@ -88,7 +88,7 @@ export async function saveCreation(input: SaveCreationInput): Promise<{ id: stri
     curriculumTags: input.curriculumTags ?? [],
     remixedFromId: input.remixedFromId ?? null,
     remixCount: 0,
-    isPublic: input.isPublic ?? false, // Default to private — only authenticated users can publish to explore
+    isPublic: input.isPublic ?? false, // Default to private — anonymous creations don't appear in explore
     createdAt: now,
     updatedAt: now,
   };
