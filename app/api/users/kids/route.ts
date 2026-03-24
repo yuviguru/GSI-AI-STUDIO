@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const auth = await verifyAuth(request);
 
     const body = await request.json();
-    const { name, avatar, age, grade, board } = body;
+    const { name, email, avatar, age, grade, board } = body;
 
     // Validate name
     if (!name || typeof name !== 'string' || name.trim().length < 1) {
@@ -21,6 +21,15 @@ export async function POST(request: NextRequest) {
     }
     if (name.trim().length > 30) {
       throw new AppException('INVALID_INPUT', 'Name must be 30 characters or less', 400);
+    }
+
+    // Validate email
+    if (!email || typeof email !== 'string') {
+      throw new AppException('INVALID_INPUT', 'Email is required for kid profile', 400);
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      throw new AppException('INVALID_INPUT', 'Please enter a valid email address', 400);
     }
 
     // Validate age (optional, but if provided must be 8-17)
@@ -48,6 +57,7 @@ export async function POST(request: NextRequest) {
 
     const kid = await createKid(auth.userId, {
       name: name.trim(),
+      email: email.trim().toLowerCase(),
       avatar,
       age,
       grade,
@@ -58,6 +68,7 @@ export async function POST(request: NextRequest) {
       {
         id: kid.id,
         name: kid.name,
+        email: kid.email,
         avatar: kid.avatar,
         age: kid.age,
         grade: kid.grade,

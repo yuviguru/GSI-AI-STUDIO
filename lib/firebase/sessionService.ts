@@ -6,7 +6,7 @@ import { checkBadgeUnlocks } from '@/lib/badges';
 const SESSIONS_COLLECTION = 'sessions';
 const MAX_CREATIONS_PER_DAY = 5;
 const COOLDOWN_SECONDS = 120; // 2 minutes
-const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 interface SessionDoc {
   id: string;

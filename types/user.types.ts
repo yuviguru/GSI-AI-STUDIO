@@ -32,6 +32,7 @@ export interface UserDoc {
 
 export interface KidProfile {
   id: string; // Firebase Auth UID (Google) or auto-generated
+  email: string; // Kid's email — identifier for the profile
   googleEmail?: string; // Only if kid signed in with Google
   name: string; // Display name (can be fictional per DPDPA)
   avatar?: string; // Avatar ID from picker

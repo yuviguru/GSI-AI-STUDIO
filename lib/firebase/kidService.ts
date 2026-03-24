@@ -10,6 +10,7 @@ const MAX_KIDS_PER_PARENT = 4;
 
 interface KidDocFirestore {
   id: string;
+  email: string;
   googleEmail?: string;
   name: string;
   avatar?: string;
@@ -50,6 +51,7 @@ interface KidDocFirestore {
 
 export interface CreateKidInput {
   name: string;
+  email: string; // Kid's email — unique identifier
   avatar?: string;
   age?: number;
   grade?: string;
@@ -104,6 +106,7 @@ export async function createKid(
 
   const kidDoc: KidDocFirestore = {
     id: kidId,
+    email: input.email,
     name: input.name,
     avatar: input.avatar,
     verifiedBy: 'parent',

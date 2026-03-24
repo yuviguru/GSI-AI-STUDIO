@@ -37,6 +37,7 @@ export function KidProfileSetup({ onComplete, onClose }: KidProfileSetupProps) {
 
   // Form data
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [age, setAge] = useState<number | undefined>();
   const [grade, setGrade] = useState('');
   const [board, setBoard] = useState('');
@@ -58,6 +59,7 @@ export function KidProfileSetup({ onComplete, onClose }: KidProfileSetupProps) {
         },
         body: JSON.stringify({
           name: name.trim(),
+          email: email.trim().toLowerCase(),
           avatar,
           age,
           grade: grade || undefined,
@@ -81,6 +83,7 @@ export function KidProfileSetup({ onComplete, onClose }: KidProfileSetupProps) {
 
   function handleAddAnother() {
     setName('');
+    setEmail('');
     setAge(undefined);
     setGrade('');
     setBoard('');
@@ -122,6 +125,15 @@ export function KidProfileSetup({ onComplete, onClose }: KidProfileSetupProps) {
               maxLength={30}
             />
 
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="kid's email address"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+              maxLength={100}
+            />
+
             {error && (
               <p className="rounded-lg bg-red-50 p-3 text-center text-sm text-red-600">
                 {error}
@@ -134,13 +146,18 @@ export function KidProfileSetup({ onComplete, onClose }: KidProfileSetupProps) {
                   setError('Please enter a name');
                   return;
                 }
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!email.trim() || !emailRegex.test(email.trim())) {
+                  setError('Please enter a valid email address');
+                  return;
+                }
                 setError(null);
                 setStep('details');
               }}
-              disabled={!name.trim()}
+              disabled={!name.trim() || !email.trim()}
               className={cn(
                 'w-full rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition active:scale-[0.98]',
-                name.trim() ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-300 cursor-not-allowed'
+                name.trim() && email.trim() ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-300 cursor-not-allowed'
               )}
             >
               Next →

@@ -88,7 +88,7 @@ export async function saveCreation(input: SaveCreationInput): Promise<{ id: stri
     curriculumTags: input.curriculumTags ?? [],
     remixedFromId: input.remixedFromId ?? null,
     remixCount: 0,
-    isPublic: input.isPublic ?? true,
+    isPublic: input.isPublic ?? false, // Default to private — only authenticated users can publish to explore
     createdAt: now,
     updatedAt: now,
   };
