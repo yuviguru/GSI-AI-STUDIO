@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useSession } from '@/hooks/useSession';
 import { useAuth } from '@/hooks/useAuth';
+import { fetchWithSession } from '@/lib/fetchWithSession';
 
 const MIGRATION_KEY = 'gsi-points-migrated';
 const SESSION_KEY = 'gsi-session-id';
@@ -38,12 +39,9 @@ export function SessionInit() {
     const sessionId = localStorage.getItem(SESSION_KEY);
     if (!sessionId) return;
 
-    fetch('/api/sessions/points', {
+    fetchWithSession('/api/sessions/points', {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Session-Id': sessionId,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'add_points', points: storedPoints }),
     })
       .then((response) => {

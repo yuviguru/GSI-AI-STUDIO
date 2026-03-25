@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { BeatTheAiSkills, BeatTheAiStats } from '@/types/beatTheAi.types';
+import { fetchWithSession } from '@/lib/fetchWithSession';
 import { SkillRadarChart } from './SkillRadarChart';
 import { SkillProgressCard } from './SkillProgressCard';
 
@@ -10,23 +11,14 @@ interface StatsBoardProps {
   onChallenge: () => void;
 }
 
-function getSessionId(): string {
-  return typeof window !== 'undefined'
-    ? (localStorage.getItem('gsi-session-id') ?? '')
-    : '';
-}
-
 export function StatsBoard({ skills, onChallenge }: StatsBoardProps) {
   const [stats, setStats] = useState<BeatTheAiStats | null>(null);
 
   const loadStats = useCallback(async () => {
-    const sessionId = getSessionId();
-    if (!sessionId) return;
+    if (typeof window === 'undefined' || !localStorage.getItem('gsi-session-id')) return;
 
     try {
-      const res = await fetch('/api/beat-the-ai/stats', {
-        headers: { 'X-Session-Id': sessionId },
-      });
+      const res = await fetchWithSession('/api/beat-the-ai/stats');
       const json = await res.json();
       if (json.success && json.data) {
         setStats(json.data as BeatTheAiStats);

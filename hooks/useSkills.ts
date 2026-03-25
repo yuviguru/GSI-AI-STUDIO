@@ -3,14 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { BeatTheAiSkills, BeatTheAiSkillsResponse } from '@/types/beatTheAi.types';
 import { getDefaultSkills } from '@/lib/beat-the-ai/skillEngine';
+import { fetchWithSession } from '@/lib/fetchWithSession';
 
 const CACHE_KEY = 'gsi-btai-skills';
-
-function getSessionId(): string {
-  return typeof window !== 'undefined'
-    ? (localStorage.getItem('gsi-session-id') ?? '')
-    : '';
-}
 
 export function useSkills() {
   const [skills, setSkills] = useState<BeatTheAiSkills>(getDefaultSkills());
@@ -19,16 +14,13 @@ export function useSkills() {
   const [isLoading, setIsLoading] = useState(true);
 
   const loadSkills = useCallback(async () => {
-    const sessionId = getSessionId();
-    if (!sessionId) {
+    if (typeof window === 'undefined' || !localStorage.getItem('gsi-session-id')) {
       setIsLoading(false);
       return;
     }
 
     try {
-      const res = await fetch('/api/beat-the-ai/skills', {
-        headers: { 'X-Session-Id': sessionId },
-      });
+      const res = await fetchWithSession('/api/beat-the-ai/skills');
       const json = await res.json();
 
       if (json.success && json.data) {

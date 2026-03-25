@@ -2,14 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { SkillArenaProgress } from '@/types/mindx.types';
+import { fetchWithSession } from '@/lib/fetchWithSession';
 
 const CACHE_KEY = 'gsi-skill-arena-progress';
-
-function getSessionId(): string {
-  return typeof window !== 'undefined'
-    ? (localStorage.getItem('gsi-session-id') ?? '')
-    : '';
-}
 
 const defaultProgress: SkillArenaProgress = {
   modules: {
@@ -30,16 +25,13 @@ export function useSkillArenaProgress() {
   const [isLoading, setIsLoading] = useState(true);
 
   const loadProgress = useCallback(async () => {
-    const sessionId = getSessionId();
-    if (!sessionId) {
+    if (typeof window === 'undefined' || !localStorage.getItem('gsi-session-id')) {
       setIsLoading(false);
       return;
     }
 
     try {
-      const res = await fetch('/api/skill-arena/progress', {
-        headers: { 'X-Session-Id': sessionId },
-      });
+      const res = await fetchWithSession('/api/skill-arena/progress');
       const json = await res.json();
 
       if (json.success && json.data) {

@@ -11,14 +11,11 @@ import {
 } from 'react';
 import type { ApiResponse, PointsResponse } from '@/types';
 import type { ConfettiVariant } from '@/components/celebrations/ConfettiCelebration';
+import { fetchWithSession } from '@/lib/fetchWithSession';
 
 const SESSION_KEY = 'gsi-session-id';
 const POINTS_KEY = 'gsi-ai-points'; // kept for optimistic initial load & migration
 const MILESTONES_KEY = 'gsi-milestones-shown';
-
-function getSessionId(): string {
-  return typeof window !== 'undefined' ? (localStorage.getItem(SESSION_KEY) ?? '') : '';
-}
 
 // ─── Milestone types & thresholds ───────────────────────────────────────────
 
@@ -134,15 +131,12 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
       if (stored > 0) setTotalPoints(stored);
     }
 
-    const sessionId = getSessionId();
-    if (!sessionId) {
+    if (typeof window === 'undefined' || !localStorage.getItem(SESSION_KEY)) {
       setIsLoaded(true);
       return;
     }
 
-    fetch('/api/sessions/points', {
-      headers: { 'X-Session-Id': sessionId },
-    })
+    fetchWithSession('/api/sessions/points')
       .then((res) => res.json())
       .then((json: ApiResponse<PointsResponse>) => {
         if (json.success && json.data) {
@@ -158,16 +152,12 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
   // Helper: call PATCH and apply returned snapshot
   const patchPoints = useCallback(
     async (body: Record<string, unknown>): Promise<PointsResponse | null> => {
-      const sessionId = getSessionId();
-      if (!sessionId) return null;
+      if (typeof window === 'undefined' || !localStorage.getItem(SESSION_KEY)) return null;
 
       try {
-        const res = await fetch('/api/sessions/points', {
+        const res = await fetchWithSession('/api/sessions/points', {
           method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Session-Id': sessionId,
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
         const json: ApiResponse<PointsResponse> = await res.json();
@@ -222,12 +212,9 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
 
   // Re-fetch state from Firestore (used when points are updated server-side, e.g. Beat the AI)
   const reloadFromServer = useCallback(async () => {
-    const sessionId = getSessionId();
-    if (!sessionId) return;
+    if (typeof window === 'undefined' || !localStorage.getItem(SESSION_KEY)) return;
     try {
-      const res = await fetch('/api/sessions/points', {
-        headers: { 'X-Session-Id': sessionId },
-      });
+      const res = await fetchWithSession('/api/sessions/points');
       const json: ApiResponse<PointsResponse> = await res.json();
       if (json.success && json.data) {
         applySnapshot(json.data);

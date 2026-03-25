@@ -13,11 +13,12 @@ const mockDocRef = {
   update: mockUpdate,
 };
 
-// Transaction mock: tx.get() and tx.update() for trackCreation
+// Transaction mock: tx.get(), tx.set(), and tx.update() for getOrCreateSession/trackCreation
 const mockTxGet = vi.fn();
+const mockTxSet = vi.fn();
 const mockTxUpdate = vi.fn();
-const mockRunTransaction = vi.fn(async (cb: (tx: { get: typeof mockTxGet; update: typeof mockTxUpdate }) => Promise<unknown>) => {
-  return cb({ get: mockTxGet, update: mockTxUpdate });
+const mockRunTransaction = vi.fn(async (cb: (tx: { get: typeof mockTxGet; set: typeof mockTxSet; update: typeof mockTxUpdate }) => Promise<unknown>) => {
+  return cb({ get: mockTxGet, set: mockTxSet, update: mockTxUpdate });
 });
 
 vi.mock('./admin', () => ({
@@ -67,16 +68,17 @@ describe('sessionService', () => {
     vi.clearAllMocks();
     mockSet.mockResolvedValue(undefined);
     mockUpdate.mockResolvedValue(undefined);
+    mockTxSet.mockReturnValue(undefined);
     mockTxUpdate.mockReturnValue(undefined);
   });
 
   describe('getOrCreateSession', () => {
     it('creates a new session when none exists', async () => {
-      mockGet.mockResolvedValue({ exists: false });
+      mockTxGet.mockResolvedValue({ exists: false });
 
       const result = await getOrCreateSession('new-session');
 
-      expect(mockSet).toHaveBeenCalledOnce();
+      expect(mockRunTransaction).toHaveBeenCalledOnce();
       expect(result.sessionId).toBe('new-session');
       expect(result.creationsRemaining).toBe(5);
       expect(result.cooldownSeconds).toBe(0);
@@ -84,20 +86,20 @@ describe('sessionService', () => {
     });
 
     it('returns existing valid session', async () => {
-      mockGet.mockResolvedValue(makeSessionDoc({ creationCount: 2 }));
+      mockTxGet.mockResolvedValue(makeSessionDoc({ creationCount: 2 }));
 
       const result = await getOrCreateSession('test-session');
 
-      expect(mockSet).not.toHaveBeenCalled();
+      expect(mockRunTransaction).toHaveBeenCalledOnce();
       expect(result.creationsRemaining).toBe(3);
     });
 
     it('creates a fresh session when expired', async () => {
-      mockGet.mockResolvedValue(makeExpiredSession());
+      mockTxGet.mockResolvedValue(makeExpiredSession());
 
       const result = await getOrCreateSession('expired-session');
 
-      expect(mockSet).toHaveBeenCalledOnce();
+      expect(mockRunTransaction).toHaveBeenCalledOnce();
       expect(result.creationsRemaining).toBe(5);
     });
   });

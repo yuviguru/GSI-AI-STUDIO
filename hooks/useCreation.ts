@@ -4,17 +4,10 @@ import { useCallback } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import type { Creation, CreationType } from '@/types/creation.types';
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types';
-
-const SESSION_KEY = 'gsi-session-id';
-
-function getSessionId(): string {
-  return typeof window !== 'undefined' ? localStorage.getItem(SESSION_KEY) ?? '' : '';
-}
+import { fetchWithSession } from '@/lib/fetchWithSession';
 
 async function fetcher<T>(url: string): Promise<T> {
-  const res = await fetch(url, {
-    headers: { 'X-Session-Id': getSessionId() },
-  });
+  const res = await fetchWithSession(url);
   const json: ApiResponse<T> = await res.json();
   if (!json.success || !json.data) {
     throw new Error(json.error?.message ?? 'Failed to fetch');
@@ -86,12 +79,9 @@ export function useSaveCreation() {
       isPublic?: boolean;
     }): Promise<{ creationId: string; shareUrl: string } | null> => {
       try {
-        const res = await fetch('/api/creations', {
+        const res = await fetchWithSession('/api/creations', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Session-Id': getSessionId(),
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(input),
         });
 
