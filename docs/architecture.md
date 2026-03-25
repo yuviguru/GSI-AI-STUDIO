@@ -236,3 +236,14 @@ Git Push → Netlify Build → Deploy Preview (PRs) / Production (main)
 - **Cold Starts**: Netlify Functions have cold starts — keep functions lean. Consider Netlify Edge Functions for latency-critical paths (AI proxy).
 - **PWA Caching**: Cache static assets aggressively. Use stale-while-revalidate for creation feeds. Service worker for offline landing page.
 - **Phase 3 Multi-tenancy**: Schools get isolated Firestore sub-collections under a school document. Teacher roles scoped to their school.
+
+## Infrastructure Patterns
+
+### Idempotent Session Creation
+`getOrCreateSession()` in `lib/firebase/sessionService.ts` uses Firestore `set({ merge: true })` to handle concurrent session creation safely. Two requests with the same sessionId will both succeed without overwriting each other's data — the merge ensures only missing fields are written while preserving existing fields like `createdAt`.
+
+### fetchWithSession Wrapper
+`lib/fetchWithSession.ts` wraps the Fetch API to auto-inject `X-Session-Id` from localStorage on every client-side API call. All hooks and components use this instead of raw `fetch()`, preventing the common bug of forgetting the session header.
+
+### Error Boundary
+`components/layout/ErrorBoundary.tsx` wraps the provider tree in `app/(public)/layout.tsx`. Catches render errors from context providers (AiPointsContext, AuthProvider, etc.) and shows a kid-friendly retry UI instead of crashing the entire app.

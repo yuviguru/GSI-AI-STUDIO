@@ -69,6 +69,25 @@ try {
 }
 ```
 
+### Error Boundaries
+The app uses a React error boundary (`components/layout/ErrorBoundary.tsx`) wrapping all providers in the public layout. This prevents context failures (e.g. AiPointsContext throwing) from crashing the entire app. The boundary shows a kid-friendly fallback with a retry button.
+
+### fetchWithSession Wrapper
+All client-side API calls must use `fetchWithSession()` from `lib/fetchWithSession.ts` instead of raw `fetch()`. This wrapper auto-injects the `X-Session-Id` header from localStorage, eliminating manual header management and preventing 404 errors from missing session IDs.
+
+```typescript
+import { fetchWithSession } from '@/lib/fetchWithSession';
+
+// Instead of:
+// fetch('/api/ai/story', { headers: { 'X-Session-Id': sessionId } })
+
+// Use:
+const res = await fetchWithSession('/api/ai/story', {
+  method: 'POST',
+  body: JSON.stringify(input),
+});
+```
+
 ---
 
 ## Backend (Netlify Functions + Firebase)
