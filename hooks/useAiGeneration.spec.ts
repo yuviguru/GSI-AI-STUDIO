@@ -158,11 +158,13 @@ describe('useAiGeneration', () => {
     expect(global.fetch).toHaveBeenCalledWith(
       '/api/ai/story',
       expect.objectContaining({
-        headers: expect.objectContaining({
-          'X-Session-Id': 'test-session',
-        }),
+        method: 'POST',
       })
     );
+    // fetchWithSession injects X-Session-Id via a Headers instance
+    const callArgs = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    const headers = callArgs[1]?.headers as Headers;
+    expect(headers.get('X-Session-Id')).toBe('test-session');
   });
 
   it('resets state', async () => {

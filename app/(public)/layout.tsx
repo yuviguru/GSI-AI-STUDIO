@@ -6,6 +6,7 @@ import { SidebarNav } from '@/components/layout/SidebarNav';
 import { SessionInit } from '@/components/layout/SessionInit';
 import { AiPointsProvider } from '@/contexts/AiPointsContext';
 import { CelebrationModal } from '@/components/learning/CelebrationModal';
+import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { KidProfileProvider, useKidProfile } from '@/hooks/useKidProfile';
 import { LoginPrompt } from '@/components/auth/LoginPrompt';
@@ -44,11 +45,12 @@ function AppGate({ children }: { children: React.ReactNode }) {
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AuthProvider>
-      <KidProfileProvider>
-        <AiPointsProvider>
-          <SessionInit />
-          <AppGate>
+    <ErrorBoundary>
+      <AuthProvider>
+        <KidProfileProvider>
+          <AiPointsProvider>
+            <SessionInit />
+            <AppGate>
             <div className="flex min-h-screen flex-col">
               {/* Desktop sidebar (lg+) */}
               <SidebarNav />
@@ -68,9 +70,10 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             </div>
             <CelebrationModal />
             <LoginPrompt />
-          </AppGate>
-        </AiPointsProvider>
-      </KidProfileProvider>
-    </AuthProvider>
+            </AppGate>
+          </AiPointsProvider>
+        </KidProfileProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

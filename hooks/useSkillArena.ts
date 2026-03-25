@@ -13,6 +13,7 @@ import type {
   SkillArenaStartResponse,
   SkillArenaEvaluateResponse,
 } from '@/types/mindx.types';
+import { fetchWithSession } from '@/lib/fetchWithSession';
 
 export type SkillArenaPhase =
   | 'modulePicking'
@@ -43,18 +44,11 @@ interface SkillArenaState {
   isLoading: boolean;
 }
 
-function getSessionId(): string {
-  return typeof window !== 'undefined'
-    ? (localStorage.getItem('gsi-session-id') ?? '')
-    : '';
-}
-
 async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
+  const res = await fetchWithSession(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      'X-Session-Id': getSessionId(),
       ...options?.headers,
     },
   });

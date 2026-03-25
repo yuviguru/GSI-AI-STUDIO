@@ -102,6 +102,10 @@ export interface SessionResult {
 /**
  * Get an existing session or create a new one.
  * Sessions are stored in Firestore and used for anonymous rate limiting.
+ *
+ * Uses a Firestore transaction to prevent the race condition where two
+ * concurrent requests both see "not exists" and both create — the second
+ * would overwrite the first with a fresh createdAt timestamp.
  */
 export async function getOrCreateSession(
   sessionId: string,
@@ -109,25 +113,31 @@ export async function getOrCreateSession(
   ipHash?: string
 ): Promise<SessionResult> {
   const docRef = adminDb.collection(SESSIONS_COLLECTION).doc(sessionId);
-  const doc = await docRef.get();
 
-  const now = Date.now();
+  const data = await adminDb.runTransaction(async (tx) => {
+    const doc = await tx.get(docRef);
+    const now = Date.now();
 
-  if (doc.exists) {
-    const data = doc.data() as SessionDoc;
-    const expiresAtMs = data.expiresAt.toMillis();
+    if (doc.exists) {
+      const existing = doc.data() as SessionDoc;
 
-    // Session expired — create a fresh one
-    if (now > expiresAtMs) {
-      return createSession(docRef, sessionId, fingerprint, ipHash);
+      // Session expired — recreate within transaction
+      if (now > existing.expiresAt.toMillis()) {
+        const fresh = buildNewSessionDoc(sessionId, fingerprint, ipHash, now);
+        tx.set(docRef, fresh);
+        return fresh;
+      }
+
+      return existing;
     }
 
-    // Session valid — return current state
-    return buildSessionResult(sessionId, data);
-  }
+    // No session found — create new within transaction
+    const fresh = buildNewSessionDoc(sessionId, fingerprint, ipHash, now);
+    tx.set(docRef, fresh);
+    return fresh;
+  });
 
-  // No session found — create new
-  return createSession(docRef, sessionId, fingerprint, ipHash);
+  return buildSessionResult(sessionId, data);
 }
 
 /**
@@ -284,32 +294,21 @@ export async function updateSessionPoints(
 
 // ─── Internal helpers ────────────────────────────────────
 
-async function createSession(
-  docRef: FirebaseFirestore.DocumentReference,
+function buildNewSessionDoc(
   sessionId: string,
   fingerprint?: string,
-  ipHash?: string
-): Promise<SessionResult> {
-  const now = Timestamp.now();
-  const expiresAt = Timestamp.fromMillis(Date.now() + SESSION_TTL_MS);
-
-  const sessionData: SessionDoc = {
+  ipHash?: string,
+  nowMs?: number,
+): SessionDoc {
+  const now = nowMs ?? Date.now();
+  return {
     id: sessionId,
     fingerprint: fingerprint ?? null,
     creationCount: 0,
     lastCreationAt: null,
     ipHash: ipHash ?? null,
-    createdAt: now,
-    expiresAt,
-  };
-
-  await docRef.set(sessionData);
-
-  return {
-    sessionId,
-    creationsRemaining: MAX_CREATIONS_PER_DAY,
-    cooldownSeconds: 0,
-    expiresAt: expiresAt.toDate().toISOString(),
+    createdAt: Timestamp.fromMillis(now),
+    expiresAt: Timestamp.fromMillis(now + SESSION_TTL_MS),
   };
 }
 

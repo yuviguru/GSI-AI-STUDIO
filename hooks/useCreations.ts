@@ -3,14 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { Creation, CreationType } from '@/types/creation.types';
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types';
-
-const SESSION_KEY = 'gsi-session-id';
-
-function getSessionId(): string {
-  return typeof window !== 'undefined'
-    ? localStorage.getItem(SESSION_KEY) ?? ''
-    : '';
-}
+import { fetchWithSession } from '@/lib/fetchWithSession';
 
 interface UseCreationsReturn {
   creations: Creation[];
@@ -40,9 +33,7 @@ export function useCreations(type?: CreationType | null): UseCreationsReturn {
       if (type) params.set('type', type);
       if (cursor) params.set('cursor', cursor);
 
-      const res = await fetch(`/api/creations?${params.toString()}`, {
-        headers: { 'X-Session-Id': getSessionId() },
-      });
+      const res = await fetchWithSession(`/api/creations?${params.toString()}`);
       const json: ApiResponse<PaginatedResponse<Creation>> = await res.json();
 
       if (!json.success || !json.data) {
@@ -121,9 +112,8 @@ export function useCreations(type?: CreationType | null): UseCreationsReturn {
       setCreations((prev) => prev.filter((c) => c.id !== id));
 
       try {
-        const res = await fetch(`/api/creations/${id}`, {
+        const res = await fetchWithSession(`/api/creations/${id}`, {
           method: 'DELETE',
-          headers: { 'X-Session-Id': getSessionId() },
         });
         const json: ApiResponse<null> = await res.json();
 

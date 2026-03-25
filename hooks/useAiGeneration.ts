@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import type { ApiResponse, AiXrayData } from '@/types';
 import { friendlyError } from '@/lib/utils';
+import { fetchWithSession } from '@/lib/fetchWithSession';
 
 const PROGRESS_MESSAGES: Record<string, string[]> = {
   story: [
@@ -70,13 +71,9 @@ export function useAiGeneration<T>(studioType: 'story' | 'music' | 'quiz' | 'gam
       setState((prev) => ({ ...prev, progressMessage: messages[0]! }));
 
       try {
-        const sessionId = localStorage.getItem('gsi-session-id') ?? '';
-        const res = await fetch(`/api/ai/${studioType}`, {
+        const res = await fetchWithSession(`/api/ai/${studioType}`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Session-Id': sessionId,
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(input),
         });
 
