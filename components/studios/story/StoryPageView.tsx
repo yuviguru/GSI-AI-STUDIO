@@ -66,7 +66,7 @@ export function StoryPageView({ page, totalPages }: StoryPageViewProps) {
         <img
           ref={imgRef}
           src={page.imageUrl}
-          alt={`Story illustration — page ${page.pageNumber}`}
+          alt={`Story illustration, page ${page.pageNumber}`}
           className={cn(
             'aspect-[3/2] w-full object-cover',
             'transition-opacity duration-500',

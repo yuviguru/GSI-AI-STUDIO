@@ -128,6 +128,8 @@ export function KidProfileProvider({ children }: KidProfileProviderProps) {
       if (kid) {
         setActiveKid(kid);
         localStorage.setItem(ACTIVE_KID_KEY, kidId);
+        // Notify contexts (AiPoints, Creations) to reload data for the new kid
+        window.dispatchEvent(new Event('gsi-kid-switched'));
       }
     },
     [kids]
@@ -136,6 +138,8 @@ export function KidProfileProvider({ children }: KidProfileProviderProps) {
   const clearActiveKid = useCallback(() => {
     setActiveKid(null);
     localStorage.removeItem(ACTIVE_KID_KEY);
+    // Notify contexts to reload data (back to session-based)
+    window.dispatchEvent(new Event('gsi-kid-switched'));
   }, []);
 
   const hasKids = kids.length > 0;

@@ -3,9 +3,9 @@ import type { Metadata } from 'next';
 import { SkillArenaClient } from './SkillArenaClient';
 
 export const metadata: Metadata = {
-  title: 'MindX Skill Arena — GSI AI Studio',
+  title: 'MindX Skill Arena | GSI AI Studio',
   description:
-    'Test your Speaking, Listening, Thinking, and Reading skills with AI-powered assessments. Get personalized feedback and band scores!',
+    'Build the skills you need to command AI: speaking, listening, thinking, and reading. Get personalized feedback and band scores!',
 };
 
 export default function SkillArenaPage() {

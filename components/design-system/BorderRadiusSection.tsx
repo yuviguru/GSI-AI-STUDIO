@@ -8,7 +8,7 @@ export function BorderRadiusSection() {
     <section id="border-radius" className="scroll-mt-28">
       <h2 className="text-h2 font-display text-brand-text mb-2">Border Radius</h2>
       <p className="text-body-lg text-brand-text-secondary mb-8">
-        Soft and approachable — no sharp corners anywhere.
+        Soft and approachable, no sharp corners anywhere.
       </p>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">

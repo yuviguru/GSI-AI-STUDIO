@@ -103,7 +103,7 @@ export function QuizPromptForm({
       {remixFromId && (
         <div className="flex items-center gap-2 rounded-2xl bg-brand-cyan/10 px-4 py-3 text-sm font-medium text-brand-cyan">
           <RemixBannerIcon />
-          Remixed from another creation — make it your own!
+          Remixed from another creation, make it your own!
         </div>
       )}
 

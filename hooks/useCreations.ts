@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import type { Creation, CreationType } from '@/types/creation.types';
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types';
 import { fetchWithSession } from '@/lib/fetchWithSession';
+import { useKidProfile } from './useKidProfile';
 
 interface UseCreationsReturn {
   creations: Creation[];
@@ -20,6 +21,7 @@ interface UseCreationsReturn {
  * Uses cursor-based pagination matching the GET /api/creations endpoint.
  */
 export function useCreations(type?: CreationType | null): UseCreationsReturn {
+  const { activeKid } = useKidProfile();
   const [creations, setCreations] = useState<Creation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +47,8 @@ export function useCreations(type?: CreationType | null): UseCreationsReturn {
     [type]
   );
 
-  // Initial fetch + re-fetch when type changes
+  // Initial fetch + re-fetch when type or active kid changes
+  // fetchWithSession auto-injects X-Kid-Id so the API returns kid-scoped data
   useEffect(() => {
     let cancelled = false;
 
@@ -73,7 +76,8 @@ export function useCreations(type?: CreationType | null): UseCreationsReturn {
     return () => {
       cancelled = true;
     };
-  }, [fetchPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchPage, activeKid?.id]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || !nextCursor || loadingMore.current) return;

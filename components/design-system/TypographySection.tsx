@@ -9,7 +9,7 @@ export function TypographySection() {
     <section id="typography" className="scroll-mt-28">
       <h2 className="text-h2 font-display text-brand-text mb-2">Typography</h2>
       <p className="text-body-lg text-brand-text-secondary mb-8">
-        Modern, readable, and slightly playful — avoiding overly common UI fonts.
+        Modern, readable, and slightly playful, avoiding overly common UI fonts.
       </p>
 
       {/* Font Families */}

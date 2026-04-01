@@ -1,17 +1,30 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { getSessionPoints, updateSessionPoints } from '@/lib/firebase/sessionService';
+import { getKidPoints, updateKidPoints, migrateSessionToKid } from '@/lib/firebase/kidPointsService';
 import type { PointsAction } from '@/lib/firebase/sessionService';
 
 const VALID_ACTIONS = ['add_points', 'learn_concept', 'track_creation', 'track_share'] as const;
 
 /**
  * GET /api/sessions/points
- * Load current AI points, badges, and learning data for the session.
+ * Load current AI points, badges, and learning data.
+ * Uses kid profile if X-Kid-Id header is present, otherwise session.
  */
 export async function GET(request: NextRequest) {
   try {
+    const kidId = request.headers.get('X-Kid-Id');
     const sessionId = request.headers.get('X-Session-Id');
+
+    if (kidId) {
+      // Auto-migrate: if session data exists, merge it into the kid profile once
+      // This handles the transition from session-based to kid-based data storage
+      const data = sessionId
+        ? await migrateSessionToKid(kidId, sessionId)
+        : await getKidPoints(kidId);
+      return apiSuccess(data);
+    }
+
     if (!sessionId) {
       throw new AppException('UNAUTHORIZED', 'Missing session', 401);
     }
@@ -26,13 +39,16 @@ export async function GET(request: NextRequest) {
 /**
  * PATCH /api/sessions/points
  * Apply a points action (add_points, learn_concept, track_creation, track_share).
+ * Routes to kid profile if X-Kid-Id header is present, otherwise session.
  * Returns updated data plus any newly unlocked badge IDs.
  */
 export async function PATCH(request: NextRequest) {
   try {
+    const kidId = request.headers.get('X-Kid-Id');
     const sessionId = request.headers.get('X-Session-Id');
-    if (!sessionId) {
-      throw new AppException('UNAUTHORIZED', 'Missing session', 401);
+
+    if (!kidId && !sessionId) {
+      throw new AppException('UNAUTHORIZED', 'Missing session or kid identity', 401);
     }
 
     const body = await request.json();
@@ -82,7 +98,11 @@ export async function PATCH(request: NextRequest) {
         throw new AppException('INVALID_INPUT', 'Invalid action', 400);
     }
 
-    const result = await updateSessionPoints(sessionId, pointsAction);
+    // Route to kid profile or session based on header
+    const result = kidId
+      ? await updateKidPoints(kidId, pointsAction)
+      : await updateSessionPoints(sessionId!, pointsAction);
+
     return apiSuccess({ ...result.data, newBadges: result.newBadges });
   } catch (error) {
     return handleApiError(error);

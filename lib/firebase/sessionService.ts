@@ -64,7 +64,7 @@ function extractPointsData(data: SessionDoc): SessionPointsData {
   };
 }
 
-function applyAction(current: SessionPointsData, action: PointsAction): SessionPointsData {
+export function applyAction(current: SessionPointsData, action: PointsAction): SessionPointsData {
   switch (action.action) {
     case 'add_points': {
       const updated: SessionPointsData = {

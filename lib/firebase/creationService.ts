@@ -31,6 +31,7 @@ export interface SaveCreationInput {
   curriculumTags?: string[];
   isPublic?: boolean;
   sessionId: string;
+  kidId?: string;
   remixedFromId?: string;
 }
 
@@ -38,6 +39,7 @@ export interface SaveCreationInput {
 export interface ListCreationsFilters {
   type?: CreationType;
   isPublic?: boolean;
+  kidId?: string;
   limit?: number;
   cursor?: string;
 }
@@ -78,7 +80,7 @@ export async function saveCreation(input: SaveCreationInput): Promise<{ id: stri
     aiMetadata: input.aiMetadata,
     sessionId: input.sessionId,
     userId: null,
-    kidId: null,
+    kidId: input.kidId ?? null,
     shareUrl: `/view/${id}`,
     viewCount: 0,
     shareCount: 0,
@@ -152,17 +154,18 @@ export async function listCreations(
     }
   }
 
-  // Build base query — all WHERE clauses must come before orderBy; .limit() applied per batch
-  let baseQuery = adminDb
-    .collection(CREATIONS_COLLECTION)
-    .where('sessionId', '==', sessionId);
+  // Build base query — scope to kid profile if kidId provided, otherwise session
+  // All WHERE clauses must come before orderBy; .limit() applied per batch
+  let baseQuery = filters.kidId
+    ? adminDb.collection(CREATIONS_COLLECTION).where('kidId', '==', filters.kidId)
+    : adminDb.collection(CREATIONS_COLLECTION).where('sessionId', '==', sessionId);
 
   if (filters.type) {
-    // Uses composite index: (sessionId, type, createdAt)
+    // Uses composite index: (sessionId|kidId, type, createdAt)
     baseQuery = baseQuery.where('type', '==', filters.type);
   }
 
-  // Uses index: (sessionId, createdAt) or (sessionId, type, createdAt)
+  // Uses index: (sessionId|kidId, createdAt) or (sessionId|kidId, type, createdAt)
   baseQuery = baseQuery.orderBy('createdAt', 'desc');
 
   // Collect active docs across batches until we have limit + 1 (enough to determine hasMore)
@@ -368,6 +371,53 @@ export async function getTopCreators(topN: number = 5): Promise<
     .sort((a, b) => b[1] - a[1])
     .slice(0, topN)
     .map(([sessionId, creationCount]) => ({ sessionId, creationCount }));
+}
+
+/**
+ * One-time migration: stamp `kidId` on all session creations that don't have one yet.
+ * Called automatically when listing creations with a kidId — ensures older session
+ * creations become visible under the kid profile.
+ *
+ * Only migrates if the kid's `claimedSessionId` matches the given sessionId.
+ * This prevents a second child's profile from inheriting the first child's creations.
+ *
+ * Fire-and-forget safe — if it fails, creations just stay session-only until next load.
+ */
+export async function migrateSessionCreationsToKid(
+  sessionId: string,
+  kidId: string
+): Promise<void> {
+  // Check if this kid actually owns this session
+  const kidDoc = await adminDb.collection('kids').doc(kidId).get();
+  if (!kidDoc.exists) return;
+
+  const kidData = kidDoc.data()!;
+  const claimedSession = kidData.claimedSessionId as string | undefined;
+  if (!claimedSession) {
+    // Fallback: only migrate if this kid has points (was the first kid to receive session data)
+    const kidPoints = (kidData.aiPoints as number) ?? 0;
+    const kidBadges = (kidData.badges as string[]) ?? [];
+    if (kidPoints === 0 && kidBadges.length === 0) return; // Fresh kid — skip
+  } else if (claimedSession !== sessionId) {
+    return; // Kid doesn't own this session — skip
+  }
+
+  // Find all creations for this session that have no kidId set
+  const snapshot = await adminDb
+    .collection(CREATIONS_COLLECTION)
+    .where('sessionId', '==', sessionId)
+    .where('kidId', '==', null)
+    .limit(100) // Safety cap
+    .get();
+
+  if (snapshot.empty) return;
+
+  // Batch update — stamp kidId on each
+  const batch = adminDb.batch();
+  for (const doc of snapshot.docs) {
+    batch.update(doc.ref, { kidId, updatedAt: Timestamp.now() });
+  }
+  await batch.commit();
 }
 
 // ─── Internal helpers ────────────────────────────────────

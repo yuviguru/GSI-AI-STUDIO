@@ -233,7 +233,7 @@ export const BEAT_THE_AI_CATEGORIES: BeatTheAiCategoryInfo[] = [
   {
     id: 'fact_or_bluff',
     name: 'Fact or Bluff',
-    description: 'Write a surprising fact — or a convincing bluff!',
+    description: 'Write a surprising fact, or a convincing bluff!',
     icon: '🤔',
     primarySkill: 'creativity',
     timeLimit: 90,

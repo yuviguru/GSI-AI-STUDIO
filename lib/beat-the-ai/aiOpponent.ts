@@ -11,16 +11,16 @@ import { filterOutput } from '@/lib/safety/inputFilter';
 // ─── System Prompts by Difficulty ───────────────────────────
 
 const DIFFICULTY_PROMPTS: Record<BeatTheAiDifficulty, string> = {
-  easy: `You are a basic AI writing assistant for kids. Write simply and predictably. Use simple vocabulary, short sentences, and straightforward structure. Your response should be decent but not impressive — a creative kid could easily beat you.`,
-  medium: `You are a creative AI assistant. Write with good vocabulary and some surprising elements. Show decent creativity and structure. Your response should be good quality — a talented kid would need to try hard to beat you.`,
-  hard: `You are an expert creative writer. Use vivid language, humor, cultural references, and emotional depth. Your response should be excellent — only the most skilled and creative kids can beat you at this level.`,
+  easy: `You are a basic AI writing assistant for kids. Write simply and predictably. Use simple vocabulary, short sentences, and straightforward structure. Your response should be decent but not impressive, so a creative kid could easily beat you.`,
+  medium: `You are a creative AI assistant. Write with good vocabulary and some surprising elements. Show decent creativity and structure. Your response should be good quality, so a talented kid would need to try hard to beat you.`,
+  hard: `You are an expert creative writer. Use vivid language, humor, cultural references, and emotional depth. Your response should be excellent. Only the most skilled and creative kids can beat you at this level.`,
 };
 
 const CATEGORY_FORMAT: Record<BeatTheAiCategory, string> = {
   story_sprint: `Write a 3-5 sentence story with a clear beginning, middle, and end. Make it engaging and complete.`,
   rhyme_time: `Write a 4-line rhyming poem. Use either AABB or ABAB rhyme scheme. Make it flow naturally.`,
   fact_or_bluff: `Write 2-3 convincing sentences. Whether it's a real fact or a bluff, make it sound completely believable. Add a small detail that makes it extra convincing.`,
-  comeback_king: `Write ONE witty comeback line. Be clever, funny, and sharp — but always keep it friendly and kid-appropriate. No insults.`,
+  comeback_king: `Write ONE witty comeback line. Be clever, funny, and sharp, but always keep it friendly and kid-appropriate. No insults.`,
   explain_it: `Explain in 2-3 simple sentences using everyday analogies a young child would understand. Make it fun and accurate.`,
   debate_champ: `Argue the OPPOSITE side of what the kid is assigned. Give 2-3 strong, persuasive points. Be convincing but fair.`,
   math_wizard: `Show your reasoning step by step in 2-3 sentences. Be clear and accurate. If it's an estimation, state your assumptions.`,
@@ -41,22 +41,22 @@ const XRAY_PROMPTS: Record<BeatTheAiCategory, BeatTheAiXray> = {
   },
   fact_or_bluff: {
     concept: 'Language Model Confidence',
-    explanation: 'AI can write convincingly about anything — even made-up facts! It doesn\'t "know" what\'s true; it just predicts likely-sounding text. That\'s why fact-checking AI is so important!',
+    explanation: 'AI can write convincingly about anything, even made-up facts! It doesn\'t "know" what\'s true; it just predicts likely-sounding text. That\'s why fact-checking AI is so important!',
     curriculumTag: 'CBSE-AI-Ethics',
   },
   comeback_king: {
     concept: 'Context Understanding',
-    explanation: 'AI analyzes the context of a statement to generate a relevant response. But real wit comes from understanding social situations and timing — something humans are naturally better at!',
+    explanation: 'AI analyzes the context of a statement to generate a relevant response. But real wit comes from understanding social situations and timing, something humans are naturally better at!',
     curriculumTag: 'CBSE-AI-NLP',
   },
   explain_it: {
     concept: 'Text Simplification',
-    explanation: 'AI can rephrase complex ideas using simpler words by mapping difficult concepts to easier vocabulary. But the best explanations come from truly understanding something — not just rewording it!',
+    explanation: 'AI can rephrase complex ideas using simpler words by mapping difficult concepts to easier vocabulary. But the best explanations come from truly understanding something, not just rewording it!',
     curriculumTag: 'CBSE-AI-NLP',
   },
   debate_champ: {
     concept: 'Argument Generation',
-    explanation: 'AI can argue any side of a debate by finding supporting patterns in its training data. But it doesn\'t have real opinions or beliefs — it just generates convincing-sounding arguments!',
+    explanation: 'AI can argue any side of a debate by finding supporting patterns in its training data. But it doesn\'t have real opinions or beliefs. It just generates convincing-sounding arguments!',
     curriculumTag: 'CBSE-AI-NLP',
   },
   math_wizard: {
@@ -66,7 +66,7 @@ const XRAY_PROMPTS: Record<BeatTheAiCategory, BeatTheAiXray> = {
   },
   science_detective: {
     concept: 'Prediction Models',
-    explanation: 'AI makes predictions by finding patterns in data. Scientists also use models, but they design experiments to TEST their hypotheses — something AI cannot do on its own!',
+    explanation: 'AI makes predictions by finding patterns in data. Scientists also use models, but they design experiments to TEST their hypotheses, something AI cannot do on its own!',
     curriculumTag: 'CBSE-AI-ML',
   },
   code_cracker: {

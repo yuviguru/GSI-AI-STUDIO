@@ -92,7 +92,7 @@ export function StoryPromptForm({
       {remixFromId && (
         <div className="flex items-center gap-2 rounded-2xl bg-brand-purple/10 px-4 py-3 text-sm font-medium text-brand-purple">
           <RemixBannerIcon />
-          Remixed from another creation — make it your own!
+          Remixed from another creation, make it your own!
         </div>
       )}
 

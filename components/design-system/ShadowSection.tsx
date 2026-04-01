@@ -9,7 +9,7 @@ export function ShadowSection() {
     <section id="shadows" className="scroll-mt-28">
       <h2 className="text-h2 font-display text-brand-text mb-2">Shadows</h2>
       <p className="text-body-lg text-brand-text-secondary mb-8">
-        Soft, floating shadows — never harsh or dark. Hover interactive cards to see transitions.
+        Soft, floating shadows, never harsh or dark. Hover interactive cards to see transitions.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

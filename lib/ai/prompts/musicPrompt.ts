@@ -18,7 +18,7 @@ export const MUSIC_SYSTEM_PROMPT = `You are a children's music composer creating
 
 RULES:
 - Lyrics must be positive, educational, and empowering
-- Age-appropriate content ONLY — no violence, scary themes, romance, or mature topics
+- Age-appropriate content ONLY, no violence, scary themes, romance, or mature topics
 - Indian cultural context: reference Indian festivals, places, school life, and experiences where appropriate
 - Lyrics should be fun, rhythmic, and easy to sing along to
 - Keep lyrics at an appropriate vocabulary level for the target age group
@@ -42,7 +42,7 @@ IMPORTANT:
 - "bpm" must be a number between 60 and 200
 - "styleDescription" should describe the desired sound WITHOUT referencing specific artists or copyrighted songs
 - "lyrics" should have clear verse/chorus structure with \\n line breaks
-- Keep lyrics concise — 2-3 verses + chorus, fitting the requested duration`;
+- Keep lyrics concise: 2-3 verses + chorus, fitting the requested duration`;
 
 export function buildMusicUserPrompt(input: {
   mood: string;

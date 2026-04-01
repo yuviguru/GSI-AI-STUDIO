@@ -34,7 +34,7 @@ export function GradientSection() {
     <section id="gradients" className="scroll-mt-28">
       <h2 className="text-h2 font-display text-brand-text mb-2">Gradients</h2>
       <p className="text-body-lg text-brand-text-secondary mb-8">
-        Gradients create the playful atmosphere. Use sparingly — not on every element.
+        Gradients create the playful atmosphere. Use sparingly, not on every element.
       </p>
 
       {/* Primary Gradients */}

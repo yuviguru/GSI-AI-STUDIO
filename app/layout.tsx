@@ -31,7 +31,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'GSI AI Studio — Create with AI, Learn How It Works',
+  title: 'GSI AI Studio | Create with AI, Learn How It Works',
   description:
     'AI creation platform for Indian kids. Build stories, music, quizzes and games with AI while learning how artificial intelligence works. Aligned to CBSE AI curriculum.',
   manifest: '/manifest.json',

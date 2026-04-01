@@ -4,12 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 import { useAiPoints } from '@/contexts/AiPointsContext';
-import { BadgeGallery } from './BadgeGallery';
+import { useModal } from '@/contexts/ModalContext';
 
 export function AiPointsBadge() {
   const { totalPoints, pendingPoints } = useAiPoints();
+  const { openModal } = useModal();
   const [displayPoints, setDisplayPoints] = useState(0);
-  const [galleryOpen, setGalleryOpen] = useState(false);
   const animRef = useRef<number>(0);
 
   // Counting animation when totalPoints changes
@@ -39,32 +39,28 @@ export function AiPointsBadge() {
   }, [totalPoints]);
 
   return (
-    <>
-      <button
-        onClick={() => setGalleryOpen(true)}
-        className="relative flex items-center gap-1.5 rounded-full bg-brand-purple/10 px-3 py-1.5 text-sm font-medium text-brand-purple transition-transform active:scale-95"
-        aria-label="Open badge gallery"
-      >
-        <Sparkles className="h-4 w-4" />
-        <span>{displayPoints} AI Points</span>
+    <button
+      onClick={() => openModal('badgeGallery')}
+      className="relative flex items-center gap-1.5 rounded-full bg-brand-purple/10 px-3 py-1.5 text-sm font-medium text-brand-purple transition-transform active:scale-95"
+      aria-label="Open badge gallery"
+    >
+      <Sparkles className="h-4 w-4" />
+      <span>{displayPoints} AI Points</span>
 
-        {/* Floating +N animation */}
-        <AnimatePresence>
-          {pendingPoints > 0 && (
-            <motion.span
-              className="absolute -top-3 right-0 rounded-full bg-brand-purple px-2 py-0.5 text-xs font-bold text-white"
-              initial={{ y: 0, opacity: 0, scale: 0.5 }}
-              animate={{ y: -8, opacity: 1, scale: 1 }}
-              exit={{ y: -20, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-            >
-              +{pendingPoints}
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </button>
-
-      <BadgeGallery isOpen={galleryOpen} onClose={() => setGalleryOpen(false)} />
-    </>
+      {/* Floating +N animation */}
+      <AnimatePresence>
+        {pendingPoints > 0 && (
+          <motion.span
+            className="absolute -top-3 right-0 rounded-full bg-brand-purple px-2 py-0.5 text-xs font-bold text-white"
+            initial={{ y: 0, opacity: 0, scale: 0.5 }}
+            animate={{ y: -8, opacity: 1, scale: 1 }}
+            exit={{ y: -20, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+          >
+            +{pendingPoints}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </button>
   );
 }

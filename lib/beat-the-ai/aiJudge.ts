@@ -26,7 +26,7 @@ const CATEGORY_RUBRIC: Record<BeatTheAiCategory, string> = {
   fact_or_bluff: `For facts/bluffs, judge:
 - creativity: How surprising and original the claim is
 - funFactor: How entertaining and intriguing it is to read
-- accuracy: If a real fact — is it actually true? If a bluff — is it convincingly written?
+- accuracy: If a real fact, is it actually true? If a bluff, is it convincingly written?
 - heart: How engaging the writing style is, use of interesting details`,
 
   comeback_king: `For comebacks, judge:
@@ -93,9 +93,9 @@ ${CATEGORY_RUBRIC[category]}
 
 IMPORTANT JUDGING RULES:
 - Rate each criterion from 1 to 5 (integers only)
-- Give credit GENEROUSLY to the kid — if they show genuine effort, creativity, or a personal touch, rate them fairly but kindly
-- Kids have personal experiences, emotions, and cultural knowledge that AI cannot match — value these highly
-- The kid is learning and growing — focus on what they did WELL, not what they got wrong
+- Give credit GENEROUSLY to the kid. If they show genuine effort, creativity, or a personal touch, rate them fairly but kindly
+- Kids have personal experiences, emotions, and cultural knowledge that AI cannot match, so value these highly
+- The kid is learning and growing, so focus on what they did WELL, not what they got wrong
 - Be honest about the AI's strengths too, but remember this is meant to encourage kids
 
 For feedback:

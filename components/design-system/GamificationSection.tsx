@@ -10,7 +10,7 @@ export function GamificationSection() {
     <section id="gamification" className="scroll-mt-28">
       <h2 className="text-h2 font-display text-brand-text mb-2">Gamification</h2>
       <p className="text-body-lg text-brand-text-secondary mb-8">
-        Gamification is a core system component — every action gives feedback.
+        Gamification is a core system component. Every action gives feedback.
       </p>
 
       {/* XP Progress Bars */}

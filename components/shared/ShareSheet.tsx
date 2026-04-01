@@ -80,7 +80,7 @@ export function ShareSheet({
 
           {/* Bottom sheet */}
           <motion.div
-            className="fixed inset-x-4 bottom-0 z-50 mx-auto max-w-lg rounded-t-3xl bg-white px-6 pb-8 pt-4 shadow-xl"
+            className="fixed inset-x-4 bottom-0 z-50 mx-auto max-h-[85vh] max-w-lg overflow-y-auto rounded-t-3xl bg-white px-6 pb-8 pt-4 shadow-xl"
             initial={{ y: '100%', opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: '100%', opacity: 0 }}

@@ -125,6 +125,10 @@ export async function createKid(
     shareCount: isFirstKid ? (claimedData.shareCount || 0) : 0,
     totalCreations: 0,
     streak: { current: 0, longest: 0, lastActiveDate: '' },
+    // Link first kid to the anonymous session so migration knows who owns it
+    ...(isFirstKid && parentData.claimedSessionIds?.length
+      ? { claimedSessionId: parentData.claimedSessionIds[0] }
+      : {}),
     createdAt: now,
     updatedAt: now,
   };

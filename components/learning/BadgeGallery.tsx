@@ -2,12 +2,8 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAiPoints } from '@/contexts/AiPointsContext';
+import { useModal } from '@/contexts/ModalContext';
 import { BADGE_CATALOG, getBadgeProgressHint, type Badge } from '@/lib/badges';
-
-interface BadgeGalleryProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
 
 function BadgeCard({ badge, earned, hint }: { badge: Badge; earned: boolean; hint: string }) {
   return (
@@ -32,11 +28,15 @@ function BadgeCard({ badge, earned, hint }: { badge: Badge; earned: boolean; hin
 }
 
 /**
- * Bottom-sheet grid of all badges — earned vs locked.
- * Triggered by clicking the AI Points badge in the header.
+ * Single badge gallery modal, rendered once in the layout.
+ * Open from anywhere via useModal().openModal('badgeGallery').
  */
-export function BadgeGallery({ isOpen, onClose }: BadgeGalleryProps) {
+export function BadgeGallery() {
   const { badges, creationsByType, conceptsLearned, totalPoints } = useAiPoints();
+  const { isOpen, closeModal } = useModal();
+  const open = isOpen('badgeGallery');
+  const onClose = () => closeModal('badgeGallery');
+
   const earnedSet = new Set(badges);
 
   const pointsData = {
@@ -51,11 +51,11 @@ export function BadgeGallery({ isOpen, onClose }: BadgeGalleryProps) {
 
   return (
     <AnimatePresence>
-      {isOpen && (
+      {open && (
         <>
           {/* Backdrop */}
           <motion.div
-            className="fixed inset-0 z-40 bg-black/40"
+            className="fixed inset-0 z-[100] bg-black/40"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -64,7 +64,7 @@ export function BadgeGallery({ isOpen, onClose }: BadgeGalleryProps) {
 
           {/* Bottom sheet */}
           <motion.div
-            className="fixed inset-x-4 bottom-0 z-50 mx-auto max-w-lg rounded-t-3xl bg-white px-5 pb-8 pt-4 shadow-xl md:bottom-auto md:top-1/2 md:max-h-[85vh] md:overflow-y-auto md:rounded-3xl md:-translate-y-1/2"
+            className="fixed inset-x-4 bottom-0 z-[101] mx-auto max-h-[80vh] max-w-lg overflow-y-auto overscroll-contain rounded-t-3xl bg-white px-5 pb-8 pt-4 shadow-xl md:bottom-auto md:top-[10vh] md:rounded-3xl"
             initial={{ y: '100%', opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: '100%', opacity: 0 }}

@@ -9,7 +9,7 @@ RULES:
 - Questions must be age-appropriate, factually accurate, and educational
 - Include fun explanations for each answer to encourage learning
 - Indian context where relevant (CBSE/ICSE curriculum alignment)
-- No trick questions designed to frustrate — aim for "challenging but fair"
+- No trick questions designed to frustrate. Aim for "challenging but fair"
 - Mix difficulty levels: 30% easy, 50% medium, 20% hard
 - Questions should spark curiosity, not just test memorization
 

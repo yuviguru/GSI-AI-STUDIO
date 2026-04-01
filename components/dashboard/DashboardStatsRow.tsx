@@ -1,7 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import { useAiPoints } from '@/contexts/AiPointsContext';
+import { useModal } from '@/contexts/ModalContext';
 
 /* ─── Single stat card ─────────────────────────────────────────────────────── */
 
@@ -33,7 +33,7 @@ function StatCard({ label, value, icon, iconBg, cardBg }: StatCardProps) {
 
 const PLACEHOLDER_BADGES = ['🏆', '⭐', '🎯', '🔥'];
 
-function BadgesStatCard({ count }: { count: number }) {
+function BadgesStatCard({ count, onViewAll }: { count: number; onViewAll: () => void }) {
   return (
     <div className="rounded-xl bg-purple-50 px-5 py-5 shadow-card">
       <div className="flex items-start justify-between">
@@ -43,9 +43,9 @@ function BadgesStatCard({ count }: { count: number }) {
             {count}
           </span>
         </div>
-        <Link href="/creations" className="text-[11px] font-semibold text-brand-text-secondary hover:text-brand-primary">
+        <button onClick={onViewAll} className="text-[11px] font-semibold text-brand-text-secondary hover:text-brand-primary">
           View all &rsaquo;
-        </Link>
+        </button>
       </div>
       <div className="mt-3 flex items-center gap-2">
         {PLACEHOLDER_BADGES.map((emoji, i) => (
@@ -63,10 +63,11 @@ function BadgesStatCard({ count }: { count: number }) {
   );
 }
 
-/* ─── Stats row — 4 equal cards ────────────────────────────────────────────── */
+/* ─── Stats row, 4 equal cards ─────────────────────────────────────────────── */
 
 export function DashboardStatsRow() {
   const { totalPoints, conceptsLearned, creationsByType, badges } = useAiPoints();
+  const { openModal } = useModal();
   const totalCreations = Object.values(creationsByType).reduce((s, n) => s + n, 0);
   const completionPct = Math.min(100, Math.round((totalCreations / 10) * 100));
 
@@ -93,7 +94,7 @@ export function DashboardStatsRow() {
         iconBg="bg-emerald-200/60"
         cardBg="bg-emerald-50"
       />
-      <BadgesStatCard count={badges.length} />
+      <BadgesStatCard count={badges.length} onViewAll={() => openModal('badgeGallery')} />
     </div>
   );
 }

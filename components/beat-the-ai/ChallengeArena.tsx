@@ -34,7 +34,7 @@ const CATEGORY_ROWS: Partial<Record<BeatTheAiCategory, number>> = {
 const CATEGORY_PLACEHOLDER: Partial<Record<BeatTheAiCategory, string>> = {
   story_sprint: 'Once upon a time...',
   rhyme_time: 'Roses are red, violets are blue...',
-  fact_or_bluff: 'Write something surprising — real or fake!',
+  fact_or_bluff: 'Write something surprising, real or fake!',
   comeback_king: 'Drop your wittiest one-liner here...',
   explain_it: 'Imagine you\'re talking to a 7-year-old...',
   debate_champ: 'State your strongest argument...',

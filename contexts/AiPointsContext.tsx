@@ -233,6 +233,16 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
     setCelebration(null);
   }, []);
 
+  // Reload points when kid profile is switched
+  useEffect(() => {
+    function handleKidSwitch() {
+      // fetchWithSession will auto-send the new X-Kid-Id header
+      reloadFromServer();
+    }
+    window.addEventListener('gsi-kid-switched', handleKidSwitch);
+    return () => window.removeEventListener('gsi-kid-switched', handleKidSwitch);
+  }, [reloadFromServer]);
+
   // Cleanup pending timer
   useEffect(() => {
     return () => {

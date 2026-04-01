@@ -6,6 +6,8 @@ import { SidebarNav } from '@/components/layout/SidebarNav';
 import { SessionInit } from '@/components/layout/SessionInit';
 import { AiPointsProvider } from '@/contexts/AiPointsContext';
 import { CelebrationModal } from '@/components/learning/CelebrationModal';
+import { BadgeGallery } from '@/components/learning/BadgeGallery';
+import { ModalProvider } from '@/contexts/ModalContext';
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { KidProfileProvider, useKidProfile } from '@/hooks/useKidProfile';
@@ -49,6 +51,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <AuthProvider>
         <KidProfileProvider>
           <AiPointsProvider>
+          <ModalProvider>
             <SessionInit />
             <AppGate>
             <div className="flex min-h-screen flex-col">
@@ -60,7 +63,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                 <Header />
               </div>
 
-              {/* Main content — offset for sidebar on desktop */}
+              {/* Main content, offset for sidebar on desktop */}
               <main className="flex-1 pb-nav lg:pb-0 lg:pl-[220px]">{children}</main>
 
               {/* Mobile bottom nav (below lg) */}
@@ -69,8 +72,10 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               </div>
             </div>
             <CelebrationModal />
+            <BadgeGallery />
             <LoginPrompt />
             </AppGate>
+          </ModalProvider>
           </AiPointsProvider>
         </KidProfileProvider>
       </AuthProvider>

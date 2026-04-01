@@ -33,7 +33,7 @@ export function ColorSection() {
     <section id="colors" className="scroll-mt-28">
       <h2 className="text-h2 font-display text-brand-text mb-2">Colors</h2>
       <p className="text-body-lg text-brand-text-secondary mb-8">
-        Vibrant yet balanced — engaging without cognitive overload.
+        Vibrant yet balanced, engaging without cognitive overload.
       </p>
 
       {/* Brand Colors */}
