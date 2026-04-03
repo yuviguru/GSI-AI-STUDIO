@@ -20,7 +20,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { AiPointsBadge } from '@/components/learning/AiPointsBadge';
+import { useAiPoints } from '@/contexts/AiPointsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useKidProfile } from '@/hooks/useKidProfile';
 import { getAvatarEmoji } from '@/components/profile/AvatarPicker';
@@ -97,6 +97,7 @@ export function SidebarNav() {
   const [showPicker, setShowPicker] = useState(false);
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { activeKid } = useKidProfile();
+  const { totalPoints } = useAiPoints();
   const isStudioActive = pathname.startsWith('/create/');
 
   const toggleCreate = useCallback(() => {
@@ -244,19 +245,23 @@ export function SidebarNav() {
         {/* ── User / Active Kid ─────────────────────────────────────── */}
         <div className="border-t border-gray-100 px-1 py-4">
           {!authLoading && isAuthenticated && activeKid ? (
-            /* Authenticated with active kid: show kid avatar → opens picker */
+            /* Authenticated with active kid: avatar left, name + points stacked right */
             <button
               onClick={() => setShowPicker(true)}
-              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition hover:bg-gray-50"
+              className="flex w-full items-start gap-2.5 rounded-xl px-3 py-2.5 transition hover:bg-gray-50"
+              aria-label="Switch profile"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-blue-100 text-xl">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-blue-100 text-xl">
                 {getAvatarEmoji(activeKid.avatar)}
               </div>
               <div className="min-w-0 flex-1 text-left">
-                <p className="truncate text-sm font-semibold text-brand-text">
+                <p className="truncate text-sm font-semibold text-brand-text leading-tight">
                   {activeKid.name}
                 </p>
-                <AiPointsBadge />
+                <p className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-brand-primary">
+                  <Sparkles className="h-3 w-3" />
+                  <span>{totalPoints} AI Points</span>
+                </p>
               </div>
             </button>
           ) : !authLoading && !isAuthenticated ? (

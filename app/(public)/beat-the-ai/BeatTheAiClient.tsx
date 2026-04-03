@@ -10,9 +10,10 @@ import { SideBySideReveal } from '@/components/beat-the-ai/SideBySideReveal';
 import { ResultsScreen } from '@/components/beat-the-ai/ResultsScreen';
 import { StatsBoard } from '@/components/beat-the-ai/StatsBoard';
 import { Mascot } from '@/components/mascot/Mascot';
+import { ArrowLeft, Bot, Swords } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
-const transition = { duration: 0.2, ease: 'easeOut' };
+const transition = { duration: 0.25, ease: 'easeOut' };
 const variants = {
   enter: { opacity: 0, y: -12 },
   center: { opacity: 1, y: 0 },
@@ -34,12 +35,13 @@ export function BeatTheAiClient() {
 
   if (showStats) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-6">
+      <div className="mx-auto max-w-3xl px-4 py-6">
         <button
           onClick={() => setShowStats(false)}
-          className="mb-4 text-sm text-purple-600 hover:underline"
+          className="mb-4 flex items-center gap-1.5 text-sm font-medium text-brand-primary hover:text-brand-ai transition-colors"
         >
-          &larr; Back to Challenge
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back to Challenges
         </button>
         <StatsBoard
           skills={skillsData.skills}
@@ -53,19 +55,22 @@ export function BeatTheAiClient() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6">
+    <div className="mx-auto max-w-3xl px-4 py-6">
       {/* Header */}
       <div className="mb-6 text-center">
-        <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-          Beat the AI
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <div className="inline-flex items-center gap-2">
+          <Bot className="h-6 w-6 text-brand-primary" />
+          <h1 className="font-display text-2xl font-bold text-brand-text sm:text-3xl">
+            Beat the AI
+          </h1>
+        </div>
+        <p className="mt-1 text-sm text-brand-text-secondary">
           Can your creativity beat artificial intelligence?
         </p>
       </div>
 
       {game.error && (
-        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
+        <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-600">
           {game.error}
         </div>
       )}
@@ -96,10 +101,10 @@ export function BeatTheAiClient() {
             animate="center"
             exit="exit"
             transition={transition}
-            className="flex flex-col items-center gap-4 py-12"
+            className="flex flex-col items-center gap-4 py-16"
           >
             <Mascot expression="thinking" size="md" />
-            <p className="text-sm text-gray-500 animate-pulse">
+            <p className="text-sm text-brand-text-muted animate-pulse">
               Preparing your challenge...
             </p>
           </motion.div>
@@ -130,10 +135,10 @@ export function BeatTheAiClient() {
             animate="center"
             exit="exit"
             transition={transition}
-            className="flex flex-col items-center gap-4 py-12"
+            className="flex flex-col items-center gap-4 py-16"
           >
             <Mascot expression="thinking" size="md" />
-            <p className="text-sm text-gray-500 animate-pulse">
+            <p className="text-sm text-brand-text-muted animate-pulse">
               AI is writing its version...
             </p>
           </motion.div>

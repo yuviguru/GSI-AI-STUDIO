@@ -79,14 +79,14 @@ export function SkillRadarChart({ skills }: SkillRadarChartProps) {
           );
         })}
 
-        {/* Skill polygon */}
+        {/* Skill polygon — uses brand-primary purple */}
         <motion.polygon
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8 }}
           points={polygonStr}
-          fill="rgba(147, 51, 234, 0.2)"
-          stroke="rgb(147, 51, 234)"
+          fill="rgba(91, 95, 255, 0.18)"
+          stroke="rgb(91, 95, 255)"
           strokeWidth={2}
         />
 
