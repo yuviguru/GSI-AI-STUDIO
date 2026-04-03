@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { HelpCircle } from 'lucide-react';
 import { useAiGeneration } from '@/hooks/useAiGeneration';
 import { useSession } from '@/hooks/useSession';
 import { useAiPoints } from '@/contexts/AiPointsContext';
@@ -53,7 +54,7 @@ export function QuizStudioClient() {
       <div className="mx-auto max-w-2xl">
         {/* Header */}
         <div className="mb-6 text-center">
-          <span className="text-5xl">🎮</span>
+          <HelpCircle className="mx-auto h-12 w-12 text-emerald-500" />
           <h1 className="mt-3 font-display text-3xl font-bold text-gray-900">Quiz Maker</h1>
           <p className="mt-1 text-gray-500">Build fun quizzes and games with AI</p>
         </div>

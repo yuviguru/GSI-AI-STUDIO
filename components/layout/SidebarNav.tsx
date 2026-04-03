@@ -6,13 +6,18 @@ import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
-  Plus,
   Bot,
   Compass,
   FolderOpen,
   HelpCircle,
   Settings,
   ChevronDown,
+  Sparkles,
+  BookOpen,
+  Music,
+  Gamepad2,
+  Palette,
+  UserRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AiPointsBadge } from '@/components/learning/AiPointsBadge';
@@ -25,11 +30,11 @@ import { ProfilePicker } from '@/components/profile/ProfilePicker';
 /* ─── Studio sub-items for Create+ ─────────────────────────────────────────── */
 
 const STUDIO_ITEMS = [
-  { href: '/create/story', label: 'Story Studio', emoji: '📖' },
-  { href: '/create/music', label: 'Music Lab',    emoji: '🎵' },
-  { href: '/create/quiz',  label: 'Quiz Maker',   emoji: '🎮' },
-  { href: '/create/game',  label: 'Game Studio',  emoji: '🕹️' },
-  { href: '/create/comic', label: 'Comic Studio', emoji: '🎨' },
+  { href: '/create/story', label: 'Story Studio', icon: BookOpen },
+  { href: '/create/music', label: 'Music Lab',    icon: Music },
+  { href: '/create/quiz',  label: 'Quiz Maker',   icon: HelpCircle },
+  { href: '/create/game',  label: 'Game Studio',  icon: Gamepad2 },
+  { href: '/create/comic', label: 'Comic Studio', icon: Palette },
 ];
 
 /* ─── Main nav items ───────────────────────────────────────────────────────── */
@@ -108,7 +113,7 @@ export function SidebarNav() {
     >
       {/* ── Brand ──────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2.5 px-6 py-5">
-        <span className="text-2xl">🎨</span>
+        <Sparkles className="h-6 w-6 text-brand-primary" />
         <span className="font-display text-base font-bold text-brand-text">
           GSI AI Studio
         </span>
@@ -165,8 +170,8 @@ export function SidebarNav() {
                   transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 />
               )}
-              <Plus className="h-[18px] w-[18px] shrink-0" />
-              <span className="flex-1 text-left">Create+</span>
+              <Palette className="h-[18px] w-[18px] shrink-0" />
+              <span className="flex-1 text-left">Create</span>
               <ChevronDown
                 className={cn(
                   'h-4 w-4 transition-transform duration-200',
@@ -200,7 +205,7 @@ export function SidebarNav() {
                               : 'text-brand-text-secondary hover:bg-gray-50 hover:text-brand-text',
                           )}
                         >
-                          <span className="text-base">{studio.emoji}</span>
+                          <studio.icon className="h-[18px] w-[18px] shrink-0" />
                           {studio.label}
                         </Link>
                       );
@@ -260,8 +265,8 @@ export function SidebarNav() {
               onClick={() => setShowAuthFlow(true)}
               className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-brand-primary transition hover:bg-brand-primary/8"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-primary/10 text-base">
-                👤
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-primary/10">
+                <UserRound className="h-[18px] w-[18px] text-brand-primary" />
               </div>
               <span>Sign In</span>
             </button>

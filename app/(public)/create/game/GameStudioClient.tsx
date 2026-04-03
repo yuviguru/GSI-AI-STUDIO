@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Gamepad2 } from 'lucide-react';
 import { useAiGeneration } from '@/hooks/useAiGeneration';
 import { useSession } from '@/hooks/useSession';
 import { useAiPoints } from '@/contexts/AiPointsContext';
@@ -53,7 +54,7 @@ export function GameStudioClient() {
       <div className="mx-auto max-w-2xl">
         {/* Header */}
         <div className="mb-6 text-center">
-          <span className="text-5xl">🕹️</span>
+          <Gamepad2 className="mx-auto h-12 w-12 text-cyan-500" />
           <h1 className="mt-3 font-display text-3xl font-bold text-gray-900">Game Studio</h1>
           <p className="mt-1 text-gray-500">Create text adventures with AI</p>
         </div>

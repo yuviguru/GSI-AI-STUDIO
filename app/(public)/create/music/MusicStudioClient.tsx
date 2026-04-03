@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Music } from 'lucide-react';
 import { useAiGeneration } from '@/hooks/useAiGeneration';
 import { useSession } from '@/hooks/useSession';
 import { useAiPoints } from '@/contexts/AiPointsContext';
@@ -53,7 +54,7 @@ export function MusicStudioClient() {
       <div className="mx-auto max-w-2xl">
         {/* Header */}
         <div className="mb-6 text-center">
-          <span className="text-5xl">🎵</span>
+          <Music className="mx-auto h-12 w-12 text-orange-500" />
           <h1 className="mt-3 font-display text-3xl font-bold text-gray-900">Music Lab</h1>
           <p className="mt-1 text-gray-500">Create songs and beats with AI</p>
         </div>

@@ -1,17 +1,20 @@
 'use client';
 
 import Link from 'next/link';
+import { BookOpen, Music, HelpCircle, Gamepad2, Palette, Sparkles, Rocket } from 'lucide-react';
 import { useCreations } from '@/hooks/useCreations';
 import type { Creation } from '@/types/creation.types';
 import { cn } from '@/lib/utils';
 
-const TYPE_META: Record<string, { emoji: string; gradient: string }> = {
-  story: { emoji: '📖', gradient: 'from-violet-100 to-purple-100' },
-  music: { emoji: '🎵', gradient: 'from-orange-100 to-rose-100' },
-  quiz: { emoji: '🎮', gradient: 'from-cyan-100 to-blue-100' },
-  game: { emoji: '🕹️', gradient: 'from-emerald-100 to-teal-100' },
-  comic: { emoji: '🎨', gradient: 'from-orange-100 to-amber-100' },
+const TYPE_META: Record<string, { icon: React.ComponentType<{ className?: string }>; gradient: string }> = {
+  story: { icon: BookOpen,    gradient: 'from-violet-100 to-purple-100' },
+  music: { icon: Music,       gradient: 'from-orange-100 to-rose-100' },
+  quiz:  { icon: HelpCircle,  gradient: 'from-cyan-100 to-blue-100' },
+  game:  { icon: Gamepad2,    gradient: 'from-emerald-100 to-teal-100' },
+  comic: { icon: Palette,     gradient: 'from-orange-100 to-amber-100' },
 };
+
+const FALLBACK_META = { icon: Sparkles, gradient: 'from-gray-100 to-gray-50' };
 
 function timeAgo(date: Date): string {
   const secs = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
@@ -22,13 +25,14 @@ function timeAgo(date: Date): string {
 }
 
 function CreationMiniCard({ creation }: { creation: Creation }) {
-  const meta = TYPE_META[creation.type] ?? { emoji: '✨', gradient: 'from-gray-100 to-gray-50' };
+  const meta = TYPE_META[creation.type] ?? FALLBACK_META;
+  const Icon = meta.icon;
   return (
     <Link href={`/view/${creation.id}`} className="group block">
       <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-card transition-shadow hover:shadow-card-hover">
         {/* Placeholder thumbnail */}
-        <div className={cn('flex h-20 items-center justify-center bg-gradient-to-br text-3xl', meta.gradient)}>
-          {meta.emoji}
+        <div className={cn('flex h-20 items-center justify-center bg-gradient-to-br', meta.gradient)}>
+          <Icon className="h-7 w-7 text-gray-500" />
         </div>
         <div className="p-2">
           <p className="truncate text-xs font-bold text-gray-800">{creation.title}</p>
@@ -43,7 +47,7 @@ function EmptySlot() {
   return (
     <Link href="/create/story" className="group block">
       <div className="flex h-full min-h-[108px] flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 p-3 text-center transition-colors hover:border-brand-purple/30 hover:bg-brand-purple/5">
-        <span className="text-2xl">🚀</span>
+        <Rocket className="h-6 w-6 text-gray-400" />
         <p className="mt-1 text-xs font-bold text-gray-500">Create First!</p>
       </div>
     </Link>

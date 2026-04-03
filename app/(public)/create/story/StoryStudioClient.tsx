@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { BookOpen } from 'lucide-react';
 import { useAiGeneration } from '@/hooks/useAiGeneration';
 import { useSession } from '@/hooks/useSession';
 import { useAiPoints } from '@/contexts/AiPointsContext';
@@ -53,7 +54,7 @@ export function StoryStudioClient() {
       <div className="mx-auto max-w-2xl">
         {/* Header */}
         <div className="mb-6 text-center">
-          <span className="text-5xl">📖</span>
+          <BookOpen className="mx-auto h-12 w-12 text-violet-500" />
           <h1 className="mt-3 font-display text-3xl font-bold text-gray-900">Story Studio</h1>
           <p className="mt-1 text-gray-500">Write and illustrate amazing stories with AI</p>
         </div>
