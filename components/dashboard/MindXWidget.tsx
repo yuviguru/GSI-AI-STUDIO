@@ -22,7 +22,7 @@ export function MindXWidget() {
         </p>
 
         <div className="mt-auto pt-3">
-          <div className="rounded-xl bg-gradient-to-r from-brand-ai to-brand-secondary py-2 text-center text-xs font-bold text-white transition-transform group-hover:scale-[1.02]">
+          <div className="rounded-xl bg-gradient-to-r from-brand-primary to-brand-ai py-2 text-center text-xs font-bold text-white transition-transform group-hover:scale-[1.02]">
             Level Up
           </div>
         </div>

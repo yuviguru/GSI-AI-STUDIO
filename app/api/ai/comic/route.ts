@@ -6,9 +6,7 @@ import { checkRateLimit, trackCreation } from '@/lib/firebase/sessionService';
 import { saveCreation } from '@/lib/firebase/creationService';
 import { generateJsonWithClaude } from '@/lib/ai/claudeClient';
 import { generateJsonWithGroq } from '@/lib/ai/groqClient';
-import { generateImage } from '@/lib/ai/replicateClient';
-import { generateImageFree } from '@/lib/ai/pollinationsClient';
-import { generateImageLocal } from '@/lib/ai/comfyuiClient';
+import { getImageProvider } from '@/lib/ai/imageProvider';
 import {
   COMIC_SYSTEM_PROMPT,
   COMIC_STYLE_PREFIXES,
@@ -40,14 +38,6 @@ const PLACEHOLDER_IMAGE = '/images/placeholder-story.png';
 
 function shouldUseGroq(): boolean {
   return !!process.env.GROQ_API_KEY && !process.env.ANTHROPIC_API_KEY?.startsWith('sk-ant-api');
-}
-
-function shouldUseComfyUI(): boolean {
-  return !!process.env.COMFYUI_URL;
-}
-
-function shouldUseReplicate(): boolean {
-  return !!process.env.REPLICATE_API_TOKEN && !process.env.REPLICATE_API_TOKEN?.includes('your-token');
 }
 
 /**
@@ -99,16 +89,10 @@ export async function POST(request: NextRequest) {
 
     // 7. Generate panel illustrations in parallel (batched)
     const stylePrefix = COMIC_STYLE_PREFIXES[input.style] ?? COMIC_STYLE_PREFIXES.cartoon!;
-    const genImage = shouldUseComfyUI()
-      ? generateImageLocal
-      : shouldUseReplicate()
-        ? generateImage
-        : generateImageFree;
+    const { imageFunction, providerName } = getImageProvider();
+    console.log(`[Comic] Using image provider: ${providerName}`);
 
-    const imageProvider = shouldUseComfyUI() ? 'flux-schnell-local' : shouldUseReplicate() ? 'sdxl' : 'pollinations';
-    console.log(`[Comic] Using image provider: ${imageProvider}`);
-
-    const imageUrls = await generateComicImagesParallel(filteredPanels, stylePrefix, genImage);
+    const imageUrls = await generateComicImagesParallel(filteredPanels, stylePrefix, imageFunction);
 
     // 8. Build comic content
     const modelName = shouldUseGroq() ? 'llama-3.3-70b' : 'claude-sonnet';

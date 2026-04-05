@@ -50,13 +50,15 @@ export function QuizStudioClient() {
   };
 
   return (
-    <div className="bg-gradient-to-b from-brand-cyan/5 to-white px-4 py-8">
-      <div className="mx-auto max-w-2xl">
+    <div className="min-h-screen bg-gradient-to-b from-brand-cyan/5 to-white px-4 py-4">
+      <div className="mx-auto max-w-3xl">
         {/* Header */}
-        <div className="mb-6 text-center">
-          <HelpCircle className="mx-auto h-12 w-12 text-emerald-500" />
-          <h1 className="mt-3 font-display text-3xl font-bold text-gray-900">Quiz Maker</h1>
-          <p className="mt-1 text-gray-500">Build fun quizzes and games with AI</p>
+        <div className="mb-3 flex items-center justify-center gap-3">
+          <HelpCircle className="h-8 w-8 text-emerald-500" />
+          <div>
+            <h1 className="font-display text-2xl font-bold text-gray-900">Quiz Maker</h1>
+            <p className="text-sm text-gray-500">Build fun quizzes and games with AI</p>
+          </div>
         </div>
 
         {/* Error banner */}

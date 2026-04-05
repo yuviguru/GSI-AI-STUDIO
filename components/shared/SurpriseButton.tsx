@@ -8,7 +8,7 @@ import type { CreationType } from '@/types/creation.types';
 
 interface SurpriseButtonProps {
   type: CreationType;
-  accentColor: 'brand-purple' | 'brand-orange' | 'brand-cyan';
+  accentColor: 'brand-purple' | 'brand-orange' | 'brand-cyan' | 'emerald';
   onSelect: (template: Template) => void;
   className?: string;
 }
@@ -32,6 +32,7 @@ export function SurpriseButton({ type, accentColor, onSelect, className }: Surpr
     'brand-purple': 'border-brand-purple/30 text-brand-purple hover:bg-brand-purple/5',
     'brand-orange': 'border-brand-orange/30 text-brand-orange hover:bg-brand-orange/5',
     'brand-cyan': 'border-brand-cyan/30 text-brand-cyan hover:bg-brand-cyan/5',
+    'emerald': 'border-emerald-500/30 text-emerald-600 hover:bg-emerald-50',
   };
 
   return (
