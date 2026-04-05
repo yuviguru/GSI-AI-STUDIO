@@ -28,9 +28,14 @@ export function Header() {
       >
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-2xl">🎨</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/gsi-logo.svg"
+              alt="GSI"
+              className="h-8 w-auto"
+            />
             <span className="font-display text-lg font-bold text-gray-900">
-              GSI AI Studio
+              AI Studio
             </span>
           </Link>
 

@@ -113,12 +113,17 @@ export function SidebarNav() {
       )}
     >
       {/* ── Brand ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2.5 px-6 py-5">
-        <Sparkles className="h-6 w-6 text-brand-primary" />
+      <Link href="/" className="flex items-center gap-2.5 px-6 py-5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/gsi-logo.svg"
+          alt="GSI"
+          className="h-8 w-auto"
+        />
         <span className="font-display text-base font-bold text-brand-text">
-          GSI AI Studio
+          AI Studio
         </span>
-      </div>
+      </Link>
 
       {/* ── Main nav ───────────────────────────────────────────────────── */}
       <nav className="mt-2 flex flex-1 flex-col px-3">
