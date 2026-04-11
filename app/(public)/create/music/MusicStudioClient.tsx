@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Music } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, Music } from 'lucide-react';
 import { useAiGeneration } from '@/hooks/useAiGeneration';
 import { useSession } from '@/hooks/useSession';
 import { useAiPoints } from '@/contexts/AiPointsContext';
@@ -53,13 +54,25 @@ export function MusicStudioClient() {
     <div className="min-h-screen bg-gradient-to-b from-brand-orange/5 to-white px-4 py-4">
       <div className="mx-auto max-w-3xl">
         {/* Header */}
-        <div className="mb-3 flex items-center justify-center gap-3">
-          <Music className="h-8 w-8 text-orange-500" />
-          <div>
-            <h1 className="font-display text-2xl font-bold text-gray-900">Music Lab</h1>
-            <p className="text-sm text-gray-500">Create songs and beats with AI</p>
+        {step === 'share' ? (
+          <div className="mb-3">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 transition-colors hover:text-brand-purple"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to home
+            </Link>
           </div>
-        </div>
+        ) : (
+          <div className="mb-3 flex items-center justify-center gap-3">
+            <Music className="h-8 w-8 text-orange-500" />
+            <div>
+              <h1 className="font-display text-2xl font-bold text-gray-900">Music Lab</h1>
+              <p className="text-sm text-gray-500">Create songs and beats with AI</p>
+            </div>
+          </div>
+        )}
 
         {/* Error banner */}
         {error && step === 'inspire' && (

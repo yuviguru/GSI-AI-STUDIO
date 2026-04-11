@@ -82,7 +82,12 @@ export async function PATCH(request: NextRequest) {
         throw new AppException('INVALID_INPUT', 'Invalid action', 400);
     }
 
-    const result = await updateSessionPoints(sessionId, pointsAction);
+    const activeKidId =
+      request.headers.get('X-Active-Kid-Id') ||
+      (typeof body.kidId === 'string' ? body.kidId : undefined) ||
+      undefined;
+
+    const result = await updateSessionPoints(sessionId, pointsAction, activeKidId);
     return apiSuccess({ ...result.data, newBadges: result.newBadges });
   } catch (error) {
     return handleApiError(error);

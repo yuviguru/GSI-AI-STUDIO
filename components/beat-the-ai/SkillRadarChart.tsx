@@ -17,16 +17,22 @@ const SKILL_ORDER: BeatTheAiSkillId[] = [
   'culturalConnect',
 ];
 
-const SIZE = 200;
-const CENTER = SIZE / 2;
-const RADIUS = 70;
+// Wider-than-tall viewBox so the long horizontal labels
+// ("Cultural Connect", "Storytelling", "Speed Thinking", "Wordplay")
+// have room to breathe on the left/right edges.
+const VIEW_W = 340;
+const VIEW_H = 260;
+const CENTER_X = VIEW_W / 2;
+const CENTER_Y = VIEW_H / 2;
+const RADIUS = 90;
+const LABEL_OFFSET = 28; // Extra padding so labels don't clip the viewBox edges
 const GRID_RINGS = 5; // Number of concentric grid rings
-const MIN_R = 10; // Minimum radius so chart isn't invisible at 0 XP
+const MIN_R = 12; // Minimum radius so chart isn't invisible at 0 XP
 const MAX_XP = 501; // Legend threshold — XP beyond this still shows full radius
 
 function polarToCartesian(angle: number, radius: number): [number, number] {
   const rad = ((angle - 90) * Math.PI) / 180;
-  return [CENTER + radius * Math.cos(rad), CENTER + radius * Math.sin(rad)];
+  return [CENTER_X + radius * Math.cos(rad), CENTER_Y + radius * Math.sin(rad)];
 }
 
 export function SkillRadarChart({ skills }: SkillRadarChartProps) {
@@ -47,7 +53,11 @@ export function SkillRadarChart({ skills }: SkillRadarChartProps) {
 
   return (
     <div className="flex justify-center">
-      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} width={SIZE} height={SIZE}>
+      <svg
+        viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+        className="h-auto w-full max-w-[340px]"
+        preserveAspectRatio="xMidYMid meet"
+      >
         {/* Grid rings */}
         {rings.map((ring) => {
           const r = (ring / GRID_RINGS) * RADIUS;
@@ -69,8 +79,8 @@ export function SkillRadarChart({ skills }: SkillRadarChartProps) {
           return (
             <line
               key={i}
-              x1={CENTER}
-              y1={CENTER}
+              x1={CENTER_X}
+              y1={CENTER_Y}
               x2={x}
               y2={y}
               stroke="#e5e7eb"
@@ -92,7 +102,7 @@ export function SkillRadarChart({ skills }: SkillRadarChartProps) {
 
         {/* Skill labels */}
         {SKILL_ORDER.map((skillId, i) => {
-          const [x, y] = polarToCartesian(i * angleStep, RADIUS + 20);
+          const [x, y] = polarToCartesian(i * angleStep, RADIUS + LABEL_OFFSET);
           const info = SKILL_INFO[skillId];
           return (
             <text
@@ -101,7 +111,7 @@ export function SkillRadarChart({ skills }: SkillRadarChartProps) {
               y={y}
               textAnchor="middle"
               dominantBaseline="middle"
-              className="text-[8px] fill-gray-500"
+              className="fill-gray-500 text-[10px] font-medium"
             >
               {info.icon} {info.name}
             </text>

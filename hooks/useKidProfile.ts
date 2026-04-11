@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   useCallback,
   type ReactNode,
@@ -22,6 +23,8 @@ export interface KidProfileSummary {
   aiPoints: number;
   badges: string[];
   totalCreations: number;
+  creationsByType?: Record<string, number>;
+  conceptsLearned?: string[];
   streak?: { current: number; longest: number; lastActiveDate: string };
 }
 
@@ -77,6 +80,18 @@ export function KidProfileProvider({ children }: KidProfileProviderProps) {
   const [kids, setKids] = useState<KidProfileSummary[]>([]);
   const [activeKid, setActiveKid] = useState<KidProfileSummary | null>(null);
   const [loading, setLoading] = useState(false);
+  const prevAuthRef = useRef<boolean | null>(null);
+
+  // On fresh sign-in (auth transitions false → true), force the profile picker
+  // by clearing any previously-saved active kid.
+  useEffect(() => {
+    const prev = prevAuthRef.current;
+    if (prev === false && isAuthenticated === true) {
+      localStorage.removeItem(ACTIVE_KID_KEY);
+      setActiveKid(null);
+    }
+    prevAuthRef.current = isAuthenticated;
+  }, [isAuthenticated]);
 
   const fetchKids = useCallback(async () => {
     if (!isAuthenticated) {

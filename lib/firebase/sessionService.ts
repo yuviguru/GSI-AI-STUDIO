@@ -253,21 +253,51 @@ export async function getSessionPoints(sessionId: string): Promise<SessionPoints
 /**
  * Atomically apply a points action and check for newly unlocked badges.
  * Returns the updated points data and any badges unlocked by this action.
+ *
+ * When an `activeKidId` is provided (authenticated flow), the same mutation
+ * is mirrored onto the kid document inside the same transaction so the
+ * kid's profile survives page refreshes and sign-outs.
  */
 export async function updateSessionPoints(
   sessionId: string,
-  action: PointsAction
+  action: PointsAction,
+  activeKidId?: string,
 ): Promise<{ data: SessionPointsData; newBadges: string[] }> {
-  const docRef = adminDb.collection(SESSIONS_COLLECTION).doc(sessionId);
+  const sessionRef = adminDb.collection(SESSIONS_COLLECTION).doc(sessionId);
+  const kidRef = activeKidId
+    ? adminDb.collection('kids').doc(activeKidId)
+    : null;
 
   const result = await adminDb.runTransaction(async (tx) => {
-    const doc = await tx.get(docRef);
-    if (!doc.exists) {
+    const sessionDoc = await tx.get(sessionRef);
+    if (!sessionDoc.exists) {
       throw new AppException('SESSION_NOT_FOUND', 'Session not found', 404);
     }
 
-    const sessionData = doc.data() as SessionDoc;
-    const current = extractPointsData(sessionData);
+    // When a kid is active, the kid doc is the source of truth for the
+    // mutation base — the session may have been freshly minted (e.g. after
+    // a hard sign-out reset) and would otherwise wipe the kid's progress.
+    let current: SessionPointsData;
+    let kidData: Record<string, unknown> | null = null;
+    if (kidRef) {
+      const kidDoc = await tx.get(kidRef);
+      if (kidDoc.exists) {
+        kidData = kidDoc.data() as Record<string, unknown>;
+        current = {
+          aiPoints: (kidData.aiPoints as number) ?? 0,
+          badges: (kidData.badges as string[]) ?? [],
+          conceptsLearned: (kidData.conceptsLearned as string[]) ?? [],
+          creationsByType:
+            (kidData.creationsByType as Record<string, number>) ?? {},
+          shareCount: (kidData.shareCount as number) ?? 0,
+        };
+      } else {
+        current = extractPointsData(sessionDoc.data() as SessionDoc);
+      }
+    } else {
+      current = extractPointsData(sessionDoc.data() as SessionDoc);
+    }
+
     const updated = applyAction(current, action);
 
     // Determine which badges are newly earned
@@ -278,13 +308,27 @@ export async function updateSessionPoints(
       updated.badges = [...current.badges, ...newBadges];
     }
 
-    tx.update(docRef, {
+    const pointsUpdate = {
       aiPoints: updated.aiPoints,
       badges: updated.badges,
       conceptsLearned: updated.conceptsLearned,
       creationsByType: updated.creationsByType,
       shareCount: updated.shareCount,
-    });
+    };
+
+    tx.update(sessionRef, pointsUpdate);
+
+    if (kidRef && kidData) {
+      const totalCreations = Object.values(updated.creationsByType).reduce(
+        (sum, n) => sum + n,
+        0,
+      );
+      tx.update(kidRef, {
+        ...pointsUpdate,
+        totalCreations,
+        updatedAt: Timestamp.now(),
+      });
+    }
 
     return { data: updated, newBadges };
   });

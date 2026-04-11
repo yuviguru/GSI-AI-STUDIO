@@ -1,8 +1,7 @@
 'use client';
 
-import { memo, useEffect, useState } from 'react';
+import { memo } from 'react';
 import { motion } from 'framer-motion';
-import Lottie from 'lottie-react';
 
 export type MascotExpression =
   | 'happy'
@@ -22,39 +21,16 @@ interface MascotProps {
 
 const SIZE_MAP = { sm: 64, md: 120, lg: 200 } as const;
 
-// Module-level cache so switching expressions doesn't re-fetch
-const lottieCache = new Map<string, object>();
-
-function useLottieData(expression: MascotExpression) {
-  const [data, setData] = useState<object | null>(
-    () => lottieCache.get(expression) ?? null,
-  );
-
-  useEffect(() => {
-    const cached = lottieCache.get(expression);
-    if (cached) {
-      setData(cached);
-      return;
-    }
-
-    let cancelled = false;
-    fetch(`/lottie/koko-${expression}.json`)
-      .then((r) => r.json())
-      .then((json) => {
-        lottieCache.set(expression, json);
-        if (!cancelled) setData(json);
-      })
-      .catch(() => {
-        // Silently fail — mascot is decorative
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [expression]);
-
-  return data;
-}
+// Koko the cat — emoji-based stand-in until the real mascot art ships.
+const EMOJI_MAP: Record<MascotExpression, string> = {
+  happy: '😺',
+  thinking: '🙀',
+  celebrating: '😸',
+  waving: '😺',
+  surprised: '🙀',
+  painting: '😼',
+  singing: '😻',
+};
 
 export const Mascot = memo(function Mascot({
   expression = 'happy',
@@ -62,26 +38,27 @@ export const Mascot = memo(function Mascot({
   className = '',
   bobbing = true,
 }: MascotProps) {
-  const animationData = useLottieData(expression);
   const px = SIZE_MAP[size];
+  const emoji = EMOJI_MAP[expression];
 
-  const lottieEl = animationData ? (
-    <Lottie
-      animationData={animationData}
-      loop
-      autoplay
-      style={{ width: px, height: px }}
-    />
-  ) : (
-    // Placeholder while loading
+  const face = (
     <div
-      style={{ width: px, height: px }}
-      className="animate-pulse rounded-full bg-brand-purple/20"
-    />
+      style={{
+        width: px,
+        height: px,
+        fontSize: Math.round(px * 0.85),
+        lineHeight: 1,
+      }}
+      className="flex items-center justify-center drop-shadow-sm"
+      role="img"
+      aria-label={`Koko is ${expression}`}
+    >
+      {emoji}
+    </div>
   );
 
   if (!bobbing) {
-    return <div className={className}>{lottieEl}</div>;
+    return <div className={className}>{face}</div>;
   }
 
   return (
@@ -90,7 +67,7 @@ export const Mascot = memo(function Mascot({
       transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
       className={className}
     >
-      {lottieEl}
+      {face}
     </motion.div>
   );
 });

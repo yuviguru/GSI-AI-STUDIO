@@ -134,6 +134,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setError(null);
       await signOutUser();
       setUserProfile(null);
+      // Hard reset: clear all gsi-* localStorage + sessionStorage keys so the
+      // next session starts from a clean slate (points, badges, active kid,
+      // x-ray flags, streaks, etc.). A full reload then reinitializes every
+      // context provider from scratch.
+      if (typeof window !== 'undefined') {
+        const lsKeys: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('gsi-')) lsKeys.push(key);
+        }
+        lsKeys.forEach((k) => localStorage.removeItem(k));
+
+        const ssKeys: string[] = [];
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i);
+          if (key && key.startsWith('gsi-')) ssKeys.push(key);
+        }
+        ssKeys.forEach((k) => sessionStorage.removeItem(k));
+
+        window.location.href = '/';
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign out failed';
       setError(message);

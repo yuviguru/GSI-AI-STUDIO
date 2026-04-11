@@ -12,6 +12,7 @@ import {
 import type { ApiResponse, PointsResponse } from '@/types';
 import type { ConfettiVariant } from '@/components/celebrations/ConfettiCelebration';
 import { fetchWithSession } from '@/lib/fetchWithSession';
+import { useKidProfile } from '@/hooks/useKidProfile';
 
 const SESSION_KEY = 'gsi-session-id';
 const POINTS_KEY = 'gsi-ai-points'; // kept for optimistic initial load & migration
@@ -80,6 +81,7 @@ const AiPointsContext = createContext<AiPointsState | null>(null);
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function AiPointsProvider({ children }: { children: ReactNode }) {
+  const { activeKid } = useKidProfile();
   const [totalPoints, setTotalPoints] = useState(0);
   const [conceptsLearned, setConceptsLearned] = useState<string[]>([]);
   const [badges, setBadges] = useState<string[]>([]);
@@ -149,16 +151,35 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoaded(true));
   }, [applySnapshot]);
 
+  // When an active kid is selected (post sign-in / profile pick), hydrate
+  // dashboard state from the kid's profile so XP, badges, completed counts
+  // and concepts reflect the kid — not the (possibly freshly-minted)
+  // anonymous session.
+  useEffect(() => {
+    if (!activeKid) return;
+    setTotalPoints(activeKid.aiPoints ?? 0);
+    setBadges(activeKid.badges ?? []);
+    setCreationsByType(activeKid.creationsByType ?? {});
+    setConceptsLearned(activeKid.conceptsLearned ?? []);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(POINTS_KEY, String(activeKid.aiPoints ?? 0));
+    }
+    setIsLoaded(true);
+  }, [activeKid]);
+
   // Helper: call PATCH and apply returned snapshot
+  const activeKidId = activeKid?.id;
   const patchPoints = useCallback(
     async (body: Record<string, unknown>): Promise<PointsResponse | null> => {
       if (typeof window === 'undefined' || !localStorage.getItem(SESSION_KEY)) return null;
 
       try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (activeKidId) headers['X-Active-Kid-Id'] = activeKidId;
         const res = await fetchWithSession('/api/sessions/points', {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
+          headers,
+          body: JSON.stringify(activeKidId ? { ...body, kidId: activeKidId } : body),
         });
         const json: ApiResponse<PointsResponse> = await res.json();
         if (json.success && json.data) {
@@ -170,7 +191,7 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
       }
       return null;
     },
-    [applySnapshot]
+    [applySnapshot, activeKidId]
   );
 
   const addPoints = useCallback(

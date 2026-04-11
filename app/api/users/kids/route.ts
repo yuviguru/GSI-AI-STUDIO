@@ -104,6 +104,8 @@ export async function GET(request: NextRequest) {
         aiPoints: kid.aiPoints,
         badges: kid.badges,
         totalCreations: kid.totalCreations,
+        creationsByType: kid.creationsByType ?? {},
+        conceptsLearned: kid.conceptsLearned ?? [],
         streak: kid.streak,
       }))
     );

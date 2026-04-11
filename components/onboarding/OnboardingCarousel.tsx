@@ -23,6 +23,19 @@ interface SlideData {
 
 const slides: SlideData[] = [
   {
+    title: 'Welcome to GSI AI Studio',
+    subtitle: 'Where Indian kids create amazing things with AI and learn how it works along the way.',
+    gradient: 'bg-gradient-to-b from-purple-50 to-white',
+    illustration: (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src="/images/gsi-logo.svg"
+        alt="GSI"
+        className="h-40 w-auto drop-shadow-md"
+      />
+    ),
+  },
+  {
     title: 'Meet Koko!',
     subtitle: 'Your AI creative buddy who helps you imagine anything!',
     gradient: 'bg-gradient-to-b from-violet-50 to-white',
@@ -30,7 +43,7 @@ const slides: SlideData[] = [
   },
   {
     title: 'Create Amazing Things',
-    subtitle: 'Stories, music, quizzes & games — all powered by AI!',
+    subtitle: 'Stories, music, quizzes & games, all powered by AI!',
     gradient: 'bg-gradient-to-b from-orange-50 to-white',
     illustration: <CreateThingsIllustration />,
   },
@@ -77,7 +90,7 @@ export function OnboardingCarousel({ onComplete }: OnboardingCarouselProps) {
   const handleNext = useCallback(() => {
     if (isLastSlide) {
       markComplete();
-      router.push('/create/story');
+      router.push('/');
     } else {
       setDirection(1);
       setCurrent((c) => c + 1);
@@ -118,7 +131,7 @@ export function OnboardingCarousel({ onComplete }: OnboardingCarouselProps) {
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex flex-col bg-white"
+      className="fixed inset-0 z-[60] flex flex-col bg-white"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, transition: { duration: 0.3 } }}

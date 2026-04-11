@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { Mic, Music2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AiXrayPopup } from '@/components/learning/AiXrayPopup';
 import { ShareButton } from '@/components/shared/ShareButton';
@@ -23,6 +24,31 @@ export function MusicPlayer({ music, aiXray, onCreateAnother, creationId, readOn
   const [audioDuration, setAudioDuration] = useState(music.duration || 0);
   const [showXray, setShowXray] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isSingAlong, setIsSingAlong] = useState(false);
+
+  // Split lyrics into non-empty lines for karaoke-style highlight
+  const lyricLines = (music.lyrics ?? '')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+  const perLineDuration =
+    lyricLines.length > 0 && audioDuration > 0 ? audioDuration / lyricLines.length : 0;
+  const activeLineIndex =
+    perLineDuration > 0
+      ? Math.min(lyricLines.length - 1, Math.floor(currentTime / perLineDuration))
+      : -1;
+
+  const lyricsContainerRef = useRef<HTMLDivElement>(null);
+  const activeLineRef = useRef<HTMLParagraphElement>(null);
+
+  // Auto-scroll active lyric line into view while playing
+  useEffect(() => {
+    if (!isPlaying || activeLineIndex < 0) return;
+    const node = activeLineRef.current;
+    if (node) {
+      node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [activeLineIndex, isPlaying]);
 
   // Auto-show X-Ray on first creation per session (skip in readOnly mode)
   useEffect(() => {
@@ -151,6 +177,23 @@ export function MusicPlayer({ music, aiXray, onCreateAnother, creationId, readOn
     }
   };
 
+  const toggleSingAlong = () => {
+    const howl = howlRef.current;
+    setIsSingAlong((prev) => {
+      const next = !prev;
+      if (howl) {
+        if (next && !isPlaying) {
+          howl.play();
+          setIsPlaying(true);
+        } else if (!next && isPlaying) {
+          howl.pause();
+          setIsPlaying(false);
+        }
+      }
+      return next;
+    });
+  };
+
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     const howl = howlRef.current;
@@ -230,12 +273,60 @@ export function MusicPlayer({ music, aiXray, onCreateAnother, creationId, readOn
         </div>
       </div>
 
+      {/* Sing Along (stub — recording coming soon) */}
+      {music.lyrics && !readOnly && (
+        <button
+          onClick={toggleSingAlong}
+          disabled={!isLoaded}
+          className={cn(
+            'flex w-full items-center justify-center gap-2 rounded-2xl border-2 py-3 font-bold transition-all active:scale-95',
+            isSingAlong
+              ? 'border-brand-orange bg-brand-orange/10 text-brand-orange'
+              : 'border-brand-purple bg-brand-purple/5 text-brand-purple hover:bg-brand-purple/10',
+          )}
+          aria-pressed={isSingAlong}
+        >
+          {isSingAlong ? (
+            <>
+              <Mic className="h-5 w-5 animate-pulse" />
+              Listening...
+            </>
+          ) : (
+            <>
+              <Music2 className="h-5 w-5" />
+              Sing Along
+            </>
+          )}
+        </button>
+      )}
+
       {/* Lyrics */}
-      {music.lyrics && (
+      {lyricLines.length > 0 && (
         <div className="rounded-2xl bg-gray-50 p-5">
           <h3 className="mb-3 text-sm font-semibold text-gray-700">Lyrics</h3>
-          <div className="max-h-48 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-gray-600">
-            {music.lyrics}
+          <div
+            ref={lyricsContainerRef}
+            className="max-h-48 space-y-2 overflow-y-auto scroll-smooth px-2 text-base leading-relaxed"
+          >
+            {lyricLines.map((line, i) => {
+              const isActive = i === activeLineIndex && isPlaying;
+              return (
+                <p
+                  key={i}
+                  ref={isActive ? activeLineRef : null}
+                  className={cn(
+                    'origin-left transition-all duration-300',
+                    isActive
+                      ? 'text-xl font-bold text-brand-purple'
+                      : i < activeLineIndex && isPlaying
+                        ? 'text-gray-400'
+                        : 'text-gray-600',
+                  )}
+                >
+                  {line}
+                </p>
+              );
+            })}
           </div>
         </div>
       )}
