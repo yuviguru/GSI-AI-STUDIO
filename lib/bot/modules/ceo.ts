@@ -135,10 +135,12 @@ export const ceoModule: BotFeatureModule = {
 
 // ─── Command handlers ────────────────────────────────────────
 
-/** /start with optional `link_<token>` deep-link payload. */
+/** /start with optional `link_<token>` deep-link payload.
+ *  NOTE: `TelegramAdapter.parseWebhook` strips the command already — `message.text`
+ *  is only the args part (e.g. `link_abc123`, not `/start link_abc123`). */
 async function handleStart(message: BotIncomingMessage, send: Send): Promise<void> {
   const payload = (message.text ?? '').trim();
-  const firstToken = payload.split(/\s+/)[1] ?? '';
+  const firstToken = payload.split(/\s+/)[0] ?? '';
 
   if (firstToken.startsWith('link_')) {
     const token = firstToken.slice('link_'.length);
@@ -178,10 +180,11 @@ async function handleStart(message: BotIncomingMessage, send: Send): Promise<voi
   });
 }
 
-/** /link <6-digit-code> fallback for kids who did not tap the deep-link. */
+/** /link <6-digit-code> fallback for kids who did not tap the deep-link.
+ *  NOTE: `TelegramAdapter.parseWebhook` strips the command — `message.text`
+ *  is only the args part (e.g. `123456`, not `/link 123456`). */
 async function handleLink(message: BotIncomingMessage, send: Send): Promise<void> {
-  const text = (message.text ?? '').trim();
-  const code = text.slice('/link'.length).trim();
+  const code = (message.text ?? '').trim();
 
   if (!/^\d{6}$/.test(code)) {
     await send({
@@ -437,6 +440,16 @@ async function handleChoice(
   const choiceId = rawChoice as CeoChoiceId;
 
   const event = await getCeoEvent(eventId);
+
+  // Ownership check — matches the web /api/ceo/decide route. Prevents a
+  // chat from deciding another kid's event if the callback data leaks or
+  // the chat gets rebound via /link to a different session mid-flight.
+  const sessionId = await context.getGsiSessionId();
+  if (event.sessionId !== sessionId) {
+    await send({ chatId: message.chatId, text: 'That decision is not yours to make.' });
+    return;
+  }
+
   if (event.status !== 'pending') {
     await send({
       chatId: message.chatId,
@@ -511,11 +524,15 @@ async function handleChoice(
   if (phaseAdvanced) aiPointsEarned += CEO_AI_POINTS.COMPLETE_PHASE;
   if (latestBusiness.status === 'completed') aiPointsEarned += CEO_AI_POINTS.COMPLETE_SIMULATION;
 
-  const sessionId = await context.getGsiSessionId();
+  // Don't lie to the kid: only claim points if the points write succeeded.
+  let actualPointsEarned = 0;
+  let pointsSaveFailed = false;
   try {
     await updateSessionPoints(sessionId, { action: 'add_points', points: aiPointsEarned });
+    actualPointsEarned = aiPointsEarned;
   } catch (err) {
-    console.warn('[ceo module] updateSessionPoints failed:', (err as Error).message);
+    pointsSaveFailed = true;
+    console.error('[ceo module] updateSessionPoints failed:', (err as Error).message);
   }
 
   // Build + send feedback message
@@ -530,7 +547,8 @@ async function handleChoice(
       updatedBusiness: latestBusiness,
       milestoneResolved: event.milestone ?? null,
       phaseAdvanced,
-      aiPointsEarned,
+      aiPointsEarned: actualPointsEarned,
+      pointsSaveFailed,
     }),
     parseMode: 'markdown',
   });
@@ -567,6 +585,7 @@ interface FeedbackMessageParams {
   milestoneResolved: string | null;
   phaseAdvanced: boolean;
   aiPointsEarned: number;
+  pointsSaveFailed?: boolean;
 }
 
 function buildFeedbackMessage(params: FeedbackMessageParams): string {
@@ -612,7 +631,11 @@ function buildFeedbackMessage(params: FeedbackMessageParams): string {
     lines.push('🏆 *Simulation complete!*');
   }
 
-  lines.push('', `+${params.aiPointsEarned} AI Points`);
+  if (params.pointsSaveFailed) {
+    lines.push('', '_Points server hiccup — your decision is saved, we\'ll retry the points next time._');
+  } else if (params.aiPointsEarned > 0) {
+    lines.push('', `+${params.aiPointsEarned} AI Points`);
+  }
   return lines.join('\n');
 }
 

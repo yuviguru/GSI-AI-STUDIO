@@ -61,9 +61,25 @@ const handler: Handler = async (event) => {
     await router.route(message, 'GSIStudioBot');
     return { statusCode: 200, body: 'OK' };
   } catch (err) {
-    console.error('[telegram-webhook-studio] route error', err);
-    // Return 200 to Telegram so it doesn't retry with the same update_id.
-    return { statusCode: 200, body: 'OK (logged)' };
+    const raw = parsed as { update_id?: number | string };
+    console.error(
+      '[telegram-webhook-studio] route error',
+      JSON.stringify({
+        chatId: message.chatId,
+        updateId: raw?.update_id,
+        errorMessage: (err as Error).message,
+        errorName: (err as Error).name,
+      }),
+    );
+    try {
+      await telegram.send({
+        chatId: message.chatId,
+        text: 'Something went wrong on my side. Try again in a moment.',
+      });
+    } catch (sendErr) {
+      console.error('[telegram-webhook-studio] fallback send also failed', sendErr);
+    }
+    return { statusCode: 200, body: 'OK (error logged + user notified)' };
   }
 };
 

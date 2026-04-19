@@ -65,9 +65,33 @@ const handler: Handler = async (event) => {
     await router.route(message, 'GSIKidCeoBot');
     return { statusCode: 200, body: 'OK' };
   } catch (err) {
-    console.error('[telegram-webhook-ceo] route error', err);
-    // Return 200 to Telegram so it doesn't retry with the same update_id.
-    return { statusCode: 200, body: 'OK (logged)' };
+    // Log with enough context for on-call grep. chatId + updateId narrow
+    // down which kid's message hit which code path.
+    const raw = parsed as { update_id?: number | string };
+    console.error(
+      '[telegram-webhook-ceo] route error',
+      JSON.stringify({
+        chatId: message.chatId,
+        updateId: raw?.update_id,
+        errorMessage: (err as Error).message,
+        errorName: (err as Error).name,
+      }),
+    );
+    // Best-effort: tell the kid something went wrong so they don't stare
+    // at silence. A failure to send this fallback is itself caught so the
+    // webhook still returns 200 and Telegram doesn't retry.
+    try {
+      await telegram.send({
+        chatId: message.chatId,
+        text: 'Something went wrong on my side. Try again in a moment.',
+      });
+    } catch (sendErr) {
+      console.error('[telegram-webhook-ceo] fallback send also failed', sendErr);
+    }
+    // Return 200 so Telegram doesn't retry the same update_id — the kid
+    // already saw the error toast (or at least we tried), and retrying a
+    // genuine bug would just burn the same code path again.
+    return { statusCode: 200, body: 'OK (error logged + user notified)' };
   }
 };
 

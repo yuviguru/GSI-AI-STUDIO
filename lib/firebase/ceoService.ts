@@ -122,8 +122,8 @@ function docToCeoProfile(doc: FirebaseFirestore.DocumentSnapshot): CeoProfile {
     dimensions: data.dimensions ?? seedDimensions(),
     totalDecisions: data.totalDecisions ?? 0,
     avgResponseTime: data.avgResponseTime ?? 0,
-    currentPhase: data.currentPhase,
-    shareUrl: data.shareUrl,
+    currentPhase: data.currentPhase ?? 'pre_launch',
+    shareUrl: data.shareUrl ?? '',
     isPublic: data.isPublic ?? false,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
@@ -601,59 +601,73 @@ export async function getPublicCeoProfile(shareUrl: string): Promise<CeoProfile 
   return profile;
 }
 
-/** Toggle the profile's isPublic flag and mint a shareUrl if becoming public. */
+/** Toggle the profile's isPublic flag and mint a shareUrl if becoming public.
+ *
+ *  Atomicity: the slug mint runs inside `adminDb.runTransaction` so the
+ *  uniqueness check + claim happen as a single Firestore operation. Two
+ *  concurrent toggles racing on the same profile cannot both write the
+ *  same slug; the loser sees the winner's claim on re-read and either
+ *  skips minting (already public) or picks a different slug. */
 export async function setCeoProfilePublic(params: {
   businessId: string;
   isPublic: boolean;
 }): Promise<CeoProfile> {
-  const snapshot = await adminDb
+  const lookup = await adminDb
     .collection(CEO_PROFILES_COLLECTION)
     .where('businessId', '==', params.businessId)
     .limit(1)
     .get();
 
-  if (snapshot.empty) {
+  if (lookup.empty) {
     throw new AppException('NOT_FOUND', 'Profile not found', 404);
   }
-  const profileRef = snapshot.docs[0]!.ref;
-  const existing = docToCeoProfile(snapshot.docs[0]!);
-  const now = Timestamp.now();
+  const profileRef = lookup.docs[0]!.ref;
 
-  // Toggle off → clear publicness but keep the existing shareUrl (so the
-  // user can republish without a new link). Toggle on → mint a shareUrl
-  // if one isn't already set, ensuring uniqueness with a bounded retry.
-  let shareUrl = existing.shareUrl ?? '';
-  if (params.isPublic && !shareUrl) {
-    let attempt = 0;
-    // Use a transaction per attempt so the uniqueness check + claim is atomic.
-    while (attempt < SHARE_URL_MAX_RETRIES) {
-      const candidate = mintShareSlug();
-      const collision = await adminDb
-        .collection(CEO_PROFILES_COLLECTION)
-        .where('shareUrl', '==', candidate)
-        .limit(1)
-        .get();
-      if (collision.empty) {
-        shareUrl = candidate;
-        break;
+  return adminDb.runTransaction(async (txn) => {
+    const snap = await txn.get(profileRef);
+    if (!snap.exists) {
+      throw new AppException('NOT_FOUND', 'Profile not found', 404);
+    }
+    const existing = docToCeoProfile(snap);
+    const now = Timestamp.now();
+
+    // Toggle off → clear publicness but keep the existing shareUrl (so the
+    // user can republish without a new link). Toggle on → mint a shareUrl
+    // if one isn't already set.
+    let shareUrl = existing.shareUrl ?? '';
+    if (params.isPublic && !shareUrl) {
+      for (let attempt = 0; attempt < SHARE_URL_MAX_RETRIES; attempt += 1) {
+        const candidate = mintShareSlug();
+        // Collision check runs inside the transaction via txn.get, so a
+        // concurrent mint writing the same slug will be serialised and one
+        // of the two transactions will retry on the locked doc.
+        const collision = await txn.get(
+          adminDb
+            .collection(CEO_PROFILES_COLLECTION)
+            .where('shareUrl', '==', candidate)
+            .limit(1),
+        );
+        if (collision.empty) {
+          shareUrl = candidate;
+          break;
+        }
       }
-      attempt += 1;
+      if (!shareUrl) {
+        throw new AppException(
+          'SHARE_URL_COLLISION',
+          'Could not mint a unique share URL after retries',
+          500,
+        );
+      }
     }
-    if (!shareUrl) {
-      throw new AppException(
-        'SHARE_URL_COLLISION',
-        'Could not mint a unique share URL after retries',
-        500,
-      );
-    }
-  }
 
-  const update = {
-    isPublic: params.isPublic,
-    shareUrl,
-    updatedAt: now,
-  };
-  await profileRef.update(update);
+    const update = {
+      isPublic: params.isPublic,
+      shareUrl,
+      updatedAt: now,
+    };
+    txn.update(profileRef, update);
 
-  return { ...existing, ...update };
+    return { ...existing, ...update };
+  });
 }
