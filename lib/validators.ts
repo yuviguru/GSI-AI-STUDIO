@@ -142,3 +142,51 @@ export const skillArenaEvaluateSchema = z.object({
 
 export type SkillArenaStartInput = z.infer<typeof skillArenaStartSchema>;
 export type SkillArenaEvaluateInput = z.infer<typeof skillArenaEvaluateSchema>;
+
+// ─── Kid CEO ────────────────────────────────────────────────
+
+const ceoBusinessTypeEnum = z.enum([
+  'lemonade', 'icecream', 'tshirt', 'games', 'crafts', 'blog', 'custom',
+]);
+
+const ceoPaceEnum = z.enum(['30', '60', '90']);
+
+const ceoChoiceIdEnum = z.enum(['A', 'B', 'C']);
+
+export const ceoRegisterSchema = z
+  .object({
+    businessType: ceoBusinessTypeEnum,
+    businessName: z.string().min(1).max(60).optional(),
+    customBusinessDescription: z.string().min(3).max(200).optional(),
+    location: z.string().min(1).max(60),
+    pace: ceoPaceEnum,
+  })
+  .refine(
+    (data) => data.businessType !== 'custom' || !!data.customBusinessDescription,
+    { message: 'customBusinessDescription is required for custom businesses', path: ['customBusinessDescription'] },
+  );
+
+export const ceoEventRequestSchema = z.object({
+  businessId: z.string().min(1).max(128),
+});
+
+export const ceoDecideSchema = z.object({
+  eventId: z.string().min(1).max(128),
+  choiceId: ceoChoiceIdEnum,
+  responseTimeSeconds: z.number().min(0).max(86400),
+});
+
+export const ceoProfilePublicSchema = z.object({
+  businessId: z.string().min(1).max(128),
+  isPublic: z.boolean(),
+});
+
+export const botLinkCreateSchema = z.object({
+  botHandle: z.enum(['GSIStudioBot', 'GSIKidCeoBot']),
+});
+
+export type CeoRegisterInput = z.infer<typeof ceoRegisterSchema>;
+export type CeoEventRequestInput = z.infer<typeof ceoEventRequestSchema>;
+export type CeoDecideInput = z.infer<typeof ceoDecideSchema>;
+export type CeoProfilePublicInput = z.infer<typeof ceoProfilePublicSchema>;
+export type BotLinkCreateInput = z.infer<typeof botLinkCreateSchema>;
