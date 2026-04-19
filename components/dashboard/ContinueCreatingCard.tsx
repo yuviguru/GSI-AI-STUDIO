@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { BookOpen, Music, HelpCircle, Gamepad2, Palette, Sparkles } from 'lucide-react';
 
 const IN_PROGRESS_KEY = 'gsi_inprogress_creation';
 
@@ -13,12 +14,12 @@ interface InProgressCreation {
   progress: number; // 0-100
 }
 
-const STUDIO_EMOJIS: Record<string, string> = {
-  story: '📖',
-  music: '🎵',
-  quiz: '🎮',
-  game: '🕹️',
-  comic: '🎨',
+const STUDIO_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  story: BookOpen,
+  music: Music,
+  quiz: HelpCircle,
+  game: Gamepad2,
+  comic: Palette,
 };
 
 /**
@@ -40,7 +41,7 @@ export function ContinueCreatingCard() {
 
   if (!creation) return null;
 
-  const emoji = STUDIO_EMOJIS[creation.type] ?? '✨';
+  const Icon = STUDIO_ICONS[creation.type] ?? Sparkles;
 
   return (
     <motion.div
@@ -51,12 +52,12 @@ export function ContinueCreatingCard() {
       <Link href={creation.href} className="group block">
         <div className="relative overflow-hidden rounded-xl border border-orange-100 bg-gradient-to-r from-orange-50 to-amber-50 p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-2xl">
-              {emoji}
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-100">
+              <Icon className="h-5 w-5 text-orange-600" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold uppercase tracking-wide text-orange-500">
-                ⚡ Continue Creating
+                Continue Creating
               </p>
               <p className="mt-0.5 truncate font-display text-sm font-bold text-gray-900">
                 {creation.title}

@@ -41,7 +41,7 @@ export function StoryPageView({ page, totalPages }: StoryPageViewProps) {
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <div className="relative w-full overflow-hidden rounded-2xl bg-gray-100">
+      <div className="relative aspect-[5/3] w-full overflow-hidden rounded-2xl bg-gray-100">
         {/* Loading skeleton */}
         {imgState === 'loading' && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-brand-purple/5 to-brand-cyan/5">
@@ -68,7 +68,7 @@ export function StoryPageView({ page, totalPages }: StoryPageViewProps) {
           src={page.imageUrl}
           alt={`Story illustration — page ${page.pageNumber}`}
           className={cn(
-            'aspect-[3/2] w-full object-cover',
+            'h-full w-full object-contain',
             'transition-opacity duration-500',
             imgState === 'loaded' ? 'opacity-100' : 'opacity-0'
           )}

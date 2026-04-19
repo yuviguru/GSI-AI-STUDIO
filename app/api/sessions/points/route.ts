@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { getSessionPoints, updateSessionPoints } from '@/lib/firebase/sessionService';
 import type { PointsAction } from '@/lib/firebase/sessionService';
+import { verifyAuth } from '@/lib/auth-utils';
+import { adminDb } from '@/lib/firebase/admin';
 
 const VALID_ACTIONS = ['add_points', 'learn_concept', 'track_creation', 'track_share'] as const;
 
@@ -82,7 +84,24 @@ export async function PATCH(request: NextRequest) {
         throw new AppException('INVALID_INPUT', 'Invalid action', 400);
     }
 
-    const result = await updateSessionPoints(sessionId, pointsAction);
+    const rawKidId =
+      request.headers.get('X-Active-Kid-Id') ||
+      (typeof body.kidId === 'string' ? body.kidId : undefined) ||
+      undefined;
+
+    // When a kid ID is provided, verify the caller owns it before allowing
+    // the write-through to the kid document (Admin SDK bypasses Firestore rules).
+    let activeKidId: string | undefined;
+    if (rawKidId) {
+      const auth = await verifyAuth(request);
+      const kidDoc = await adminDb.collection('kids').doc(rawKidId).get();
+      if (!kidDoc.exists || kidDoc.data()?.parentId !== auth.userId) {
+        throw new AppException('FORBIDDEN', 'Kid profile not found or not owned by caller', 403);
+      }
+      activeKidId = rawKidId;
+    }
+
+    const result = await updateSessionPoints(sessionId, pointsAction, activeKidId);
     return apiSuccess({ ...result.data, newBadges: result.newBadges });
   } catch (error) {
     return handleApiError(error);

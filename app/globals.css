@@ -141,6 +141,10 @@
     padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
   }
 
+  .bottom-nav {
+    bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  }
+
   /* Gradient text utility */
   .text-gradient-primary {
     @apply bg-clip-text text-transparent;

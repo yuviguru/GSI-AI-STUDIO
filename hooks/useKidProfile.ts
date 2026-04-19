@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   useCallback,
   type ReactNode,
@@ -22,6 +23,8 @@ export interface KidProfileSummary {
   aiPoints: number;
   badges: string[];
   totalCreations: number;
+  creationsByType?: Record<string, number>;
+  conceptsLearned?: string[];
   streak?: { current: number; longest: number; lastActiveDate: string };
 }
 
@@ -73,10 +76,25 @@ interface KidProfileProviderProps {
 }
 
 export function KidProfileProvider({ children }: KidProfileProviderProps) {
-  const { isAuthenticated, getIdToken } = useAuth();
+  const { isAuthenticated, loading: authLoading, getIdToken } = useAuth();
   const [kids, setKids] = useState<KidProfileSummary[]>([]);
   const [activeKid, setActiveKid] = useState<KidProfileSummary | null>(null);
   const [loading, setLoading] = useState(false);
+  const prevAuthRef = useRef<boolean | null>(null);
+
+  // On fresh sign-in (auth transitions false → true), force the profile picker
+  // by clearing any previously-saved active kid.
+  // Guard: only track transitions AFTER Firebase Auth has finished loading so
+  // the normal rehydration path (false → true on refresh) doesn't trigger this.
+  useEffect(() => {
+    if (authLoading) return; // Firebase hasn't resolved yet — skip
+    const prev = prevAuthRef.current;
+    if (prev === false && isAuthenticated === true) {
+      localStorage.removeItem(ACTIVE_KID_KEY);
+      setActiveKid(null);
+    }
+    prevAuthRef.current = isAuthenticated;
+  }, [isAuthenticated, authLoading]);
 
   const fetchKids = useCallback(async () => {
     if (!isAuthenticated) {

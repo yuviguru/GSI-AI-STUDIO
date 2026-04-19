@@ -1,16 +1,19 @@
 'use client';
 
 import Link from 'next/link';
+import { BookOpen, Music, HelpCircle, Gamepad2, Palette, Sparkles } from 'lucide-react';
 import { useExplore } from '@/hooks/useExplore';
 import { cn } from '@/lib/utils';
 
-const TYPE_META: Record<string, { emoji: string; gradient: string }> = {
-  story: { emoji: '📖', gradient: 'from-violet-100 to-purple-50' },
-  music: { emoji: '🎵', gradient: 'from-orange-100 to-rose-50' },
-  quiz: { emoji: '🎮', gradient: 'from-cyan-100 to-blue-50' },
-  game: { emoji: '🕹️', gradient: 'from-emerald-100 to-teal-50' },
-  comic: { emoji: '🎨', gradient: 'from-orange-100 to-amber-50' },
+const TYPE_META: Record<string, { icon: React.ComponentType<{ className?: string }>; gradient: string }> = {
+  story: { icon: BookOpen,    gradient: 'from-violet-100 to-purple-50' },
+  music: { icon: Music,       gradient: 'from-orange-100 to-rose-50' },
+  quiz:  { icon: HelpCircle,  gradient: 'from-cyan-100 to-blue-50' },
+  game:  { icon: Gamepad2,    gradient: 'from-emerald-100 to-teal-50' },
+  comic: { icon: Palette,     gradient: 'from-orange-100 to-amber-50' },
 };
+
+const FALLBACK_META = { icon: Sparkles, gradient: 'from-gray-100 to-gray-50' };
 
 export function CommunityPicksWidget() {
   const { creations, loading } = useExplore();
@@ -19,7 +22,7 @@ export function CommunityPicksWidget() {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h3 className="font-display text-sm font-bold text-gray-900">Community Picks 🌟</h3>
+        <h3 className="font-display text-sm font-bold text-gray-900">Community Picks</h3>
         <Link href="/explore" className="text-xs font-semibold text-brand-purple hover:underline">
           Explore →
         </Link>
@@ -36,12 +39,13 @@ export function CommunityPicksWidget() {
           </div>
         ) : (
           picks.map((creation) => {
-            const meta = TYPE_META[creation.type] ?? { emoji: '✨', gradient: 'from-gray-100 to-gray-50' };
+            const meta = TYPE_META[creation.type] ?? FALLBACK_META;
+            const Icon = meta.icon;
             return (
               <Link key={creation.id} href={`/view/${creation.id}`} className="group block">
                 <div className="overflow-hidden rounded-xl border border-gray-100 shadow-card transition-shadow hover:shadow-card-hover">
-                  <div className={cn('flex h-16 items-center justify-center bg-gradient-to-br text-2xl', meta.gradient)}>
-                    {meta.emoji}
+                  <div className={cn('flex h-16 items-center justify-center bg-gradient-to-br', meta.gradient)}>
+                    <Icon className="h-6 w-6 text-gray-500" />
                   </div>
                   <div className="bg-white px-2 py-1.5">
                     <p className="truncate text-[11px] font-bold text-gray-700">{creation.title}</p>

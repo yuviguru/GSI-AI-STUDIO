@@ -6,16 +6,21 @@ import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
-  Plus,
   Bot,
   Compass,
   FolderOpen,
   HelpCircle,
   Settings,
   ChevronDown,
+  Sparkles,
+  BookOpen,
+  Music,
+  Gamepad2,
+  Palette,
+  UserRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { AiPointsBadge } from '@/components/learning/AiPointsBadge';
+import { useAiPoints } from '@/contexts/AiPointsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useKidProfile } from '@/hooks/useKidProfile';
 import { getAvatarEmoji } from '@/components/profile/AvatarPicker';
@@ -25,11 +30,11 @@ import { ProfilePicker } from '@/components/profile/ProfilePicker';
 /* ─── Studio sub-items for Create+ ─────────────────────────────────────────── */
 
 const STUDIO_ITEMS = [
-  { href: '/create/story', label: 'Story Studio', emoji: '📖' },
-  { href: '/create/music', label: 'Music Lab',    emoji: '🎵' },
-  { href: '/create/quiz',  label: 'Quiz Maker',   emoji: '🎮' },
-  { href: '/create/game',  label: 'Game Studio',  emoji: '🕹️' },
-  { href: '/create/comic', label: 'Comic Studio', emoji: '🎨' },
+  { href: '/create/story', label: 'Story Studio', icon: BookOpen },
+  { href: '/create/music', label: 'Music Lab',    icon: Music },
+  { href: '/create/quiz',  label: 'Quiz Maker',   icon: HelpCircle },
+  { href: '/create/game',  label: 'Game Studio',  icon: Gamepad2 },
+  { href: '/create/comic', label: 'Comic Studio', icon: Palette },
 ];
 
 /* ─── Main nav items ───────────────────────────────────────────────────────── */
@@ -92,6 +97,7 @@ export function SidebarNav() {
   const [showPicker, setShowPicker] = useState(false);
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { activeKid } = useKidProfile();
+  const { totalPoints } = useAiPoints();
   const isStudioActive = pathname.startsWith('/create/');
 
   const toggleCreate = useCallback(() => {
@@ -107,12 +113,17 @@ export function SidebarNav() {
       )}
     >
       {/* ── Brand ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2.5 px-6 py-5">
-        <span className="text-2xl">🎨</span>
+      <Link href="/" className="flex items-center gap-2.5 px-6 py-5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/gsi-logo.svg"
+          alt="GSI"
+          className="h-8 w-auto"
+        />
         <span className="font-display text-base font-bold text-brand-text">
-          GSI AI Studio
+          AI Studio
         </span>
-      </div>
+      </Link>
 
       {/* ── Main nav ───────────────────────────────────────────────────── */}
       <nav className="mt-2 flex flex-1 flex-col px-3">
@@ -165,8 +176,8 @@ export function SidebarNav() {
                   transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 />
               )}
-              <Plus className="h-[18px] w-[18px] shrink-0" />
-              <span className="flex-1 text-left">Create+</span>
+              <Palette className="h-[18px] w-[18px] shrink-0" />
+              <span className="flex-1 text-left">Create</span>
               <ChevronDown
                 className={cn(
                   'h-4 w-4 transition-transform duration-200',
@@ -200,7 +211,7 @@ export function SidebarNav() {
                               : 'text-brand-text-secondary hover:bg-gray-50 hover:text-brand-text',
                           )}
                         >
-                          <span className="text-base">{studio.emoji}</span>
+                          <studio.icon className="h-[18px] w-[18px] shrink-0" />
                           {studio.label}
                         </Link>
                       );
@@ -239,19 +250,23 @@ export function SidebarNav() {
         {/* ── User / Active Kid ─────────────────────────────────────── */}
         <div className="border-t border-gray-100 px-1 py-4">
           {!authLoading && isAuthenticated && activeKid ? (
-            /* Authenticated with active kid: show kid avatar → opens picker */
+            /* Authenticated with active kid: avatar left, name + points stacked right */
             <button
               onClick={() => setShowPicker(true)}
-              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition hover:bg-gray-50"
+              className="flex w-full items-start gap-2.5 rounded-xl px-3 py-2.5 transition hover:bg-gray-50"
+              aria-label="Switch profile"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-blue-100 text-xl">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-blue-100 text-xl">
                 {getAvatarEmoji(activeKid.avatar)}
               </div>
               <div className="min-w-0 flex-1 text-left">
-                <p className="truncate text-sm font-semibold text-brand-text">
+                <p className="truncate text-sm font-semibold text-brand-text leading-tight">
                   {activeKid.name}
                 </p>
-                <AiPointsBadge />
+                <p className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-brand-primary">
+                  <Sparkles className="h-3 w-3" />
+                  <span>{totalPoints} AI Points</span>
+                </p>
               </div>
             </button>
           ) : !authLoading && !isAuthenticated ? (
@@ -260,8 +275,8 @@ export function SidebarNav() {
               onClick={() => setShowAuthFlow(true)}
               className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-brand-primary transition hover:bg-brand-primary/8"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-primary/10 text-base">
-                👤
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-primary/10">
+                <UserRound className="h-[18px] w-[18px] text-brand-primary" />
               </div>
               <span>Sign In</span>
             </button>

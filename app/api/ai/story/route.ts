@@ -6,9 +6,7 @@ import { checkRateLimit, trackCreation } from '@/lib/firebase/sessionService';
 import { saveCreation } from '@/lib/firebase/creationService';
 import { generateJsonWithClaude } from '@/lib/ai/claudeClient';
 import { generateJsonWithGroq } from '@/lib/ai/groqClient';
-import { generateImage } from '@/lib/ai/replicateClient';
-import { generateImageFree } from '@/lib/ai/pollinationsClient';
-import { generateImageLocal } from '@/lib/ai/comfyuiClient';
+import { getImageProvider } from '@/lib/ai/imageProvider';
 import { STORY_SYSTEM_PROMPT, buildStoryUserPrompt } from '@/lib/ai/prompts/storyPrompt';
 import type { AiXrayData, StoryContent } from '@/types';
 
@@ -37,14 +35,6 @@ const PLACEHOLDER_IMAGE = '/images/placeholder-story.png';
 // Auto-detect which providers to use based on available API keys
 function shouldUseGroq(): boolean {
   return !!process.env.GROQ_API_KEY && !process.env.ANTHROPIC_API_KEY?.startsWith('sk-ant-api');
-}
-
-function shouldUseComfyUI(): boolean {
-  return !!process.env.COMFYUI_URL;
-}
-
-function shouldUseReplicate(): boolean {
-  return !!process.env.REPLICATE_API_TOKEN && !process.env.REPLICATE_API_TOKEN?.includes('your-token');
 }
 
 /**
@@ -93,12 +83,11 @@ export async function POST(request: NextRequest) {
     }));
 
     // 7. Generate illustrations in parallel (batched)
-    const genImage = shouldUseComfyUI() ? generateImageLocal : shouldUseReplicate() ? generateImage : generateImageFree;
-    const imageUrls = await generateImagesParallel(filteredPages, input.style, genImage);
+    const { imageFunction, providerName } = getImageProvider();
+    console.log(`[Story] Using image provider: ${providerName}`);
+    const imageUrls = await generateImagesParallel(filteredPages, input.style, imageFunction);
 
     // 8. Build story content
-    const imageProvider = shouldUseComfyUI() ? 'flux-schnell-local' : shouldUseReplicate() ? 'sdxl' : 'pollinations';
-    console.log(`[Story] Using image provider: ${imageProvider}`);
     const modelName = shouldUseGroq() ? 'llama-3.3-70b' : 'claude-sonnet';
     const storyContent: StoryContent & { title: string; moral: string } = {
       title: llmResponse.title,
