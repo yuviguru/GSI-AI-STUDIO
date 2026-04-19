@@ -202,6 +202,260 @@ Competitive mode where kids write their own response (no AI help) and then see h
 
 ---
 
+### Kid CEO — Business Simulation (Age 10+)
+
+Long-running business simulation where kids run a virtual business across 30/60/90 days. Decisions shape skill patterns (Bold Moves, Money Smarts, Big Dreams, Getting It Done, Team Captain, Cool Under Pressure). 7-step flow: Landing → Pick Business → Register → Event Feed → Decision Feedback → Dashboard → CEO Profile. Dual-channel: web + `@GSIKidCeoBot` on Telegram.
+
+```
+┌─────────────────────────────────────────┐
+│  Step 1: LANDING / START                 │
+│  ┌──────────────────────────────────────┐│
+│  │  🐨  "Ready to run your first       ││
+│  │       business?"                     ││
+│  │                                      ││
+│  │  [Koko waving — happy expression]    ││
+│  └──────────────────────────────────────┘│
+│                                          │
+│  ┌──────────────────────────────────────┐│
+│  │  ▶️  Continue "Luna's Lemonade"     ││
+│  │  📍 Getting Ready · 💰 ₹425 · 2/5   ││
+│  └──────────────────────────────────────┘│
+│                                          │
+│  ┌──────────────────────────────────────┐│
+│  │  [ 🚀 Start Your Business! ]         ││
+│  └──────────────────────────────────────┘│
+│                                          │
+│  ┌──────────────────────────────────────┐│
+│  │  💬 Connect to Telegram              ││
+│  │  Play on @GSIKidCeoBot too →         ││
+│  └──────────────────────────────────────┘│
+└─────────────────────────────────────────┘
+```
+Kid lands on the Kid CEO home. If they have an active business, a "Continue" card shows phase + cash. Primary CTA starts a new sim. Telegram deep-link card is a secondary option.
+
+```
+┌─────────────────────────────────────────┐
+│  Step 2: PICK YOUR BUSINESS              │
+│  What do you want to run?                │
+│                                          │
+│  ┌──────────┐ ┌──────────┐              │
+│  │ 🍋        │ │ 🍦        │              │
+│  │ Lemonade  │ │ Ice Cream │              │
+│  │ Stand     │ │ Shop      │              │
+│  │ Start ₹500│ │ Start ₹800│              │
+│  └──────────┘ └──────────┘              │
+│  ┌──────────┐ ┌──────────┐              │
+│  │ 👕        │ │ 🎮        │              │
+│  │ T-Shirt   │ │ Game      │              │
+│  │ Shop      │ │ Studio    │              │
+│  │ Start ₹700│ │ Start ₹600│              │
+│  └──────────┘ └──────────┘              │
+│  ┌──────────┐ ┌──────────┐              │
+│  │ 🎨        │ │ 📰        │              │
+│  │ Craft     │ │ School    │              │
+│  │ Shop      │ │ Blog      │              │
+│  │ Start ₹400│ │ Start ₹300│              │
+│  └──────────┘ └──────────┘              │
+│  ┌──────────────────────────────────────┐│
+│  │ 💡 My Own Idea                       ││
+│  │ Tell us your business! [Type here..] ││
+│  └──────────────────────────────────────┘│
+└─────────────────────────────────────────┘
+```
+Grid of 7 business cards using per-business gradient backgrounds. Each shows emoji, name, and starting capital in rupees. "My Own Idea" opens a textarea for custom businesses.
+
+```
+┌─────────────────────────────────────────┐
+│  Step 3: REGISTER BUSINESS               │
+│  ← Back                                  │
+│                                          │
+│  Business name                           │
+│  ┌──────────────────────────┐ ┌───────┐ │
+│  │ Luna's Lemonade          │ │ ✨Gen │ │
+│  └──────────────────────────┘ └───────┘ │
+│                                          │
+│  Location                                │
+│  ┌──────────────────────────────────────┐│
+│  │ Bangalore                         ▾  ││
+│  └──────────────────────────────────────┘│
+│  (Mumbai / Delhi / Chennai / My city)    │
+│                                          │
+│  Choose your pace:                       │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ │
+│  │ 30-day   │ │ 60-day   │ │ 90-day   │ │
+│  │ Sprint   │ │ Journey  │ │ Marathon │ │
+│  │ Fast     │ │ Balanced │ │ Deep     │ │
+│  └──────────┘ └──────────┘ └──────────┘ │
+│                                          │
+│  ┌──────────────────────────────────────┐│
+│  │  [ 🎉 Register Business! ]           ││
+│  └──────────────────────────────────────┘│
+└─────────────────────────────────────────┘
+```
+Registration wizard step 2 — name (with AI-generate button), city dropdown, and 3-card pace picker. Clicking Register creates the business doc and takes the kid to the event feed.
+
+```
+┌─────────────────────────────────────────┐
+│  Step 4: EVENT FEED (main play)          │
+│  ┌──────────────────────────────────────┐│
+│  │ 💰 ₹425 · ⭐ 62 · 😊 78             ││
+│  │ 📍 Getting Ready (2/5) ████░░░░     ││
+│  └──────────────────────────────────────┘│
+│                                          │
+│  ┌──────────────────────────────────────┐│
+│  │ 🟢 NEW · Event 3                    ││
+│  │ A Supplier Problem                  ││
+│  │                                      ││
+│  │ Your lemon supplier wants to raise   ││
+│  │ prices by 20%. What do you do?       ││
+│  │                                      ││
+│  │  [ A — Accept the new price      ]   ││
+│  │  [ B — Find a different supplier ]   ││
+│  │  [ C — Negotiate a better deal   ]   ││
+│  └──────────────────────────────────────┘│
+│                                          │
+│  🐨  "Think before you choose — there's │
+│      no wrong answer!"                   │
+│                                          │
+│  ─── Past decisions ───                  │
+│  ▸ Event 2 · You chose B · "Bold move!" │
+│  ▸ Event 1 · You chose A · "Smart start"│
+│                                          │
+│  ⏳ Next event in 8h (30-day pace)       │
+└─────────────────────────────────────────┘
+```
+Dashboard strip on top, active event card in the middle with 3 equal-weight choice buttons, Koko peeking with a nudge. Past events collapse below — tap any to re-read feedback. Ticker shows cadence for the chosen pace.
+
+```
+┌─────────────────────────────────────────┐
+│  Step 5: DECISION FEEDBACK (overlay)     │
+│  ┌──────────────────────────────────────┐│
+│  │  You chose: B — Find a different     ││
+│  │  supplier                            ││
+│  │                                      ││
+│  │     🔄 Scoring your decision...      ││
+│  │     [Koko thinking — brief beat]     ││
+│  └──────────────────────────────────────┘│
+│                                          │
+│  ┌──────────────────────────────────────┐│
+│  │  🎯 That's a Bold Move!              ││
+│  │                                      ││
+│  │  You took a risk on change instead   ││
+│  │  of playing safe. That's how founders││
+│  │  find better deals — curiosity first.││
+│  └──────────────────────────────────────┘│
+│                                          │
+│  Bold Moves     ████████░░ 72 (↑ +6)    │
+│  Money Smarts   ██████░░░░ 54 (↑ +2)    │
+│  Big Dreams     █████░░░░░ 48           │
+│  Getting Done   ██████░░░░ 56           │
+│  Team Captain   ████░░░░░░ 40           │
+│  Cool Pressure  ███████░░░ 66 (↑ +4)    │
+│                                          │
+│  State: 💰 +₹50 · ⭐ -3                  │
+│  ✅ BRAND figured out! (milestone)       │
+│                                          │
+│  ┌──────────┐ ┌────────────────────┐    │
+│  │ Got it!  │ │ What next? →       │    │
+│  └──────────┘ └────────────────────┘    │
+└─────────────────────────────────────────┘
+```
+Overlay after a choice: quick "scoring..." beat, then reveal of kid-friendly feedback text, updated skill bars with delta arrows, state changes, and any milestone unlock. Growth language throughout — never "wrong" or "failed".
+
+```
+┌─────────────────────────────────────────┐
+│  Step 6: BUSINESS DASHBOARD              │
+│  Luna's Lemonade · Bangalore             │
+│                                          │
+│  Phase progress:                         │
+│  Ready → Open → Grow → Big → Running     │
+│  ████████░░░░░░░░░░░░░░░░░░░░░░          │
+│  ▲ You are here: Getting Ready (2/5)     │
+│                                          │
+│  ┌──────────────────────────────────────┐│
+│  │ Stats                               ││
+│  │ Cash:           ₹425                ││
+│  │ Reputation:     62 / 100            ││
+│  │ Morale:         78 / 100            ││
+│  │ Employees:      1                   ││
+│  │ Decisions:      12                  ││
+│  │ Avg response:   4.2 min             ││
+│  └──────────────────────────────────────┘│
+│                                          │
+│  ┌──────────────────────────────────────┐│
+│  │  Your Skills                         ││
+│  │                                      ││
+│  │        Bold Moves (72)               ││
+│  │          ╱──╲                        ││
+│  │  Cool  ╱      ╲  Money               ││
+│  │  (66) ╱   ⬡    ╲ Smarts (54)        ││
+│  │       ╲        ╱                     ││
+│  │  Team  ╲      ╱  Big                 ││
+│  │  (40)   ╲──╱     Dreams (48)         ││
+│  │      Getting It Done (56)            ││
+│  └──────────────────────────────────────┘│
+└─────────────────────────────────────────┘
+```
+Full dashboard: 5-phase horizontal progress bar with current phase highlighted, stat block, and 6-axis radar chart showing skill pattern. Reached via tab from the event feed.
+
+```
+┌─────────────────────────────────────────┐
+│  Step 7: CEO PROFILE CARD                │
+│  ┌──────────────────────────────────────┐│
+│  │   🏆 Luna's Lemonade                ││
+│  │   Phase reached: Going Big           ││
+│  │   60-day Journey · Bangalore         ││
+│  └──────────────────────────────────────┘│
+│                                          │
+│  ┌──────────────────────────────────────┐│
+│  │                                      ││
+│  │        Bold Moves (78)               ││
+│  │          ╱──╲                        ││
+│  │  Cool  ╱      ╲  Money               ││
+│  │  (64) ╱   ⬡    ╲ Smarts (72)        ││
+│  │       ╲        ╱                     ││
+│  │  Team  ╲      ╱  Big                 ││
+│  │  (52)   ╲──╱     Dreams (80)         ││
+│  │      Getting It Done (68)            ││
+│  └──────────────────────────────────────┘│
+│                                          │
+│  You're a Big Dreamer with Money Smarts! │
+│                                          │
+│  ┌──────────────────────────────────────┐│
+│  │ 52 decisions · 4 phases · 3.8 min avg││
+│  └──────────────────────────────────────┘│
+│                                          │
+│  Share:                                  │
+│  ┌─────────┐ ┌────────┐ ┌─────────────┐ │
+│  │ 💬 WA   │ │ 🔗 Copy│ │ ⬇️ Download │ │
+│  └─────────┘ └────────┘ └─────────────┘ │
+│                                          │
+│  ┌──────────────────────────────────────┐│
+│  │  [ 🚀 Run Another Business! ]        ││
+│  └──────────────────────────────────────┘│
+└─────────────────────────────────────────┘
+```
+Generated at simulation end: banner with business name + phase reached, full-size radar chart, dominant-pattern callout, compact stats, and share row (WhatsApp, copy link, PNG download). CTA to start the next business.
+
+**Key UX Notes (Kid CEO)**:
+- Top-level nav placement — Kid CEO lives as its own tab, not nested under Create, because the interaction model is an ongoing sim rather than a one-shot creation.
+- Returning kids see a prominent "Continue [business name]" card on the landing screen instead of the business picker — resuming is always one tap.
+- Business picker cards use per-business gradients defined in `globals.css` (same gradient system as the existing studios).
+- Event cards support expanded (active) and collapsed (past) states — tap any past event to expand it and re-read the full feedback.
+- No time pressure on decisions — response time is tracked for skill scoring but never shown as a countdown. Kids see "Think before you choose" messaging instead.
+- The 3 choices are always visually equal — same size, same color, no hierarchy. Anti-gaming rule carried over from FoundersDNA so kids don't pattern-match to a "correct" answer.
+- Decision feedback uses growth language only — never "wrong", "lost", or "failed". Framing: "There's no wrong answer — we're learning how you think."
+- Milestone unlocks reuse the existing CelebrationModal with Koko celebrating + confetti burst (same component as badge unlocks).
+- Phase transitions trigger a dedicated animation — the 5-phase bar fills to the new phase and the next phase label slides in.
+- CEO profile card reuses the existing `/view/[id]` SSR pattern so WhatsApp link previews render proper OG tags + share card thumbnail.
+- Koko expressions map to context: `thinking` during a pending decision, `celebrating` on milestones and phase transitions, `surprised` on crisis events, `happy` on growth events.
+- Bot parity — the same kid can play on web OR `@GSIKidCeoBot`. Deep-link "Connect to Telegram" is shown on landing. Once linked, new events arrive via both channels (Telegram push + in-app event feed).
+- Skills radar reuses the same component as Beat the AI / MindX — prefer `components/beat-the-ai/SkillRadarChart.tsx` (or a shared version) rather than building a new chart.
+- Mobile: event feed uses vertical scroll with the active event sticky at the top. Choice buttons stack vertically on narrow screens (full-width, 48px min height each).
+- Accessibility: each choice button has an ARIA label including its letter + choice text (e.g., "Choice B — Find a different supplier"). Radar chart provides a text summary fallback for screen readers.
+
+---
+
 ### MindX — AI Skill Assessment (IELTS-style)
 
 Multi-module assessment where AI tests kids on Speaking, Listening, Thinking, and Reading. Koko (AI mentor) provides personalized feedback. 4-step flow: Pick Module → Challenges → AI Evaluates → Mentor Feedback.

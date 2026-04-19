@@ -97,6 +97,18 @@ async function verifyAuth(request: NextRequest): Promise<DecodedIdToken> {
 }
 ```
 
+### Bot Auth Binding Security
+
+When a kid links a Telegram chat to their GSI identity, we issue a short-lived, single-use token (deep link) that binds `chatId → (gsiSessionId, userId?, kidId?)`. This flow must resist forgery, replay, and confused-deputy attacks across the two bots.
+
+- **Link token properties**: `botLinkCodes` stores 32-byte hex tokens generated via `crypto.randomBytes(16).toString('hex')`. Single-use (flipped `used: true` on redemption). 10-minute TTL. Bot-scoped (a `@GSIKidCeoBot` token cannot be redeemed in `@GSIStudioBot`).
+- **6-digit code fallback**: When the deep link fails (e.g. mobile app intents block the handoff), a numeric 6-digit code is also stored in the same `botLinkCodes` doc (or a parallel field). Kid types `/link 123456` in the bot. Same validation.
+- **Server-write-only**: `botLinkCodes` is server-write-only via Admin SDK — clients cannot forge tokens directly.
+- **Audit field**: `usedByChatId` is recorded on redemption for incident investigation.
+- **TTL cleanup**: Firestore TTL policy deletes expired docs 24 hours after `expiresAt`. No manual cleanup needed.
+- **Confused-deputy resistance**: A token minted for bot A cannot bind a chat on bot B. The bot webhook handler reads `botLinkCodes.botHandle` and rejects tokens that don't match its own handle.
+- **Anonymous users**: If the kid hasn't completed Firebase Phone Auth yet, the link token binds the `gsiSessionId` only (`userId` and `kidId` are null). Upgrade happens on the next auth event.
+
 ---
 
 ## Authorization
@@ -173,6 +185,30 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Kid CEO business simulation — server-side only
+    match /ceoBusiness/{businessId} {
+      allow read, write: if false;
+    }
+    match /ceoEvents/{eventId} {
+      allow read, write: if false;
+    }
+    // CEO profile: public read when isPublic == true (shareable DNA Card)
+    match /ceoProfiles/{profileId} {
+      allow read: if resource.data.isPublic == true;
+      allow write: if false;
+    }
+
+    // Bot infrastructure — server-side only
+    match /botSessions/{chatId} {
+      allow read, write: if false;
+    }
+    match /botLinkCodes/{token} {
+      allow read, write: if false;
+    }
+    match /homeworkSessions/{id} {
+      allow read, write: if false;
+    }
+
     // Cerebro competitions (Phase 2+): public read
     match /competitions/{competitionId} {
       allow read: if true;
@@ -215,6 +251,8 @@ service cloud.firestore {
   }
 }
 ```
+
+Note: `firestore.rules` is the deployed source of truth — these examples must stay in sync with that file.
 
 ---
 
@@ -287,6 +325,31 @@ MindX involves **voice input** (speaking module) and **free text answers** (thin
 - **Question bank safety**: All challenge content (passages, questions, scenarios) is pre-curated. India-culturally-relevant and age-appropriate
 - **Score integrity**: AI evaluation is server-side (not self-reported like Beat the AI). No score manipulation possible
 - **Mentor feedback tone**: Claude system prompt enforces positive, encouraging feedback. Never uses words like "wrong", "bad", "failed" — uses "keep growing", "next time try", "almost there"
+
+### Kid CEO Safety
+
+Kid CEO is a business-simulation feature ported from SimPrenuer. It combines kid-authored free text, LLM-generated event scenarios, and decision scoring — all of which need kid-safe treatment:
+
+- **Age target**: 10+ only in v1. No 8-10 simplified variant — prompts, scenarios, and language are calibrated to a 10+ reading level and life experience.
+- **Business name + custom description filtering**: Kid-authored free text (business name, `custom` business description) passes through `lib/safety/inputFilter.ts` before saving. Rejected with `UNSAFE_CONTENT` if flagged.
+- **Event generation safety**: LLM system prompt for event generation enforces: no violence, no adult financial concepts (loans to family, gambling, lottery), no discrimination scenarios, no political/religious content, no real brand names (avoid trademark issues), culturally grounded but non-stereotyping.
+- **Scoring safety**: Decision scoring prompt never frames any choice as "wrong" or "bad" — all 3 choices have defensible rationale, aligning with existing anti-gaming design. Feedback language avoids negative affect words ("failed", "lost", "mistake"); uses growth-oriented language ("learning", "next time", "adjust").
+- **Event template fallbacks**: If the LLM refuses or generates unsafe content, fall back to a pre-curated kid-safe event template pool (see `lib/ceo/templates/events.json`). Templates are reviewed manually.
+- **PII in event text**: Event descriptions may reference characters (friends, family). All LLM-generated event text passes `filterOutput()` for PII redaction (phones, emails, addresses) before save.
+- **Rate limiting + cooldown**: 3 business registrations per session per day; 50 events and 50 decisions per day per session (shared across web + bot channels by `sessionId`).
+- **No kid-to-kid exposure in Phase 1**: Kid CEO profiles are private by default. `isPublic` flag only flips true when the kid explicitly taps "Share". Even public profiles show display names only (no real names).
+
+### Telegram Bot Safety
+
+GSI ships two bots (`@GSIStudioBot` and `@GSIKidCeoBot`) that share the `lib/bot/` infrastructure. All bot traffic is treated as untrusted user input and routed through the same safety pipeline as web:
+
+- **Two bots, same safety pipeline**: `@GSIStudioBot` and `@GSIKidCeoBot` both route all inbound text, voice, document, and forwarded messages through the existing `lib/safety/inputFilter.ts`.
+- **Forwarded message safety (Homework module)**: Forwarded content (text/image/PDF/voice) is treated as potentially arbitrary. Image/PDF OCR output + voice STT transcripts go through `filterInput()` before being passed to the LLM parser.
+- **Voice message handling**: Voice audio is downloaded transiently for STT (Groq Whisper), transcribed, then discarded — **voice audio is never stored**. Only the transcript is saved (and filtered).
+- **Outbound message safety**: All bot-sent messages originate from server-side code in `lib/bot/modules/*.ts`. LLM-generated feedback (recitation scoring, quiz explanation, CEO event feedback) passes through `filterOutput()` before being sent to Telegram.
+- **Bot input rate limiting**: Per-chat rate limit of 30 messages/min (abuse prevention); 5 homework forwards per hour; CEO decision rate shares with web (50/day per session).
+- **No cross-chat data leakage**: A module instance only sees its own `BotContext` — no global state shared across chats. `botSessions/{chatId}` is the only per-chat persistence.
+- **Module scope**: The `ceo` module is NOT registered in `@GSIStudioBot` and the `homework` module is NOT registered in `@GSIKidCeoBot`. Each bot's router rejects unknown commands with a help message.
 
 ### GrowthMap Parent Data Access (Phase 2+)
 
@@ -390,6 +453,10 @@ India's DPDPA 2023 classifies children (under 18) as requiring enhanced protecti
 | Kid age/grade | ❌ | ✅ | Content calibration | Until account deleted |
 | AI prompts | ✅ | ✅ | Safety audit trail | 90 days |
 | Payment data | ❌ | ✅ | Billing (via Razorpay) | Per Razorpay policy |
+| Telegram chat ID | ❌ | ✅ | Bot session binding | Until unlinked or account deleted |
+| Bot message transcripts (text + STT) | ❌ | ✅ | Homework interactivity, safety audit | 90 days |
+| Kid CEO decisions + event history | ✅ | ✅ | Core service (profile generation) | Until deleted |
+| Voice audio (forwarded/recitation) | ❌ | ❌ | — | **Never stored — discarded after STT** |
 
 ### What We Never Collect
 - Real names of children (display names only, can be fictional)
@@ -398,6 +465,7 @@ India's DPDPA 2023 classifies children (under 18) as requiring enhanced protecti
 - School name (unless school account, Phase 3)
 - Contact information of children
 - Browsing history or cross-site tracking
+- Telegram user's phone number (we never call `getContact`)
 
 ### Sensitive Data Handling
 
@@ -418,6 +486,12 @@ India's DPDPA 2023 classifies children (under 18) as requiring enhanced protecti
 | Auth (OTP) | N/A | 5/min | 5/min |
 | Beat the AI | 5/day | 5/week | Unlimited |
 | MindX | 3/day | 5/week | Unlimited |
+| Kid CEO Register | 3/day | 3/week | Unlimited |
+| Kid CEO Event Generate | 50/day | 50/day | 50/day |
+| Kid CEO Decide | 50/day | 50/day | 50/day |
+| Bot Link Create | 5/hour | 5/hour | 5/hour |
+| Bot Inbound Messages | 30/min/chat | 30/min/chat | 30/min/chat |
+| Homework Forwards | 5/hour/chat | 5/hour/chat | 5/hour/chat |
 | Cerebro Exam | N/A | 1/exam window | 1/exam window |
 | Cerebro Submit | N/A | 30/min (per-question) | 30/min |
 | GrowthMap Dashboard | N/A | 10/hour | 10/hour |

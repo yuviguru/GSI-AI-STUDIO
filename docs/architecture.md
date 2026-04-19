@@ -7,34 +7,48 @@ GSI AI Studio is a serverless PWA built on Next.js (Netlify) + Firebase, designe
 ### Architecture Diagram
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│                    CLIENTS                                │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐  │
-│  │  Browser     │  │  PWA (Mobile)│  │  Shared Link    │  │
-│  │  (Desktop)   │  │  (Installed) │  │  (View Only)    │  │
-│  └──────┬───────┘  └──────┬──────┘  └───────┬─────────┘  │
-└─────────┼─────────────────┼─────────────────┼────────────┘
-          │                 │                 │
-          ▼                 ▼                 ▼
-┌──────────────────────────────────────────────────────────┐
-│                 NETLIFY (Frontend Host)                    │
-│  ┌────────────────────────────────────────────────────┐  │
-│  │  Next.js PWA (Static + SSR)                        │  │
-│  │  ├── /create/* — Creation studio pages             │  │
-│  │  ├── /view/* — Public creation viewer (SSR)        │  │
-│  │  ├── /learn/* — AI learning paths                  │  │
-│  │  └── /dashboard/* — User dashboard (Phase 2)       │  │
-│  └────────────────────────────────────────────────────┘  │
-│  ┌────────────────────────────────────────────────────┐  │
-│  │  Next.js API Routes (Serverless on Netlify)        │  │
-│  │  ├── /api/ai/* — AI generation (5 studios)        │  │
-│  │  ├── /api/creations/* — CRUD + explore + download │  │
-│  │  ├── /api/sessions/* — Rate limiting + points     │  │
-│  │  └── /api/share/* — Shareable links               │  │
-│  └────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────┘
-          │                 │                 │
-          ▼                 ▼                 ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                              CLIENTS                                    │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌──────────────┐  │
+│  │  Browser     │  │  PWA (Mobile)│  │  Shared Link│  │  Telegram    │  │
+│  │  (Desktop)   │  │  (Installed) │  │  (View Only)│  │  (chat app)  │  │
+│  └──────┬───────┘  └──────┬──────┘  └──────┬──────┘  └──────┬───────┘  │
+└─────────┼─────────────────┼────────────────┼────────────────┼──────────┘
+          │                 │                │                │
+          ▼                 ▼                ▼                ▼
+┌────────────────────────────────────────────────────┐  ┌─────────────────┐
+│              NETLIFY (Frontend Host)                │  │  MESSENGERS      │
+│  ┌────────────────────────────────────────────┐   │  │  ┌────────────┐ │
+│  │  Next.js PWA (Static + SSR)                │   │  │  │ Telegram   │ │
+│  │  ├── /create/* — Creation studio pages     │   │  │  │ Bot API    │ │
+│  │  ├── /ceo/* — Kid CEO business sim         │   │  │  │ (Grammy)   │ │
+│  │  ├── /view/* — Public creation viewer      │   │  │  └─────┬──────┘ │
+│  │  ├── /learn/* — AI learning paths          │   │  │        │        │
+│  │  └── /dashboard/* — User dashboard (P2)    │   │  │  ┌─────┴──────┐ │
+│  └────────────────────────────────────────────┘   │  │  │@GSIStudio  │ │
+│  ┌────────────────────────────────────────────┐   │  │  │Bot         │ │
+│  │  Next.js API Routes (Serverless)           │   │  │  └────────────┘ │
+│  │  ├── /api/ai/* — AI generation (5 studios) │   │  │  ┌────────────┐ │
+│  │  ├── /api/creations/* — CRUD + explore     │   │  │  │@GSIKidCeo  │ │
+│  │  ├── /api/sessions/* — Rate limit + points │   │  │  │Bot         │ │
+│  │  ├── /api/share/* — Shareable links        │   │  │  └────────────┘ │
+│  │  ├── /api/ceo/* — CEO sim (register,event, │   │  │                 │
+│  │  │   decide, business, profile)            │   │  │  WhatsApp (P2)  │
+│  │  └── /api/bot/link/* — link token mint     │   │  │  Cloud API      │
+│  └────────────────────────────────────────────┘   │  │  (adapter only) │
+│  ┌────────────────────────────────────────────┐   │  └────────┬────────┘
+│  │  Bot Webhook Gateway (Netlify Functions)   │◀──┼───────────┘
+│  │  ├── telegram-webhook-studio.ts            │   │
+│  │  │   (homework, challenge, skills,         │   │
+│  │  │    notifications modules)               │   │
+│  │  └── telegram-webhook-ceo.ts               │   │
+│  │       (ceo module only)                    │   │
+│  │  Both share lib/bot/ (adapter, router,     │   │
+│  │  context, services, modules)               │   │
+│  └────────────────────────────────────────────┘   │
+└────────────────────────────────────────────────────┘
+          │                 │                │
+          ▼                 ▼                ▼
 ┌──────────────────────────────────────────────────────────┐
 │                   FIREBASE SERVICES                       │
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐ │
@@ -60,6 +74,13 @@ GSI AI Studio is a serverless PWA built on Next.js (Netlify) + Firebase, designe
 │  │  - Games     │ │  - Comic art │ │                  │ │
 │  │  - Comics    │ │  - Game art  │ │                  │ │
 │  │  - AI X-Ray  │ │              │ │                  │ │
+│  │  - CEO events│ │              │ │                  │ │
+│  └──────────────┘ └──────────────┘ └──────────────────┘ │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐ │
+│  │  STT (Voice) │ │  TTS         │ │  OCR             │ │
+│  │  Groq Whisper│ │  Google Cloud│ │  Google Cloud    │ │
+│  │  (large-v3)  │ │  TTS (hi+en) │ │  Vision          │ │
+│  │  (Phase 2)   │ │  (Phase 2)   │ │  (Phase 2)       │ │
 │  └──────────────┘ └──────────────┘ └──────────────────┘ │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -91,6 +112,7 @@ app/
 │   │   ├── quiz/       # Quiz Maker
 │   │   ├── game/       # Game Studio (text adventures)
 │   │   └── comic/      # Comic Studio (multi-panel)
+│   ├── ceo/            # Kid CEO business sim (register/play/profile/leaderboard)
 │   ├── explore/        # Public creations feed
 │   ├── creations/      # My Creations gallery
 │   └── view/[id]/      # Public creation viewer (SSR)
@@ -102,9 +124,15 @@ app/
 │   ├── ai/             # AI generation (story, music, quiz, game, comic)
 │   ├── creations/      # Creation CRUD + public feed + downloads
 │   ├── sessions/       # Session management + points/badges
-│   └── share/          # Share link creation
+│   ├── share/          # Share link creation
+│   ├── ceo/            # Kid CEO sim (register, event, decide, business, profile)
+│   └── bot/link/       # Mints one-time link tokens for web↔bot auth binding
 └── layout.tsx          # Root layout with PWA manifest
 ```
+
+**New API groups** (introduced alongside Kid CEO + shared bot layer):
+- `api/ceo/*` — Handlers for the business simulation: `register` (create business + seed events), `event` (generate next event via LLM), `decide` (score + advance phase), `business` (current state), `profile` (6-dimension CEO card), `leaderboard` (Phase 2).
+- `api/bot/link/*` — Mints short-lived, single-use link tokens used by the Telegram deep-link flow (`/start link_<token>`) to bind a chat ID to a logged-in web user. Backed by the `botLinkCodes` Firestore collection (server-write-only, 10-minute TTL).
 
 ### Backend (Firebase + Netlify Functions)
 **Tech**: Firebase SDK, Netlify Functions (Node.js)
@@ -136,6 +164,80 @@ app/
 - Audio files (music creations) → Cloud Storage
 - Creation thumbnails → Cloud Storage (auto-generated)
 - Public read access for shared creations, write access requires auth or server-side
+
+### Kid CEO (Business Simulation)
+
+**What it is**: A 30/60/90-day kid-friendly business simulation ported from the internal FoundersDNA/SimPrenuer project (`C:\Yuvi\Development\SimPrenuer`). The kid picks a business type, runs it through 5 phases, responds to events (school fair, local trend, cash crunch, etc.), and ends with a shareable CEO profile card scored across 6 dimensions. Target age **10+**. Delivery is **dual-channel**: in-app route group plus a dedicated Telegram bot `@GSIKidCeoBot`. Same Firestore state backs both — the kid can start on web and continue in chat.
+
+**Route group**:
+```
+app/(public)/ceo/
+├── page.tsx           # Landing — "Start Your Business"
+├── register/          # Business registration wizard
+├── play/              # Main sim — event feed + decisions
+├── profile/           # CEO Profile Card (6 dimensions)
+└── leaderboard/       # Phase 2 — compare with friends
+```
+
+**Engine (`lib/ceo/`)**: Ported from the SimPrenuer JavaScript source and rewritten in TypeScript. Pure, deterministic, unit-testable — no framework coupling.
+- `phases.ts` — 5-phase state machine + milestone DAG
+- `eventEngine.ts` — Builds LLM prompts, parses events, applies safety pipeline
+- `scoringEngine.ts` — Scores a kid's decision against dimensions, updates business state
+- `profileEngine.ts` — Aggregates decisions into the 6-dimension CEO profile card
+- `businessState.ts` — Serializable business state (cash, reputation, inventory, metrics)
+
+**LLM usage**: Event generation and decision scoring both use the **existing** AI clients — `lib/ai/groqClient.ts` (primary, llama-3.3-70b) with `lib/ai/claudeClient.ts` as fallback. No new LLM clients are introduced. CEO-specific system prompts live in `lib/ceo/prompts/`.
+
+**Firestore collections**: `ceoBusiness`, `ceoEvents`, `ceoProfiles` — see `docs/data-model.md` for full schemas. Server-write-only via Admin SDK, following the same pattern as `creations`.
+
+**Integration with existing systems**:
+- **AI Points + badges**: CEO milestones (first event, phase complete, business launched, 90-day finish) award points and unlock new CEO-specific badges via the existing `lib/badges.ts` catalog and `checkBadgeUnlocks()` flow.
+- **Koko mascot**: Reused as the "business advisor" persona — same component, new speech-bubble copy keyed off CEO state. No new mascot art required in v1.
+- **Shareable profile cards**: The CEO Profile Card is published through the existing `/view/[id]` SSR viewer, using the same OG-tag and thumbnail pipeline as story/comic creations.
+- **Safety pipeline**: All user-entered strings (business name, decision answers) and LLM output (event text) run through the existing `lib/safety/` pipeline — the same profanity/PII/age-appropriate filters used by the creation studios. CEO events are kid-safe by design (no finance realism, no adult scenarios).
+
+### Unified Telegram Bot Layer
+
+**Two bots, one codebase**: GSI AI Studio ships two Telegram bot instances that share a single `lib/bot/` infrastructure (adapter, router, context, services, feature modules). Each bot instance registers only the modules it needs.
+
+| Bot Handle | Modules | Role |
+|---|---|---|
+| `@GSIStudioBot` | `homework`, `challenge`, `skills`, `notifications` | Day-to-day studio companion + outbound alerts (creation ready, weekly progress) |
+| `@GSIKidCeoBot` | `ceo` only | Dedicated chat for the long-running business sim |
+
+**Why two bots instead of one**:
+- The CEO sim runs for 30/60/90 days of real time — it deserves its own chat context so the scrollback stays focused on the business, not interleaved with homework tasks or creation alerts.
+- Clean command namespaces — no collisions between `/help` for CEO vs. `/help` for homework.
+- Independent positioning — parents/schools can discover `@GSIKidCeoBot` as a standalone "Run your first business" offering without first understanding the full studio.
+- Independent deploy cadence — a CEO-only change never risks regressing the studio bot, and vice versa.
+
+**Deployment**: Two Netlify Functions, one webhook per bot, both stateless and webhook-mode (no long polling):
+```
+netlify/functions/telegram-webhook-studio.ts   # registers studio modules
+netlify/functions/telegram-webhook-ceo.ts      # registers ceo module only
+```
+Both import from the shared `lib/bot/` tree. Scaling is handled by Netlify's function runtime — no persistent process to manage.
+
+**Shared services (`lib/bot/services/`)**:
+- **Groq Whisper STT** (`whisper-large-v3`) — Transcribes voice messages for recitation (Skill Arena) and spoken answers. Uses the existing `GROQ_API_KEY`.
+- **Google Cloud Text-to-Speech** — Hindi + English read-aloud and dictation output. Primary TTS provider in v1.
+- **Google Cloud Vision OCR** — Extracts text from forwarded homework images and PDFs (the "snap your homework" flow in the homework module).
+- **Reused LLM pipeline** — Bot handlers call the same `groqClient` / `claudeClient` used by web; no duplicate clients.
+
+**Auth binding (web ↔ bot)**: A logged-in web user binds their Telegram chat to their account via a short-lived, single-use link token:
+1. **Primary flow — deep link**: Web UI calls `POST /api/bot/link/create`, server mints a token, web renders `https://t.me/GSIKidCeoBot?start=link_<token>`. Kid taps it, Telegram opens the bot with `/start link_<token>`, the webhook validates the token, writes `botSessions/{chatId}` with the linked userId, and marks the token used.
+2. **Fallback — 6-digit code**: Same endpoint also returns a 6-digit display code. If the deep link fails (paste / old Telegram client), the kid opens the bot manually and types `/link 823914`. Same validation, same outcome.
+
+Tokens are stored in the `botLinkCodes` collection (server-write-only, 10-minute TTL, single-use, bot-scoped so a Studio token cannot be redeemed on the CEO bot).
+
+**Firestore collections**: `botSessions`, `botLinkCodes`, `homeworkSessions` — see `docs/data-model.md` for schemas.
+
+**Extensibility**:
+- **WhatsApp (Phase 2)** — Plugs in via the `MessengerAdapter` interface. A new `WhatsAppAdapter` implementation wraps the Meta Business Cloud API; feature modules (homework, challenge, ceo, etc.) require **zero changes** because they only consume the normalized `BotIncomingMessage` / `BotOutgoingMessage` types.
+- **Discord (Phase 3)** — Same story, different adapter (`discord.js`).
+- **Adding a new bot instance** — One new file: `netlify/functions/<name>-webhook.ts` that imports the shared router, registers the desired module subset, and points a new bot token at its URL. No infrastructure rewrite.
+
+**Reference**: See `docs/MESSENGER_BOT_ARCHITECTURE.md` for the full spec — adapter interface, router, context, per-module contracts, session model, safety, and the Phase 1/2/3 rollout.
 
 ## Data Flow
 
@@ -170,6 +272,65 @@ app/
 8. Auth token included in API calls for rate limiting
 ```
 
+### Kid CEO Flow (Phase 1 — Anonymous)
+```
+1. Kid opens /ceo → landing page → taps "Start Your Business"
+2. Kid completes registration wizard (business type, name, pace 30/60/90d)
+3. Frontend calls POST /api/ceo/register → Netlify Function
+4. Register handler:
+   a. Applies safety filter to business name (profanity / PII)
+   b. Creates ceoBusiness/{id} doc (Admin SDK, server-write-only)
+   c. Seeds Phase 1 milestones via lib/ceo/phases.ts
+   d. Calls lib/ai/groqClient.ts (fallback: claudeClient) to
+      generate the first event (lib/ceo/eventEngine.ts builds the prompt)
+   e. Runs LLM output through safety pipeline, writes ceoEvents/{id}
+   f. Returns { businessId, firstEvent } → Frontend
+5. Frontend renders /ceo/play event feed, kid taps a choice
+6. Frontend calls POST /api/ceo/decide with { eventId, choiceId, response? }
+7. Decide handler:
+   a. lib/ceo/scoringEngine.ts scores decision against 6 dimensions
+   b. Updates ceoBusiness state (cash, reputation, metrics)
+   c. Checks badge unlocks via lib/badges.ts + awards AI Points
+   d. If phase complete, advances via lib/ceo/phases.ts
+   e. Calls LLM to generate the next event → safety filter → ceoEvents
+   f. Returns { feedback, newEvent, updatedBusiness, newBadges } → Frontend
+8. Loop steps 5-7 through all 5 phases (event → decide → next event)
+9. On 90-day finish → lib/ceo/profileEngine.ts builds CEO Profile Card
+10. Profile published through existing /view/[id] SSR viewer for sharing
+```
+
+### Bot Link Binding Flow
+```
+1. Logged-in web user taps "Connect Telegram" in settings
+2. Frontend calls POST /api/bot/link/create { bot: 'ceo' | 'studio' }
+3. Link handler:
+   a. Verifies user is authenticated
+   b. Mints a single-use token (server-side, cryptographically random)
+   c. Also generates a 6-digit display code derived from the token
+   d. Writes botLinkCodes/{token} with { userId, bot, expiresAt: now+10min, used: false }
+   e. Returns { deepLink: "https://t.me/GSIKidCeoBot?start=link_<token>",
+                code: "823914" } → Frontend
+4. Frontend shows BOTH: the deep-link button + the 6-digit code (fallback)
+
+-- Primary path: deep link --
+5a. Kid taps deep link → Telegram opens @GSIKidCeoBot with /start link_<token>
+6a. Netlify Function telegram-webhook-ceo.ts receives update
+7a. Bot router routes to link handler:
+    - Looks up botLinkCodes/{token}
+    - Validates: exists, not used, not expired, bot matches current webhook
+    - Writes botSessions/{chatId} = { userId, linkedAt, platform: 'telegram', bot }
+    - Marks token used = true (single-use)
+    - Replies in chat: "✅ Connected to your GSI AI Studio account"
+
+-- Fallback path: 6-digit code --
+5b. Kid opens @GSIKidCeoBot manually, types `/link 823914`
+6b. Webhook receives message, router matches /link command
+7b. Same validation + same botSessions write + same reply as primary path
+
+8. All subsequent bot messages from chatId carry the linked userId via
+   botSessions, so CEO state and AI Points stay in sync across web + chat.
+```
+
 ### AI Safety Pipeline
 ```
 Input → [Profanity Filter] → [Age-Appropriate Check] → Claude API
@@ -198,11 +359,18 @@ Generated Image → [NSFW Detection] → Cloud Storage → Frontend
 | Razorpay | Payments (UPI, cards, wallets) | API key + webhook | 2 | — |
 | WhatsApp Share API | Social sharing | URL scheme (client-side) | 1 | — |
 | Google Classroom API | School distribution | OAuth | 3 | — |
+| Telegram Bot API (Grammy) | Messenger bot adapter (2 bots) | Bot tokens (server-side) | 1 (Kid CEO), 1 (Studio bot, later sprints) | — |
+| Groq Whisper (whisper-large-v3) | Voice message transcription (recitation, speaking) | GROQ_API_KEY (already exists) | 2 | — |
+| Google Cloud Text-to-Speech | Read-aloud / dictation (Hindi + English) | GOOGLE_CLOUD_TTS_KEY (server-side) | 2 | — |
+| Google Cloud Vision | OCR for forwarded homework (images/PDFs) | GOOGLE_CLOUD_VISION_KEY (server-side) | 2 | — |
+| Meta WhatsApp Business Cloud API | WhatsApp messenger adapter | Token + verify token (server-side) | 2+ (after Meta approval) | — |
 
 **Provider Chain Logic**:
 - **Text (LLM)**: Groq (if GROQ_API_KEY) → Claude Sonnet (if ANTHROPIC_API_KEY)
 - **Images**: ComfyUI (if COMFYUI_URL) → Replicate SDXL (if token) → Pollinations.ai (free, always works) → SVG placeholder
 - **Music**: Lyria RealTime (if GEMINI_API_KEY) → Replicate MusicGen (if token valid) → Mock (silence)
+- **STT**: Groq Whisper (only provider in v1)
+- **TTS**: Google Cloud TTS (only provider in v1)
 
 ## Deployment
 

@@ -98,6 +98,39 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ─── Kid CEO Business Simulation ────────────────────────
+    // Business state — server-side only via Admin SDK
+    match /ceoBusiness/{businessId} {
+      allow read, write: if false;
+    }
+
+    // Events — server-side only
+    match /ceoEvents/{eventId} {
+      allow read, write: if false;
+    }
+
+    // CEO Profile — public read when isPublic == true (shareable DNA Card)
+    match /ceoProfiles/{profileId} {
+      allow read: if resource.data.isPublic == true;
+      allow write: if false; // Server-side only
+    }
+
+    // ─── Bot Infrastructure ─────────────────────────────────
+    // Per-chat bot session — server-side only
+    match /botSessions/{chatId} {
+      allow read, write: if false;
+    }
+
+    // Auth binding tokens (short-lived) — server-side only
+    match /botLinkCodes/{token} {
+      allow read, write: if false;
+    }
+
+    // Homework interactive sessions — server-side only
+    match /homeworkSessions/{sessionId} {
+      allow read, write: if false;
+    }
+
     // Default: deny all
     match /{document=**} {
       allow read, write: if false;

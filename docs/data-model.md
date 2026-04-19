@@ -41,6 +41,18 @@ firestore/
 │   └── {reportId}
 ├── challenges/             # Phase 2: weekly creation challenges
 │   └── {challengeId}
+├── ceoBusiness/            # Kid CEO: registered businesses
+│   └── {businessId}
+├── ceoEvents/              # Kid CEO: LLM-generated business events
+│   └── {eventId}
+├── ceoProfiles/            # Kid CEO: 6-dimension DNA Card profiles
+│   └── {profileId}
+├── botSessions/            # Telegram chat <-> GSI session binding
+│   └── {chatId}
+├── botLinkCodes/           # Short-lived bot auth-binding tokens
+│   └── {token}
+├── homeworkSessions/       # Phase 2: forwarded homework interactive sessions
+│   └── {id}
 ├── curriculum/             # CBSE AI & CT curriculum mapping
 │   └── {topicId}
 ├── schools/                # Phase 3: school accounts
@@ -542,6 +554,243 @@ GrowthMap parent insight reports. AI-generated periodic reports with aggregated 
 
 ---
 
+### ceoBusiness
+
+Kid CEO — kid's registered business. Each business is a long-running simulation (30/60/90 days depending on pace) that drives event generation and decision capture.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | auto | Business ID (auto-generated) |
+| sessionId | string | yes (P1) | Anonymous session ID (links to `sessions`) |
+| userId | string | no (P2) | Firebase Auth UID (Phase 2+) |
+| kidId | string | no (P2) | Top-level kid profile ID (Phase 2+) |
+| businessName | string | yes | Kid-chosen business name |
+| businessType | string | yes | `lemonade` \| `icecream` \| `tshirt` \| `games` \| `crafts` \| `blog` \| `custom` |
+| customBusinessDescription | string | no | Free-text description (only required when `businessType == 'custom'`) |
+| location | string | yes | City / area (e.g., "Bangalore") |
+| startingCapital | number | yes | Initial cash in rupees |
+| currentCash | number | yes | Current cash on hand (rupees) |
+| reputation | number | yes | Brand reputation 0-100 |
+| morale | number | yes | Team/founder morale 0-100 |
+| employees | number | yes | Employee headcount |
+| phase | string | yes | `pre_launch` \| `launch` \| `early_growth` \| `scale` \| `mature` |
+| phaseMilestones | map | yes | Per-milestone status, e.g. `{BRAND: 'pending'\|'resolved', LOCATION: 'pending'\|'resolved'}` |
+| totalDecisions | number | yes | Total decisions taken across all events (default 0) |
+| status | string | yes | `active` \| `completed` \| `paused` |
+| pace | string | yes | `30` \| `60` \| `90` — simulation length in days |
+| nextEventAt | timestamp | no | When the next event should be delivered (driven by `pace`) |
+| createdAt | timestamp | yes | Business creation timestamp |
+| updatedAt | timestamp | yes | Last update timestamp |
+| completedAt | timestamp | no | Completion timestamp (when `status == 'completed'`) |
+
+**Indexes**:
+- `sessionId` + `createdAt` (desc) — session's businesses
+- `userId` + `status` — user's active/completed businesses (Phase 2+)
+- `nextEventAt` (asc) — scheduled event delivery scanner
+
+---
+
+### ceoEvents
+
+Kid CEO — LLM-generated business events. Each event presents the kid with a situation and 2-3 weighted choices; scoring happens on decision across 6 CEO dimensions.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | auto | Event ID (auto-generated) |
+| businessId | string | yes | Parent business reference |
+| sessionId | string | yes (P1) | Anonymous session ID |
+| title | string | yes | Short event title |
+| description | string | yes | Full scenario description shown to kid |
+| category | string | yes | Event category (e.g., marketing, operations, hiring, crisis) |
+| phase | string | yes | Business phase at time of event (`pre_launch` \| `launch` \| ...) |
+| milestone | string | no | Milestone key this event resolves (e.g., `BRAND`, `LOCATION`) |
+| choices | array\<map\> | yes | 2-3 decision options (see structure below) |
+| status | string | yes | `pending` \| `decided` \| `expired` |
+| decidedChoice | string | no | `A` \| `B` \| `C` — chosen option (null until decided) |
+| decisionTimestamp | timestamp | no | When kid made the decision |
+| responseTimeSeconds | number | no | Seconds between delivery and decision |
+| scores | map | no | 6-dimension score deltas (null until decided) |
+| feedback | string | no | Koko mentor feedback for this decision (null until decided) |
+| deliveredVia | string | no | `web` \| `telegram` — where this event reached the kid |
+| createdAt | timestamp | yes | Event creation / delivery time |
+| expiresAt | timestamp | yes | Event expiry (auto-expires if undecided) |
+
+**Choice structure** (inside `choices` array):
+```json
+{
+  "id": "A",
+  "text": "Slash prices 30% to beat the new competitor",
+  "scoring_hint": "Aggressive pricing — tests capital discipline vs growth instinct",
+  "weights": {
+    "risk_calibration": -5,
+    "capital_discipline": -10,
+    "growth_instinct": 8,
+    "operational_rigor": 0,
+    "people_leadership": 0,
+    "crisis_response": 4
+  }
+}
+```
+
+**Scores structure** (inside `scores` map, populated on decision — 6 CEO dimensions):
+- `risk_calibration` — reading upside/downside correctly
+- `capital_discipline` — spending cash wisely
+- `growth_instinct` — sensing when to push harder
+- `operational_rigor` — running a tight ship
+- `people_leadership` — team/customer relationships
+- `crisis_response` — staying calm under pressure
+
+**Indexes**:
+- `businessId` + `createdAt` (desc) — business's event history
+- `businessId` + `status` — pending events for a business
+- `status` + `expiresAt` — expiry cleanup scanner
+
+---
+
+### ceoProfiles
+
+Kid CEO — 6-dimension CEO profile ("DNA Card"). One profile per business; aggregates scores across all decided events and is shareable via slug.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | auto | Profile ID (auto-generated) |
+| sessionId | string | yes (P1) | Anonymous session ID |
+| userId | string | no (P2) | Firebase Auth UID (Phase 2+) |
+| kidId | string | no (P2) | Top-level kid profile ID (Phase 2+) |
+| businessId | string | yes | Linked business (unique — one profile per business) |
+| dimensions | map | yes | 6 CEO dimensions, each with score/decisions/trend (see below) |
+| totalDecisions | number | yes | Count of decided events contributing to profile |
+| avgResponseTime | number | yes | Average decision response time in seconds |
+| currentPhase | string | yes | Business phase at last aggregation |
+| shareUrl | string | yes | Unique slug for public share URL |
+| isPublic | boolean | yes | Whether profile is publicly viewable via shareUrl |
+| createdAt | timestamp | yes | Profile creation timestamp |
+| updatedAt | timestamp | yes | Last aggregation timestamp |
+
+**Dimensions structure** (inside `dimensions` map):
+```json
+{
+  "risk_calibration":   { "score": 72, "decisions": 14, "trend": "up" },
+  "capital_discipline": { "score": 58, "decisions": 14, "trend": "stable" },
+  "growth_instinct":    { "score": 81, "decisions": 14, "trend": "up" },
+  "operational_rigor":  { "score": 64, "decisions": 14, "trend": "down" },
+  "people_leadership":  { "score": 70, "decisions": 14, "trend": "stable" },
+  "crisis_response":    { "score": 55, "decisions": 14, "trend": "up" }
+}
+```
+`trend` is `up` \| `down` \| `stable` computed from recent vs earlier decisions.
+
+**Indexes**:
+- `sessionId` + `updatedAt` (desc) — session's profiles
+- `businessId` — unique (one profile per business)
+- `shareUrl` — unique lookup by share slug
+
+Unlike other collections, `ceoProfiles` allow public read when `isPublic == true` (matches the `creations` pattern for shareable content).
+
+---
+
+### botSessions
+
+Telegram chat ↔ GSI session binding. One document per Telegram chat, scoped by bot handle. Tracks which GSI session (and, in Phase 2, which user/kid) the chat is linked to, plus the currently active module.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| chatId | string | yes | Telegram chat ID (document ID) |
+| platform | string | yes | `telegram` \| `whatsapp` |
+| botHandle | string | yes | `GSIStudioBot` \| `GSIKidCeoBot` |
+| gsiSessionId | string | yes | Linked GSI session ID |
+| userId | string | no (P2) | Firebase Auth UID (once linked) |
+| kidId | string | no (P2) | Top-level kid profile ID (once linked) |
+| activeModule | string | no | `ceo` \| `homework` \| null |
+| moduleState | map | yes | Per-module conversation state (shape depends on `activeModule`) |
+| linkedAt | timestamp | no | When user/kid identity was linked via `botLinkCodes` |
+| createdAt | timestamp | yes | First chat message timestamp |
+| lastActiveAt | timestamp | yes | Most recent chat activity |
+
+**Indexes**:
+- `botHandle` + `lastActiveAt` (desc) — recent chats per bot
+- `gsiSessionId` — cross-channel sync lookup (find bot chats for a given session)
+
+---
+
+### botLinkCodes
+
+Short-lived auth-binding tokens that let a web session claim ownership of a Telegram chat (or vice versa). Single-use and bot-scoped.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| token | string | yes | 32-byte hex token (document ID) |
+| gsiSessionId | string | yes | GSI session ID to bind |
+| userId | string | no (P2) | Firebase Auth UID (Phase 2+) |
+| kidId | string | no (P2) | Top-level kid profile ID (Phase 2+) |
+| botHandle | string | yes | `GSIStudioBot` \| `GSIKidCeoBot` — which bot this token is scoped to |
+| used | boolean | yes | Whether token has been redeemed (default false) |
+| usedByChatId | string | no | Telegram chat ID that redeemed it (audit trail) |
+| expiresAt | timestamp | yes | `createdAt + 10 minutes` — Firestore TTL field |
+| createdAt | timestamp | yes | Token creation time |
+
+Single-use, bot-scoped. Firestore TTL policy deletes expired tokens after 24 hours (`expiresAt` is the TTL field).
+
+**Indexes**:
+- `expiresAt` — TTL only; no composite index needed (tokens are looked up by document ID)
+
+---
+
+### homeworkSessions (Phase 2+)
+
+Forwarded homework interactive sessions. Kid forwards a homework photo / text to the bot; the system extracts questions and drives an interactive quiz / recitation / explanation / practice flow.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | auto | Homework session ID (auto-generated) |
+| sessionId | string | yes | Linked `botSessions` chat ID |
+| gsiSessionId | string | yes | GSI session ID |
+| kidId | string | no (P2) | Top-level kid profile ID |
+| platform | string | yes | `telegram` \| `whatsapp` |
+| subject | string | yes | Subject detected (e.g., "Math", "Science", "English") |
+| gradeEstimate | number | yes | Estimated grade level (e.g., 5, 9) |
+| originalText | string | yes | OCR'd / forwarded homework text |
+| totalQuestions | number | yes | Number of questions extracted |
+| questions | array\<map\> | yes | Extracted questions (see structure below) |
+| progress | map | yes | Interactive progress state (see structure below) |
+| score | number | no | Overall score (0-100%) once completed |
+| createdAt | timestamp | yes | Forwarding timestamp |
+| updatedAt | timestamp | yes | Last interaction timestamp |
+
+**Question structure** (inside `questions` array):
+```json
+{
+  "id": "q1",
+  "text": "What is 7 x 8?",
+  "type": "multiple_choice | short_answer | recitation | explanation | calculation",
+  "options": ["54", "56", "48", "63"],
+  "correctAnswer": "56",
+  "hint": "Think of it as 7 x 8 = 7 x 4 x 2.",
+  "recitationText": "Twice two are four, twice three are six...",
+  "similarPractice": "What is 6 x 9?"
+}
+```
+`options` and `correctAnswer` apply to `multiple_choice`. `recitationText` applies to `recitation`. `similarPractice` provides a follow-up drill question.
+
+**Progress structure** (inside `progress` map):
+```json
+{
+  "currentIndex": 2,
+  "answers": [
+    { "questionId": "q1", "answer": "56", "correct": true, "attempts": 1 },
+    { "questionId": "q2", "answer": "wrong", "correct": false, "attempts": 2 }
+  ],
+  "mode": "quiz | recite | explain | practice",
+  "startedAt": "2026-04-19T10:15:00Z",
+  "completedAt": "2026-04-19T10:32:00Z"
+}
+```
+
+**Indexes**:
+- `gsiSessionId` + `createdAt` (desc) — session's homework history
+
+---
+
 ### challenges (Phase 2+)
 
 Weekly creation challenges.
@@ -611,6 +860,8 @@ School accounts for B2B.
 Phase 1:
 - creations: read=public (isPublic==true), write=via server only (Netlify Functions)
 - sessions: read/write=via server only
+- Kid CEO (ceoBusiness, ceoEvents, ceoProfiles): server-write only; ceoProfiles public read when isPublic==true
+- Bot (botSessions, botLinkCodes, homeworkSessions): server-write only
 
 Phase 2+:
 - users/{userId}: read/write=owner only (request.auth.uid == userId)
