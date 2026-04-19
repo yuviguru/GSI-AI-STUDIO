@@ -235,12 +235,5 @@
       ]
     }
   ],
-  "fieldOverrides": [
-    {
-      "collectionGroup": "botLinkCodes",
-      "fieldPath": "expiresAt",
-      "ttl": true,
-      "indexes": []
-    }
-  ]
+  "fieldOverrides": []
 }
