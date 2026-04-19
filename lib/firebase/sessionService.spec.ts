@@ -80,7 +80,7 @@ describe('sessionService', () => {
 
       expect(mockRunTransaction).toHaveBeenCalledOnce();
       expect(result.sessionId).toBe('new-session');
-      expect(result.creationsRemaining).toBe(5);
+      expect(result.creationsRemaining).toBe(10);
       expect(result.cooldownSeconds).toBe(0);
       expect(result.expiresAt).toBeTruthy();
     });
@@ -91,7 +91,7 @@ describe('sessionService', () => {
       const result = await getOrCreateSession('test-session');
 
       expect(mockRunTransaction).toHaveBeenCalledOnce();
-      expect(result.creationsRemaining).toBe(3);
+      expect(result.creationsRemaining).toBe(8);
     });
 
     it('creates a fresh session when expired', async () => {
@@ -100,7 +100,7 @@ describe('sessionService', () => {
       const result = await getOrCreateSession('expired-session');
 
       expect(mockRunTransaction).toHaveBeenCalledOnce();
-      expect(result.creationsRemaining).toBe(5);
+      expect(result.creationsRemaining).toBe(10);
     });
   });
 
@@ -112,11 +112,11 @@ describe('sessionService', () => {
 
       expect(mockRunTransaction).toHaveBeenCalledOnce();
       expect(mockTxUpdate).toHaveBeenCalledOnce();
-      expect(result.creationsRemaining).toBe(2); // 5 - 3
+      expect(result.creationsRemaining).toBe(7); // 10 - 3
     });
 
     it('throws RATE_LIMITED when at max creations', async () => {
-      mockTxGet.mockResolvedValue(makeSessionDoc({ creationCount: 5 }));
+      mockTxGet.mockResolvedValue(makeSessionDoc({ creationCount: 10 }));
 
       await expect(trackCreation('test-session')).rejects.toThrow('Daily creation limit reached');
     });
@@ -142,7 +142,7 @@ describe('sessionService', () => {
       const result = await trackCreation('test-session');
 
       expect(mockTxUpdate).toHaveBeenCalledOnce();
-      expect(result.creationsRemaining).toBe(3); // 5 - 2
+      expect(result.creationsRemaining).toBe(8); // 10 - 2
     });
 
     it('throws SESSION_NOT_FOUND for missing session', async () => {
@@ -164,12 +164,12 @@ describe('sessionService', () => {
 
       const result = await checkRateLimit('test-session');
 
-      expect(result.creationsRemaining).toBe(5);
+      expect(result.creationsRemaining).toBe(10);
       expect(result.cooldownSeconds).toBe(0);
     });
 
     it('throws when rate limited', async () => {
-      mockGet.mockResolvedValue(makeSessionDoc({ creationCount: 5 }));
+      mockGet.mockResolvedValue(makeSessionDoc({ creationCount: 10 }));
 
       await expect(checkRateLimit('test-session')).rejects.toThrow('Daily creation limit reached');
     });

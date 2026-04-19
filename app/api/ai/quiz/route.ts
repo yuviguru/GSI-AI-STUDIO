@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { quizInputSchema } from '@/lib/validators';
 import { filterInput, filterOutput } from '@/lib/safety/inputFilter';
-import { checkRateLimit, trackCreation } from '@/lib/firebase/sessionService';
+import { checkRateLimit, trackCreation, enforceIpRateLimit } from '@/lib/firebase/sessionService';
 import { saveCreation } from '@/lib/firebase/creationService';
 import { generateJsonWithClaude } from '@/lib/ai/claudeClient';
 import { generateJsonWithGroq } from '@/lib/ai/groqClient';
@@ -53,7 +53,12 @@ export async function POST(request: NextRequest) {
     // 3. Safety filter
     filterInput(input.topic);
 
-    // 4. Check rate limit
+    // 4. Check rate limit (IP first, then per-session)
+    const ipAddress =
+      request.headers.get('x-nf-client-connection-ip') ??
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+      null;
+    await enforceIpRateLimit(ipAddress);
     await checkRateLimit(sessionId);
 
     // 5. Generate quiz via LLM

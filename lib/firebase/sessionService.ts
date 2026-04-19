@@ -4,7 +4,9 @@ import { AppException } from '@/lib/api-utils';
 import { checkBadgeUnlocks } from '@/lib/badges';
 
 const SESSIONS_COLLECTION = 'sessions';
-const MAX_CREATIONS_PER_DAY = 5;
+const IP_RATE_LIMITS_COLLECTION = 'ipRateLimits';
+const MAX_CREATIONS_PER_DAY = 10;
+const MAX_CREATIONS_PER_IP_PER_DAY = 20;
 const COOLDOWN_SECONDS = 120; // 2 minutes
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -377,4 +379,56 @@ function buildSessionResult(sessionId: string, data: SessionDoc): SessionResult 
     cooldownSeconds,
     expiresAt: data.expiresAt.toDate().toISOString(),
   };
+}
+
+// ─── Per-IP rate limiting (sybil guard for anonymous users) ──────────────────
+
+function dayKeyUtc(date = new Date()): string {
+  return date.toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/**
+ * Enforces a per-IP daily creation cap regardless of how many sessions the
+ * caller minted. Closes the localStorage-reset loophole on MAX_CREATIONS_PER_DAY.
+ *
+ * Call at the top of every AI-generating route. Increments the counter on
+ * successful checks — do not call twice for the same request. Ignores calls
+ * with no IP (local dev) so the dev flow isn't blocked.
+ */
+export async function enforceIpRateLimit(ipAddress: string | null): Promise<void> {
+  if (!ipAddress) return; // local dev or missing header — skip
+
+  const ipHash = await sha256Hex(ipAddress);
+  const docId = `${ipHash}_${dayKeyUtc()}`;
+  const docRef = adminDb.collection(IP_RATE_LIMITS_COLLECTION).doc(docId);
+
+  await adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(docRef);
+    const count = snap.exists ? ((snap.data()?.count as number) ?? 0) : 0;
+    if (count >= MAX_CREATIONS_PER_IP_PER_DAY) {
+      throw new AppException(
+        'RATE_LIMITED',
+        'Too many creations from this network today. Try again tomorrow!',
+        429,
+      );
+    }
+    const tomorrow = new Date();
+    tomorrow.setUTCHours(24, 0, 0, 0);
+    tx.set(
+      docRef,
+      {
+        count: count + 1,
+        updatedAt: Timestamp.now(),
+        expiresAt: Timestamp.fromDate(tomorrow),
+      },
+      { merge: true },
+    );
+  });
 }

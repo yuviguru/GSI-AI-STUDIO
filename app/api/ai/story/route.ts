@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { storyInputSchema } from '@/lib/validators';
 import { filterInput, filterOutput, filterImagePrompt } from '@/lib/safety/inputFilter';
-import { checkRateLimit, trackCreation } from '@/lib/firebase/sessionService';
+import { checkRateLimit, trackCreation, enforceIpRateLimit } from '@/lib/firebase/sessionService';
 import { saveCreation } from '@/lib/firebase/creationService';
 import { generateJsonWithClaude } from '@/lib/ai/claudeClient';
 import { generateJsonWithGroq } from '@/lib/ai/groqClient';
@@ -30,7 +30,7 @@ interface LlmStoryResponse {
 }
 
 const IMAGE_CONCURRENCY = 3;
-const PLACEHOLDER_IMAGE = '/images/placeholder-story.png';
+const PLACEHOLDER_IMAGE = '/images/placeholder-story.svg';
 
 // Auto-detect which providers to use based on available API keys
 function shouldUseGroq(): boolean {
@@ -57,7 +57,12 @@ export async function POST(request: NextRequest) {
     // 3. Safety filter
     filterInput(input.premise);
 
-    // 4. Check rate limit
+    // 4. Check rate limit (IP first, then per-session)
+    const ipAddress =
+      request.headers.get('x-nf-client-connection-ip') ??
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+      null;
+    await enforceIpRateLimit(ipAddress);
     await checkRateLimit(sessionId);
 
     // 5. Generate story text via LLM
