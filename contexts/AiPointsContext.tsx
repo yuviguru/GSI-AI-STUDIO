@@ -91,6 +91,9 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
   const [celebration, setCelebration] = useState<MilestoneCelebration | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const pendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tracks whether kid hydration has occurred — prevents the mount effect's
+  // stale session fetch from overwriting the correct kid data.
+  const kidHydratedRef = useRef(false);
 
   // Check for new milestones after any state update from server
   const checkMilestones = useCallback((points: number, cbt: Record<string, number>) => {
@@ -141,6 +144,9 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
     fetchWithSession('/api/sessions/points')
       .then((res) => res.json())
       .then((json: ApiResponse<PointsResponse>) => {
+        // If kid hydration already set the correct state, don't overwrite
+        // it with potentially stale session data (race condition guard).
+        if (kidHydratedRef.current) return;
         if (json.success && json.data) {
           applySnapshot({ ...json.data, newBadges: [] }, true);
         }
@@ -156,7 +162,11 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
   // and concepts reflect the kid — not the (possibly freshly-minted)
   // anonymous session.
   useEffect(() => {
-    if (!activeKid) return;
+    if (!activeKid) {
+      kidHydratedRef.current = false;
+      return;
+    }
+    kidHydratedRef.current = true;
     setTotalPoints(activeKid.aiPoints ?? 0);
     setBadges(activeKid.badges ?? []);
     setCreationsByType(activeKid.creationsByType ?? {});

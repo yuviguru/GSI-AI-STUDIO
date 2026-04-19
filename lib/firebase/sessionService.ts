@@ -318,16 +318,19 @@ export async function updateSessionPoints(
 
     tx.update(sessionRef, pointsUpdate);
 
-    if (kidRef && kidData) {
+    if (kidRef) {
       const totalCreations = Object.values(updated.creationsByType).reduce(
         (sum, n) => sum + n,
         0,
       );
-      tx.update(kidRef, {
-        ...pointsUpdate,
-        totalCreations,
-        updatedAt: Timestamp.now(),
-      });
+      // Use set-with-merge so the write succeeds even when the kid doc
+      // doesn't exist yet (e.g. deleted/recreated profile).  Previously
+      // this was guarded by `kidData` which silently skipped the write.
+      tx.set(
+        kidRef,
+        { ...pointsUpdate, totalCreations, updatedAt: Timestamp.now() },
+        { merge: true },
+      );
     }
 
     return { data: updated, newBadges };

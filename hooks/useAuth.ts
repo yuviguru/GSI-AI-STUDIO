@@ -138,7 +138,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // next session starts from a clean slate (points, badges, active kid,
       // x-ray flags, streaks, etc.). A full reload then reinitializes every
       // context provider from scratch.
+      //
+      // Navigate FIRST so that in-flight React effects don't fire with a
+      // missing session ID and accidentally create orphan Firestore docs.
+      // The browser will tear down the current page once navigation begins;
+      // we clear storage in a beforeunload-safe sync block right after.
       if (typeof window !== 'undefined') {
+        // Redirect immediately — stops React effects from running with
+        // empty localStorage while the page is still alive.
+        window.location.href = '/';
+
+        // These run synchronously before the browser actually navigates,
+        // ensuring the next page load starts clean.
         const lsKeys: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
@@ -152,8 +163,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
           if (key && key.startsWith('gsi-')) ssKeys.push(key);
         }
         ssKeys.forEach((k) => sessionStorage.removeItem(k));
-
-        window.location.href = '/';
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign out failed';
