@@ -16,6 +16,7 @@
 import type { Handler } from '@netlify/functions';
 import { BotRouter } from '../../lib/bot/router';
 import { TelegramAdapter } from '../../lib/bot/adapters/telegram';
+import { studioLinksModule } from '../../lib/bot/modules/studioLinks';
 
 // Instantiate at module load. Netlify warm containers reuse this.
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN_STUDIO ?? '';
@@ -29,7 +30,8 @@ const telegram = TOKEN
 const router = new BotRouter();
 if (telegram) {
   router.registerAdapter(telegram);
-  // TODO: Register homework, challenge, skills, notifications modules when they ship.
+  router.registerModule(studioLinksModule);
+  // Future: register homework, challenge, skills, notifications modules here.
 }
 
 const handler: Handler = async (event) => {
