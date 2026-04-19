@@ -1,0 +1,121 @@
+[
+  {
+    "type": "lemonade",
+    "name": "Lemonade Stand",
+    "emoji": "🍋",
+    "startingCapital": 300,
+    "tagline": "Classic summer stall — bottles, ice, a folding table.",
+    "locationHints": [
+      "near your school gate after the last bell",
+      "the park corner on Sunday mornings",
+      "the street outside your building during the society mela"
+    ],
+    "firstEventHints": [
+      "The corner-shop aunty raises lemon prices two days before the school fair.",
+      "Your cousin Arjun asks for 10 chilled bottles for his cricket-match crowd.",
+      "A sudden afternoon shower empties the park — you still have 15 bottles iced."
+    ]
+  },
+  {
+    "type": "icecream",
+    "name": "Ice Cream Parlour",
+    "emoji": "🍦",
+    "startingCapital": 800,
+    "tagline": "Cones, kulfi sticks, and a freezer borrowed from home.",
+    "locationHints": [
+      "outside the school gate at 3 pm dismissal",
+      "the gully cricket ground on weekend evenings",
+      "your building's community hall during birthday bookings"
+    ],
+    "firstEventHints": [
+      "A power cut at 2 pm threatens to melt half your stock before the evening rush.",
+      "Priya's mom wants 40 kulfi sticks for her daughter's birthday on Saturday.",
+      "The ice-cream cart uncle two lanes away drops his price by ₹5 per scoop."
+    ]
+  },
+  {
+    "type": "tshirt",
+    "name": "T-Shirt Shop",
+    "emoji": "👕",
+    "startingCapital": 1500,
+    "tagline": "Plain tees, fabric paint, and your own cool designs.",
+    "locationHints": [
+      "the school's annual-day stall where parents browse",
+      "the neighbourhood Diwali mela near the temple",
+      "your society's WhatsApp group for pre-orders"
+    ],
+    "firstEventHints": [
+      "Class 8B wants 25 matching tees for their farewell — but only if you can deliver in 5 days.",
+      "Your design supplier says blank tees are out of stock until next week.",
+      "Meera shows off the shirt she bought from you — three classmates message asking for the same one."
+    ]
+  },
+  {
+    "type": "games",
+    "name": "Game Studio",
+    "emoji": "🎮",
+    "startingCapital": 500,
+    "tagline": "Tiny browser games you build with friends and share.",
+    "locationHints": [
+      "your school's computer-club bulletin board",
+      "the society kids' WhatsApp group during holidays",
+      "the cousins' group chat after Eid get-togethers"
+    ],
+    "firstEventHints": [
+      "Rahul wants to join as co-designer, but he wants his name first in the credits.",
+      "A parent asks if you can make a simple maths game for her Class 5 son — she'll pay ₹200.",
+      "Your main game crashes on one friend's old phone — fixing it means delaying launch by a week."
+    ]
+  },
+  {
+    "type": "crafts",
+    "name": "Craft Shop",
+    "emoji": "🎨",
+    "startingCapital": 400,
+    "tagline": "Handmade rakhis, diyas, bookmarks, and friendship bands.",
+    "locationHints": [
+      "your society's Diwali stall with other kids",
+      "the school fundraiser near the auditorium",
+      "the Raksha Bandhan pop-up table outside the temple"
+    ],
+    "firstEventHints": [
+      "Neha's mom places a bulk order for 30 rakhis but wants a 20% discount.",
+      "You run out of silver beads three days before Diwali and the craft shop is 40 minutes away.",
+      "Your best-selling diya design is being copied by a stall two rows down."
+    ]
+  },
+  {
+    "type": "blog",
+    "name": "School Blog",
+    "emoji": "📝",
+    "startingCapital": 200,
+    "tagline": "A blog about school life, homework hacks, and book reviews.",
+    "locationHints": [
+      "shared in your class WhatsApp group each Friday",
+      "pinned on your school's student-council notice board",
+      "linked in your cousins' holiday group chat"
+    ],
+    "firstEventHints": [
+      "Your Class 7 exam-tips post suddenly gets 200 views in a day — strangers are asking for more.",
+      "Ananya offers to write one post a week, but she wants her name on the blog banner.",
+      "A local tuition centre messages asking to sponsor a post for ₹300 — it would be your first paid one."
+    ]
+  },
+  {
+    "type": "custom",
+    "name": "My Business",
+    "emoji": "✨",
+    "startingCapital": 500,
+    "tagline": "Invent your own — something only you would think of.",
+    "locationHints": [
+      "wherever your kind of customer actually hangs out",
+      "the place in your neighbourhood where people already buy things",
+      "a spot you know well — school, society, or the park nearby"
+    ],
+    "firstEventHints": [
+      "Describe your idea to Koko — what do you sell, and who's your very first customer?",
+      "Think of one thing you'd need to buy on day one — and one thing you'd try to borrow.",
+      "Picture Sanjay from your class seeing your stall for the first time — what pulls him in?"
+    ]
+  }
+]

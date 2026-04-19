@@ -1,0 +1,392 @@
+[
+  {
+    "event_type": "scenario",
+    "category": "capital",
+    "title": "Aunty's Bulk Lemon Discount",
+    "content": "The corner-shop aunty offers 20 extra lemons at half price if you pay today. The school fair is in 3 days. Your savings are down to ₹80 after today's supplies.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "You pass — keep your ₹80 safe for ice and cups.",
+        "scoring_hint": "Conservative cash management, prioritises liquidity over margin.",
+        "weights": { "capital_discipline": 2, "risk_calibration": -2, "growth_instinct": -1 }
+      },
+      {
+        "id": "B",
+        "text": "You take the full order — bet on the fair rush.",
+        "scoring_hint": "Aggressive capital deployment, comfort with thin buffer.",
+        "weights": { "risk_calibration": 3, "capital_discipline": -2, "growth_instinct": 2 }
+      },
+      {
+        "id": "C",
+        "text": "You ask aunty for 10 lemons at the same discount instead.",
+        "scoring_hint": "Negotiation instinct, middle path between safety and bet.",
+        "weights": { "operational_rigor": 2, "risk_calibration": 1, "growth_instinct": -1 }
+      }
+    ]
+  },
+  {
+    "event_type": "scenario",
+    "category": "capital",
+    "title": "Diwali Gift Money Decision",
+    "content": "Your grandparents give you ₹1000 as Diwali gift money. Your business has ₹250 saved. You could double your stock, keep the gift safe, or spend half on a better display board.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "You stash the full ₹1000 in your savings tin for later.",
+        "scoring_hint": "Strong capital preservation, low urgency to deploy.",
+        "weights": { "capital_discipline": 3, "growth_instinct": -2, "risk_calibration": -1 }
+      },
+      {
+        "id": "B",
+        "text": "You put all ₹1000 into more stock for the holiday week.",
+        "scoring_hint": "Full reinvestment, growth-first mindset.",
+        "weights": { "growth_instinct": 3, "capital_discipline": -2, "risk_calibration": 2 }
+      },
+      {
+        "id": "C",
+        "text": "You spend ₹400 on a painted display board, keep ₹600.",
+        "scoring_hint": "Balanced — partial reinvestment in assets with buffer intact.",
+        "weights": { "operational_rigor": 2, "growth_instinct": 1, "risk_calibration": -1 }
+      }
+    ]
+  },
+  {
+    "event_type": "scenario",
+    "category": "capital",
+    "title": "Friend Wants to Split Profits",
+    "content": "Your first week ended with ₹400 profit. Your helper friend Priya says she deserves half because she stood at the stall for two afternoons. You did the buying, cooking, and pricing alone.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "You give Priya a flat ₹50 thank-you and keep ₹350.",
+        "scoring_hint": "Values owner effort, cash-thrifty but may strain relationship.",
+        "weights": { "capital_discipline": 2, "people_leadership": -2, "risk_calibration": 1 }
+      },
+      {
+        "id": "B",
+        "text": "You split 50/50 as she asked — ₹200 each.",
+        "scoring_hint": "Relationship-first, undervalues owner risk.",
+        "weights": { "people_leadership": 2, "capital_discipline": -2, "growth_instinct": -1 }
+      },
+      {
+        "id": "C",
+        "text": "You offer her ₹120 plus a share of next week's profits if she helps again.",
+        "scoring_hint": "Structured incentive — ties reward to continued effort.",
+        "weights": { "operational_rigor": 2, "people_leadership": 1, "capital_discipline": -1 }
+      }
+    ]
+  },
+  {
+    "event_type": "scenario",
+    "category": "growth",
+    "title": "Bigger Stall at Ganesh Chaturthi",
+    "content": "The society is holding a Ganesh Chaturthi mela. A corner stall near the pandal costs ₹200 for the day. A regular stall inside costs ₹50. The corner gets 3x the foot traffic.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "You book the ₹50 regular stall to stay safe.",
+        "scoring_hint": "Low-risk expansion, keeps cost floor low.",
+        "weights": { "capital_discipline": 2, "growth_instinct": -2, "risk_calibration": -1 }
+      },
+      {
+        "id": "B",
+        "text": "You grab the ₹200 corner stall — bet on the footfall.",
+        "scoring_hint": "Growth-oriented — invests in position for volume.",
+        "weights": { "growth_instinct": 3, "risk_calibration": 2, "capital_discipline": -2 }
+      },
+      {
+        "id": "C",
+        "text": "You team up with your friend Ravi — share the corner stall, split ₹200.",
+        "scoring_hint": "Shares cost and upside via partnership.",
+        "weights": { "people_leadership": 3, "growth_instinct": 1, "capital_discipline": -1 }
+      }
+    ]
+  },
+  {
+    "event_type": "scenario",
+    "category": "growth",
+    "title": "Classmate Wants to Join",
+    "content": "Your friend Rahul sees your crafts selling well and asks to join. He's great at painting but disappears when work gets boring. You currently handle everything yourself.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "You say no — tell him you'll stick with running it solo.",
+        "scoring_hint": "Protects control, misses leverage and creative input.",
+        "weights": { "operational_rigor": 1, "people_leadership": -2, "growth_instinct": -1 }
+      },
+      {
+        "id": "B",
+        "text": "You welcome Rahul in as an equal partner on the spot.",
+        "scoring_hint": "Fast trust extension without guardrails.",
+        "weights": { "people_leadership": 2, "growth_instinct": 2, "operational_rigor": -2 }
+      },
+      {
+        "id": "C",
+        "text": "You give him a 2-week trial on painting only, then decide.",
+        "scoring_hint": "Structured onboarding — tests before committing.",
+        "weights": { "operational_rigor": 3, "people_leadership": 1, "growth_instinct": -1 }
+      }
+    ]
+  },
+  {
+    "event_type": "scenario",
+    "category": "growth",
+    "title": "School Canteen Offers a Shelf",
+    "content": "The school canteen aunty offers you a shelf to sell your friendship bands for a 30% cut of sales. You currently sell 15 bands a week from your bag. The shelf could reach 200 more students.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "You say no to the cut — keep selling from your bag.",
+        "scoring_hint": "Keeps margin, ignores distribution upside.",
+        "weights": { "capital_discipline": 2, "growth_instinct": -2, "risk_calibration": -1 }
+      },
+      {
+        "id": "B",
+        "text": "You accept the 30% cut and stock the shelf next Monday.",
+        "scoring_hint": "Trades margin for reach and steady display.",
+        "weights": { "growth_instinct": 3, "operational_rigor": 1, "capital_discipline": -1 }
+      },
+      {
+        "id": "C",
+        "text": "You counter-offer 20% for the first month as a trial.",
+        "scoring_hint": "Negotiates terms and tests the channel before committing.",
+        "weights": { "operational_rigor": 2, "growth_instinct": 1, "people_leadership": -1 }
+      }
+    ]
+  },
+  {
+    "event_type": "scenario",
+    "category": "operations",
+    "title": "Bookmark Colours Are Bleeding",
+    "content": "Three customers this week complained that your painted bookmarks smudge when they get damp. You've sold 40 so far at ₹20 each. Switching to waterproof paint costs ₹180 more per batch.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "You keep the same paint — only 3 people complained.",
+        "scoring_hint": "Dismisses feedback to protect short-term margin.",
+        "weights": { "capital_discipline": 1, "operational_rigor": -3, "people_leadership": -1 }
+      },
+      {
+        "id": "B",
+        "text": "You switch to waterproof paint and replace all 40 for free.",
+        "scoring_hint": "Over-corrects — full quality recovery at big cost.",
+        "weights": { "operational_rigor": 2, "people_leadership": 2, "capital_discipline": -2 }
+      },
+      {
+        "id": "C",
+        "text": "You switch paint for new batches and offer replacements only if asked.",
+        "scoring_hint": "Fixes root cause going forward, measured recovery.",
+        "weights": { "operational_rigor": 3, "capital_discipline": 1, "people_leadership": -1 }
+      }
+    ]
+  },
+  {
+    "event_type": "scenario",
+    "category": "operations",
+    "title": "Menu Too Long for One Stall",
+    "content": "Your ice-cream stall sells 6 flavours but only 2 — mango and chocolate — make up 80% of sales. Managing all 6 means a bigger freezer rental (₹150/day) and more leftover stock.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "You keep all 6 flavours — variety brings curious customers.",
+        "scoring_hint": "Variety-first, ignores operational cost.",
+        "weights": { "growth_instinct": 1, "operational_rigor": -2, "capital_discipline": -1 }
+      },
+      {
+        "id": "B",
+        "text": "You cut to the 2 top sellers only.",
+        "scoring_hint": "Ruthless focus — maximises unit economics.",
+        "weights": { "operational_rigor": 2, "capital_discipline": 2, "growth_instinct": -2 }
+      },
+      {
+        "id": "C",
+        "text": "You run 3 flavours daily — 2 top sellers and a rotating third.",
+        "scoring_hint": "Balanced — keeps novelty while trimming operational load.",
+        "weights": { "operational_rigor": 3, "growth_instinct": 1, "risk_calibration": -1 }
+      }
+    ]
+  },
+  {
+    "event_type": "scenario",
+    "category": "people",
+    "title": "Your Best Helper Gets an Offer",
+    "content": "Your friend Meera, who helps pack crafts every weekend, says another kid offered her ₹100 per weekend to help at his stall — you currently pay her ₹60. She's your most reliable helper.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "You stick at ₹60 — tell her you hope she stays.",
+        "scoring_hint": "Hopes for loyalty without matching market.",
+        "weights": { "capital_discipline": 2, "people_leadership": -3, "crisis_response": -1 }
+      },
+      {
+        "id": "B",
+        "text": "You match the ₹100 right away to keep her.",
+        "scoring_hint": "Retention-first, responds to market without negotiation.",
+        "weights": { "people_leadership": 2, "crisis_response": 1, "capital_discipline": -2 }
+      },
+      {
+        "id": "C",
+        "text": "You offer ₹90 plus a share of new-design profits she suggests.",
+        "scoring_hint": "Retains talent while tying extra pay to value she creates.",
+        "weights": { "people_leadership": 3, "operational_rigor": 1, "capital_discipline": -1 }
+      }
+    ]
+  },
+  {
+    "event_type": "scenario",
+    "category": "people",
+    "title": "Cousin Wants to Be Manager",
+    "content": "Your older cousin Sanjay, who's home for summer holidays, offers to 'manage' your lemonade stand. He wants to make all decisions for the month. He did run the school's sports-day snack counter last year.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "You hand over full control — he has more experience.",
+        "scoring_hint": "Over-delegates; gives up founder authority early.",
+        "weights": { "people_leadership": -1, "operational_rigor": -2, "risk_calibration": 1 }
+      },
+      {
+        "id": "B",
+        "text": "You refuse — it's your stall, you'll run it alone.",
+        "scoring_hint": "Protects control, misses chance to learn from experience.",
+        "weights": { "operational_rigor": 1, "people_leadership": -2, "growth_instinct": -1 }
+      },
+      {
+        "id": "C",
+        "text": "You make him your advisor — he suggests, you decide.",
+        "scoring_hint": "Retains decision authority while absorbing mentorship.",
+        "weights": { "people_leadership": 2, "operational_rigor": 2, "risk_calibration": -1 }
+      }
+    ]
+  },
+  {
+    "event_type": "scenario",
+    "category": "people",
+    "title": "Team Disagreement on New Flavour",
+    "content": "Your partner Priya insists you launch paan-flavoured ice cream — she thinks it'll go viral at the school fair. You think mango-chilli is safer. Neither of you will budge, and the fair is 4 days away.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "You overrule her and launch mango-chilli only.",
+        "scoring_hint": "Decisive but damages partner buy-in.",
+        "weights": { "operational_rigor": 1, "people_leadership": -2, "risk_calibration": -1 }
+      },
+      {
+        "id": "B",
+        "text": "You give in and launch paan to keep the peace.",
+        "scoring_hint": "Over-accommodates, ignores own conviction.",
+        "weights": { "people_leadership": 1, "risk_calibration": 2, "operational_rigor": -2 }
+      },
+      {
+        "id": "C",
+        "text": "You launch both in small batches and let sales decide.",
+        "scoring_hint": "Turns disagreement into a test — low-cost experiment.",
+        "weights": { "operational_rigor": 3, "people_leadership": 2, "capital_discipline": -1 }
+      }
+    ]
+  },
+  {
+    "event_type": "scenario",
+    "category": "risk",
+    "title": "Viral Trend Hits Your Niche",
+    "content": "A new friendship-band style called 'clay-bead knots' is suddenly everywhere on your cousins' group chat. You've never made them. Stocking the clay beads would cost ₹250 and a full weekend of practice.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "You ignore the trend — your regular bands are selling fine.",
+        "scoring_hint": "Stays in lane, misses possible window.",
+        "weights": { "capital_discipline": 1, "risk_calibration": -2, "growth_instinct": -2 }
+      },
+      {
+        "id": "B",
+        "text": "You go all-in — ₹250 on beads and a weekend of practice.",
+        "scoring_hint": "Full trend-chase, commits time and cash to an unproven pivot.",
+        "weights": { "risk_calibration": 3, "growth_instinct": 2, "capital_discipline": -2 }
+      },
+      {
+        "id": "C",
+        "text": "You buy ₹80 worth of beads, make 5 samples, test with classmates first.",
+        "scoring_hint": "Low-cost trend test — validates before scaling.",
+        "weights": { "risk_calibration": 2, "operational_rigor": 2, "growth_instinct": -1 }
+      }
+    ]
+  },
+  {
+    "event_type": "scenario",
+    "category": "risk",
+    "title": "Sibling's Bigger Stall Next Door",
+    "content": "Your older sibling is setting up a snack stall right next to yours at the society fair, selling samosas and chips. Your lemonade pairs perfectly with their food — but they're also louder and may pull attention away.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "You move your stall to the other end of the fair, away from them.",
+        "scoring_hint": "Avoids conflict but also gives up the pairing opportunity.",
+        "weights": { "capital_discipline": 1, "risk_calibration": -2, "growth_instinct": -1 }
+      },
+      {
+        "id": "B",
+        "text": "You stay and pitch a 'samosa + lemonade combo' deal together.",
+        "scoring_hint": "Turns adjacency into a partnership — collaborative upside.",
+        "weights": { "people_leadership": 3, "growth_instinct": 2, "capital_discipline": -1 }
+      },
+      {
+        "id": "C",
+        "text": "You stay but compete hard — lower your price by ₹5 to pull crowd.",
+        "scoring_hint": "Competitive stance, sacrifices margin against a family stall.",
+        "weights": { "risk_calibration": 2, "capital_discipline": -2, "people_leadership": -2 }
+      }
+    ]
+  },
+  {
+    "event_type": "scenario",
+    "category": "crisis",
+    "title": "Birthday Order Got Mixed Up",
+    "content": "You delivered 20 chocolate cupcakes to Ananya's birthday — but her mom ordered vanilla. The party starts in 90 minutes. You have 6 vanilla cupcakes left at home and no time to bake more.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "You apologise and offer a full refund — no replacement.",
+        "scoring_hint": "Clean exit, but leaves the customer without a solution.",
+        "weights": { "capital_discipline": -1, "crisis_response": 1, "people_leadership": -1 }
+      },
+      {
+        "id": "B",
+        "text": "You rush the 6 vanilla over, keep the chocolate there as a bonus, and refund 30%.",
+        "scoring_hint": "Salvages the event with creative recovery and partial refund.",
+        "weights": { "crisis_response": 3, "people_leadership": 2, "capital_discipline": -2 }
+      },
+      {
+        "id": "C",
+        "text": "You argue that chocolate is better and refuse to budge.",
+        "scoring_hint": "Denies the mistake, damages trust and future orders.",
+        "weights": { "capital_discipline": 1, "crisis_response": -3, "people_leadership": -2 }
+      }
+    ]
+  },
+  {
+    "event_type": "scenario",
+    "category": "crisis",
+    "title": "Holi Rainout Cancels the Fair",
+    "content": "Heavy unseasonal rain on Holi weekend cancels the society mela. You've already paid ₹150 for the stall spot and made 80 packets of coloured rangoli powder — they don't spoil but won't sell till next year.",
+    "choices": [
+      {
+        "id": "A",
+        "text": "You pack everything up and wait a whole year to sell next Holi.",
+        "scoring_hint": "Accepts loss passively, no alternate distribution.",
+        "weights": { "capital_discipline": 1, "crisis_response": -2, "growth_instinct": -2 }
+      },
+      {
+        "id": "B",
+        "text": "You post in the society WhatsApp group with a 20% discount for door delivery.",
+        "scoring_hint": "Pivots channel quickly to recover some of the cost.",
+        "weights": { "crisis_response": 3, "growth_instinct": 2, "capital_discipline": -1 }
+      },
+      {
+        "id": "C",
+        "text": "You donate the rangoli to the school art club and claim it as learning.",
+        "scoring_hint": "Writes off stock for goodwill — low cash recovery, reputation gain.",
+        "weights": { "people_leadership": 2, "crisis_response": -1, "capital_discipline": -2 }
+      }
+    ]
+  }
+]
