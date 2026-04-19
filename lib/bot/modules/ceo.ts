@@ -1,0 +1,634 @@
+/** Kid CEO Telegram module — powers @GSIKidCeoBot.
+ *
+ *  Ports the web-app Kid CEO flow into a chat UX:
+ *    - /start (optionally with a link token) connects a web session to the chat
+ *    - /link <code> is the 6-digit fallback for kids who typed the bot name
+ *    - /ceo opens a new business (or resumes the pending event on an existing one)
+ *    - /mybusiness shows live status
+ *    - /ceoprofile deep-links to the web-app CEO Profile Card
+ *    - ceo_biz:/ceo_pace: callbacks create a business
+ *    - ceo_choice: callbacks run the full decision loop (score → state →
+ *      profile dimensions → milestone/phase → next event → AI Points)
+ *
+ *  Everything goes through the existing server-side services — this module
+ *  is a thin presentation layer, no direct Firestore writes. */
+
+import type { Timestamp } from 'firebase-admin/firestore';
+import type {
+  BotButton,
+  BotContext,
+  BotFeatureModule,
+  BotIncomingMessage,
+  BotOutgoingMessage,
+} from '@/lib/bot/types';
+import type {
+  CeoBusiness,
+  CeoBusinessType,
+  CeoChoiceId,
+  CeoEvent,
+  CeoPace,
+} from '@/types';
+import { AppException } from '@/lib/api-utils';
+import {
+  redeemBotLinkCode,
+  redeemBotLinkToken,
+} from '@/lib/firebase/botLinkService';
+import { linkBotSession } from '@/lib/bot/services/sessionStore';
+import {
+  advanceBusinessPhase,
+  createCeoBusiness,
+  getActiveBusinessForSession,
+  getCeoBusiness,
+  getCeoEvent,
+  getCeoProfileByBusiness,
+  getOrCreateCeoProfile,
+  getPendingEventForBusiness,
+  recordEventDecision,
+  saveCeoEvent,
+} from '@/lib/firebase/ceoService';
+import { applyStateChanges } from '@/lib/ceo/businessState';
+import { applyScoreAdjustments } from '@/lib/ceo/profileEngine';
+import { generateEvent } from '@/lib/ceo/eventEngine';
+import { scoreDecision } from '@/lib/ceo/scoringEngine';
+import { isPhaseComplete, pickNextMilestone } from '@/lib/ceo/phases';
+import {
+  BUSINESS_TYPE_DEFAULT_NAMES,
+  CEO_AI_POINTS,
+  DIMENSION_LABELS,
+  PHASE_LABELS,
+} from '@/lib/ceo/constants';
+import businessesCatalog from '@/lib/ceo/templates/businesses.json';
+import { updateSessionPoints } from '@/lib/firebase/sessionService';
+
+type Send = (msg: BotOutgoingMessage) => Promise<string>;
+
+interface BusinessCatalogEntry {
+  type: CeoBusinessType;
+  name: string;
+  emoji: string;
+  tagline: string;
+}
+
+const CATALOG = businessesCatalog as unknown as BusinessCatalogEntry[];
+const BOT_HANDLE = 'GSIKidCeoBot' as const;
+const GENERIC_ERROR = 'Something went wrong — try again in a moment!';
+
+const BUSINESS_TYPES: readonly CeoBusinessType[] = [
+  'lemonade',
+  'icecream',
+  'tshirt',
+  'games',
+  'crafts',
+  'blog',
+  'custom',
+];
+
+const PACES: readonly CeoPace[] = ['30', '60', '90'];
+
+// ─── Module export ───────────────────────────────────────────
+
+export const ceoModule: BotFeatureModule = {
+  id: 'ceo',
+  commands: ['/start', '/ceo', '/mybusiness', '/ceoprofile', '/link'],
+  callbackPrefixes: ['ceo_biz:', 'ceo_choice:', 'ceo_pace:', 'ceo_loc:'],
+
+  async handle(message, send, context) {
+    try {
+      if (message.type === 'command') {
+        switch (message.command) {
+          case '/start':
+            return await handleStart(message, send);
+          case '/link':
+            return await handleLink(message, send);
+          case '/ceo':
+            return await handleCeo(message, send, context);
+          case '/mybusiness':
+            return await handleMyBusiness(message, send, context);
+          case '/ceoprofile':
+            return await handleCeoProfile(message, send, context);
+          default:
+            return;
+        }
+      }
+
+      if (message.type === 'callback' && message.callbackData) {
+        const data = message.callbackData;
+        if (data.startsWith('ceo_biz:')) {
+          return await handleBizPick(data, message, send);
+        }
+        if (data.startsWith('ceo_pace:')) {
+          return await handlePacePick(data, message, send, context);
+        }
+        if (data.startsWith('ceo_choice:')) {
+          return await handleChoice(data, message, send, context);
+        }
+      }
+    } catch (err) {
+      console.error('[ceo module] Unexpected error:', err);
+      await send({
+        chatId: message.chatId,
+        text: err instanceof AppException ? err.message : GENERIC_ERROR,
+      });
+    }
+  },
+};
+
+// ─── Command handlers ────────────────────────────────────────
+
+/** /start with optional `link_<token>` deep-link payload. */
+async function handleStart(message: BotIncomingMessage, send: Send): Promise<void> {
+  const payload = (message.text ?? '').trim();
+  const firstToken = payload.split(/\s+/)[1] ?? '';
+
+  if (firstToken.startsWith('link_')) {
+    const token = firstToken.slice('link_'.length);
+    try {
+      const redeemed = await redeemBotLinkToken({
+        token,
+        chatId: message.chatId,
+        botHandle: BOT_HANDLE,
+      });
+      await linkBotSession({
+        chatId: message.chatId,
+        gsiSessionId: redeemed.gsiSessionId,
+        userId: redeemed.userId,
+        kidId: redeemed.kidId,
+      });
+      await send({
+        chatId: message.chatId,
+        text: 'Connected! Type /ceo to start your business.',
+        parseMode: 'markdown',
+      });
+    } catch (err) {
+      await send({
+        chatId: message.chatId,
+        text: err instanceof AppException ? err.message : GENERIC_ERROR,
+      });
+    }
+    return;
+  }
+
+  await send({
+    chatId: message.chatId,
+    text:
+      'Welcome to *Kid CEO*!\n\n' +
+      'Type /ceo to start your first business.\n' +
+      'Or if the web app gave you a code, type `/link 123456`.',
+    parseMode: 'markdown',
+  });
+}
+
+/** /link <6-digit-code> fallback for kids who did not tap the deep-link. */
+async function handleLink(message: BotIncomingMessage, send: Send): Promise<void> {
+  const text = (message.text ?? '').trim();
+  const code = text.slice('/link'.length).trim();
+
+  if (!/^\d{6}$/.test(code)) {
+    await send({
+      chatId: message.chatId,
+      text: 'Please send a 6-digit code from the web app. For example: `/link 123456`.',
+      parseMode: 'markdown',
+    });
+    return;
+  }
+
+  try {
+    const redeemed = await redeemBotLinkCode({
+      code,
+      chatId: message.chatId,
+      botHandle: BOT_HANDLE,
+    });
+    await linkBotSession({
+      chatId: message.chatId,
+      gsiSessionId: redeemed.gsiSessionId,
+      userId: redeemed.userId,
+      kidId: redeemed.kidId,
+    });
+    await send({
+      chatId: message.chatId,
+      text: 'Connected! Type /ceo to start your business.',
+    });
+  } catch (err) {
+    await send({
+      chatId: message.chatId,
+      text: err instanceof AppException ? err.message : GENERIC_ERROR,
+    });
+  }
+}
+
+/** /ceo — resume or start a business. */
+async function handleCeo(
+  message: BotIncomingMessage,
+  send: Send,
+  context: BotContext,
+): Promise<void> {
+  const sessionId = await context.getGsiSessionId();
+  const active = await getActiveBusinessForSession(sessionId);
+
+  if (active) {
+    await send({
+      chatId: message.chatId,
+      text:
+        `You're still running *${escapeMd(active.businessName)}*!\n\n` +
+        'Type /mybusiness to see your status, or wait for the next event here.',
+      parseMode: 'markdown',
+    });
+    const pending = await getPendingEventForBusiness(active.id);
+    if (pending) {
+      await sendEvent(message.chatId, pending, send);
+    }
+    return;
+  }
+
+  // Business picker — 2-column grid with emoji + name.
+  const rows: BotButton[][] = [];
+  for (let i = 0; i < CATALOG.length; i += 2) {
+    const row: BotButton[] = [];
+    const left = CATALOG[i]!;
+    row.push({ text: `${left.emoji} ${left.name}`, callbackData: `ceo_biz:${left.type}` });
+    const right = CATALOG[i + 1];
+    if (right) {
+      row.push({ text: `${right.emoji} ${right.name}`, callbackData: `ceo_biz:${right.type}` });
+    }
+    rows.push(row);
+  }
+
+  await send({
+    chatId: message.chatId,
+    text: "Let's start your business! Pick the kind you want to run:",
+    parseMode: 'markdown',
+    buttons: rows,
+  });
+}
+
+/** Callback — kid picked a business type → offer pace picker. */
+async function handleBizPick(
+  data: string,
+  message: BotIncomingMessage,
+  send: Send,
+): Promise<void> {
+  const rawType = data.slice('ceo_biz:'.length);
+  if (!BUSINESS_TYPES.includes(rawType as CeoBusinessType)) {
+    await send({ chatId: message.chatId, text: 'Pick one of the buttons above.' });
+    return;
+  }
+  const type = rawType as CeoBusinessType;
+  const businessName = BUSINESS_TYPE_DEFAULT_NAMES[type];
+
+  await send({
+    chatId: message.chatId,
+    text: `Pick your pace for *${escapeMd(businessName)}*:`,
+    parseMode: 'markdown',
+    buttons: [
+      [
+        { text: '30 days', callbackData: `ceo_pace:${type}:30` },
+        { text: '60 days', callbackData: `ceo_pace:${type}:60` },
+        { text: '90 days', callbackData: `ceo_pace:${type}:90` },
+      ],
+    ],
+  });
+}
+
+/** Callback — pace picked → create business, seed first event, fire messages. */
+async function handlePacePick(
+  data: string,
+  message: BotIncomingMessage,
+  send: Send,
+  context: BotContext,
+): Promise<void> {
+  const parts = data.split(':');
+  const rawType = parts[1] ?? '';
+  const rawPace = parts[2] ?? '';
+  if (
+    !BUSINESS_TYPES.includes(rawType as CeoBusinessType) ||
+    !PACES.includes(rawPace as CeoPace)
+  ) {
+    await send({ chatId: message.chatId, text: 'Pick one of the buttons above.' });
+    return;
+  }
+  const businessType = rawType as CeoBusinessType;
+  const pace = rawPace as CeoPace;
+
+  const sessionId = await context.getGsiSessionId();
+
+  const business = await createCeoBusiness({
+    sessionId,
+    businessType,
+    location: 'India',
+    pace,
+  });
+
+  // Seed first event so the kid has something to decide right away.
+  const milestone = pickNextMilestone(business.phase, business.phaseMilestones);
+  const generated = await generateEvent({ business, milestone });
+  const firstEvent = await saveCeoEvent({ ...generated, deliveredVia: 'telegram' });
+
+  // Profile is keyed by businessId — create it now so /decide later can find it.
+  await getOrCreateCeoProfile({ sessionId, businessId: business.id });
+
+  await send({
+    chatId: message.chatId,
+    text:
+      `*${escapeMd(business.businessName)}* is live!\n\n` +
+      `Starting cash: Rs. ${business.currentCash}\n` +
+      `Phase: ${PHASE_LABELS[business.phase]}\n` +
+      `Pace: ${pace} days\n\n` +
+      'Your first decision is coming up...',
+    parseMode: 'markdown',
+  });
+
+  await sendEvent(message.chatId, firstEvent, send);
+}
+
+/** /mybusiness — concise status for the current active business. */
+async function handleMyBusiness(
+  message: BotIncomingMessage,
+  send: Send,
+  context: BotContext,
+): Promise<void> {
+  const sessionId = await context.getGsiSessionId();
+  const business = await getActiveBusinessForSession(sessionId);
+
+  if (!business) {
+    await send({
+      chatId: message.chatId,
+      text: 'No business yet — type /ceo to start.',
+    });
+    return;
+  }
+
+  const done = Object.values(business.phaseMilestones).filter((m) => m === 'resolved').length;
+  const total = Object.keys(business.phaseMilestones).length;
+
+  await send({
+    chatId: message.chatId,
+    text:
+      `*${escapeMd(business.businessName)}* (${escapeMd(business.businessType)})\n` +
+      `Cash: Rs. ${business.currentCash}\n` +
+      `Reputation: ${business.reputation}/100\n` +
+      `Morale: ${business.morale}/100\n` +
+      `Phase: ${PHASE_LABELS[business.phase]}\n` +
+      `Milestones: ${done}/${total} done\n\n` +
+      '_Type /ceo or wait for your next event to arrive._',
+    parseMode: 'markdown',
+  });
+}
+
+/** /ceoprofile — deep-link to the web profile card. */
+async function handleCeoProfile(
+  message: BotIncomingMessage,
+  send: Send,
+  context: BotContext,
+): Promise<void> {
+  const sessionId = await context.getGsiSessionId();
+  const business = await getActiveBusinessForSession(sessionId);
+  if (!business) {
+    await send({
+      chatId: message.chatId,
+      text: "You don't have a business yet — type /ceo to start one!",
+    });
+    return;
+  }
+  const base = process.env.NEXT_PUBLIC_URL ?? 'https://gsiaistudio.com';
+  await send({
+    chatId: message.chatId,
+    text: `See your *CEO Profile* here:\n${base}/ceo/play?businessId=${business.id}`,
+    parseMode: 'markdown',
+  });
+}
+
+// ─── Event rendering + decision loop ─────────────────────────
+
+/** Send a pending event as a markdown message + A/B/C choice keyboard. */
+async function sendEvent(chatId: string, event: CeoEvent, send: Send): Promise<void> {
+  const buttons: BotButton[][] = event.choices.map((choice) => [
+    {
+      text: `${choice.id}. ${truncate(choice.text, 80)}`,
+      callbackData: `ceo_choice:${event.id}:${choice.id}`,
+    },
+  ]);
+
+  await send({
+    chatId,
+    text:
+      `*${escapeMd(event.title)}*\n` +
+      `_${escapeMd(event.category)}_\n\n` +
+      event.description,
+    parseMode: 'markdown',
+    buttons,
+  });
+}
+
+/** Main decision loop — scores, persists, awards points, fires next event. */
+async function handleChoice(
+  data: string,
+  message: BotIncomingMessage,
+  send: Send,
+  context: BotContext,
+): Promise<void> {
+  const parts = data.split(':');
+  const eventId = parts[1] ?? '';
+  const rawChoice = parts[2] ?? '';
+
+  if (!eventId || !['A', 'B', 'C'].includes(rawChoice)) {
+    await send({ chatId: message.chatId, text: 'Pick one of the buttons above.' });
+    return;
+  }
+  const choiceId = rawChoice as CeoChoiceId;
+
+  const event = await getCeoEvent(eventId);
+  if (event.status !== 'pending') {
+    await send({
+      chatId: message.chatId,
+      text: 'Already decided ✅',
+      editMessageId: message.messageId,
+    });
+    return;
+  }
+
+  const chosen = event.choices.find((c) => c.id === choiceId);
+  if (!chosen) {
+    await send({ chatId: message.chatId, text: 'That choice is not available.' });
+    return;
+  }
+
+  // Response-time: createdAt is a Firestore admin Timestamp at runtime (has
+  // .toMillis()), though the shared `ceo.types.ts` Timestamp alias is a
+  // serialization-friendly union. Cast down to the real admin type before
+  // converting — all reads from ceoService return live Timestamps.
+  const createdAtMs = (event.createdAt as unknown as Timestamp).toMillis();
+  const responseTimeSeconds = Math.max(1, Math.round((Date.now() - createdAtMs) / 1000));
+
+  const business = await getCeoBusiness(event.businessId);
+  const profile = await getCeoProfileByBusiness(event.businessId);
+
+  const scoring = await scoreDecision({
+    event,
+    choiceId,
+    responseTimeSeconds,
+    business,
+  });
+
+  const nextMath = applyStateChanges(business, scoring.state_changes);
+  const nextDimensions = applyScoreAdjustments(profile.dimensions, scoring.scores);
+
+  const businessStateUpdates: Partial<CeoBusiness> = {
+    currentCash: nextMath.currentCash,
+    reputation: nextMath.reputation,
+    morale: nextMath.morale,
+  };
+
+  const { business: postDecisionBusiness } = await recordEventDecision({
+    eventId,
+    businessId: business.id,
+    choiceId,
+    choiceText: chosen.text,
+    responseTimeSeconds,
+    scores: scoring.scores,
+    feedback: scoring.reasoning,
+    milestoneResolved: event.milestone ?? null,
+    businessStateUpdates,
+    profileDimensionUpdates: nextDimensions,
+  });
+
+  let latestBusiness: CeoBusiness = postDecisionBusiness;
+  let phaseAdvanced = false;
+  if (event.milestone && isPhaseComplete(latestBusiness.phase, latestBusiness.phaseMilestones)) {
+    latestBusiness = await advanceBusinessPhase(business.id);
+    phaseAdvanced = true;
+  }
+
+  let nextEvent: CeoEvent | null = null;
+  if (latestBusiness.status === 'active') {
+    const nextMilestone = pickNextMilestone(latestBusiness.phase, latestBusiness.phaseMilestones);
+    const generated = await generateEvent({ business: latestBusiness, milestone: nextMilestone });
+    nextEvent = await saveCeoEvent({ ...generated, deliveredVia: 'telegram' });
+  }
+
+  // AI Points — same formula as the web /api/ceo/decide route.
+  let aiPointsEarned = CEO_AI_POINTS.MAKE_DECISION;
+  if (event.milestone) aiPointsEarned += CEO_AI_POINTS.COMPLETE_MILESTONE;
+  if (phaseAdvanced) aiPointsEarned += CEO_AI_POINTS.COMPLETE_PHASE;
+  if (latestBusiness.status === 'completed') aiPointsEarned += CEO_AI_POINTS.COMPLETE_SIMULATION;
+
+  const sessionId = await context.getGsiSessionId();
+  try {
+    await updateSessionPoints(sessionId, { action: 'add_points', points: aiPointsEarned });
+  } catch (err) {
+    console.warn('[ceo module] updateSessionPoints failed:', (err as Error).message);
+  }
+
+  // Build + send feedback message
+  await send({
+    chatId: message.chatId,
+    text: buildFeedbackMessage({
+      choiceId,
+      chosenText: chosen.text,
+      feedback: scoring.reasoning,
+      scores: scoring.scores,
+      business,
+      updatedBusiness: latestBusiness,
+      milestoneResolved: event.milestone ?? null,
+      phaseAdvanced,
+      aiPointsEarned,
+    }),
+    parseMode: 'markdown',
+  });
+
+  // Completion link
+  if (latestBusiness.status === 'completed') {
+    const base = process.env.NEXT_PUBLIC_URL ?? 'https://gsiaistudio.com';
+    await send({
+      chatId: message.chatId,
+      text:
+        'You finished the full arc! 🎉\n\n' +
+        `See your full *CEO Profile Card* here:\n${base}/ceo/play?businessId=${latestBusiness.id}`,
+      parseMode: 'markdown',
+    });
+    return;
+  }
+
+  // Next event follows on an 800ms delay so the feedback lands first.
+  if (nextEvent) {
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    await sendEvent(message.chatId, nextEvent, send);
+  }
+}
+
+// ─── Helpers ─────────────────────────────────────────────────
+
+interface FeedbackMessageParams {
+  choiceId: CeoChoiceId;
+  chosenText: string;
+  feedback: string;
+  scores: Record<string, number>;
+  business: CeoBusiness;
+  updatedBusiness: CeoBusiness;
+  milestoneResolved: string | null;
+  phaseAdvanced: boolean;
+  aiPointsEarned: number;
+}
+
+function buildFeedbackMessage(params: FeedbackMessageParams): string {
+  const { choiceId, chosenText, feedback, scores, business, updatedBusiness } = params;
+  const lines: string[] = [];
+
+  lines.push(`You picked *${choiceId}*: ${escapeMd(truncate(chosenText, 100))}`);
+  if (feedback) lines.push('', escapeMd(feedback));
+
+  // Top 3 dimension shifts by absolute value
+  const topShifts = Object.entries(scores)
+    .filter(([, v]) => Math.abs(v) >= 0.1)
+    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+    .slice(0, 3);
+  if (topShifts.length > 0) {
+    lines.push('', '*Dimension shifts:*');
+    for (const [dim, v] of topShifts) {
+      const label = DIMENSION_LABELS[dim as keyof typeof DIMENSION_LABELS]?.name ?? dim;
+      const arrow = v > 0 ? '↑' : '↓';
+      lines.push(`• ${label} ${arrow} ${v > 0 ? '+' : ''}${v}`);
+    }
+  }
+
+  // Business state deltas
+  const cashDelta = updatedBusiness.currentCash - business.currentCash;
+  const repDelta = updatedBusiness.reputation - business.reputation;
+  const moraleDelta = updatedBusiness.morale - business.morale;
+  const stateBits: string[] = [];
+  if (cashDelta !== 0) stateBits.push(`Cash ${fmtDelta(cashDelta)}`);
+  if (repDelta !== 0) stateBits.push(`Rep ${fmtDelta(repDelta)}`);
+  if (moraleDelta !== 0) stateBits.push(`Morale ${fmtDelta(moraleDelta)}`);
+  if (stateBits.length > 0) {
+    lines.push('', `_${stateBits.join(' · ')}_`);
+  }
+
+  if (params.milestoneResolved) {
+    lines.push('', `🎯 Milestone done: *${params.milestoneResolved}*`);
+  }
+  if (params.phaseAdvanced) {
+    lines.push(`🚀 New phase: *${PHASE_LABELS[updatedBusiness.phase]}*`);
+  }
+  if (updatedBusiness.status === 'completed') {
+    lines.push('🏆 *Simulation complete!*');
+  }
+
+  lines.push('', `+${params.aiPointsEarned} AI Points`);
+  return lines.join('\n');
+}
+
+function fmtDelta(n: number): string {
+  return n > 0 ? `+${n}` : `${n}`;
+}
+
+function truncate(text: string, max: number): string {
+  const trimmed = text.trim();
+  if (trimmed.length <= max) return trimmed;
+  return `${trimmed.slice(0, Math.max(0, max - 1))}…`;
+}
+
+/** Escape reserved Telegram Markdown v1 chars — enough for our use (asterisks
+ *  and underscores inside user-typed names). The adapter applies MD v2
+ *  escaping on its own, this is defensive to avoid `*Koko's*` style breakage. */
+function escapeMd(text: string): string {
+  return text.replace(/([*_`\[\]])/g, '\\$1');
+}
