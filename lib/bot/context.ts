@@ -11,7 +11,13 @@ import type { BotContext, BotIncomingMessage, BotSession } from './types';
 import { generateWithGroq } from '@/lib/ai/groqClient';
 import { generateWithClaude } from '@/lib/ai/claudeClient';
 import { getOrCreateBotSession, touchBotSession } from './services/sessionStore';
+import { transcribeVoice } from './services/stt';
+import { filterInput, filterOutput } from '@/lib/safety/inputFilter';
+import { AppException } from '@/lib/api-utils';
 import type { KidProfile } from '@/types';
+
+const UNSAFE_REPLY =
+  "Let's try a different idea! Think of something fun and creative — maybe a new business, a cool character, or a kind decision?";
 
 /** Build a BotContext for the given incoming message. Ensures a
  *  `botSessions/{chatId}` doc exists and refreshes its `lastActiveAt`. */
@@ -43,18 +49,33 @@ export async function buildBotContext(params: {
     },
 
     async generateText(systemPrompt: string, userPrompt: string): Promise<string> {
+      let safeUserPrompt: string;
       try {
-        return await generateWithGroq({ systemPrompt, userMessage: userPrompt });
-      } catch {
-        return generateWithClaude({ systemPrompt, userMessage: userPrompt });
+        safeUserPrompt = filterInput(userPrompt);
+      } catch (err) {
+        if (err instanceof AppException && err.code === 'UNSAFE_CONTENT') {
+          return UNSAFE_REPLY;
+        }
+        throw err;
       }
+
+      let raw: string;
+      try {
+        raw = await generateWithGroq({ systemPrompt, userMessage: safeUserPrompt });
+      } catch {
+        raw = await generateWithClaude({ systemPrompt, userMessage: safeUserPrompt });
+      }
+
+      return filterOutput(raw);
     },
 
     async transcribeVoice(audioBuffer: Buffer): Promise<string> {
-      // Groq Whisper wrapper — kept as a stub until a Groq STT client is added.
-      // Homework module will wire this up in its sprint.
-      void audioBuffer;
-      throw new Error('Voice transcription not yet wired. Install a Whisper STT client in lib/bot/services/stt.ts.');
+      const result = await transcribeVoice(audioBuffer);
+      if (!result) {
+        throw new Error('STT_UNAVAILABLE');
+      }
+      console.log(`[STT] transcribed via ${result.provider}: "${result.text.slice(0, 80)}"`);
+      return result.text;
     },
 
     async downloadVoice(voiceUrl: string): Promise<Buffer> {
