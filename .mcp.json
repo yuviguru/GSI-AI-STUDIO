@@ -1,0 +1,10 @@
+{
+  "_comment": "Project-level MCP servers for Claude Code. Shared across anyone who clones the repo. See https://code.claude.com/docs/en/mcp for the format.",
+  "mcpServers": {
+    "lottiefiles": {
+      "_comment": "Community LottieFiles MCP — search and fetch animations from LottieFiles. If you want the official Lottie Creator MCP (creator.lottiefiles.com), replace the command/args with the config shown on their MCP tutorial page (likely @lottiefiles/creator-mcp or similar).",
+      "command": "npx",
+      "args": ["-y", "mcp-server-lottiefiles"]
+    }
+  }
+}
