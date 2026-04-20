@@ -43,6 +43,25 @@ function stripUndefined<T>(obj: T): T {
   return cleaned as T;
 }
 
+/** Detect the specific Firestore error raised when a composite index is
+ *  still being built after deploy. Surfaces as gRPC code 9
+ *  (FAILED_PRECONDITION) with a "requires an index" details string that
+ *  also contains the "currently building" substring while the build is
+ *  in flight.
+ *
+ *  We use this to let the UI render an empty list instead of 500ing for
+ *  the brief window between `firebase deploy` and the index finishing —
+ *  otherwise every time we add a new composite the whole feature goes
+ *  dark for minutes. Real "missing index" errors (index never created
+ *  at all) still surface via the same path but are caught at dev time. */
+function isIndexBuildingError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as { code?: number; details?: string; message?: string };
+  if (e.code !== 9) return false;
+  const details = (e.details ?? e.message ?? '').toString();
+  return /currently building|index is still building|index is building/i.test(details);
+}
+
 /** Seed all six dimensions at the neutral baseline (score 50, 0 decisions,
  *  stable trend). Matches the DNA Card "no-data" starting state. */
 function seedDimensions(): Record<string, CeoDimensionData> {
@@ -188,36 +207,57 @@ export async function getCeoBusiness(businessId: string): Promise<CeoBusiness> {
 }
 
 /** Most recent active business for a kid profile. Returns null if the kid
- *  has no active business. Used by /api/ceo/business without businessId. */
+ *  has no active business. Used by /api/ceo/business without businessId.
+ *
+ *  Treats "index still building" as "no businesses yet" so the UI stays
+ *  friendly during the post-deploy index-build window. */
 export async function getActiveBusinessForKid(
   kidId: string,
 ): Promise<CeoBusiness | null> {
-  const snapshot = await adminDb
-    .collection(CEO_BUSINESS_COLLECTION)
-    .where('kidId', '==', kidId)
-    .where('status', '==', 'active')
-    .orderBy('createdAt', 'desc')
-    .limit(1)
-    .get();
+  try {
+    const snapshot = await adminDb
+      .collection(CEO_BUSINESS_COLLECTION)
+      .where('kidId', '==', kidId)
+      .where('status', '==', 'active')
+      .orderBy('createdAt', 'desc')
+      .limit(1)
+      .get();
 
-  if (snapshot.empty) return null;
-  return docToCeoBusiness(snapshot.docs[0]!);
+    if (snapshot.empty) return null;
+    return docToCeoBusiness(snapshot.docs[0]!);
+  } catch (err) {
+    if (isIndexBuildingError(err)) {
+      console.warn('[ceoService] getActiveBusinessForKid: index still building, returning null');
+      return null;
+    }
+    throw err;
+  }
 }
 
 /** List all businesses (active + completed) for a kid, newest first.
- *  Used by /api/ceo/businesses for the landing-page list. */
+ *  Used by /api/ceo/businesses for the landing-page list.
+ *
+ *  Treats "index still building" as an empty list — see isIndexBuildingError. */
 export async function listBusinessesForKid(
   kidId: string,
   limit: number = 20,
 ): Promise<CeoBusiness[]> {
-  const snapshot = await adminDb
-    .collection(CEO_BUSINESS_COLLECTION)
-    .where('kidId', '==', kidId)
-    .orderBy('createdAt', 'desc')
-    .limit(limit)
-    .get();
+  try {
+    const snapshot = await adminDb
+      .collection(CEO_BUSINESS_COLLECTION)
+      .where('kidId', '==', kidId)
+      .orderBy('createdAt', 'desc')
+      .limit(limit)
+      .get();
 
-  return snapshot.docs.map(docToCeoBusiness);
+    return snapshot.docs.map(docToCeoBusiness);
+  } catch (err) {
+    if (isIndexBuildingError(err)) {
+      console.warn('[ceoService] listBusinessesForKid: index still building, returning []');
+      return [];
+    }
+    throw err;
+  }
 }
 
 /** Replace the business state fields (currentCash, reputation, morale,
