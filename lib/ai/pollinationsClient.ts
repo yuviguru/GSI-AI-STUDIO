@@ -8,6 +8,7 @@ interface ImageOptions {
   style?: 'watercolor' | 'cartoon' | 'pixel-art' | 'comic';
   width?: number;
   height?: number;
+  seed?: number;
 }
 
 /**
@@ -20,6 +21,7 @@ export async function generateImageFree({
   style = 'cartoon',
   width = 512,
   height = 384,
+  seed: providedSeed,
 }: ImageOptions): Promise<string> {
   const trimmedPrompt = prompt.length > MAX_PROMPT_LENGTH
     ? prompt.slice(0, MAX_PROMPT_LENGTH).replace(/\s\S*$/, '')
@@ -27,7 +29,7 @@ export async function generateImageFree({
 
   const safePrompt = `${style} style illustration: ${trimmedPrompt}${SAFETY_APPEND}`;
   const encoded = encodeURIComponent(safePrompt);
-  const seed = Math.floor(Math.random() * 100000);
+  const seed = providedSeed ?? Math.floor(Math.random() * 100000);
   const url = `https://image.pollinations.ai/prompt/${encoded}?width=${width}&height=${height}&nologo=true&seed=${seed}`;
 
   // Fetch the image server-side with retries

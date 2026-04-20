@@ -20,6 +20,7 @@ interface ImageOptions {
   style?: 'watercolor' | 'cartoon' | 'pixel-art' | 'comic';
   width?: number;
   height?: number;
+  seed?: number;
 }
 
 export async function generateImage({
@@ -27,6 +28,7 @@ export async function generateImage({
   style = 'cartoon',
   width = 768,
   height = 768,
+  seed,
 }: ImageOptions): Promise<string> {
   const replicate = getClient();
 
@@ -41,6 +43,7 @@ export async function generateImage({
       num_outputs: 1,
       guidance_scale: 7.5,
       num_inference_steps: 30,
+      ...(typeof seed === 'number' ? { seed } : {}),
     },
   });
 

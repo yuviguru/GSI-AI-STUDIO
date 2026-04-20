@@ -21,6 +21,7 @@ interface ImageOptions {
   style?: 'watercolor' | 'cartoon' | 'pixel-art' | 'comic';
   width?: number;
   height?: number;
+  seed?: number;
 }
 
 /**
@@ -87,6 +88,7 @@ export async function generateWithPixazo({
   style = 'cartoon',
   width = 1024,
   height = 1024,
+  seed,
 }: ImageOptions): Promise<string> {
   const apiKey = process.env.PIXAZO_API_KEY;
   if (!apiKey) throw new Error('PIXAZO_API_KEY not set');
@@ -104,7 +106,7 @@ export async function generateWithPixazo({
     body: JSON.stringify({
       prompt: safePrompt,
       num_steps: DEFAULT_STEPS,
-      seed: Math.floor(Math.random() * 1_000_000),
+      seed: seed ?? Math.floor(Math.random() * 1_000_000),
       width,
       height,
     }),

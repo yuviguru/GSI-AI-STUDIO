@@ -32,6 +32,10 @@ export interface ImageOptions {
   style: ImageStyle;
   width: number;
   height: number;
+  /** Optional seed — pinning this across a multi-image run (e.g. a story)
+   *  keeps the diffusion output visually coherent (same character faces,
+   *  same palette) page-to-page. Omit for variety. */
+  seed?: number;
 }
 
 export type ImageFunction = (opts: ImageOptions) => Promise<string>;
