@@ -15,6 +15,9 @@ import { pickNextMilestone } from '@/lib/ceo/phases';
 const CEO_BUSINESS_COLLECTION = 'ceoBusiness';
 const REGISTRATIONS_PER_DAY_LIMIT = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** Kids can juggle up to 5 simultaneous active (non-completed) businesses.
+ *  Beyond that the landing-page UI gets noisy and the LLM-event queue thrashes. */
+const MAX_CONCURRENT_ACTIVE_BUSINESSES = 5;
 
 /**
  * POST /api/ceo/register
@@ -35,6 +38,7 @@ export async function POST(request: NextRequest) {
     filterInput(input.location);
 
     await checkRegistrationRateLimit(sessionId);
+    await checkConcurrentActiveLimit(sessionId);
 
     const business = await createCeoBusiness({
       sessionId,
@@ -76,6 +80,26 @@ async function checkRegistrationRateLimit(sessionId: string): Promise<void> {
       'RATE_LIMITED',
       `You can register up to ${REGISTRATIONS_PER_DAY_LIMIT} businesses per day. Come back tomorrow!`,
       429,
+    );
+  }
+}
+
+/** Cap simultaneous active businesses at MAX_CONCURRENT_ACTIVE_BUSINESSES.
+ *  Kids can always start a new business after completing or pausing an
+ *  existing one. */
+async function checkConcurrentActiveLimit(sessionId: string): Promise<void> {
+  const snapshot = await adminDb
+    .collection(CEO_BUSINESS_COLLECTION)
+    .where('sessionId', '==', sessionId)
+    .where('status', '==', 'active')
+    .count()
+    .get();
+
+  if (snapshot.data().count >= MAX_CONCURRENT_ACTIVE_BUSINESSES) {
+    throw new AppException(
+      'TOO_MANY_ACTIVE_BUSINESSES',
+      `You already have ${MAX_CONCURRENT_ACTIVE_BUSINESSES} active businesses running. Finish or pause one before starting a new one.`,
+      400,
     );
   }
 }

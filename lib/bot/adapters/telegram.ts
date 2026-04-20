@@ -92,32 +92,29 @@ interface TelegramFile {
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
-const MD_V2_SPECIALS = /([_*\[\]()~`>#+\-=|{}.!\\])/g;
-
-/**
- * Escape Telegram MarkdownV2 special characters.
- *
- * KNOWN LIMITATION: This blanket-escapes every special character, which means
- * callers cannot use inline markdown entities (bold, italic, links) through
- * `parseMode: 'markdown'`. If rich markdown is needed, use `parseMode: 'html'`
- * instead — it's far more forgiving. See
- * https://core.telegram.org/bots/api#markdownv2-style for the escape rules.
- */
-function escapeMdV2(text: string): string {
-  return text.replace(MD_V2_SPECIALS, '\\$1');
-}
-
 function mapButtons(rows: BotButton[][]): Array<Array<{ text: string; callback_data: string }>> {
   return rows.map((row) =>
     row.map((btn) => ({ text: btn.text, callback_data: btn.callbackData })),
   );
 }
 
+/**
+ * Map our internal `parseMode` to Telegram's `parse_mode`.
+ *
+ * We use legacy `'Markdown'` rather than `'MarkdownV2'` because:
+ *   1. Feature modules write simple `*bold*` / `_italic_` / backtick-code
+ *      which legacy Markdown supports directly with zero escaping.
+ *   2. MarkdownV2 requires blanket-escaping of `.!-+=#` and more; doing
+ *      that escapes the asterisks we INTEND as formatting, so bold renders
+ *      as literal `*word*` — which was the original bug.
+ *   3. Legacy Markdown is deprecated per Telegram but still fully supported;
+ *      any future rich formatting can switch to `parseMode: 'html'`.
+ */
 function toTelegramParseMode(
   mode: BotOutgoingMessage['parseMode'],
-): 'HTML' | 'MarkdownV2' | undefined {
+): 'HTML' | 'Markdown' | undefined {
   if (mode === 'html') return 'HTML';
-  if (mode === 'markdown') return 'MarkdownV2';
+  if (mode === 'markdown') return 'Markdown';
   return undefined;
 }
 
@@ -150,8 +147,7 @@ export class TelegramAdapter implements MessengerAdapter {
    */
   async send(message: BotOutgoingMessage): Promise<string> {
     const parseMode = toTelegramParseMode(message.parseMode);
-    const text =
-      message.parseMode === 'markdown' ? escapeMdV2(message.text) : message.text;
+    const text = message.text;
     const replyMarkup = message.buttons
       ? { inline_keyboard: mapButtons(message.buttons) }
       : undefined;

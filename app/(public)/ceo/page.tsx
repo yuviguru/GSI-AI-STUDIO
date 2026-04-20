@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useCeoBusiness } from '@/hooks/useCeoBusiness';
+import { useCeoBusinesses } from '@/hooks/useCeoBusinesses';
 import { MascotSpeechBubble } from '@/components/mascot/MascotSpeechBubble';
-import { ArrowRight, Send, Sparkles } from 'lucide-react';
+import { PHASE_LABELS } from '@/lib/ceo/constants';
+import { ArrowRight, Plus, Send, Sparkles, Trophy } from 'lucide-react';
+import type { CeoBusiness } from '@/types';
 
 const FEATURES = [
   {
@@ -23,10 +25,14 @@ const FEATURES = [
   },
 ];
 
-export default function CeoLandingPage() {
-  const { business, loading, error } = useCeoBusiness({ autoFetch: true });
+const MAX_CONCURRENT_ACTIVE = 5;
 
-  const hasActiveBusiness = business && business.status === 'active';
+export default function CeoLandingPage() {
+  const { activeBusinesses, completedBusinesses, loading, error } = useCeoBusinesses({
+    autoFetch: true,
+  });
+
+  const canStartNew = activeBusinesses.length < MAX_CONCURRENT_ACTIVE;
 
   return (
     <div className="min-h-screen bg-white">
@@ -58,71 +64,65 @@ export default function CeoLandingPage() {
             />
           </div>
 
-          {/* Primary CTA area */}
-          <div className="mt-10">
-            {loading ? (
-              <div className="mx-auto flex max-w-md flex-col gap-3">
-                <div className="h-14 animate-pulse rounded-2xl bg-white/20" />
-                <div className="h-4 animate-pulse rounded bg-white/10" />
-              </div>
-            ) : hasActiveBusiness ? (
-              <div className="mx-auto max-w-md">
-                <Link
-                  href={`/ceo/play?businessId=${business.id}`}
-                  className="block rounded-3xl bg-white p-6 text-left text-brand-text shadow-2xl transition hover:-translate-y-0.5 hover:shadow-[0_20px_50px_rgba(0,0,0,0.25)]"
-                >
-                  <div className="text-xs font-semibold uppercase tracking-wider text-brand-primary">
-                    Continue your journey
-                  </div>
-                  <div className="mt-1 font-display text-2xl font-bold">
-                    {business.businessName}
-                  </div>
-                  <div className="mt-2 flex items-center gap-3 text-sm text-brand-text-secondary">
-                    <span className="rounded-full bg-green-100 px-2 py-0.5 font-semibold text-green-700">
-                      ₹{business.currentCash.toLocaleString('en-IN')}
-                    </span>
-                    <span className="rounded-full bg-purple-100 px-2 py-0.5 font-semibold capitalize text-purple-700">
-                      {business.phase.replace('_', ' ')}
-                    </span>
-                  </div>
-                  <div className="mt-4 flex items-center justify-end gap-1 text-sm font-semibold text-brand-primary">
-                    Continue
-                    <ArrowRight className="h-4 w-4" />
-                  </div>
-                </Link>
-
-                <Link
-                  href="/ceo/register"
-                  className="mt-3 inline-block text-sm font-medium text-white/80 underline-offset-2 hover:text-white hover:underline"
-                >
-                  Start a new one
-                </Link>
-              </div>
-            ) : (
-              <div className="mx-auto max-w-md">
-                {error && (
-                  <div className="mb-4 rounded-lg bg-white/15 px-4 py-2 text-sm text-white/90">
-                    {error}
-                  </div>
-                )}
-                <Link
-                  href="/ceo/register"
-                  className="inline-flex items-center gap-2 rounded-2xl bg-white px-8 py-4 font-display text-lg font-bold text-brand-primary shadow-2xl transition hover:-translate-y-0.5 hover:shadow-[0_20px_50px_rgba(0,0,0,0.25)]"
-                >
-                  Start Your Business
-                  <ArrowRight className="h-5 w-5" />
-                </Link>
-                <p className="mt-3 text-sm text-white/80">
-                  Takes about 2 minutes to set up.
-                </p>
-              </div>
-            )}
-          </div>
+          {error && (
+            <div className="mx-auto mt-6 max-w-md rounded-lg bg-white/15 px-4 py-2 text-sm text-white/90">
+              {error}
+            </div>
+          )}
         </div>
       </section>
 
+      {/* Businesses list */}
+      <section className="mx-auto max-w-5xl px-4 py-10">
+        {loading ? (
+          <BusinessListSkeleton />
+        ) : activeBusinesses.length === 0 && completedBusinesses.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <>
+            {activeBusinesses.length > 0 && (
+              <>
+                <div className="mb-3 flex items-end justify-between gap-2">
+                  <h2 className="font-display text-2xl font-bold text-brand-text">
+                    Your businesses
+                  </h2>
+                  <span className="text-xs text-brand-text-secondary">
+                    {activeBusinesses.length} of {MAX_CONCURRENT_ACTIVE} active
+                  </span>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {activeBusinesses.map((b) => (
+                    <ActiveBusinessCard key={b.id} business={b} />
+                  ))}
+                  {canStartNew && <StartNewCard />}
+                </div>
+                {!canStartNew && (
+                  <p className="mt-3 text-center text-xs text-brand-text-secondary">
+                    You&apos;ve hit the {MAX_CONCURRENT_ACTIVE}-active limit.
+                    Finish or pause one before starting a new business.
+                  </p>
+                )}
+              </>
+            )}
+
+            {completedBusinesses.length > 0 && (
+              <>
+                <h2 className="mb-3 mt-10 font-display text-2xl font-bold text-brand-text">
+                  Completed
+                </h2>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {completedBusinesses.map((b) => (
+                    <CompletedBusinessCard key={b.id} business={b} />
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </section>
+
       {/* Feature cards */}
-      <section className="mx-auto max-w-5xl px-4 py-12">
+      <section className="mx-auto max-w-5xl px-4 py-8">
         <div className="grid gap-4 sm:grid-cols-3">
           {FEATURES.map((f) => (
             <div
@@ -135,9 +135,7 @@ export default function CeoLandingPage() {
               <div className="mt-3 font-display text-lg font-bold text-brand-text">
                 {f.title}
               </div>
-              <p className="mt-1 text-sm text-brand-text-secondary">
-                {f.desc}
-              </p>
+              <p className="mt-1 text-sm text-brand-text-secondary">{f.desc}</p>
             </div>
           ))}
         </div>
@@ -170,6 +168,123 @@ export default function CeoLandingPage() {
           </a>
         </div>
       </section>
+    </div>
+  );
+}
+
+// ─── Cards ────────────────────────────────────────────────────────────────
+
+function ActiveBusinessCard({ business }: { business: CeoBusiness }) {
+  return (
+    <Link
+      href={`/ceo/play?businessId=${business.id}`}
+      className="group block rounded-3xl border border-gray-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-primary/30 hover:shadow-md"
+    >
+      <div className="text-xs font-semibold uppercase tracking-wider text-brand-primary">
+        Continue
+      </div>
+      <div className="mt-1 font-display text-xl font-bold text-brand-text">
+        {business.businessName}
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+        <span className="rounded-full bg-green-100 px-2 py-0.5 font-semibold text-green-700">
+          ₹{business.currentCash.toLocaleString('en-IN')}
+        </span>
+        <span className="rounded-full bg-purple-100 px-2 py-0.5 font-semibold text-purple-700">
+          {PHASE_LABELS[business.phase]}
+        </span>
+        <span className="rounded-full bg-blue-100 px-2 py-0.5 font-semibold text-blue-700">
+          {business.totalDecisions} decision{business.totalDecisions === 1 ? '' : 's'}
+        </span>
+      </div>
+      <div className="mt-4 flex items-center justify-end gap-1 text-sm font-semibold text-brand-primary">
+        Play
+        <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+      </div>
+    </Link>
+  );
+}
+
+function CompletedBusinessCard({ business }: { business: CeoBusiness }) {
+  return (
+    <Link
+      href={`/ceo/play?businessId=${business.id}`}
+      className="group block rounded-3xl border border-gray-100 bg-white/60 p-5 opacity-90 shadow-sm transition hover:opacity-100 hover:shadow-md"
+    >
+      <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-amber-600">
+        <Trophy className="h-3.5 w-3.5" />
+        Completed
+      </div>
+      <div className="mt-1 font-display text-xl font-bold text-brand-text">
+        {business.businessName}
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-brand-text-secondary">
+        <span>{business.totalDecisions} decisions</span>
+        <span>·</span>
+        <span>{PHASE_LABELS[business.phase]}</span>
+      </div>
+      <div className="mt-4 flex items-center justify-end gap-1 text-sm font-semibold text-brand-text-secondary">
+        View profile
+        <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+      </div>
+    </Link>
+  );
+}
+
+function StartNewCard() {
+  return (
+    <Link
+      href="/ceo/register"
+      className="group flex items-center justify-center rounded-3xl border-2 border-dashed border-brand-primary/30 bg-brand-primary/5 p-5 text-center transition hover:border-brand-primary hover:bg-brand-primary/10"
+    >
+      <div>
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-primary text-white">
+          <Plus className="h-6 w-6" />
+        </div>
+        <div className="mt-3 font-display text-lg font-bold text-brand-primary">
+          Start a new business
+        </div>
+        <div className="mt-1 text-xs text-brand-text-secondary">
+          Takes about 2 minutes to set up.
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="mx-auto max-w-md rounded-3xl border border-gray-100 bg-white p-8 text-center shadow-sm">
+      <div className="text-5xl" aria-hidden>
+        🏪
+      </div>
+      <h2 className="mt-4 font-display text-2xl font-bold text-brand-text">
+        Start your first business
+      </h2>
+      <p className="mt-2 text-sm text-brand-text-secondary">
+        Pick a type, name it, set your pace. Your first decision arrives in seconds.
+      </p>
+      <Link
+        href="/ceo/register"
+        className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-brand-primary px-6 py-3 font-display text-base font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+      >
+        Start Your Business
+        <ArrowRight className="h-4 w-4" />
+      </Link>
+    </div>
+  );
+}
+
+function BusinessListSkeleton() {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="h-36 animate-pulse rounded-3xl bg-gray-100"
+          aria-hidden
+        />
+      ))}
     </div>
   );
 }
