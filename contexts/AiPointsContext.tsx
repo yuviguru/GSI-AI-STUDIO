@@ -13,6 +13,7 @@ import type { ApiResponse, PointsResponse } from '@/types';
 import type { ConfettiVariant } from '@/components/celebrations/ConfettiCelebration';
 import { fetchWithSession } from '@/lib/fetchWithSession';
 import { useKidProfile } from '@/hooks/useKidProfile';
+import { useAuth } from '@/hooks/useAuth';
 
 const SESSION_KEY = 'gsi-session-id';
 const POINTS_KEY = 'gsi-ai-points'; // kept for optimistic initial load & migration
@@ -82,6 +83,7 @@ const AiPointsContext = createContext<AiPointsState | null>(null);
 
 export function AiPointsProvider({ children }: { children: ReactNode }) {
   const { activeKid } = useKidProfile();
+  const { getIdToken } = useAuth();
   const [totalPoints, setTotalPoints] = useState(0);
   const [conceptsLearned, setConceptsLearned] = useState<string[]>([]);
   const [badges, setBadges] = useState<string[]>([]);
@@ -185,7 +187,13 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
 
       try {
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (activeKidId) headers['X-Active-Kid-Id'] = activeKidId;
+        if (activeKidId) {
+          // When a kid is active, the server verifies parent ownership of the
+          // kid doc before writing. That requires a Firebase ID token.
+          headers['X-Active-Kid-Id'] = activeKidId;
+          const token = await getIdToken();
+          if (token) headers.Authorization = `Bearer ${token}`;
+        }
         const res = await fetchWithSession('/api/sessions/points', {
           method: 'PATCH',
           headers,
@@ -201,7 +209,7 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
       }
       return null;
     },
-    [applySnapshot, activeKidId]
+    [applySnapshot, activeKidId, getIdToken]
   );
 
   const addPoints = useCallback(

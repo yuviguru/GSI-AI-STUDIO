@@ -1,14 +1,16 @@
 /** Pixazo — free AI image generation.
  *
- *  Uses Pixazo's Flux Schnell free tier. Azure APIM-style auth with the
- *  `Ocp-Apim-Subscription-Key` header. Free-tier rate limits apply but no
- *  per-request cost, which makes this the preferred AI generator when
- *  local ComfyUI isn't running.
+ *  Uses Pixazo's Flux Schnell free tier via their Azure APIM gateway.
+ *  Auth uses `Ocp-Apim-Subscription-Key` header. No per-request cost.
+ *
+ *  The exact endpoint path is per-account and not publicly documented —
+ *  find it in your Pixazo API Console (https://api-console.pixazo.ai/)
+ *  and set it as `PIXAZO_API_ENDPOINT` in .env.local. Until that is set,
+ *  `isPixazoConfigured()` returns false and the cascade skips Pixazo.
  *
  *  Docs: https://www.pixazo.ai/api/free
  */
 
-const PIXAZO_FLUX_SCHNELL = 'https://gateway.pixazo.ai/flux-schnell/v1/generateImage';
 const TIMEOUT_MS = 45_000;
 
 const SAFETY_APPEND = ', child-friendly, colorful illustration, safe for children, cartoon style';
@@ -78,7 +80,14 @@ function extractImageFromResponse(data: unknown): string {
 
 export function isPixazoConfigured(): boolean {
   const key = process.env.PIXAZO_API_KEY;
-  return !!key && !key.includes('REPLACE') && key.length > 10;
+  const endpoint = process.env.PIXAZO_API_ENDPOINT;
+  return (
+    !!key &&
+    !key.includes('REPLACE') &&
+    key.length > 10 &&
+    !!endpoint &&
+    endpoint.startsWith('http')
+  );
 }
 
 export async function generateWithPixazo({
@@ -88,11 +97,13 @@ export async function generateWithPixazo({
   height = 1024,
 }: ImageOptions): Promise<string> {
   const apiKey = process.env.PIXAZO_API_KEY;
+  const endpoint = process.env.PIXAZO_API_ENDPOINT;
   if (!apiKey) throw new Error('PIXAZO_API_KEY not set');
+  if (!endpoint) throw new Error('PIXAZO_API_ENDPOINT not set');
 
   const safePrompt = `${style} style illustration: ${prompt}${SAFETY_APPEND}`;
 
-  const res = await fetch(PIXAZO_FLUX_SCHNELL, {
+  const res = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
