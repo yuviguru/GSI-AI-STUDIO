@@ -5,13 +5,14 @@
  *
  *   IMAGE_MODE=hybrid (recommended prod default)
  *     Try Pexels stock → AI-generate fallback → SVG placeholder
- *     Best for cost: Pexels is free, only falls back to paid AI when stock misses
+ *     Best for cost: Pexels is free, only falls back to AI when stock misses.
  *
  *   IMAGE_MODE=search
- *     Pexels → Unsplash → SVG (no AI cost, stock photos only)
+ *     Pexels → Unsplash → SVG (no AI cost, stock photos only).
  *
  *   IMAGE_MODE=generate
- *     ComfyUI (local) → Replicate → Pollinations (free) — legacy default
+ *     ComfyUI (local) → Pixazo (free Flux Schnell) → Replicate (paid SDXL)
+ *     → Pollinations (free) — picks the best configured provider.
  *
  * All three modes return the same interface: (opts) => Promise<string>
  * so the story/comic routes don't need to know which mode is active.
@@ -20,6 +21,7 @@
 import { generateImage } from './replicateClient';
 import { generateImageFree } from './pollinationsClient';
 import { generateImageLocal } from './comfyuiClient';
+import { generateWithPixazo, isPixazoConfigured } from './pixazoClient';
 import { searchImage, tryStockImage } from './imageSearchClient';
 
 export type ImageStyle = 'watercolor' | 'cartoon' | 'pixel-art' | 'comic';
@@ -54,7 +56,10 @@ function getImageMode(): ImageMode {
 // ─── Generators ──────────────────────────────────────────────
 
 function getAiGenerator(): { fn: ImageFunction; name: string } {
+  // Priority: local ComfyUI (fastest in dev) → Pixazo (free hosted Flux Schnell)
+  //   → Replicate SDXL (paid fallback) → Pollinations (free but lower quality).
   if (shouldUseComfyUI()) return { fn: generateImageLocal, name: 'flux-schnell-local' };
+  if (isPixazoConfigured()) return { fn: generateWithPixazo, name: 'pixazo-flux-schnell' };
   if (shouldUseReplicate()) return { fn: generateImage, name: 'sdxl' };
   return { fn: generateImageFree, name: 'pollinations' };
 }
