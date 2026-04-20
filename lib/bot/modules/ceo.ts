@@ -42,6 +42,7 @@ import {
   getCeoProfileByBusiness,
   getOrCreateCeoProfile,
   getPendingEventForBusiness,
+  listBusinessesForKid,
   recordEventDecision,
   saveCeoEvent,
 } from '@/lib/firebase/ceoService';
@@ -72,6 +73,11 @@ interface BusinessCatalogEntry {
 const CATALOG = businessesCatalog as unknown as BusinessCatalogEntry[];
 const BOT_HANDLE = 'GSIKidCeoAssistantBot' as const;
 const GENERIC_ERROR = 'Something went wrong — try again in a moment!';
+/** Mirrors MAX_CONCURRENT_ACTIVE_BUSINESSES in /api/ceo/register. Kept as a
+ *  module-level constant rather than re-imported so the bot stays
+ *  route-independent. If these drift, the server is source-of-truth —
+ *  the kid will just see the 400 error from the register route. */
+const CONCURRENT_ACTIVE_CAP = 5;
 
 const BUSINESS_TYPES: readonly CeoBusinessType[] = [
   'lemonade',
@@ -90,7 +96,7 @@ const PACES: readonly CeoPace[] = ['30', '60', '90'];
 export const ceoModule: BotFeatureModule = {
   id: 'ceo',
   commands: ['/start', '/ceo', '/mybusiness', '/ceoprofile', '/link'],
-  callbackPrefixes: ['ceo_biz:', 'ceo_choice:', 'ceo_pace:', 'ceo_loc:'],
+  callbackPrefixes: ['ceo_biz:', 'ceo_choice:', 'ceo_pace:', 'ceo_loc:', 'ceo_resume:'],
 
   async handle(message, send, context) {
     try {
@@ -121,6 +127,9 @@ export const ceoModule: BotFeatureModule = {
         }
         if (data.startsWith('ceo_choice:')) {
           return await handleChoice(data, message, send, context);
+        }
+        if (data.startsWith('ceo_resume:')) {
+          return await handleResumePick(data, message, send, context);
         }
       }
     } catch (err) {
@@ -340,7 +349,14 @@ async function requireLinkedKid(
   return { userId, kidId };
 }
 
-/** /ceo — resume or start a business. */
+/** /ceo — picker that adapts to how many businesses the kid has:
+ *    - 0 active           → new-business picker (business types)
+ *    - 1 active           → resume immediately (send pending event)
+ *    - 2..N active        → list picker (which one do you want to play?) + "New" button
+ *
+ *  Mirrors the web `/ceo` landing-page model so the kid has the same mental
+ *  model in both channels. Cap matches MAX_CONCURRENT_ACTIVE_BUSINESSES
+ *  (5 — server-enforced in /api/ceo/register). */
 async function handleCeo(
   message: BotIncomingMessage,
   send: Send,
@@ -348,24 +364,57 @@ async function handleCeo(
 ): Promise<void> {
   const linked = await requireLinkedKid(context, send, message.chatId);
   if (!linked) return;
-  const active = await getActiveBusinessForKid(linked.kidId);
 
-  if (active) {
+  const allBusinesses = await listBusinessesForKid(linked.kidId, 20);
+  const actives = allBusinesses.filter((b) => b.status === 'active');
+
+  // 1 active → resume immediately.
+  if (actives.length === 1) {
+    const only = actives[0]!;
     await send({
       chatId: message.chatId,
       text:
-        `You're still running *${escapeMd(active.businessName)}*!\n\n` +
+        `You're still running *${escapeMd(only.businessName)}*!\n\n` +
         'Type /mybusiness to see your status, or wait for the next event here.',
       parseMode: 'markdown',
     });
-    const pending = await getPendingEventForBusiness(active.id);
+    const pending = await getPendingEventForBusiness(only.id);
     if (pending) {
       await sendEvent(message.chatId, pending, send);
     }
     return;
   }
 
-  // Business picker — 2-column grid with emoji + name.
+  // 2+ active → list picker. One button per business, plus a "New" button
+  // if the kid is under the concurrent-active cap.
+  if (actives.length >= 2) {
+    const rows: BotButton[][] = actives.map((b) => [
+      {
+        text: `${businessEmojiFor(b.businessType)} ${truncate(b.businessName, 40)} · ₹${b.currentCash}`,
+        callbackData: `ceo_resume:${b.id}`,
+      },
+    ]);
+
+    if (actives.length < CONCURRENT_ACTIVE_CAP) {
+      rows.push([
+        {
+          text: '➕ Start a new business',
+          callbackData: 'ceo_biz:__new__',
+        },
+      ]);
+    }
+
+    await send({
+      chatId: message.chatId,
+      text:
+        `You have *${actives.length}* businesses running. Which one do you want to play?`,
+      parseMode: 'markdown',
+      buttons: rows,
+    });
+    return;
+  }
+
+  // 0 active → new-business picker (business types).
   const rows: BotButton[][] = [];
   for (let i = 0; i < CATALOG.length; i += 2) {
     const row: BotButton[] = [];
@@ -386,13 +435,95 @@ async function handleCeo(
   });
 }
 
-/** Callback — kid picked a business type → offer pace picker. */
+/** Resolve a business-type code to its catalog emoji (fallback 🏪). */
+function businessEmojiFor(type: CeoBusinessType): string {
+  return CATALOG.find((c) => c.type === type)?.emoji ?? '🏪';
+}
+
+/** Callback — kid picked an existing business from the multi-biz list. */
+async function handleResumePick(
+  data: string,
+  message: BotIncomingMessage,
+  send: Send,
+  context: BotContext,
+): Promise<void> {
+  const businessId = data.slice('ceo_resume:'.length);
+  if (!businessId) {
+    await send({ chatId: message.chatId, text: 'Pick one of the buttons above.' });
+    return;
+  }
+
+  const linked = await requireLinkedKid(context, send, message.chatId);
+  if (!linked) return;
+
+  const business = await getCeoBusiness(businessId);
+  if (business.kidId !== linked.kidId) {
+    await send({ chatId: message.chatId, text: "That's not one of your businesses." });
+    return;
+  }
+
+  if (business.status !== 'active') {
+    await send({
+      chatId: message.chatId,
+      text: `*${escapeMd(business.businessName)}* is ${business.status}. Type /ceo to pick another.`,
+      parseMode: 'markdown',
+    });
+    return;
+  }
+
+  await send({
+    chatId: message.chatId,
+    text: `Resuming *${escapeMd(business.businessName)}*…`,
+    parseMode: 'markdown',
+  });
+
+  const pending = await getPendingEventForBusiness(business.id);
+  if (pending) {
+    await sendEvent(message.chatId, pending, send);
+  } else {
+    await send({
+      chatId: message.chatId,
+      text:
+        'No pending decision right now. Type /mybusiness to see where you are, ' +
+        'or wait for the next event to arrive.',
+      parseMode: 'markdown',
+    });
+  }
+}
+
+/** Callback — kid picked a business type → offer pace picker.
+ *
+ *  Special case: `ceo_biz:__new__` comes from the "Start a new business"
+ *  button in the multi-biz resume picker. Re-renders the business-type
+ *  picker so the kid can pick what KIND of new business to start. */
 async function handleBizPick(
   data: string,
   message: BotIncomingMessage,
   send: Send,
 ): Promise<void> {
   const rawType = data.slice('ceo_biz:'.length);
+
+  if (rawType === '__new__') {
+    const rows: BotButton[][] = [];
+    for (let i = 0; i < CATALOG.length; i += 2) {
+      const row: BotButton[] = [];
+      const left = CATALOG[i]!;
+      row.push({ text: `${left.emoji} ${left.name}`, callbackData: `ceo_biz:${left.type}` });
+      const right = CATALOG[i + 1];
+      if (right) {
+        row.push({ text: `${right.emoji} ${right.name}`, callbackData: `ceo_biz:${right.type}` });
+      }
+      rows.push(row);
+    }
+    await send({
+      chatId: message.chatId,
+      text: 'Pick the kind of business you want to run:',
+      parseMode: 'markdown',
+      buttons: rows,
+    });
+    return;
+  }
+
   if (!BUSINESS_TYPES.includes(rawType as CeoBusinessType)) {
     await send({ chatId: message.chatId, text: 'Pick one of the buttons above.' });
     return;
