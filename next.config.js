@@ -35,6 +35,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'images.unsplash.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'pub-582b7213209642b9b995c96c95a30381.r2.dev',
+      },
     ],
   },
   headers: async () => [

@@ -3,19 +3,18 @@
  *  Uses Pixazo's Flux Schnell free tier via their Azure APIM gateway.
  *  Auth uses `Ocp-Apim-Subscription-Key` header. No per-request cost.
  *
- *  The exact endpoint path is per-account and not publicly documented —
- *  find it in your Pixazo API Console (https://api-console.pixazo.ai/)
- *  and set it as `PIXAZO_API_ENDPOINT` in .env.local. Until that is set,
- *  `isPixazoConfigured()` returns false and the cascade skips Pixazo.
+ *  Default endpoint works with any Pixazo account that has access to the
+ *  free Flux Schnell product. Override with `PIXAZO_API_ENDPOINT` env var
+ *  if Pixazo ever moves the URL.
  *
- *  Docs: https://www.pixazo.ai/api/free
+ *  Docs: https://www.pixazo.ai/models/flux#doc-flux-1-schnell-get-image-code
  */
 
+const DEFAULT_ENDPOINT = 'https://gateway.pixazo.ai/flux-1-schnell/v1/getData';
+const DEFAULT_STEPS = 4; // Flux Schnell is optimized for 4 steps
 const TIMEOUT_MS = 45_000;
 
 const SAFETY_APPEND = ', child-friendly, colorful illustration, safe for children, cartoon style';
-const NEGATIVE_PROMPT =
-  'violence, weapons, blood, scary, realistic human faces, nudity, nsfw, dark, horror';
 
 interface ImageOptions {
   prompt: string;
@@ -80,14 +79,7 @@ function extractImageFromResponse(data: unknown): string {
 
 export function isPixazoConfigured(): boolean {
   const key = process.env.PIXAZO_API_KEY;
-  const endpoint = process.env.PIXAZO_API_ENDPOINT;
-  return (
-    !!key &&
-    !key.includes('REPLACE') &&
-    key.length > 10 &&
-    !!endpoint &&
-    endpoint.startsWith('http')
-  );
+  return !!key && !key.includes('REPLACE') && key.length > 10;
 }
 
 export async function generateWithPixazo({
@@ -97,10 +89,9 @@ export async function generateWithPixazo({
   height = 1024,
 }: ImageOptions): Promise<string> {
   const apiKey = process.env.PIXAZO_API_KEY;
-  const endpoint = process.env.PIXAZO_API_ENDPOINT;
   if (!apiKey) throw new Error('PIXAZO_API_KEY not set');
-  if (!endpoint) throw new Error('PIXAZO_API_ENDPOINT not set');
 
+  const endpoint = process.env.PIXAZO_API_ENDPOINT || DEFAULT_ENDPOINT;
   const safePrompt = `${style} style illustration: ${prompt}${SAFETY_APPEND}`;
 
   const res = await fetch(endpoint, {
@@ -112,7 +103,8 @@ export async function generateWithPixazo({
     },
     body: JSON.stringify({
       prompt: safePrompt,
-      negative_prompt: NEGATIVE_PROMPT,
+      num_steps: DEFAULT_STEPS,
+      seed: Math.floor(Math.random() * 1_000_000),
       width,
       height,
     }),
