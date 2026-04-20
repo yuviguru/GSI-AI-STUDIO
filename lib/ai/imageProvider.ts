@@ -4,8 +4,9 @@
  * Reads `IMAGE_MODE` env var to decide strategy:
  *
  *   IMAGE_MODE=hybrid (recommended prod default)
- *     Try Pexels stock → AI-generate fallback → SVG placeholder
- *     Best for cost: Pexels is free, only falls back to AI when stock misses.
+ *     Try AI-generate → Pexels stock (last resort) → SVG placeholder.
+ *     AI-generated illustrations look consistent with the kid's story/comic
+ *     aesthetic; stock photos are the safety net when AI providers all fail.
  *
  *   IMAGE_MODE=search
  *     Pexels → Unsplash → SVG (no AI cost, stock photos only).
@@ -67,16 +68,25 @@ function getAiGenerator(): { fn: ImageFunction; name: string } {
 function buildHybridFunction(): ImageFunction {
   const ai = getAiGenerator();
   return async (opts) => {
-    const stock = await tryStockImage(opts);
-    if (stock) return stock;
-    console.log(`[ImageProvider/hybrid] stock miss — falling back to ${ai.name}`);
     try {
-      return await ai.fn(opts);
+      const aiUrl = await ai.fn(opts);
+      if (aiUrl) return aiUrl;
     } catch (err) {
-      console.warn(`[ImageProvider/hybrid] AI fallback ${ai.name} failed:`, err instanceof Error ? err.message : err);
-      // Last-resort: use searchImage which guarantees an SVG placeholder return
-      return searchImage(opts);
+      console.warn(
+        `[ImageProvider/hybrid] AI ${ai.name} failed — trying stock:`,
+        err instanceof Error ? err.message : err,
+      );
     }
+
+    const stock = await tryStockImage(opts);
+    if (stock) {
+      console.log(`[ImageProvider/hybrid] AI failed — served from Pexels/Unsplash stock`);
+      return stock;
+    }
+
+    // Last resort — searchImage guarantees an SVG data URI return
+    console.warn('[ImageProvider/hybrid] AI + stock both failed — SVG placeholder');
+    return searchImage(opts);
   };
 }
 
@@ -103,10 +113,10 @@ export function getImageProvider(): { imageFunction: ImageFunction; providerName
     return { imageFunction: ai.fn, providerName: ai.name };
   }
 
-  // hybrid — Pexels first, AI fallback, SVG last
+  // hybrid — AI first, Pexels/Unsplash stock as last resort, SVG fallback
   const ai = getAiGenerator();
   return {
     imageFunction: buildHybridFunction(),
-    providerName: `hybrid (pexels → ${ai.name} → svg)`,
+    providerName: `hybrid (${ai.name} → pexels → svg)`,
   };
 }
