@@ -2,10 +2,12 @@
 
 import Link from 'next/link';
 import { useCeoBusinesses } from '@/hooks/useCeoBusinesses';
+import { useAuth } from '@/hooks/useAuth';
+import { useKidProfile } from '@/hooks/useKidProfile';
 import { MascotSpeechBubble } from '@/components/mascot/MascotSpeechBubble';
 import { TelegramConnectButton } from '@/components/ceo/TelegramConnectButton';
 import { PHASE_LABELS } from '@/lib/ceo/constants';
-import { ArrowRight, Plus, Send, Sparkles, Trophy } from 'lucide-react';
+import { ArrowRight, Lock, Plus, Send, Sparkles, Trophy, UserPlus } from 'lucide-react';
 import type { CeoBusiness } from '@/types';
 
 const FEATURES = [
@@ -29,15 +31,25 @@ const FEATURES = [
 const MAX_CONCURRENT_ACTIVE = 5;
 
 export default function CeoLandingPage() {
-  const { activeBusinesses, completedBusinesses, loading, error } = useCeoBusinesses({
-    autoFetch: true,
-  });
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const {
+    activeKid,
+    loading: kidLoading,
+    needsProfileSetup,
+    needsProfileSelection,
+  } = useKidProfile();
+  const {
+    activeBusinesses,
+    completedBusinesses,
+    ready,
+    loading: businessesLoading,
+    error,
+  } = useCeoBusinesses({ autoFetch: true });
 
-  const canStartNew = activeBusinesses.length < MAX_CONCURRENT_ACTIVE;
+  const canStartNew = ready && activeBusinesses.length < MAX_CONCURRENT_ACTIVE;
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-br from-brand-primary via-purple-500 to-purple-700 px-4 py-12 text-white sm:py-16">
         <div className="pointer-events-none absolute inset-0 opacity-20">
           <div className="absolute left-10 top-10 h-40 w-40 rounded-full bg-white blur-3xl" />
@@ -65,7 +77,7 @@ export default function CeoLandingPage() {
             />
           </div>
 
-          {error && (
+          {error && ready && (
             <div className="mx-auto mt-6 max-w-md rounded-lg bg-white/15 px-4 py-2 text-sm text-white/90">
               {error}
             </div>
@@ -73,24 +85,28 @@ export default function CeoLandingPage() {
         </div>
       </section>
 
-      {/* Businesses list */}
       <section className="mx-auto max-w-5xl px-4 py-10">
-        {loading ? (
+        {authLoading || kidLoading ? (
+          <GateSkeleton />
+        ) : !isAuthenticated ? (
+          <SignInGate />
+        ) : needsProfileSetup ? (
+          <AddKidGate />
+        ) : needsProfileSelection || !activeKid ? (
+          <PickKidGate />
+        ) : businessesLoading ? (
           <BusinessListSkeleton />
         ) : activeBusinesses.length === 0 && completedBusinesses.length === 0 ? (
           <EmptyState />
         ) : (
           <>
-            {/* Connect banner — surfaces cross-channel sync for kids who
-             *  may have already started a business inside @GSIKidCeoAssistantBot
-             *  but don't see it here yet. Migration runs when they tap Connect. */}
             <ConnectBanner />
 
             {activeBusinesses.length > 0 && (
               <>
                 <div className="mb-3 flex items-end justify-between gap-2">
                   <h2 className="font-display text-2xl font-bold text-brand-text">
-                    Your businesses
+                    {activeKid.name}&apos;s businesses
                   </h2>
                   <span className="text-xs text-brand-text-secondary">
                     {activeBusinesses.length} of {MAX_CONCURRENT_ACTIVE} active
@@ -127,7 +143,6 @@ export default function CeoLandingPage() {
         )}
       </section>
 
-      {/* Feature cards */}
       <section className="mx-auto max-w-5xl px-4 py-8">
         <div className="grid gap-4 sm:grid-cols-3">
           {FEATURES.map((f) => (
@@ -144,34 +159,6 @@ export default function CeoLandingPage() {
               <p className="mt-1 text-sm text-brand-text-secondary">{f.desc}</p>
             </div>
           ))}
-        </div>
-      </section>
-
-      {/* Telegram footer */}
-      <section className="mx-auto max-w-5xl px-4 pb-12">
-        <div className="flex flex-col items-center gap-3 rounded-2xl bg-gray-50 p-6 text-center sm:flex-row sm:justify-between sm:text-left">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-100 text-sky-600">
-              <Send className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-brand-text">
-                Also on Telegram
-              </div>
-              <div className="text-xs text-brand-text-secondary">
-                Get decision events delivered to your chat.
-              </div>
-            </div>
-          </div>
-          <a
-            href="https://t.me/GSIKidCeoAssistantBot"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-600"
-          >
-            @GSIKidCeoAssistantBot
-            <ArrowRight className="h-3.5 w-3.5" />
-          </a>
         </div>
       </section>
     </div>
@@ -314,6 +301,77 @@ function BusinessListSkeleton() {
           aria-hidden
         />
       ))}
+    </div>
+  );
+}
+
+// ─── Gates (unauthorized states) ─────────────────────────────────────────
+
+function GateSkeleton() {
+  return <div className="h-40 animate-pulse rounded-3xl bg-gray-100" aria-hidden />;
+}
+
+function SignInGate() {
+  return (
+    <div className="mx-auto max-w-md rounded-3xl border border-amber-100 bg-amber-50/80 p-8 text-center shadow-sm">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+        <Lock className="h-6 w-6" />
+      </div>
+      <h2 className="mt-4 font-display text-2xl font-bold text-brand-text">
+        Sign in to play Kid CEO
+      </h2>
+      <p className="mt-2 text-sm text-brand-text-secondary">
+        Kid CEO runs a 30–90 day business sim keyed to a kid profile.
+        Sign in with your phone and pick the kid playing.
+      </p>
+      <Link
+        href="/"
+        className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-brand-primary px-6 py-3 font-display text-base font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+      >
+        Sign in
+        <ArrowRight className="h-4 w-4" />
+      </Link>
+    </div>
+  );
+}
+
+function AddKidGate() {
+  return (
+    <div className="mx-auto max-w-md rounded-3xl border border-indigo-100 bg-indigo-50/80 p-8 text-center shadow-sm">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-indigo-700">
+        <UserPlus className="h-6 w-6" />
+      </div>
+      <h2 className="mt-4 font-display text-2xl font-bold text-brand-text">
+        Add a kid profile first
+      </h2>
+      <p className="mt-2 text-sm text-brand-text-secondary">
+        Kid CEO tracks each kid&apos;s own businesses and CEO DNA. Create a
+        kid profile and you&apos;re ready to play.
+      </p>
+      <Link
+        href="/settings/kids"
+        className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-brand-primary px-6 py-3 font-display text-base font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+      >
+        Add a kid
+        <ArrowRight className="h-4 w-4" />
+      </Link>
+    </div>
+  );
+}
+
+function PickKidGate() {
+  return (
+    <div className="mx-auto max-w-md rounded-3xl border border-indigo-100 bg-indigo-50/80 p-8 text-center shadow-sm">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-indigo-700">
+        <UserPlus className="h-6 w-6" />
+      </div>
+      <h2 className="mt-4 font-display text-2xl font-bold text-brand-text">
+        Who&apos;s playing?
+      </h2>
+      <p className="mt-2 text-sm text-brand-text-secondary">
+        Tap a kid profile in the top-right to pick who&apos;s running Kid CEO today.
+        Each kid&apos;s businesses stay separate.
+      </p>
     </div>
   );
 }

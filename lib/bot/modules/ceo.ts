@@ -36,13 +36,12 @@ import { linkBotSession } from '@/lib/bot/services/sessionStore';
 import {
   advanceBusinessPhase,
   createCeoBusiness,
-  getActiveBusinessForSession,
+  getActiveBusinessForKid,
   getCeoBusiness,
   getCeoEvent,
   getCeoProfileByBusiness,
   getOrCreateCeoProfile,
   getPendingEventForBusiness,
-  migrateSessionBusinesses,
   recordEventDecision,
   saveCeoEvent,
 } from '@/lib/firebase/ceoService';
@@ -223,7 +222,7 @@ async function handleLink(
  *  Kept as a single helper so `/start link_...` and `/link <code>` produce
  *  identical behavior. */
 async function finalizeBotLink(
-  context: BotContext,
+  _context: BotContext,
   redeemed: {
     gsiSessionId: string;
     userId: string | null;
@@ -233,27 +232,21 @@ async function finalizeBotLink(
   send: Send,
   chatId: string,
 ): Promise<void> {
-  const oldSessionId = context.session.gsiSessionId;
-  const newSessionId = redeemed.gsiSessionId;
-
-  if (oldSessionId && oldSessionId !== newSessionId) {
-    try {
-      const moved = await migrateSessionBusinesses(oldSessionId, newSessionId);
-      if (moved.businesses > 0) {
-        console.log(
-          `[ceo module] Migrated ${moved.businesses} businesses, ${moved.events} events, ${moved.profiles} profiles from ${oldSessionId} → ${newSessionId}`,
-        );
-      }
-    } catch (err) {
-      // Migration failure shouldn't block the link — log and continue so
-      // the kid at least gets bound to the web session going forward.
-      console.error('[ceo module] migrateSessionBusinesses failed:', (err as Error).message);
-    }
+  // Kid CEO is authenticated-only — redeemed tokens must carry both userId
+  // and kidId. A token minted for an anonymous web caller (shouldn't happen
+  // after the Phase-2 refactor, but defensive) is rejected here.
+  if (!redeemed.userId || !redeemed.kidId) {
+    await send({
+      chatId,
+      text: 'Please sign in on the web app and pick a kid profile before connecting Telegram.',
+      parseMode: 'markdown',
+    });
+    return;
   }
 
   await linkBotSession({
     chatId,
-    gsiSessionId: newSessionId,
+    gsiSessionId: redeemed.gsiSessionId,
     userId: redeemed.userId,
     kidId: redeemed.kidId,
   });
@@ -266,7 +259,7 @@ async function finalizeBotLink(
       await resumeSpecificBusiness({
         chatId,
         businessId: redeemed.businessId,
-        sessionId: newSessionId,
+        kidId: redeemed.kidId,
         send,
       });
       return;
@@ -293,12 +286,12 @@ async function finalizeBotLink(
 async function resumeSpecificBusiness(params: {
   chatId: string;
   businessId: string;
-  sessionId: string;
+  kidId: string;
   send: Send;
 }): Promise<void> {
   const business = await getCeoBusiness(params.businessId);
-  if (business.sessionId !== params.sessionId) {
-    throw new AppException('FORBIDDEN', 'Business belongs to a different session', 403);
+  if (business.kidId !== params.kidId) {
+    throw new AppException('FORBIDDEN', 'Business belongs to a different kid', 403);
   }
 
   await params.send({
@@ -322,14 +315,40 @@ async function resumeSpecificBusiness(params: {
   });
 }
 
+/** Gate for every CEO command that reads or writes business data. Returns
+ *  the linked `kidId` + `userId` or sends the "please connect on the web"
+ *  prompt and returns null. Kid CEO is authenticated-only — unlinked bot
+ *  chats cannot create or touch any business. */
+async function requireLinkedKid(
+  context: BotContext,
+  send: Send,
+  chatId: string,
+): Promise<{ userId: string; kidId: string } | null> {
+  const { userId, kidId } = context.session;
+  if (!userId || !kidId) {
+    await send({
+      chatId,
+      text:
+        "You're not connected yet!\n\n" +
+        'Sign in on the web app at gsiaistudio.com, pick a kid profile, ' +
+        'then tap *Connect Telegram* on the Kid CEO page. After that I can ' +
+        'track your businesses here.',
+      parseMode: 'markdown',
+    });
+    return null;
+  }
+  return { userId, kidId };
+}
+
 /** /ceo — resume or start a business. */
 async function handleCeo(
   message: BotIncomingMessage,
   send: Send,
   context: BotContext,
 ): Promise<void> {
-  const sessionId = await context.getGsiSessionId();
-  const active = await getActiveBusinessForSession(sessionId);
+  const linked = await requireLinkedKid(context, send, message.chatId);
+  if (!linked) return;
+  const active = await getActiveBusinessForKid(linked.kidId);
 
   if (active) {
     await send({
@@ -415,10 +434,12 @@ async function handlePacePick(
   const businessType = rawType as CeoBusinessType;
   const pace = rawPace as CeoPace;
 
-  const sessionId = await context.getGsiSessionId();
+  const linked = await requireLinkedKid(context, send, message.chatId);
+  if (!linked) return;
 
   const business = await createCeoBusiness({
-    sessionId,
+    userId: linked.userId,
+    kidId: linked.kidId,
     businessType,
     location: 'India',
     pace,
@@ -430,7 +451,11 @@ async function handlePacePick(
   const firstEvent = await saveCeoEvent({ ...generated, deliveredVia: 'telegram' });
 
   // Profile is keyed by businessId — create it now so /decide later can find it.
-  await getOrCreateCeoProfile({ sessionId, businessId: business.id });
+  await getOrCreateCeoProfile({
+    userId: linked.userId,
+    kidId: linked.kidId,
+    businessId: business.id,
+  });
 
   await send({
     chatId: message.chatId,
@@ -452,8 +477,9 @@ async function handleMyBusiness(
   send: Send,
   context: BotContext,
 ): Promise<void> {
-  const sessionId = await context.getGsiSessionId();
-  const business = await getActiveBusinessForSession(sessionId);
+  const linked = await requireLinkedKid(context, send, message.chatId);
+  if (!linked) return;
+  const business = await getActiveBusinessForKid(linked.kidId);
 
   if (!business) {
     await send({
@@ -486,8 +512,9 @@ async function handleCeoProfile(
   send: Send,
   context: BotContext,
 ): Promise<void> {
-  const sessionId = await context.getGsiSessionId();
-  const business = await getActiveBusinessForSession(sessionId);
+  const linked = await requireLinkedKid(context, send, message.chatId);
+  if (!linked) return;
+  const business = await getActiveBusinessForKid(linked.kidId);
   if (!business) {
     await send({
       chatId: message.chatId,
@@ -542,13 +569,15 @@ async function handleChoice(
   }
   const choiceId = rawChoice as CeoChoiceId;
 
+  const linked = await requireLinkedKid(context, send, message.chatId);
+  if (!linked) return;
+
   const event = await getCeoEvent(eventId);
 
   // Ownership check — matches the web /api/ceo/decide route. Prevents a
   // chat from deciding another kid's event if the callback data leaks or
-  // the chat gets rebound via /link to a different session mid-flight.
-  const sessionId = await context.getGsiSessionId();
-  if (event.sessionId !== sessionId) {
+  // the chat gets rebound via /link to a different kid mid-flight.
+  if (event.kidId !== linked.kidId) {
     await send({ chatId: message.chatId, text: 'That decision is not yours to make.' });
     return;
   }
@@ -633,10 +662,15 @@ async function handleChoice(
   if (latestBusiness.status === 'completed') aiPointsEarned += CEO_AI_POINTS.COMPLETE_SIMULATION;
 
   // Don't lie to the kid: only claim points if the points write succeeded.
+  // Points live on the existing `sessions/{gsiSessionId}` doc — that's the
+  // web session bound to this chat via the link flow.
   let actualPointsEarned = 0;
   let pointsSaveFailed = false;
   try {
-    await updateSessionPoints(sessionId, { action: 'add_points', points: aiPointsEarned });
+    await updateSessionPoints(context.session.gsiSessionId, {
+      action: 'add_points',
+      points: aiPointsEarned,
+    });
     actualPointsEarned = aiPointsEarned;
   } catch (err) {
     pointsSaveFailed = true;

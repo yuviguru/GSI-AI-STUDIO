@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
+import { requireAuthWithKid } from '@/lib/auth-utils';
 import { ceoRegisterSchema } from '@/lib/validators';
 import { filterInput } from '@/lib/safety/inputFilter';
 import { adminDb } from '@/lib/firebase/admin';
@@ -22,13 +23,13 @@ const MAX_CONCURRENT_ACTIVE_BUSINESSES = 5;
 /**
  * POST /api/ceo/register
  * Create a new Kid CEO business + seed the first milestone-steered event.
+ *
+ * Requires Firebase Auth (Authorization: Bearer) + an active kid profile
+ * (X-Active-Kid-Id header). The kid must be owned by the authed user.
  */
 export async function POST(request: NextRequest) {
   try {
-    const sessionId = request.headers.get('X-Session-Id');
-    if (!sessionId) {
-      throw new AppException('UNAUTHORIZED', 'Missing session', 401);
-    }
+    const { userId, kidId } = await requireAuthWithKid(request);
 
     const body = await request.json();
     const input = ceoRegisterSchema.parse(body);
@@ -37,11 +38,12 @@ export async function POST(request: NextRequest) {
     if (input.customBusinessDescription) filterInput(input.customBusinessDescription);
     filterInput(input.location);
 
-    await checkRegistrationRateLimit(sessionId);
-    await checkConcurrentActiveLimit(sessionId);
+    await checkRegistrationRateLimit(kidId);
+    await checkConcurrentActiveLimit(kidId);
 
     const business = await createCeoBusiness({
-      sessionId,
+      userId,
+      kidId,
       businessType: input.businessType,
       businessName: input.businessName,
       customBusinessDescription: input.customBusinessDescription ?? null,
@@ -50,7 +52,8 @@ export async function POST(request: NextRequest) {
     });
 
     await getOrCreateCeoProfile({
-      sessionId,
+      userId,
+      kidId,
       businessId: business.id,
     });
 
@@ -64,13 +67,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/** Per-session registration rate limit: max 3 new businesses per 24 hours.
- *  Relies on the ceoBusiness sessionId+createdAt index. */
-async function checkRegistrationRateLimit(sessionId: string): Promise<void> {
+/** Per-kid registration rate limit: max 3 new businesses per 24 hours. */
+async function checkRegistrationRateLimit(kidId: string): Promise<void> {
   const cutoff = Timestamp.fromMillis(Date.now() - DAY_MS);
   const snapshot = await adminDb
     .collection(CEO_BUSINESS_COLLECTION)
-    .where('sessionId', '==', sessionId)
+    .where('kidId', '==', kidId)
     .where('createdAt', '>', cutoff)
     .count()
     .get();
@@ -84,13 +86,11 @@ async function checkRegistrationRateLimit(sessionId: string): Promise<void> {
   }
 }
 
-/** Cap simultaneous active businesses at MAX_CONCURRENT_ACTIVE_BUSINESSES.
- *  Kids can always start a new business after completing or pausing an
- *  existing one. */
-async function checkConcurrentActiveLimit(sessionId: string): Promise<void> {
+/** Cap simultaneous active businesses per kid. */
+async function checkConcurrentActiveLimit(kidId: string): Promise<void> {
   const snapshot = await adminDb
     .collection(CEO_BUSINESS_COLLECTION)
-    .where('sessionId', '==', sessionId)
+    .where('kidId', '==', kidId)
     .where('status', '==', 'active')
     .count()
     .get();

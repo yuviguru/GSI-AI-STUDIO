@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
+import { requireAuthWithKid } from '@/lib/auth-utils';
 import { ceoDecideSchema } from '@/lib/validators';
 import { filterOutput } from '@/lib/safety/inputFilter';
 import {
@@ -21,22 +22,27 @@ import type { CeoBusiness, CeoEvent } from '@/types';
 
 /**
  * POST /api/ceo/decide
+ *
  * Submit a choice on an event. Scores the decision, applies state + profile
  * updates atomically, advances the phase if complete, generates the next
  * event, and awards AI Points.
+ *
+ * Auth: Firebase Bearer + X-Active-Kid-Id. Kid must own the event.
  */
 export async function POST(request: NextRequest) {
   try {
-    const sessionId = request.headers.get('X-Session-Id');
-    if (!sessionId) {
-      throw new AppException('UNAUTHORIZED', 'Missing session', 401);
-    }
+    const { kidId } = await requireAuthWithKid(request);
+
+    // AI Points still live on the parent user's session counter, since that's
+    // the cross-kid gamification aggregate. Accept X-Session-Id optionally; fall
+    // back to the active kid id as the points key if missing.
+    const sessionId = request.headers.get('X-Session-Id') ?? kidId;
 
     const body = await request.json();
     const { eventId, choiceId, responseTimeSeconds } = ceoDecideSchema.parse(body);
 
     const event = await getCeoEvent(eventId);
-    if (event.sessionId !== sessionId) {
+    if (event.kidId !== kidId) {
       throw new AppException('FORBIDDEN', 'Not your event', 403);
     }
     if (event.status !== 'pending') {
@@ -48,8 +54,10 @@ export async function POST(request: NextRequest) {
       throw new AppException('INVALID_INPUT', `Unknown choice ${choiceId}`, 400);
     }
 
-    const business = await getCeoBusiness(event.businessId);
-    const profile = await getCeoProfileByBusiness(event.businessId);
+    const [business, profile] = await Promise.all([
+      getCeoBusiness(event.businessId),
+      getCeoProfileByBusiness(event.businessId),
+    ]);
 
     const scoring = await scoreDecision({
       event,
@@ -103,10 +111,18 @@ export async function POST(request: NextRequest) {
     if (phaseAdvanced) aiPointsEarned += CEO_AI_POINTS.COMPLETE_PHASE;
     if (latestBusiness.status === 'completed') aiPointsEarned += CEO_AI_POINTS.COMPLETE_SIMULATION;
 
-    const pointsResult = await updateSessionPoints(sessionId, {
-      action: 'add_points',
-      points: aiPointsEarned,
-    });
+    let newBadges: string[] = [];
+    try {
+      const pointsResult = await updateSessionPoints(sessionId, {
+        action: 'add_points',
+        points: aiPointsEarned,
+      });
+      newBadges = pointsResult.newBadges;
+    } catch (err) {
+      console.error('[ceo/decide] updateSessionPoints failed:', (err as Error).message);
+      // Decision is already saved — don't reject the response over a
+      // best-effort points write. Kid just won't see the +X toast.
+    }
 
     return apiSuccess({
       scores: scoring.scores,
@@ -116,7 +132,7 @@ export async function POST(request: NextRequest) {
       phaseAdvanced,
       milestoneResolved: event.milestone ?? null,
       aiPointsEarned,
-      newBadges: pointsResult.newBadges,
+      newBadges,
     });
   } catch (error) {
     return handleApiError(error);

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
+import { requireAuthWithKid } from '@/lib/auth-utils';
 import { ceoProfilePublicSchema } from '@/lib/validators';
 import {
   getCeoProfileByBusiness,
@@ -10,27 +11,24 @@ import {
 import { updateSessionPoints } from '@/lib/firebase/sessionService';
 import type { CeoBusiness, CeoProfile } from '@/types';
 
-type PublicCeoProfile = Omit<CeoProfile, 'sessionId' | 'userId' | 'kidId'>;
-type PublicCeoBusiness = Omit<CeoBusiness, 'sessionId' | 'userId' | 'kidId'>;
+type PublicCeoProfile = Omit<CeoProfile, 'userId' | 'kidId'>;
+type PublicCeoBusiness = Omit<CeoBusiness, 'userId' | 'kidId'>;
 
-/** Strip session-level identifiers from a profile or business doc before
- *  returning it on the public share endpoint. Keeps kid identity private. */
-function stripPrivate<T extends { sessionId?: unknown; userId?: unknown; kidId?: unknown }>(
-  doc: T,
-) {
-  const { sessionId: _s, userId: _u, kidId: _k, ...rest } = doc;
+/** Strip owner identifiers from a profile/business doc before returning on
+ *  the public share endpoint. Keeps kid identity private. */
+function stripPrivate<T extends { userId?: unknown; kidId?: unknown }>(doc: T) {
+  const { userId: _u, kidId: _k, ...rest } = doc;
   return rest;
 }
 
 /**
  * GET /api/ceo/profile
- * Return the CEO DNA Card profile + its business.
  *
  * Two modes:
- *   - Authenticated: header X-Session-Id + ?businessId=<id>. Session must own
- *     the profile. Returns all fields.
- *   - Public share:  ?s=<shareUrl>. No session required. Only returns the
- *     profile if isPublic == true. Strips sessionId/userId/kidId for privacy.
+ *   - Public share:   `?s=<shareUrl>`. No auth needed. Returns profile + business
+ *     only if `isPublic == true`, with userId/kidId stripped.
+ *   - Authenticated:  header `Authorization: Bearer` + `X-Active-Kid-Id` +
+ *     query `?businessId=<id>`. Kid must own the profile. Returns all fields.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -53,10 +51,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ── Authenticated path ─────────────────────────────────────
-    const sessionId = request.headers.get('X-Session-Id');
-    if (!sessionId) {
-      throw new AppException('UNAUTHORIZED', 'Missing session', 401);
-    }
+    const { kidId } = await requireAuthWithKid(request);
 
     const businessId = searchParams.get('businessId');
     if (!businessId) {
@@ -64,12 +59,11 @@ export async function GET(request: NextRequest) {
     }
 
     const profile = await getCeoProfileByBusiness(businessId);
-    if (profile.sessionId !== sessionId) {
-      throw new AppException('FORBIDDEN', 'Profile does not belong to this session', 403);
+    if (profile.kidId !== kidId) {
+      throw new AppException('FORBIDDEN', 'Profile does not belong to this kid', 403);
     }
 
     const business = await getCeoBusiness(businessId);
-
     return apiSuccess({ profile, business });
   } catch (error) {
     return handleApiError(error);
@@ -78,23 +72,22 @@ export async function GET(request: NextRequest) {
 
 /**
  * PATCH /api/ceo/profile
- * Toggle the profile's isPublic flag. If flipping from private → public for
- * the first time, award AI Points via the track_share action.
+ * Toggle the profile's isPublic flag. First private→public flip awards
+ * AI Points via track_share.
  */
 export async function PATCH(request: NextRequest) {
   try {
-    const sessionId = request.headers.get('X-Session-Id');
-    if (!sessionId) {
-      throw new AppException('UNAUTHORIZED', 'Missing session', 401);
-    }
+    const { kidId } = await requireAuthWithKid(request);
+    // Points still live on the session counter; fall back to kidId as key if
+    // the header isn't sent.
+    const sessionId = request.headers.get('X-Session-Id') ?? kidId;
 
     const body = await request.json();
     const input = ceoProfilePublicSchema.parse(body);
 
-    // Ownership check — fetch existing profile before mutating.
     const existing = await getCeoProfileByBusiness(input.businessId);
-    if (existing.sessionId !== sessionId) {
-      throw new AppException('FORBIDDEN', 'Profile does not belong to this session', 403);
+    if (existing.kidId !== kidId) {
+      throw new AppException('FORBIDDEN', 'Profile does not belong to this kid', 403);
     }
 
     const updatedProfile = await setCeoProfilePublic({
@@ -102,12 +95,14 @@ export async function PATCH(request: NextRequest) {
       isPublic: input.isPublic,
     });
 
-    // Points only on the first flip from private → public. If it was already
-    // public, republishing the same share shouldn't re-award points.
     let newBadges: Awaited<ReturnType<typeof updateSessionPoints>>['newBadges'] = [];
     if (input.isPublic && !existing.isPublic) {
-      const result = await updateSessionPoints(sessionId, { action: 'track_share' });
-      newBadges = result.newBadges;
+      try {
+        const result = await updateSessionPoints(sessionId, { action: 'track_share' });
+        newBadges = result.newBadges;
+      } catch (err) {
+        console.error('[ceo/profile] track_share failed:', (err as Error).message);
+      }
     }
 
     return apiSuccess({ profile: updatedProfile, newBadges });

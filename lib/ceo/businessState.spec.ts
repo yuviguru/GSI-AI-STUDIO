@@ -5,9 +5,8 @@ import type { CeoBusiness } from '@/types';
 function mkBusiness(overrides: Partial<CeoBusiness> = {}): CeoBusiness {
   const base: CeoBusiness = {
     id: 'biz1',
-    sessionId: 'sess1',
-    userId: null,
-    kidId: null,
+    userId: 'user1',
+    kidId: 'kid1',
     businessName: 'Test',
     businessType: 'lemonade',
     customBusinessDescription: null,

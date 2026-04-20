@@ -2,19 +2,34 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { BusinessRegistration } from '@/components/ceo/BusinessRegistration';
 import {
   useCeoBusiness,
   type RegisterBusinessParams,
 } from '@/hooks/useCeoBusiness';
+import { useAuth } from '@/hooks/useAuth';
+import { useKidProfile } from '@/hooks/useKidProfile';
 
 export default function CeoRegisterPage() {
   const router = useRouter();
   const hook = useCeoBusiness({ autoFetch: false });
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { activeKid, loading: kidLoading } = useKidProfile();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Client-side defense: if the caller lands here without auth + kid, bounce
+  // them back to the landing page which renders the appropriate gate. The
+  // server-side routes still reject the actual registration on their own,
+  // so a determined user can't bypass this.
+  useEffect(() => {
+    if (authLoading || kidLoading) return;
+    if (!isAuthenticated || !activeKid) {
+      router.replace('/ceo');
+    }
+  }, [authLoading, kidLoading, isAuthenticated, activeKid, router]);
 
   async function handleSubmit(params: RegisterBusinessParams) {
     setSubmitting(true);
@@ -28,6 +43,18 @@ export default function CeoRegisterPage() {
       setFormError(message);
       setSubmitting(false);
     }
+  }
+
+  // While auth/kid are resolving OR while we're redirecting unauthed users,
+  // render a minimal shell rather than the registration form.
+  if (authLoading || kidLoading || !isAuthenticated || !activeKid) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-50 via-white to-white">
+        <div className="mx-auto max-w-3xl px-4 py-8">
+          <div className="h-64 animate-pulse rounded-3xl bg-gray-100" aria-hidden />
+        </div>
+      </div>
+    );
   }
 
   return (

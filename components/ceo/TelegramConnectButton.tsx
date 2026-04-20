@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Copy, Loader2, Send } from 'lucide-react';
-import { fetchWithSession } from '@/lib/fetchWithSession';
+import { Check, Copy, Loader2, Lock, Send } from 'lucide-react';
+import { fetchWithKidAuth } from '@/lib/fetchWithKidAuth';
+import { useAuth } from '@/hooks/useAuth';
+import { useKidProfile } from '@/hooks/useKidProfile';
 import { cn } from '@/lib/utils';
 
 interface MintLinkResponse {
@@ -31,6 +33,8 @@ export function TelegramConnectButton({
   label,
   className,
 }: TelegramConnectButtonProps) {
+  const { isAuthenticated, getIdToken } = useAuth();
+  const { activeKid } = useKidProfile();
   const [link, setLink] = useState<MintLinkResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,18 +43,46 @@ export function TelegramConnectButton({
   const resolvedLabel =
     label ?? (businessId ? 'Continue on Telegram' : 'Connect Telegram');
 
+  const ready = isAuthenticated && !!activeKid;
+
+  // Gate: if the caller isn't signed in or hasn't picked a kid, render a
+  // disabled button rather than letting them mint a token the server would
+  // reject anyway. Defense-in-depth for the server-side auth check.
+  if (!ready) {
+    return (
+      <div className={cn('flex flex-col gap-1', className)}>
+        <button
+          type="button"
+          disabled
+          className="inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-2xl bg-slate-200 px-4 py-3 text-sm font-semibold text-slate-500"
+          title={
+            !isAuthenticated
+              ? 'Sign in first to connect Telegram'
+              : 'Pick a kid profile first'
+          }
+        >
+          <Lock className="h-4 w-4" />
+          {resolvedLabel}
+        </button>
+      </div>
+    );
+  }
+
   const handleMint = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchWithSession('/api/bot/link/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          botHandle: 'GSIKidCeoAssistantBot',
-          ...(businessId ? { businessId } : {}),
-        }),
-      });
+      const res = await fetchWithKidAuth(
+        '/api/bot/link/create',
+        { getIdToken, kidId: activeKid.id },
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            botHandle: 'GSIKidCeoAssistantBot',
+            ...(businessId ? { businessId } : {}),
+          }),
+        },
+      );
 
       // Read body as text first so a non-JSON server response (HTML error
       // page from Netlify's shell, empty 502 from cold-start, etc.) shows

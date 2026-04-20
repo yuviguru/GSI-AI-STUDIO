@@ -57,6 +57,7 @@ function PlayPageInner() {
     business,
     pendingEvent,
     decisionHistory,
+    ready,
     loading,
     error,
     decide,
@@ -64,6 +65,15 @@ function PlayPageInner() {
     businessId: businessIdParam,
     autoFetch: true,
   });
+
+  // Client-side defense: bounce unauth'd / no-kid users back to the landing
+  // gate. The API still enforces the check — this is just to avoid showing
+  // them a broken play surface.
+  useEffect(() => {
+    if (!loading && !ready) {
+      router.replace('/ceo');
+    }
+  }, [loading, ready, router]);
 
   // Completed-state profile (only fetch when we need it)
   const profileHook = useCeoProfile(

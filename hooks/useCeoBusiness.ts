@@ -9,7 +9,9 @@ import type {
   CeoEvent,
   CeoPace,
 } from '@/types';
-import { fetchWithSession } from '@/lib/fetchWithSession';
+import { fetchWithKidAuth, KidAuthMissingError } from '@/lib/fetchWithKidAuth';
+import { useAuth } from './useAuth';
+import { useKidProfile } from './useKidProfile';
 
 export interface CeoDecisionHistoryEntry {
   event: CeoEvent;
@@ -68,6 +70,8 @@ export interface UseCeoBusinessReturn {
   business: CeoBusiness | null;
   pendingEvent: CeoEvent | null;
   decisionHistory: CeoDecisionHistoryEntry[];
+  /** True only when signed in AND a kid is selected. */
+  ready: boolean;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -81,24 +85,13 @@ export interface UseCeoBusinessOptions {
   autoFetch?: boolean;
 }
 
-async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetchWithSession(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  });
-
-  const json = await res.json();
-  if (!json.success) {
-    throw new Error(json.error?.message ?? 'Something went wrong');
-  }
-  return json.data as T;
-}
-
 export function useCeoBusiness(options?: UseCeoBusinessOptions): UseCeoBusinessReturn {
   const { businessId, autoFetch = true } = options ?? {};
+  const { isAuthenticated, loading: authLoading, getIdToken } = useAuth();
+  const { activeKid, loading: kidLoading } = useKidProfile();
+
+  const ready = isAuthenticated && !!activeKid;
+  const kidId = activeKid?.id ?? null;
 
   const [business, setBusiness] = useState<CeoBusiness | null>(null);
   const [pendingEvent, setPendingEvent] = useState<CeoEvent | null>(null);
@@ -106,7 +99,28 @@ export function useCeoBusiness(options?: UseCeoBusinessOptions): UseCeoBusinessR
   const [loading, setLoading] = useState<boolean>(autoFetch);
   const [error, setError] = useState<string | null>(null);
 
+  const apiFetch = useCallback(
+    async <T,>(url: string, init?: RequestInit): Promise<T> => {
+      const res = await fetchWithKidAuth(url, { getIdToken, kidId }, init);
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json.error?.message ?? 'Something went wrong');
+      }
+      return json.data as T;
+    },
+    [getIdToken, kidId],
+  );
+
   const refetch = useCallback(async () => {
+    if (!ready) {
+      setBusiness(null);
+      setPendingEvent(null);
+      setDecisionHistory([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -118,17 +132,19 @@ export function useCeoBusiness(options?: UseCeoBusinessOptions): UseCeoBusinessR
       setPendingEvent(data.pendingEvent);
       setDecisionHistory(data.decisionHistory);
     } catch (err) {
+      if (err instanceof KidAuthMissingError) return;
       const message = err instanceof Error ? err.message : 'Failed to load business';
       setError(message);
     } finally {
       setLoading(false);
     }
-  }, [businessId]);
+  }, [ready, businessId, apiFetch]);
 
   useEffect(() => {
     if (!autoFetch) return;
+    if (authLoading || kidLoading) return;
     void refetch();
-  }, [autoFetch, refetch]);
+  }, [autoFetch, refetch, authLoading, kidLoading]);
 
   const registerBusiness = useCallback(
     async (params: RegisterBusinessParams): Promise<RegisterBusinessResponse> => {
@@ -151,59 +167,50 @@ export function useCeoBusiness(options?: UseCeoBusinessOptions): UseCeoBusinessR
         setLoading(false);
       }
     },
-    [],
+    [apiFetch],
   );
 
-  const decide = useCallback(async (params: DecideParams): Promise<DecideResponse> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await apiFetch<DecideResponse>('/api/ceo/decide', {
-        method: 'POST',
-        body: JSON.stringify(params),
-      });
+  const decide = useCallback(
+    async (params: DecideParams): Promise<DecideResponse> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await apiFetch<DecideResponse>('/api/ceo/decide', {
+          method: 'POST',
+          body: JSON.stringify(params),
+        });
 
-      setBusiness(data.updatedBusiness);
-      setPendingEvent(data.nextEvent);
-
-      // Push the just-decided event onto history (most-recent-first to match the
-      // GET /business shape). We reconstruct the entry from what we sent + what
-      // the server scored, since the decide response doesn't echo the full event.
-      setDecisionHistory((prev) => {
-        // Use the current pendingEvent if it matches the decided eventId —
-        // that's the event the kid just resolved.
-        const decidedEvent = prev.find((h) => h.event.id === params.eventId)?.event;
+        setBusiness(data.updatedBusiness);
         setPendingEvent(data.nextEvent);
-        if (!decidedEvent) {
-          // Pull from the previous pendingEvent via a functional update on the
-          // pendingEvent setter isn't ergonomic here; instead, stamp the entry
-          // with whatever we know. Consumers should call refetch() to get the
-          // canonical history if they need the full event payload.
-          return prev;
-        }
-        const choice = decidedEvent.choices.find((c) => c.id === params.choiceId);
-        const entry: CeoDecisionHistoryEntry = {
-          event: decidedEvent,
-          decision: {
-            choiceId: params.choiceId,
-            choiceText: choice?.text ?? '',
-            scores: data.scores,
-            feedback: data.feedback,
-            timestamp: new Date().toISOString(),
-          },
-        };
-        return [entry, ...prev];
-      });
-
-      return data;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to submit decision';
-      setError(message);
-      throw err instanceof Error ? err : new Error(message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+        setDecisionHistory((prev) => {
+          // The decide response doesn't echo the full event. Promote the
+          // current pendingEvent (the one the kid just decided) into history.
+          const decidedEvent = prev.find((h) => h.event.id === params.eventId)?.event;
+          if (!decidedEvent) return prev;
+          const choice = decidedEvent.choices.find((c) => c.id === params.choiceId);
+          const entry: CeoDecisionHistoryEntry = {
+            event: decidedEvent,
+            decision: {
+              choiceId: params.choiceId,
+              choiceText: choice?.text ?? '',
+              scores: data.scores,
+              feedback: data.feedback,
+              timestamp: new Date().toISOString(),
+            },
+          };
+          return [entry, ...prev];
+        });
+        return data;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to submit decision';
+        setError(message);
+        throw err instanceof Error ? err : new Error(message);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [apiFetch],
+  );
 
   const fetchNextEvent = useCallback(
     async (bizId: string): Promise<FetchNextEventResponse> => {
@@ -224,14 +231,15 @@ export function useCeoBusiness(options?: UseCeoBusinessOptions): UseCeoBusinessR
         setLoading(false);
       }
     },
-    [],
+    [apiFetch],
   );
 
   return {
     business,
     pendingEvent,
     decisionHistory,
-    loading,
+    ready,
+    loading: loading || authLoading || kidLoading,
     error,
     refetch,
     registerBusiness,

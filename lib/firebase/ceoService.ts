@@ -63,9 +63,8 @@ function docToCeoBusiness(doc: FirebaseFirestore.DocumentSnapshot): CeoBusiness 
   const data = doc.data()!;
   return {
     id: doc.id,
-    sessionId: data.sessionId,
-    userId: data.userId ?? null,
-    kidId: data.kidId ?? null,
+    userId: data.userId ?? '',
+    kidId: data.kidId ?? '',
     businessName: data.businessName,
     businessType: data.businessType,
     customBusinessDescription: data.customBusinessDescription ?? null,
@@ -92,7 +91,8 @@ function docToCeoEvent(doc: FirebaseFirestore.DocumentSnapshot): CeoEvent {
   return {
     id: doc.id,
     businessId: data.businessId,
-    sessionId: data.sessionId,
+    userId: data.userId ?? '',
+    kidId: data.kidId ?? '',
     title: data.title,
     description: data.description,
     category: data.category,
@@ -115,9 +115,8 @@ function docToCeoProfile(doc: FirebaseFirestore.DocumentSnapshot): CeoProfile {
   const data = doc.data()!;
   return {
     id: doc.id,
-    sessionId: data.sessionId,
-    userId: data.userId ?? null,
-    kidId: data.kidId ?? null,
+    userId: data.userId ?? '',
+    kidId: data.kidId ?? '',
     businessId: data.businessId,
     dimensions: data.dimensions ?? seedDimensions(),
     totalDecisions: data.totalDecisions ?? 0,
@@ -132,13 +131,12 @@ function docToCeoProfile(doc: FirebaseFirestore.DocumentSnapshot): CeoProfile {
 
 // ─── Businesses ──────────────────────────────────────────────
 
-/** Create a new Kid CEO business for the given session. Seeds with default
- *  starting capital + initial flat milestone dict. Does NOT generate events
- *  (caller does that via eventEngine). */
+/** Create a new Kid CEO business for an authenticated user's kid profile.
+ *  Seeds with default starting capital + initial flat milestone dict. Does
+ *  NOT generate events (caller does that via eventEngine). */
 export async function createCeoBusiness(params: {
-  sessionId: string;
-  userId?: string | null;
-  kidId?: string | null;
+  userId: string;
+  kidId: string;
   businessType: CeoBusinessType;
   businessName?: string;
   customBusinessDescription?: string | null;
@@ -154,9 +152,8 @@ export async function createCeoBusiness(params: {
 
   const business: CeoBusiness = {
     id,
-    sessionId: params.sessionId,
-    userId: params.userId ?? null,
-    kidId: params.kidId ?? null,
+    userId: params.userId,
+    kidId: params.kidId,
     businessName,
     businessType: params.businessType,
     customBusinessDescription: params.customBusinessDescription ?? null,
@@ -190,14 +187,14 @@ export async function getCeoBusiness(businessId: string): Promise<CeoBusiness> {
   return docToCeoBusiness(doc);
 }
 
-/** Most recent active business for a session. Returns null if the session
+/** Most recent active business for a kid profile. Returns null if the kid
  *  has no active business. Used by /api/ceo/business without businessId. */
-export async function getActiveBusinessForSession(
-  sessionId: string,
+export async function getActiveBusinessForKid(
+  kidId: string,
 ): Promise<CeoBusiness | null> {
   const snapshot = await adminDb
     .collection(CEO_BUSINESS_COLLECTION)
-    .where('sessionId', '==', sessionId)
+    .where('kidId', '==', kidId)
     .where('status', '==', 'active')
     .orderBy('createdAt', 'desc')
     .limit(1)
@@ -207,71 +204,15 @@ export async function getActiveBusinessForSession(
   return docToCeoBusiness(snapshot.docs[0]!);
 }
 
-/** Move every ceoBusiness / ceoEvents / ceoProfiles doc owned by
- *  `fromSessionId` onto `toSessionId`.
- *
- *  Called when a Telegram chat links to a web session — any businesses the
- *  kid started on the (anonymous) bot session are merged into the web
- *  session so they appear in the /ceo landing list alongside web-created
- *  businesses. No-op when `fromSessionId === toSessionId`.
- *
- *  Uses Firestore batched writes (max 500 ops per batch). Idempotent:
- *  running twice on the same pair is safe because the second run finds
- *  zero docs owned by `fromSessionId`. */
-export async function migrateSessionBusinesses(
-  fromSessionId: string,
-  toSessionId: string,
-): Promise<{ businesses: number; events: number; profiles: number }> {
-  if (fromSessionId === toSessionId) {
-    return { businesses: 0, events: 0, profiles: 0 };
-  }
-
-  const now = Timestamp.now();
-
-  // Read all three collections concurrently. Firestore caps each batched
-  // write at 500 ops — in practice a single kid will have at most a handful
-  // of businesses + tens of events, well under the cap. Paginate if you
-  // ever cross that ceiling.
-  const [businessSnap, eventSnap, profileSnap] = await Promise.all([
-    adminDb.collection(CEO_BUSINESS_COLLECTION).where('sessionId', '==', fromSessionId).get(),
-    adminDb.collection(CEO_EVENTS_COLLECTION).where('sessionId', '==', fromSessionId).get(),
-    adminDb.collection(CEO_PROFILES_COLLECTION).where('sessionId', '==', fromSessionId).get(),
-  ]);
-
-  const totalOps = businessSnap.size + eventSnap.size + profileSnap.size;
-  if (totalOps === 0) {
-    return { businesses: 0, events: 0, profiles: 0 };
-  }
-  if (totalOps > 500) {
-    throw new AppException(
-      'MIGRATION_TOO_LARGE',
-      `Session migration would exceed the 500-op Firestore batch limit (${totalOps} docs). Paginate.`,
-      500,
-    );
-  }
-
-  const batch = adminDb.batch();
-  for (const doc of businessSnap.docs) batch.update(doc.ref, { sessionId: toSessionId, updatedAt: now });
-  for (const doc of eventSnap.docs) batch.update(doc.ref, { sessionId: toSessionId });
-  for (const doc of profileSnap.docs) batch.update(doc.ref, { sessionId: toSessionId, updatedAt: now });
-  await batch.commit();
-
-  return {
-    businesses: businessSnap.size,
-    events: eventSnap.size,
-    profiles: profileSnap.size,
-  };
-}
-
-/** List all businesses (active + completed) for a session, newest first.
- *  Used for the "past businesses" view. */
-export async function listBusinessesForSession(
-  sessionId: string,
+/** List all businesses (active + completed) for a kid, newest first.
+ *  Used by /api/ceo/businesses for the landing-page list. */
+export async function listBusinessesForKid(
+  kidId: string,
   limit: number = 20,
 ): Promise<CeoBusiness[]> {
   const snapshot = await adminDb
     .collection(CEO_BUSINESS_COLLECTION)
-    .where('sessionId', '==', sessionId)
+    .where('kidId', '==', kidId)
     .orderBy('createdAt', 'desc')
     .limit(limit)
     .get();
@@ -293,7 +234,7 @@ export async function updateBusinessState(
     throw new AppException('NOT_FOUND', 'Business not found', 404);
   }
 
-  const { id: _id, sessionId: _sid, createdAt: _c, ...rest } = updates;
+  const { id: _id, userId: _uid, kidId: _kid, createdAt: _c, ...rest } = updates;
   const payload = stripUndefined({
     ...rest,
     updatedAt: Timestamp.now(),
@@ -379,7 +320,8 @@ export async function saveCeoEvent(
   const doc: CeoEvent = {
     id,
     businessId: event.businessId,
-    sessionId: event.sessionId,
+    userId: event.userId,
+    kidId: event.kidId,
     title: event.title,
     description: event.description,
     category: event.category,
@@ -518,7 +460,8 @@ export async function recordEventDecision(params: {
     }
     const {
       id: _bid,
-      sessionId: _bsid,
+      userId: _buid,
+      kidId: _bkid,
       createdAt: _bc,
       ...businessRest
     } = params.businessStateUpdates;
@@ -574,11 +517,11 @@ export async function recordEventDecision(params: {
 // ─── Profiles ────────────────────────────────────────────────
 
 /** Get or create the CeoProfile for a business. Seeds with all dimensions at
- *  50 (neutral baseline) on first access. */
+ *  50 (neutral baseline) on first access. Requires userId + kidId so the
+ *  created profile is properly scoped to the owning kid. */
 export async function getOrCreateCeoProfile(params: {
-  sessionId: string;
-  userId?: string | null;
-  kidId?: string | null;
+  userId: string;
+  kidId: string;
   businessId: string;
 }): Promise<CeoProfile> {
   // Look up by businessId first — profile is 1:1 with business.
@@ -608,9 +551,8 @@ export async function getOrCreateCeoProfile(params: {
 
   const profile: CeoProfile = {
     id,
-    sessionId: params.sessionId,
-    userId: params.userId ?? null,
-    kidId: params.kidId ?? null,
+    userId: params.userId,
+    kidId: params.kidId,
     businessId: params.businessId,
     dimensions: seedDimensions() as CeoProfile['dimensions'],
     totalDecisions: 0,

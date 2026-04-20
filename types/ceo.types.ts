@@ -68,12 +68,17 @@ export interface CeoDimensionData {
 
 // ─── Firestore documents ───────────────────────────────────
 
-/** Firestore document in `ceoBusiness` collection — live business simulation state. */
+/** Firestore document in `ceoBusiness` collection — live business simulation state.
+ *
+ *  Kid CEO is authenticated-only: every business belongs to an authenticated
+ *  parent (`userId` = Firebase Auth UID) and a specific kid profile
+ *  (`kidId` = top-level `kids/{kidId}` document). Anonymous sessionId-based
+ *  ownership was retired — the web app and Telegram bot both key on
+ *  `(userId, kidId)` so data syncs automatically across channels. */
 export interface CeoBusiness {
   id: string;
-  sessionId: string;
-  userId: string | null;
-  kidId: string | null;
+  userId: string;
+  kidId: string;
   businessName: string;
   businessType: CeoBusinessType;
   customBusinessDescription: string | null;
@@ -94,11 +99,15 @@ export interface CeoBusiness {
   completedAt: Timestamp | null;
 }
 
-/** Firestore document in `ceoEvents` collection — a single decision event for a business. */
+/** Firestore document in `ceoEvents` collection — a single decision event for a business.
+ *
+ *  `userId` + `kidId` are denormalized from the parent business so we can
+ *  query events by kid without an extra join. */
 export interface CeoEvent {
   id: string;
   businessId: string;
-  sessionId: string;
+  userId: string;
+  kidId: string;
   title: string;
   description: string;
   category: string;
@@ -119,9 +128,8 @@ export interface CeoEvent {
 /** Firestore document in `ceoProfiles` collection — shareable DNA Card / CEO profile snapshot. */
 export interface CeoProfile {
   id: string;
-  sessionId: string;
-  userId: string | null;
-  kidId: string | null;
+  userId: string;
+  kidId: string;
   businessId: string;
   dimensions: Record<CeoDimensionKey, CeoDimensionData>;
   totalDecisions: number;

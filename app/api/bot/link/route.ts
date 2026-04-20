@@ -3,7 +3,7 @@ import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { botLinkCreateSchema } from '@/lib/validators';
 import { adminDb } from '@/lib/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
-import { verifyAuth } from '@/lib/auth-utils';
+import { requireAuthWithKid } from '@/lib/auth-utils';
 import { createBotLinkCode } from '@/lib/firebase/botLinkService';
 
 const BOT_LINK_CODES_COLLECTION = 'botLinkCodes';
@@ -12,65 +12,55 @@ const HOUR_MS = 60 * 60 * 1000;
 
 /**
  * POST /api/bot/link/create
- * Mint a single-use `botLinkCodes` token for auth binding a Telegram chat
- * to the caller's GSI web session (and optionally their Firebase Phone Auth
- * user + active kid profile).
  *
- * Anonymous callers get a session-scoped link; authenticated callers who
- * supply an `Authorization: Bearer ...` header additionally bind the token
- * to their `userId` (and `kidId`, if an `X-Active-Kid-Id` header is sent
- * and verified).
+ * Mint a single-use `botLinkCodes` token that binds a Telegram chat to the
+ * caller's authenticated user + active kid profile. The bot consumes the
+ * token via `/start link_<token>` or `/link <code>`.
+ *
+ * Kid CEO is authenticated-only: requires a Firebase ID token
+ * (`Authorization: Bearer`) + an active kid (`X-Active-Kid-Id` header).
+ * Anonymous bot-linking is no longer supported — the bot refuses to work
+ * on unlinked chats, so there is no unauth'd fallback path.
  */
 export async function POST(request: NextRequest) {
   try {
-    const sessionId = request.headers.get('X-Session-Id');
-    if (!sessionId) {
-      throw new AppException('UNAUTHORIZED', 'Missing session', 401);
-    }
+    const { userId, kidId } = await requireAuthWithKid(request);
 
     const body = await request.json();
     const { botHandle, businessId } = botLinkCreateSchema.parse(body);
 
-    // Phase-2 optional auth: only call verifyAuth when an Authorization
-    // header is present, so anonymous callers aren't forced through the
-    // auth pipeline.  The header-present branch still propagates auth
-    // errors (invalid/expired tokens) — a caller who supplies a Bearer
-    // token is declaring intent to authenticate.
-    let userId: string | null = null;
-    let kidId: string | null = null;
-    const hasAuthHeader = !!request.headers.get('Authorization');
-    if (hasAuthHeader) {
-      const auth = await verifyAuth(request);
-      userId = auth.userId;
-
-      // Bind to the caller's active kid profile when supplied, but only
-      // after verifying ownership (Admin SDK bypasses Firestore rules).
-      const rawKidId = request.headers.get('X-Active-Kid-Id');
-      if (rawKidId) {
-        const kidDoc = await adminDb.collection('kids').doc(rawKidId).get();
-        if (!kidDoc.exists || kidDoc.data()?.parentId !== auth.userId) {
-          throw new AppException(
-            'FORBIDDEN',
-            'Kid profile not found or not owned by caller',
-            403,
-          );
-        }
-        kidId = rawKidId;
+    // If a businessId was passed, verify it belongs to this kid before we
+    // bake it into the link token — otherwise a malicious caller could mint
+    // a token that jumps someone else's business after redemption.
+    if (businessId) {
+      const biz = await adminDb.collection('ceoBusiness').doc(businessId).get();
+      if (!biz.exists) {
+        throw new AppException('NOT_FOUND', 'Business not found', 404);
+      }
+      if (biz.data()?.kidId !== kidId) {
+        throw new AppException(
+          'FORBIDDEN',
+          'That business belongs to a different kid',
+          403,
+        );
       }
     }
 
-    await checkMintRateLimit(sessionId);
+    // The `gsiSessionId` stored on the token is still used for routing AI
+    // Points writes on the session-level counter. It's derived from the
+    // userId so bot and web both resolve to the same counter.
+    const gsiSessionId = `user_${userId}`;
+
+    await checkMintRateLimit(gsiSessionId);
 
     const link = await createBotLinkCode({
-      gsiSessionId: sessionId,
+      gsiSessionId,
       userId,
       kidId,
       botHandle,
       businessId: businessId ?? null,
     });
 
-    // Telegram deep links always live on https://t.me/<botHandle>; this is
-    // Telegram's canonical host, not our app domain.
     const deepLink = `https://t.me/${botHandle}?start=link_${link.token}`;
 
     const expiresAtIso =
@@ -94,13 +84,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/** Per-session mint rate limit: max 5 active tokens per rolling hour.
+/** Per-user mint rate limit: max 5 active tokens per rolling hour.
  *  Relies on the botLinkCodes gsiSessionId+createdAt index. */
-async function checkMintRateLimit(sessionId: string): Promise<void> {
+async function checkMintRateLimit(gsiSessionId: string): Promise<void> {
   const cutoff = Timestamp.fromMillis(Date.now() - HOUR_MS);
   const snapshot = await adminDb
     .collection(BOT_LINK_CODES_COLLECTION)
-    .where('gsiSessionId', '==', sessionId)
+    .where('gsiSessionId', '==', gsiSessionId)
     .where('createdAt', '>', cutoff)
     .count()
     .get();

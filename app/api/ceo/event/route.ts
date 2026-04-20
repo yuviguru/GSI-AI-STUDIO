@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
+import { requireAuthWithKid } from '@/lib/auth-utils';
 import { ceoEventRequestSchema } from '@/lib/validators';
 import {
   getCeoBusiness,
@@ -16,17 +17,13 @@ import { pickNextMilestone } from '@/lib/ceo/phases';
  */
 export async function POST(request: NextRequest) {
   try {
-    const sessionId = request.headers.get('X-Session-Id');
-    if (!sessionId) {
-      throw new AppException('UNAUTHORIZED', 'Missing session', 401);
-    }
+    const { kidId } = await requireAuthWithKid(request);
 
     const body = await request.json();
     const { businessId } = ceoEventRequestSchema.parse(body);
 
-    // getCeoBusiness throws NOT_FOUND (404) if the business doesn't exist.
     const business = await getCeoBusiness(businessId);
-    if (business.sessionId !== sessionId) {
+    if (business.kidId !== kidId) {
       throw new AppException('FORBIDDEN', 'You do not own this business', 403);
     }
 

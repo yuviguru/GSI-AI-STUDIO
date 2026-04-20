@@ -37,10 +37,13 @@ interface LlmEventResponse {
 
 /** What this module returns to callers — the raw generated event, ready to be
  *  persisted via ceoService.saveCeoEvent(). Omits Firestore-assigned fields
- *  (id, status, createdAt, expiresAt, decision fields). */
+ *  (id, status, createdAt, expiresAt, decision fields). `userId` + `kidId`
+ *  are denormalised from the parent business so downstream queries can
+ *  filter events by kid without an extra join. */
 export interface GeneratedEvent {
   businessId: string;
-  sessionId: string;
+  userId: string;
+  kidId: string;
   title: string;
   description: string;
   category: string;
@@ -115,7 +118,8 @@ function shapeLlmEvent(
 
   return {
     businessId: business.id,
-    sessionId: business.sessionId,
+    userId: business.userId,
+    kidId: business.kidId,
     title: raw.title.trim(),
     description: raw.content.trim(),
     category: raw.category.trim(),
@@ -198,7 +202,8 @@ export function buildFallbackEvent(business: CeoBusiness, milestone: string | nu
 
   return {
     businessId: business.id,
-    sessionId: business.sessionId,
+    userId: business.userId,
+    kidId: business.kidId,
     title: template.title,
     description,
     category: template.category,

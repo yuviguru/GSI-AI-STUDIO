@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { CeoBusiness, CeoProfile } from '@/types';
-import { fetchWithSession } from '@/lib/fetchWithSession';
+import { fetchWithKidAuth, KidAuthMissingError } from '@/lib/fetchWithKidAuth';
+import { useAuth } from './useAuth';
+import { useKidProfile } from './useKidProfile';
 
 export interface UseCeoProfileReturn {
   profile: CeoProfile | null;
@@ -13,6 +15,11 @@ export interface UseCeoProfileReturn {
   setPublic: (isPublic: boolean) => Promise<{ profile: CeoProfile; newBadges: string[] }>;
 }
 
+/** Two modes:
+ *    - `{ businessId }` — authenticated owner view. Requires sign-in + kid.
+ *    - `{ shareUrl }`   — public share view. Unauthenticated fetch; strips
+ *                         owner identifiers on the server side.
+ */
 export type UseCeoProfileOptions = { businessId: string } | { shareUrl: string };
 
 interface ProfileGetResponse {
@@ -25,33 +32,20 @@ interface ProfilePatchResponse {
   newBadges: string[];
 }
 
-async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetchWithSession(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  });
-
-  const json = await res.json();
-  if (!json.success) {
-    throw new Error(json.error?.message ?? 'Something went wrong');
-  }
-  return json.data as T;
-}
-
 function hasBusinessId(opts: UseCeoProfileOptions): opts is { businessId: string } {
-  return 'businessId' in opts && typeof opts.businessId === 'string';
+  return 'businessId' in opts && typeof opts.businessId === 'string' && opts.businessId.length > 0;
 }
 
 function hasShareUrl(opts: UseCeoProfileOptions): opts is { shareUrl: string } {
-  return 'shareUrl' in opts && typeof opts.shareUrl === 'string';
+  return 'shareUrl' in opts && typeof opts.shareUrl === 'string' && opts.shareUrl.length > 0;
 }
 
 export function useCeoProfile(options: UseCeoProfileOptions): UseCeoProfileReturn {
   const businessId = hasBusinessId(options) ? options.businessId : null;
   const shareUrl = hasShareUrl(options) ? options.shareUrl : null;
+
+  const { isAuthenticated, loading: authLoading, getIdToken } = useAuth();
+  const { activeKid, loading: kidLoading } = useKidProfile();
 
   const [profile, setProfile] = useState<CeoProfile | null>(null);
   const [business, setBusiness] = useState<CeoBusiness | null>(null);
@@ -62,42 +56,72 @@ export function useCeoProfile(options: UseCeoProfileOptions): UseCeoProfileRetur
     setLoading(true);
     setError(null);
     try {
-      let url: string;
+      let res: Response;
       if (shareUrl) {
-        url = `/api/ceo/profile?s=${encodeURIComponent(shareUrl)}`;
+        // Public share — no auth required
+        res = await fetch(`/api/ceo/profile?s=${encodeURIComponent(shareUrl)}`);
       } else if (businessId) {
-        url = `/api/ceo/profile?businessId=${encodeURIComponent(businessId)}`;
+        // Authenticated owner — requires Firebase Bearer + X-Active-Kid-Id
+        if (!isAuthenticated || !activeKid) {
+          // Don't throw mid-hydration — just clear and wait.
+          setProfile(null);
+          setBusiness(null);
+          return;
+        }
+        res = await fetchWithKidAuth(
+          `/api/ceo/profile?businessId=${encodeURIComponent(businessId)}`,
+          { getIdToken, kidId: activeKid.id },
+          { method: 'GET' },
+        );
       } else {
         throw new Error('useCeoProfile requires either businessId or shareUrl');
       }
 
-      const data = await apiFetch<ProfileGetResponse>(url, { method: 'GET' });
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json.error?.message ?? 'Something went wrong');
+      }
+      const data = json.data as ProfileGetResponse;
       setProfile(data.profile);
       setBusiness(data.business);
     } catch (err) {
+      if (err instanceof KidAuthMissingError) return;
       const message = err instanceof Error ? err.message : 'Failed to load profile';
       setError(message);
     } finally {
       setLoading(false);
     }
-  }, [businessId, shareUrl]);
+  }, [businessId, shareUrl, isAuthenticated, activeKid, getIdToken]);
 
   useEffect(() => {
+    if (authLoading || kidLoading) return;
     void refetch();
-  }, [refetch]);
+  }, [refetch, authLoading, kidLoading]);
 
   const setPublic = useCallback(
     async (isPublic: boolean): Promise<ProfilePatchResponse> => {
       if (!businessId) {
         throw new Error('setPublic is only available in businessId mode');
       }
+      if (!activeKid) {
+        throw new Error('Pick a kid profile first.');
+      }
       setLoading(true);
       setError(null);
       try {
-        const data = await apiFetch<ProfilePatchResponse>('/api/ceo/profile', {
-          method: 'PATCH',
-          body: JSON.stringify({ businessId, isPublic }),
-        });
+        const res = await fetchWithKidAuth(
+          '/api/ceo/profile',
+          { getIdToken, kidId: activeKid.id },
+          {
+            method: 'PATCH',
+            body: JSON.stringify({ businessId, isPublic }),
+          },
+        );
+        const json = await res.json();
+        if (!json.success) {
+          throw new Error(json.error?.message ?? 'Failed to update profile');
+        }
+        const data = json.data as ProfilePatchResponse;
         setProfile(data.profile);
         return data;
       } catch (err) {
@@ -108,13 +132,13 @@ export function useCeoProfile(options: UseCeoProfileOptions): UseCeoProfileRetur
         setLoading(false);
       }
     },
-    [businessId],
+    [businessId, activeKid, getIdToken],
   );
 
   return {
     profile,
     business,
-    loading,
+    loading: loading || authLoading || (businessId ? kidLoading : false),
     error,
     refetch,
     setPublic,

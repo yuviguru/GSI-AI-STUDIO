@@ -1,8 +1,9 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
+import { requireAuthWithKid } from '@/lib/auth-utils';
 import {
   getCeoBusiness,
-  getActiveBusinessForSession,
+  getActiveBusinessForKid,
   getPendingEventForBusiness,
   listDecidedEventsForBusiness,
 } from '@/lib/firebase/ceoService';
@@ -10,27 +11,26 @@ import type { CeoBusiness, CeoEvent } from '@/types';
 
 /**
  * GET /api/ceo/business
- * Get the current business state + pending event + recent decision history.
- * If ?businessId is omitted, returns the most recent ACTIVE business for the
- * session. 404s if the session has no active business.
+ * Returns the current business state + pending event + recent decision history
+ * for the authenticated user's active kid profile.
+ *
+ * If `?businessId` is omitted, returns the most recent ACTIVE business for the
+ * kid. 404s if the kid has no active business.
  */
 export async function GET(request: NextRequest) {
   try {
-    const sessionId = request.headers.get('X-Session-Id');
-    if (!sessionId) {
-      throw new AppException('UNAUTHORIZED', 'Missing session', 401);
-    }
+    const { userId, kidId } = await requireAuthWithKid(request);
 
     const businessId = new URL(request.url).searchParams.get('businessId');
 
     let business: CeoBusiness;
     if (businessId) {
       business = await getCeoBusiness(businessId);
-      if (business.sessionId !== sessionId) {
-        throw new AppException('FORBIDDEN', 'Business belongs to a different session', 403);
+      if (business.kidId !== kidId || business.userId !== userId) {
+        throw new AppException('FORBIDDEN', 'Business belongs to a different kid', 403);
       }
     } else {
-      const active = await getActiveBusinessForSession(sessionId);
+      const active = await getActiveBusinessForKid(kidId);
       if (!active) {
         throw new AppException('NOT_FOUND', 'No active business. Register one first!', 404);
       }
@@ -39,8 +39,8 @@ export async function GET(request: NextRequest) {
 
     const pendingEvent = await getPendingEventForBusiness(business.id);
 
-    // listDecidedEventsForBusiness(businessId, limit) returns events ordered by
-    // decisionTimestamp ASC. Reverse so the response surfaces most-recent first.
+    // listDecidedEventsForBusiness returns events ordered by decisionTimestamp
+    // ASC. Reverse so the response surfaces most-recent-first.
     const decidedEvents = await listDecidedEventsForBusiness(business.id, 20);
     const decisionHistory = decidedEvents
       .filter((event): event is CeoEvent & { decidedChoice: NonNullable<CeoEvent['decidedChoice']> } =>
