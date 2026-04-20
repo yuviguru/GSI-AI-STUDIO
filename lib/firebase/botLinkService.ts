@@ -2,6 +2,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 import crypto from 'crypto';
 import { adminDb } from './admin';
 import { AppException } from '@/lib/api-utils';
+import { timestampToMillis } from '@/lib/utils/timestamps';
 import type { BotHandle, BotLinkCode } from '@/types';
 
 const BOT_LINK_CODES_COLLECTION = 'botLinkCodes';
@@ -171,14 +172,12 @@ function assertRedeemable(data: BotLinkCode, expectedBot: BotHandle): void {
     throw new AppException('LINK_USED', 'This link has already been used', 400);
   }
 
-  // `expiresAt` is always a Firestore Timestamp on persisted docs, but the
-  // shared type union includes `string` for API transport.  Guard defensively.
-  const expiresMs =
-    typeof data.expiresAt === 'object' && data.expiresAt !== null && 'toMillis' in data.expiresAt
-      ? (data.expiresAt as Timestamp).toMillis()
-      : new Date(data.expiresAt as unknown as string).getTime();
-
-  if (Date.now() > expiresMs) {
+  // `expiresAt` can come back as a firebase-admin Timestamp OR a plain
+  // `{seconds, nanoseconds}` POJO depending on how the Netlify function
+  // bundle resolves the SDK. `timestampToMillis` handles both so the
+  // expiry check never silently passes on a NaN compare.
+  const expiresMs = timestampToMillis(data.expiresAt);
+  if (!Number.isFinite(expiresMs) || expiresMs === 0 || Date.now() > expiresMs) {
     throw new AppException('LINK_EXPIRED', 'This link has expired', 400);
   }
 

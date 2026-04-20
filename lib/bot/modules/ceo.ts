@@ -13,7 +13,6 @@
  *  Everything goes through the existing server-side services — this module
  *  is a thin presentation layer, no direct Firestore writes. */
 
-import type { Timestamp } from 'firebase-admin/firestore';
 import type {
   BotButton,
   BotContext,
@@ -47,6 +46,7 @@ import {
   recordEventDecision,
   saveCeoEvent,
 } from '@/lib/firebase/ceoService';
+import { timestampToMillis } from '@/lib/utils/timestamps';
 import { applyStateChanges } from '@/lib/ceo/businessState';
 import { applyScoreAdjustments } from '@/lib/ceo/profileEngine';
 import { generateEvent } from '@/lib/ceo/eventEngine';
@@ -568,12 +568,13 @@ async function handleChoice(
     return;
   }
 
-  // Response-time: createdAt is a Firestore admin Timestamp at runtime (has
-  // .toMillis()), though the shared `ceo.types.ts` Timestamp alias is a
-  // serialization-friendly union. Cast down to the real admin type before
-  // converting — all reads from ceoService return live Timestamps.
-  const createdAtMs = (event.createdAt as unknown as Timestamp).toMillis();
-  const responseTimeSeconds = Math.max(1, Math.round((Date.now() - createdAtMs) / 1000));
+  // Response-time: use the defensive timestampToMillis helper so we survive
+  // whichever shape the Netlify function bundle hands us (Timestamp instance
+  // vs. plain {seconds,nanoseconds} POJO vs. {_seconds,_nanoseconds}). Direct
+  // .toMillis() was crashing in production.
+  const createdAtMs = timestampToMillis(event.createdAt);
+  const elapsedSec = createdAtMs > 0 ? (Date.now() - createdAtMs) / 1000 : 0;
+  const responseTimeSeconds = Math.max(1, Math.round(elapsedSec));
 
   const business = await getCeoBusiness(event.businessId);
   const profile = await getCeoProfileByBusiness(event.businessId);
