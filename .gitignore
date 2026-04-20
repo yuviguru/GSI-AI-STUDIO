@@ -54,5 +54,11 @@ coverage/
 # Cache
 node-compile-cache/
 
+# Graphify (code graph) — keep GRAPH_REPORT.md / graph.json / manifest.json
+# for agents to consult; ignore per-node cache and the browser viewer.
+graphify-out/cache/
+graphify-out/graph.html
+graphify-out/cost.json
+
 # Sentry
 .sentryclirc
