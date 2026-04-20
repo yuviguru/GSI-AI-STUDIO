@@ -90,6 +90,10 @@ export interface MessengerAdapter {
   ): BotIncomingMessage | null;
   verifySignature(body: string, headers: Record<string, string>): boolean;
   sendTyping(chatId: string): Promise<void>;
+  /** Dismiss the loading spinner on an inline-keyboard callback button.
+   *  Only meaningful for Telegram (no-op for platforms without callback
+   *  queries). Best-effort — errors should not reject. */
+  answerCallbackQuery?(queryId: string, text?: string): Promise<void>;
   downloadVoice(voiceUrl: string): Promise<Buffer>;
   registerWebhook(url: string): Promise<void>;
 }

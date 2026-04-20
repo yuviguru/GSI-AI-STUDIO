@@ -248,6 +248,30 @@ export class TelegramAdapter implements MessengerAdapter {
   }
 
   /**
+   * Dismiss the loading spinner on an inline-keyboard button.
+   *
+   * Telegram requires `answerCallbackQuery` within ~15 seconds of a
+   * `callback_query` update; without it the tapped button shows a spinner
+   * until the Telegram client times out. Call this at the TOP of the
+   * callback handler so the kid sees instant feedback — the actual reply
+   * message from the handler fires afterwards and appears separately.
+   *
+   * Errors are swallowed — acknowledging the callback is a UX nicety,
+   * not load-bearing. If the query has already expired on Telegram's
+   * side (> 60s) we just log and move on.
+   */
+  async answerCallbackQuery(queryId: string, text?: string): Promise<void> {
+    try {
+      await this.request('answerCallbackQuery', {
+        callback_query_id: queryId,
+        text: text ?? undefined,
+      });
+    } catch (err) {
+      console.warn('[telegram] answerCallbackQuery failed:', (err as Error).message);
+    }
+  }
+
+  /**
    * Download a voice/audio payload as a Buffer.
    *
    * Accepts either a full `https://…` URL (fetched directly) OR a Telegram

@@ -51,11 +51,30 @@ export function TelegramConnectButton({
           ...(businessId ? { businessId } : {}),
         }),
       });
-      const json = await res.json();
-      if (!json.success) {
-        throw new Error(json.error?.message ?? 'Could not generate a link');
+
+      // Read body as text first so a non-JSON server response (HTML error
+      // page from Netlify's shell, empty 502 from cold-start, etc.) shows
+      // a useful message instead of "Unexpected end of JSON input".
+      const bodyText = await res.text();
+      let payload: { success?: boolean; data?: MintLinkResponse; error?: { message?: string } } = {};
+      try {
+        payload = bodyText ? JSON.parse(bodyText) : {};
+      } catch {
+        // Non-JSON response — surface the HTTP status + a snippet of the
+        // body (truncated) so we can debug server-side crashes visibly.
+        const preview = bodyText.slice(0, 160).replace(/\s+/g, ' ').trim();
+        throw new Error(
+          `Server returned ${res.status} ${res.statusText}${preview ? ` — ${preview}` : ''}`,
+        );
       }
-      const data = json.data as MintLinkResponse;
+
+      if (!res.ok || !payload.success) {
+        throw new Error(
+          payload.error?.message ?? `Server returned ${res.status} ${res.statusText}`,
+        );
+      }
+
+      const data = payload.data as MintLinkResponse;
       setLink(data);
       // Open the deep link — mobile Telegram intercepts https://t.me/...;
       // desktop Telegram usually does too; fallback is the code below.

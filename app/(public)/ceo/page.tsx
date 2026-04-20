@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCeoBusinesses } from '@/hooks/useCeoBusinesses';
 import { MascotSpeechBubble } from '@/components/mascot/MascotSpeechBubble';
+import { TelegramConnectButton } from '@/components/ceo/TelegramConnectButton';
 import { PHASE_LABELS } from '@/lib/ceo/constants';
 import { ArrowRight, Plus, Send, Sparkles, Trophy } from 'lucide-react';
 import type { CeoBusiness } from '@/types';
@@ -80,6 +81,11 @@ export default function CeoLandingPage() {
           <EmptyState />
         ) : (
           <>
+            {/* Connect banner — surfaces cross-channel sync for kids who
+             *  may have already started a business inside @GSIKidCeoAssistantBot
+             *  but don't see it here yet. Migration runs when they tap Connect. */}
+            <ConnectBanner />
+
             {activeBusinesses.length > 0 && (
               <>
                 <div className="mb-3 flex items-end justify-between gap-2">
@@ -249,6 +255,29 @@ function StartNewCard() {
         </div>
       </div>
     </Link>
+  );
+}
+
+function ConnectBanner() {
+  return (
+    <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-sky-100 bg-sky-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-600">
+          <Send className="h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-sky-900">
+            Playing in Telegram too?
+          </div>
+          <div className="text-xs text-sky-800/80">
+            Connect your bot chat to see all your businesses here and on Telegram.
+          </div>
+        </div>
+      </div>
+      <div className="shrink-0">
+        <TelegramConnectButton label="Connect Telegram" />
+      </div>
+    </div>
   );
 }
 

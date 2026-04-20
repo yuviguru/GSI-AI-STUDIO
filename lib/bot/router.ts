@@ -39,6 +39,22 @@ export class BotRouter {
     const send = (msg: BotOutgoingMessage) =>
       adapter.send({ ...msg, chatId: message.chatId });
 
+    // Dismiss the inline-button spinner immediately for callback updates —
+    // Telegram shows a loading indicator on the tapped button until
+    // `answerCallbackQuery` fires. The actual handler work (scoring, LLM,
+    // Firestore) can take 5-10s, so waiting for the handler to finish
+    // leaves the button spinning the whole time. Fire-and-forget so we
+    // don't block the dispatch.
+    if (message.type === 'callback' && adapter.answerCallbackQuery) {
+      const raw = message.raw as { callback_query?: { id?: string | number } } | undefined;
+      const queryId = raw?.callback_query?.id;
+      if (queryId) {
+        void adapter.answerCallbackQuery(String(queryId)).catch(() => {
+          /* swallowed inside the adapter too — belt + suspenders */
+        });
+      }
+    }
+
     const context = await buildBotContext({ message, botHandle });
 
     // 1. Command routing — exact match.
