@@ -215,7 +215,8 @@
       "fields": [
         { "fieldPath": "code", "order": "ASCENDING" },
         { "fieldPath": "botHandle", "order": "ASCENDING" },
-        { "fieldPath": "used", "order": "ASCENDING" }
+        { "fieldPath": "used", "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
       ]
     },
     {

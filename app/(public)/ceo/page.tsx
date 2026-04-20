@@ -160,12 +160,12 @@ export default function CeoLandingPage() {
             </div>
           </div>
           <a
-            href="https://t.me/GSIKidCeoBot"
+            href="https://t.me/GSIKidCeoAssistantBot"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 rounded-full bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-600"
           >
-            @GSIKidCeoBot
+            @GSIKidCeoAssistantBot
             <ArrowRight className="h-3.5 w-3.5" />
           </a>
         </div>

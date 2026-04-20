@@ -72,7 +72,7 @@ describe('TelegramAdapter.parseWebhook — commands', () => {
     expect(result!.text).toBe('link_abc123');
   });
 
-  it('strips the @BotName suffix from commands (/start@GSIStudioBot → /start)', () => {
+  it('strips the @BotName suffix from commands (/start@GSIPersonalAssistantBot → /start)', () => {
     const adapter = mk();
     const result = adapter.parseWebhook(
       {
@@ -82,7 +82,7 @@ describe('TelegramAdapter.parseWebhook — commands', () => {
           date: 1,
           chat: { id: 1, type: 'private' },
           from: { id: 1, first_name: 'x' },
-          text: '/start@GSIStudioBot',
+          text: '/start@GSIPersonalAssistantBot',
         },
       },
       {},

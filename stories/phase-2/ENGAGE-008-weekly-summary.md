@@ -28,7 +28,7 @@ Return a structured `WeeklyDigest` object.
 
 ### [FN] Scheduled Netlify Function
 **Target**: `netlify/functions/weekly-summary.ts`
-**Action**: Runs Mondays 09:00 IST via Netlify scheduled functions. For each parent with `telegramChatId` bound and `kidIds.length > 0`, render digest per kid and DM via `@GSIKidCeoBot`. Write dedup record to `weeklySummaries`.
+**Action**: Runs Mondays 09:00 IST via Netlify scheduled functions. For each parent with `telegramChatId` bound and `kidIds.length > 0`, render digest per kid and DM via `@GSIKidCeoAssistantBot`. Write dedup record to `weeklySummaries`.
 
 ### [TESTS] Aggregator + template tests
 **Target**: `lib/summary/aggregator.spec.ts`, `lib/summary/templates/telegram.spec.ts`

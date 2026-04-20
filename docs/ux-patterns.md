@@ -204,7 +204,7 @@ Competitive mode where kids write their own response (no AI help) and then see h
 
 ### Kid CEO — Business Simulation (Age 10+)
 
-Long-running business simulation where kids run a virtual business across 30/60/90 days. Decisions shape skill patterns (Bold Moves, Money Smarts, Big Dreams, Getting It Done, Team Captain, Cool Under Pressure). 7-step flow: Landing → Pick Business → Register → Event Feed → Decision Feedback → Dashboard → CEO Profile. Dual-channel: web + `@GSIKidCeoBot` on Telegram.
+Long-running business simulation where kids run a virtual business across 30/60/90 days. Decisions shape skill patterns (Bold Moves, Money Smarts, Big Dreams, Getting It Done, Team Captain, Cool Under Pressure). 7-step flow: Landing → Pick Business → Register → Event Feed → Decision Feedback → Dashboard → CEO Profile. Dual-channel: web + `@GSIKidCeoAssistantBot` on Telegram.
 
 ```
 ┌─────────────────────────────────────────┐
@@ -227,7 +227,7 @@ Long-running business simulation where kids run a virtual business across 30/60/
 │                                          │
 │  ┌──────────────────────────────────────┐│
 │  │  💬 Connect to Telegram              ││
-│  │  Play on @GSIKidCeoBot too →         ││
+│  │  Play on @GSIKidCeoAssistantBot too →         ││
 │  └──────────────────────────────────────┘│
 └─────────────────────────────────────────┘
 ```
@@ -449,7 +449,7 @@ Generated at simulation end: banner with business name + phase reached, full-siz
 - Phase transitions trigger a dedicated animation — the 5-phase bar fills to the new phase and the next phase label slides in.
 - CEO profile card reuses the existing `/view/[id]` SSR pattern so WhatsApp link previews render proper OG tags + share card thumbnail.
 - Koko expressions map to context: `thinking` during a pending decision, `celebrating` on milestones and phase transitions, `surprised` on crisis events, `happy` on growth events.
-- Bot parity — the same kid can play on web OR `@GSIKidCeoBot`. Deep-link "Connect to Telegram" is shown on landing. Once linked, new events arrive via both channels (Telegram push + in-app event feed).
+- Bot parity — the same kid can play on web OR `@GSIKidCeoAssistantBot`. Deep-link "Connect to Telegram" is shown on landing. Once linked, new events arrive via both channels (Telegram push + in-app event feed).
 - Skills radar reuses the same component as Beat the AI / MindX — prefer `components/beat-the-ai/SkillRadarChart.tsx` (or a shared version) rather than building a new chart.
 - Mobile: event feed uses vertical scroll with the active event sticky at the top. Choice buttons stack vertically on narrow screens (full-width, 48px min height each).
 - Accessibility: each choice button has an ARIA label including its letter + choice text (e.g., "Choice B — Find a different supplier"). Radar chart provides a text summary fallback for screen readers.

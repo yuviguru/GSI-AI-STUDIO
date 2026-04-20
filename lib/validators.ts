@@ -182,7 +182,7 @@ export const ceoProfilePublicSchema = z.object({
 });
 
 export const botLinkCreateSchema = z.object({
-  botHandle: z.enum(['GSIStudioBot', 'GSIKidCeoBot']),
+  botHandle: z.enum(['GSIPersonalAssistantBot', 'GSIKidCeoAssistantBot']),
 });
 
 export type CeoRegisterInput = z.infer<typeof ceoRegisterSchema>;

@@ -1215,13 +1215,13 @@ Mint a short-lived link token for binding a web-app session (or Phase 2 authenti
 **Request:**
 ```json
 {
-  "botHandle": "GSIKidCeoBot"
+  "botHandle": "GSIKidCeoAssistantBot"
 }
 ```
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| botHandle | string | yes | `GSIStudioBot` \| `GSIKidCeoBot` |
+| botHandle | string | yes | `GSIPersonalAssistantBot` \| `GSIKidCeoAssistantBot` |
 
 **Response (200):**
 ```json
@@ -1229,7 +1229,7 @@ Mint a short-lived link token for binding a web-app session (or Phase 2 authenti
   "success": true,
   "data": {
     "token": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
-    "deepLink": "https://t.me/GSIKidCeoBot?start=link_a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+    "deepLink": "https://t.me/GSIKidCeoAssistantBot?start=link_a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
     "code": "482913",
     "expiresAt": "2026-04-19T10:40:00Z"
   }
@@ -1250,7 +1250,7 @@ Mint a short-lived link token for binding a web-app session (or Phase 2 authenti
 
 ### Telegram Webhooks
 
-`POST /.netlify/functions/telegram-webhook-ceo` and `POST /.netlify/functions/telegram-webhook-studio` are **Netlify Functions**, not Next.js API routes. They receive Telegram Bot API update payloads for `@GSIKidCeoBot` and `@GSIStudioBot` respectively. Full request/response contracts, secret-token verification, and update handling are documented in `MESSENGER_BOT_ARCHITECTURE.md` §3.
+`POST /.netlify/functions/telegram-webhook-ceo` and `POST /.netlify/functions/telegram-webhook-studio` are **Netlify Functions**, not Next.js API routes. They receive Telegram Bot API update payloads for `@GSIKidCeoAssistantBot` and `@GSIPersonalAssistantBot` respectively. Full request/response contracts, secret-token verification, and update handling are documented in `MESSENGER_BOT_ARCHITECTURE.md` §3.
 
 ---
 

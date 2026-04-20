@@ -1,7 +1,7 @@
 /**
  * One-shot webhook-registration endpoint.
  *
- * Registers the Telegram webhook URL for both @GSIKidCeoBot and @GSIStudioBot
+ * Registers the Telegram webhook URL for both @GSIKidCeoAssistantBot and @GSIPersonalAssistantBot
  * with the Telegram Bot API. Call this once per deploy after a new function
  * URL comes online:
  *
@@ -17,9 +17,9 @@
  *    callers from re-pointing the webhooks.
  *  - URL or NEXT_PUBLIC_URL       (required) — Base URL of the deployed site
  *    (Netlify injects `URL` automatically).
- *  - TELEGRAM_BOT_TOKEN_CEO       (optional) — Token for @GSIKidCeoBot.
+ *  - TELEGRAM_BOT_TOKEN_CEO       (optional) — Token for @GSIKidCeoAssistantBot.
  *  - TELEGRAM_WEBHOOK_SECRET_CEO  (optional) — Secret token for CEO webhook.
- *  - TELEGRAM_BOT_TOKEN_STUDIO    (optional) — Token for @GSIStudioBot.
+ *  - TELEGRAM_BOT_TOKEN_STUDIO    (optional) — Token for @GSIPersonalAssistantBot.
  *  - TELEGRAM_WEBHOOK_SECRET_STUDIO (optional) — Secret token for Studio webhook.
  */
 
@@ -46,7 +46,7 @@ const handler: Handler = async (event) => {
 
   const results: Record<string, string> = {};
 
-  // @GSIKidCeoBot
+  // @GSIKidCeoAssistantBot
   const ceoToken = process.env.TELEGRAM_BOT_TOKEN_CEO;
   const ceoSecret = process.env.TELEGRAM_WEBHOOK_SECRET_CEO;
   if (ceoToken) {
@@ -64,7 +64,7 @@ const handler: Handler = async (event) => {
     results.ceo = 'skipped (TELEGRAM_BOT_TOKEN_CEO not set)';
   }
 
-  // @GSIStudioBot
+  // @GSIPersonalAssistantBot
   const studioToken = process.env.TELEGRAM_BOT_TOKEN_STUDIO;
   const studioSecret = process.env.TELEGRAM_WEBHOOK_SECRET_STUDIO;
   if (studioToken) {

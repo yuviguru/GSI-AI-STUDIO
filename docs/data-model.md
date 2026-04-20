@@ -697,7 +697,7 @@ Telegram chat ↔ GSI session binding. One document per Telegram chat, scoped by
 |-------|------|----------|-------------|
 | chatId | string | yes | Telegram chat ID (document ID) |
 | platform | string | yes | `telegram` \| `whatsapp` |
-| botHandle | string | yes | `GSIStudioBot` \| `GSIKidCeoBot` |
+| botHandle | string | yes | `GSIPersonalAssistantBot` \| `GSIKidCeoAssistantBot` |
 | gsiSessionId | string | yes | Linked GSI session ID |
 | userId | string | no (P2) | Firebase Auth UID (once linked) |
 | kidId | string | no (P2) | Top-level kid profile ID (once linked) |
@@ -723,7 +723,7 @@ Short-lived auth-binding tokens that let a web session claim ownership of a Tele
 | gsiSessionId | string | yes | GSI session ID to bind |
 | userId | string | no (P2) | Firebase Auth UID (Phase 2+) |
 | kidId | string | no (P2) | Top-level kid profile ID (Phase 2+) |
-| botHandle | string | yes | `GSIStudioBot` \| `GSIKidCeoBot` — which bot this token is scoped to |
+| botHandle | string | yes | `GSIPersonalAssistantBot` \| `GSIKidCeoAssistantBot` — which bot this token is scoped to |
 | used | boolean | yes | Whether token has been redeemed (default false) |
 | usedByChatId | string | no | Telegram chat ID that redeemed it (audit trail) |
 | expiresAt | timestamp | yes | `createdAt + 10 minutes` — Firestore TTL field |

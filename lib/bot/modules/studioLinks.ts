@@ -1,4 +1,4 @@
-/** Studio deep-link module — powers @GSIStudioBot.
+/** Studio deep-link module — powers @GSIPersonalAssistantBot.
  *
  *  Minimal v1: each command replies with a URL that opens the web studio.
  *  The studio runs well on mobile web, so the bot's job is to be a pleasant
@@ -22,7 +22,7 @@ import { linkBotSession } from '@/lib/bot/services/sessionStore';
 
 type Send = (msg: BotOutgoingMessage) => Promise<string>;
 
-const BOT_HANDLE = 'GSIStudioBot' as const;
+const BOT_HANDLE = 'GSIPersonalAssistantBot' as const;
 const GENERIC_ERROR = 'Something went wrong — try again in a moment!';
 
 function baseUrl(): string {

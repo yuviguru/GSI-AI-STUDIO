@@ -1,4 +1,4 @@
-/** Kid CEO Telegram module — powers @GSIKidCeoBot.
+/** Kid CEO Telegram module — powers @GSIKidCeoAssistantBot.
  *
  *  Ports the web-app Kid CEO flow into a chat UX:
  *    - /start (optionally with a link token) connects a web session to the chat
@@ -70,7 +70,7 @@ interface BusinessCatalogEntry {
 }
 
 const CATALOG = businessesCatalog as unknown as BusinessCatalogEntry[];
-const BOT_HANDLE = 'GSIKidCeoBot' as const;
+const BOT_HANDLE = 'GSIKidCeoAssistantBot' as const;
 const GENERIC_ERROR = 'Something went wrong — try again in a moment!';
 
 const BUSINESS_TYPES: readonly CeoBusinessType[] = [

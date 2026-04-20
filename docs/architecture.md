@@ -167,7 +167,7 @@ app/
 
 ### Kid CEO (Business Simulation)
 
-**What it is**: A 30/60/90-day kid-friendly business simulation ported from the internal FoundersDNA/SimPrenuer project (`C:\Yuvi\Development\SimPrenuer`). The kid picks a business type, runs it through 5 phases, responds to events (school fair, local trend, cash crunch, etc.), and ends with a shareable CEO profile card scored across 6 dimensions. Target age **10+**. Delivery is **dual-channel**: in-app route group plus a dedicated Telegram bot `@GSIKidCeoBot`. Same Firestore state backs both — the kid can start on web and continue in chat.
+**What it is**: A 30/60/90-day kid-friendly business simulation ported from the internal FoundersDNA/SimPrenuer project (`C:\Yuvi\Development\SimPrenuer`). The kid picks a business type, runs it through 5 phases, responds to events (school fair, local trend, cash crunch, etc.), and ends with a shareable CEO profile card scored across 6 dimensions. Target age **10+**. Delivery is **dual-channel**: in-app route group plus a dedicated Telegram bot `@GSIKidCeoAssistantBot`. Same Firestore state backs both — the kid can start on web and continue in chat.
 
 **Route group**:
 ```
@@ -202,13 +202,13 @@ app/(public)/ceo/
 
 | Bot Handle | Modules | Role |
 |---|---|---|
-| `@GSIStudioBot` | `homework`, `challenge`, `skills`, `notifications` | Day-to-day studio companion + outbound alerts (creation ready, weekly progress) |
-| `@GSIKidCeoBot` | `ceo` only | Dedicated chat for the long-running business sim |
+| `@GSIPersonalAssistantBot` | `homework`, `challenge`, `skills`, `notifications` | Day-to-day studio companion + outbound alerts (creation ready, weekly progress) |
+| `@GSIKidCeoAssistantBot` | `ceo` only | Dedicated chat for the long-running business sim |
 
 **Why two bots instead of one**:
 - The CEO sim runs for 30/60/90 days of real time — it deserves its own chat context so the scrollback stays focused on the business, not interleaved with homework tasks or creation alerts.
 - Clean command namespaces — no collisions between `/help` for CEO vs. `/help` for homework.
-- Independent positioning — parents/schools can discover `@GSIKidCeoBot` as a standalone "Run your first business" offering without first understanding the full studio.
+- Independent positioning — parents/schools can discover `@GSIKidCeoAssistantBot` as a standalone "Run your first business" offering without first understanding the full studio.
 - Independent deploy cadence — a CEO-only change never risks regressing the studio bot, and vice versa.
 
 **Deployment**: Two Netlify Functions, one webhook per bot, both stateless and webhook-mode (no long polling):
@@ -225,7 +225,7 @@ Both import from the shared `lib/bot/` tree. Scaling is handled by Netlify's fun
 - **Reused LLM pipeline** — Bot handlers call the same `groqClient` / `claudeClient` used by web; no duplicate clients.
 
 **Auth binding (web ↔ bot)**: A logged-in web user binds their Telegram chat to their account via a short-lived, single-use link token:
-1. **Primary flow — deep link**: Web UI calls `POST /api/bot/link/create`, server mints a token, web renders `https://t.me/GSIKidCeoBot?start=link_<token>`. Kid taps it, Telegram opens the bot with `/start link_<token>`, the webhook validates the token, writes `botSessions/{chatId}` with the linked userId, and marks the token used.
+1. **Primary flow — deep link**: Web UI calls `POST /api/bot/link/create`, server mints a token, web renders `https://t.me/GSIKidCeoAssistantBot?start=link_<token>`. Kid taps it, Telegram opens the bot with `/start link_<token>`, the webhook validates the token, writes `botSessions/{chatId}` with the linked userId, and marks the token used.
 2. **Fallback — 6-digit code**: Same endpoint also returns a 6-digit display code. If the deep link fails (paste / old Telegram client), the kid opens the bot manually and types `/link 823914`. Same validation, same outcome.
 
 Tokens are stored in the `botLinkCodes` collection (server-write-only, 10-minute TTL, single-use, bot-scoped so a Studio token cannot be redeemed on the CEO bot).
@@ -308,12 +308,12 @@ Tokens are stored in the `botLinkCodes` collection (server-write-only, 10-minute
    b. Mints a single-use token (server-side, cryptographically random)
    c. Also generates a 6-digit display code derived from the token
    d. Writes botLinkCodes/{token} with { userId, bot, expiresAt: now+10min, used: false }
-   e. Returns { deepLink: "https://t.me/GSIKidCeoBot?start=link_<token>",
+   e. Returns { deepLink: "https://t.me/GSIKidCeoAssistantBot?start=link_<token>",
                 code: "823914" } → Frontend
 4. Frontend shows BOTH: the deep-link button + the 6-digit code (fallback)
 
 -- Primary path: deep link --
-5a. Kid taps deep link → Telegram opens @GSIKidCeoBot with /start link_<token>
+5a. Kid taps deep link → Telegram opens @GSIKidCeoAssistantBot with /start link_<token>
 6a. Netlify Function telegram-webhook-ceo.ts receives update
 7a. Bot router routes to link handler:
     - Looks up botLinkCodes/{token}
@@ -323,7 +323,7 @@ Tokens are stored in the `botLinkCodes` collection (server-write-only, 10-minute
     - Replies in chat: "✅ Connected to your GSI AI Studio account"
 
 -- Fallback path: 6-digit code --
-5b. Kid opens @GSIKidCeoBot manually, types `/link 823914`
+5b. Kid opens @GSIKidCeoAssistantBot manually, types `/link 823914`
 6b. Webhook receives message, router matches /link command
 7b. Same validation + same botSessions write + same reply as primary path
 

@@ -1,5 +1,5 @@
 /**
- * Telegram webhook handler for @GSIKidCeoBot.
+ * Telegram webhook handler for @GSIKidCeoAssistantBot.
  *
  * Receives update payloads from Telegram, verifies the optional secret-token
  * header, normalizes the update into a `BotIncomingMessage`, and routes it
@@ -10,7 +10,7 @@
  * processing for transient downstream failures.
  *
  * Environment variables:
- *  - TELEGRAM_BOT_TOKEN_CEO       (required) — Bot API token for @GSIKidCeoBot.
+ *  - TELEGRAM_BOT_TOKEN_CEO       (required) — Bot API token for @GSIKidCeoAssistantBot.
  *  - TELEGRAM_WEBHOOK_SECRET_CEO  (optional) — Shared secret token sent by
  *    Telegram in `X-Telegram-Bot-Api-Secret-Token`. When set, requests
  *    without a matching header are rejected with 401.
@@ -62,7 +62,7 @@ const handler: Handler = async (event) => {
   }
 
   try {
-    await router.route(message, 'GSIKidCeoBot');
+    await router.route(message, 'GSIKidCeoAssistantBot');
     return { statusCode: 200, body: 'OK' };
   } catch (err) {
     // Log with enough context for on-call grep. chatId + updateId narrow

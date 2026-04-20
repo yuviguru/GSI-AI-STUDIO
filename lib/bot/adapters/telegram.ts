@@ -1,7 +1,7 @@
 /**
  * Telegram Bot API adapter — raw-fetch implementation of MessengerAdapter.
  *
- * One `TelegramAdapter` instance per bot token (@GSIStudioBot, @GSIKidCeoBot).
+ * One `TelegramAdapter` instance per bot token (@GSIPersonalAssistantBot, @GSIKidCeoAssistantBot).
  * Webhook-mode only — `init()` is a no-op; each webhook handler constructs its
  * own adapter bound to that bot's token.
  *
@@ -364,7 +364,7 @@ export class TelegramAdapter implements MessengerAdapter {
     } else if (typeof msg.text === 'string' && msg.text.startsWith('/')) {
       type = 'command';
       const parts = msg.text.split(/\s+/);
-      // Strip bot-handle suffix e.g. "/start@GSIStudioBot" → "/start"
+      // Strip bot-handle suffix e.g. "/start@GSIPersonalAssistantBot" → "/start"
       command = (parts[0] ?? '').split('@')[0];
       text = parts.slice(1).join(' ');
     } else if (typeof msg.text === 'string') {

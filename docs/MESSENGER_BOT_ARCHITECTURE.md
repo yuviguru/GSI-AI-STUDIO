@@ -1,5 +1,5 @@
 # GSI-AI-STUDIO — Shared Messenger Bot Architecture
-> Two bots, one codebase: `@GSIStudioBot` (homework · challenges · skills · notifications) + `@GSIKidCeoBot` (Kid CEO sim)
+> Two bots, one codebase: `@GSIPersonalAssistantBot` (homework · challenges · skills · notifications) + `@GSIKidCeoAssistantBot` (Kid CEO sim)
 > Platforms in v1: **Telegram only**. WhatsApp adapter interface built but not wired; Discord later.
 
 ---
@@ -30,7 +30,7 @@
                          │                           │
                          ▼                           ▼
                   ┌─────────────┐              ┌──────────────┐
-                  │@GSIStudioBot│              │@GSIKidCeoBot │
+                  │@GSIPersonalAssistantBot│              │@GSIKidCeoAssistantBot │
                   └──────┬──────┘              └──────┬───────┘
                          │                           │
                          ▼                           ▼
@@ -49,19 +49,19 @@
 
 | Bot Handle | Modules | Rationale |
 |---|---|---|
-| `@GSIStudioBot` | `homework`, `challenge`, `skills`, `notifications` | Day-to-day studio tools + outbound alerts |
-| `@GSIKidCeoBot` | `ceo` only | Long-running (30-90 day) sim; separate chat keeps it mentally distinct; clean command namespace; independent positioning for parents/schools |
+| `@GSIPersonalAssistantBot` | `homework`, `challenge`, `skills`, `notifications` | Day-to-day studio tools + outbound alerts |
+| `@GSIKidCeoAssistantBot` | `ceo` only | Long-running (30-90 day) sim; separate chat keeps it mentally distinct; clean command namespace; independent positioning for parents/schools |
 
 **Feature modules don't care which bot they're in.** Any module implementing `BotFeatureModule` can be registered in any webhook handler. Adding WhatsApp later means registering the `WhatsAppAdapter` — no module code changes.
 
 | Feature Module | Bot Role | Registered In |
 |---|---|---|
-| **Kid CEO Sim** | Deliver business events, capture decisions, show feedback | `@GSIKidCeoBot` |
-| **Homework** | Receive forwarded homework, create interactive sessions, voice recitation | `@GSIStudioBot` |
-| **Beat the AI** | Quick challenge rounds via chat | `@GSIStudioBot` |
-| **Skill Arena** | Voice-based speaking assessments | `@GSIStudioBot` |
-| **Creation Alerts** | "Your story is ready!" notifications | `@GSIStudioBot` |
-| **Parent Updates** | Weekly progress summaries (Phase 2 — WhatsApp via adapter) | `@GSIStudioBot` |
+| **Kid CEO Sim** | Deliver business events, capture decisions, show feedback | `@GSIKidCeoAssistantBot` |
+| **Homework** | Receive forwarded homework, create interactive sessions, voice recitation | `@GSIPersonalAssistantBot` |
+| **Beat the AI** | Quick challenge rounds via chat | `@GSIPersonalAssistantBot` |
+| **Skill Arena** | Voice-based speaking assessments | `@GSIPersonalAssistantBot` |
+| **Creation Alerts** | "Your story is ready!" notifications | `@GSIPersonalAssistantBot` |
+| **Parent Updates** | Weekly progress summaries (Phase 2 — WhatsApp via adapter) | `@GSIPersonalAssistantBot` |
 
 ---
 
@@ -310,13 +310,13 @@ Two webhook handlers — one per bot instance, each registering its own module s
 
 ```
 netlify/functions/
-├── telegram-webhook-studio.ts   # POST /.netlify/functions/telegram-webhook-studio → @GSIStudioBot
-├── telegram-webhook-ceo.ts      # POST /.netlify/functions/telegram-webhook-ceo    → @GSIKidCeoBot
+├── telegram-webhook-studio.ts   # POST /.netlify/functions/telegram-webhook-studio → @GSIPersonalAssistantBot
+├── telegram-webhook-ceo.ts      # POST /.netlify/functions/telegram-webhook-ceo    → @GSIKidCeoAssistantBot
 ├── whatsapp-webhook.ts          # Phase 2 — same pattern, wired when Meta Business approval lands
 └── bot-setup.ts                 # One-time: registers webhook URLs with both bots via BotFather API
 ```
 
-### Telegram Webhook Function — `@GSIKidCeoBot`
+### Telegram Webhook Function — `@GSIKidCeoAssistantBot`
 
 ```typescript
 // netlify/functions/telegram-webhook-ceo.ts
@@ -351,7 +351,7 @@ const handler: Handler = async (event) => {
 export { handler };
 ```
 
-### Telegram Webhook Function — `@GSIStudioBot`
+### Telegram Webhook Function — `@GSIPersonalAssistantBot`
 
 ```typescript
 // netlify/functions/telegram-webhook-studio.ts
@@ -393,12 +393,12 @@ Web app (signed in)                    Telegram                    Bot webhook
   [Connect Telegram]                      │                           │
       │                                   │                           │
       │  POST /api/bot/link/create        │                           │
-      │  { botHandle: 'GSIKidCeoBot' }    │                           │
+      │  { botHandle: 'GSIKidCeoAssistantBot' }    │                           │
       │──────────────────────────────────▶│                           │
       │  server writes botLinkCodes/{token} with:                     │
       │    { gsiSessionId, userId, kidId, botHandle, expiresAt: now+10m, used: false }│
       │  returns deep link:                                           │
-      │  https://t.me/GSIKidCeoBot?start=link_<token>                │
+      │  https://t.me/GSIKidCeoAssistantBot?start=link_<token>                │
       │◀──────────────────────────────────│                           │
       │                                   │                           │
   kid taps link                           │                           │
@@ -428,7 +428,7 @@ Web app (signed in)                    Telegram                    Bot webhook
 - Tokens are 32-byte hex, generated via `crypto.randomBytes(16).toString('hex')`
 - Single-use: marked `used: true` on first redemption
 - Short TTL: 10 minutes from creation
-- Bot-scoped: a `@GSIKidCeoBot` token cannot be redeemed in `@GSIStudioBot` (prevents confused-deputy)
+- Bot-scoped: a `@GSIKidCeoAssistantBot` token cannot be redeemed in `@GSIPersonalAssistantBot` (prevents confused-deputy)
 - Server-write-only collection — clients never write `botLinkCodes` directly
 
 ### WhatsApp Webhook Function (same pattern)
@@ -869,7 +869,7 @@ Bot sends feedback + "Try Again" / "Next" buttons
 botSessions/{chatId}
 ├── chatId: string
 ├── platform: 'telegram' | 'whatsapp'
-├── botHandle: string ('GSIStudioBot' | 'GSIKidCeoBot')
+├── botHandle: string ('GSIPersonalAssistantBot' | 'GSIKidCeoAssistantBot')
 ├── gsiSessionId: string (links to existing sessions collection)
 ├── userId: string | null (Firebase Phone Auth UID, Phase 2)
 ├── kidId: string | null (top-level kid profile ID, Phase 2)
@@ -887,7 +887,7 @@ botLinkCodes/{token}
 ├── gsiSessionId: string
 ├── userId: string | null (nullable if anonymous link)
 ├── kidId: string | null
-├── botHandle: string ('GSIStudioBot' | 'GSIKidCeoBot')
+├── botHandle: string ('GSIPersonalAssistantBot' | 'GSIKidCeoAssistantBot')
 ├── used: boolean (flipped true on first redemption)
 ├── usedByChatId: string | null (audit — which chat redeemed it)
 ├── expiresAt: timestamp (createdAt + 10 minutes)
@@ -939,11 +939,11 @@ lib/bot/
 │   ├── whatsapp.ts                 # WhatsAppAdapter (Cloud API) — Phase 2
 │   └── discord.ts                  # Phase 3
 ├── modules/
-│   ├── ceo.ts                      # Kid CEO simulation module (FoundersDNA port) — @GSIKidCeoBot only
-│   ├── homework.ts                 # Homework module (forward → interactive) — @GSIStudioBot
-│   ├── challenge.ts                # Beat the AI via bot (reuses existing engine) — @GSIStudioBot
-│   ├── skills.ts                   # Skill Arena via bot (reuses existing engine) — @GSIStudioBot
-│   └── notifications.ts            # Outbound: creation alerts, parent summaries — @GSIStudioBot
+│   ├── ceo.ts                      # Kid CEO simulation module (FoundersDNA port) — @GSIKidCeoAssistantBot only
+│   ├── homework.ts                 # Homework module (forward → interactive) — @GSIPersonalAssistantBot
+│   ├── challenge.ts                # Beat the AI via bot (reuses existing engine) — @GSIPersonalAssistantBot
+│   ├── skills.ts                   # Skill Arena via bot (reuses existing engine) — @GSIPersonalAssistantBot
+│   └── notifications.ts            # Outbound: creation alerts, parent summaries — @GSIPersonalAssistantBot
 ├── services/
 │   ├── stt.ts                      # Speech-to-text (Groq Whisper)
 │   ├── tts.ts                      # Text-to-speech (Google Cloud TTS — Hindi + English)
@@ -957,8 +957,8 @@ lib/bot/
     └── ceoEvent.ts                 # (reuses lib/ceo/prompts/)
 
 netlify/functions/
-├── telegram-webhook-studio.ts      # @GSIStudioBot webhook (homework · challenge · skills · notifications)
-├── telegram-webhook-ceo.ts         # @GSIKidCeoBot webhook (ceo module only)
+├── telegram-webhook-studio.ts      # @GSIPersonalAssistantBot webhook (homework · challenge · skills · notifications)
+├── telegram-webhook-ceo.ts         # @GSIKidCeoAssistantBot webhook (ceo module only)
 ├── whatsapp-webhook.ts             # Phase 2 — same router pattern
 ├── bot-setup.ts                    # One-time: register both bots' webhook URLs via BotFather API
 └── linear-webhook.ts               # (existing)
@@ -971,13 +971,13 @@ app/api/bot/
 
 ## 9. PLATFORM SETUP
 
-### Telegram Bot — `@GSIKidCeoBot` (v1 scope)
+### Telegram Bot — `@GSIKidCeoAssistantBot` (v1 scope)
 1. Create via @BotFather → save token as `TELEGRAM_BOT_TOKEN_CEO`
 2. Set webhook: `https://gsiaistudio.com/.netlify/functions/telegram-webhook-ceo`
 3. Set commands menu: `/ceo`, `/mybusiness`, `/ceoprofile`, `/link`
 4. Short description: "Run your first business before you spend a rupee. Kid CEO from GSI AI Studio."
 
-### Telegram Bot — `@GSIStudioBot` (ships after Kid CEO)
+### Telegram Bot — `@GSIPersonalAssistantBot` (ships after Kid CEO)
 1. Create via @BotFather → save token as `TELEGRAM_BOT_TOKEN_STUDIO`
 2. Set webhook: `https://gsiaistudio.com/.netlify/functions/telegram-webhook-studio`
 3. Set commands menu: `/homework`, `/challenge`, `/skills`, `/profile`, `/link`
@@ -1024,7 +1024,7 @@ GOOGLE_CLOUD_TTS_KEY=xxx   # Google Cloud TTS (Hindi + English)
 - [ ] `app/api/bot/link/route.ts` — web endpoint to mint link tokens
 - [ ] `netlify/functions/bot-setup.ts` — register webhooks for both bots
 
-### Sprint 2: Kid CEO Bot (`@GSIKidCeoBot`) (1 week)
+### Sprint 2: Kid CEO Bot (`@GSIKidCeoAssistantBot`) (1 week)
 - [ ] Port FoundersDNA engine to `lib/ceo/` (from GSI_INTEGRATION_PLAN.md Phase A)
 - [ ] `lib/bot/modules/ceo.ts` — all commands + decision handling
 - [ ] `netlify/functions/telegram-webhook-ceo.ts` — webhook handler (ceo module only)
@@ -1035,7 +1035,7 @@ GOOGLE_CLOUD_TTS_KEY=xxx   # Google Cloud TTS (Hindi + English)
 - [ ] Phase advancement notifications
 - [ ] CEO Profile link (to web app)
 
-### Sprint 3: Studio Bot (`@GSIStudioBot`) Foundation + Homework (1.5 weeks)
+### Sprint 3: Studio Bot (`@GSIPersonalAssistantBot`) Foundation + Homework (1.5 weeks)
 - [ ] `netlify/functions/telegram-webhook-studio.ts` — webhook handler (studio modules)
 - [ ] `lib/bot/services/ocr.ts` — image/PDF text extraction (Google Vision)
 - [ ] `lib/bot/services/stt.ts` — Groq Whisper integration

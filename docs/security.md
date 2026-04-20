@@ -101,7 +101,7 @@ async function verifyAuth(request: NextRequest): Promise<DecodedIdToken> {
 
 When a kid links a Telegram chat to their GSI identity, we issue a short-lived, single-use token (deep link) that binds `chatId → (gsiSessionId, userId?, kidId?)`. This flow must resist forgery, replay, and confused-deputy attacks across the two bots.
 
-- **Link token properties**: `botLinkCodes` stores 32-byte hex tokens generated via `crypto.randomBytes(16).toString('hex')`. Single-use (flipped `used: true` on redemption). 10-minute TTL. Bot-scoped (a `@GSIKidCeoBot` token cannot be redeemed in `@GSIStudioBot`).
+- **Link token properties**: `botLinkCodes` stores 32-byte hex tokens generated via `crypto.randomBytes(16).toString('hex')`. Single-use (flipped `used: true` on redemption). 10-minute TTL. Bot-scoped (a `@GSIKidCeoAssistantBot` token cannot be redeemed in `@GSIPersonalAssistantBot`).
 - **6-digit code fallback**: When the deep link fails (e.g. mobile app intents block the handoff), a numeric 6-digit code is also stored in the same `botLinkCodes` doc (or a parallel field). Kid types `/link 123456` in the bot. Same validation.
 - **Server-write-only**: `botLinkCodes` is server-write-only via Admin SDK — clients cannot forge tokens directly.
 - **Audit field**: `usedByChatId` is recorded on redemption for incident investigation.
@@ -341,15 +341,15 @@ Kid CEO is a business-simulation feature ported from SimPrenuer. It combines kid
 
 ### Telegram Bot Safety
 
-GSI ships two bots (`@GSIStudioBot` and `@GSIKidCeoBot`) that share the `lib/bot/` infrastructure. All bot traffic is treated as untrusted user input and routed through the same safety pipeline as web:
+GSI ships two bots (`@GSIPersonalAssistantBot` and `@GSIKidCeoAssistantBot`) that share the `lib/bot/` infrastructure. All bot traffic is treated as untrusted user input and routed through the same safety pipeline as web:
 
-- **Two bots, same safety pipeline**: `@GSIStudioBot` and `@GSIKidCeoBot` both route all inbound text, voice, document, and forwarded messages through the existing `lib/safety/inputFilter.ts`.
+- **Two bots, same safety pipeline**: `@GSIPersonalAssistantBot` and `@GSIKidCeoAssistantBot` both route all inbound text, voice, document, and forwarded messages through the existing `lib/safety/inputFilter.ts`.
 - **Forwarded message safety (Homework module)**: Forwarded content (text/image/PDF/voice) is treated as potentially arbitrary. Image/PDF OCR output + voice STT transcripts go through `filterInput()` before being passed to the LLM parser.
 - **Voice message handling**: Voice audio is downloaded transiently for STT (Groq Whisper), transcribed, then discarded — **voice audio is never stored**. Only the transcript is saved (and filtered).
 - **Outbound message safety**: All bot-sent messages originate from server-side code in `lib/bot/modules/*.ts`. LLM-generated feedback (recitation scoring, quiz explanation, CEO event feedback) passes through `filterOutput()` before being sent to Telegram.
 - **Bot input rate limiting**: Per-chat rate limit of 30 messages/min (abuse prevention); 5 homework forwards per hour; CEO decision rate shares with web (50/day per session).
 - **No cross-chat data leakage**: A module instance only sees its own `BotContext` — no global state shared across chats. `botSessions/{chatId}` is the only per-chat persistence.
-- **Module scope**: The `ceo` module is NOT registered in `@GSIStudioBot` and the `homework` module is NOT registered in `@GSIKidCeoBot`. Each bot's router rejects unknown commands with a help message.
+- **Module scope**: The `ceo` module is NOT registered in `@GSIPersonalAssistantBot` and the `homework` module is NOT registered in `@GSIKidCeoAssistantBot`. Each bot's router rejects unknown commands with a help message.
 
 ### GrowthMap Parent Data Access (Phase 2+)
 

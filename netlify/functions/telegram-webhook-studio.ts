@@ -1,5 +1,5 @@
 /**
- * Telegram webhook handler for @GSIStudioBot.
+ * Telegram webhook handler for @GSIPersonalAssistantBot.
  *
  * Same shape as `telegram-webhook-ceo.ts` but for the Studio bot. No feature
  * modules are registered yet — homework, challenge, skills, and notifications
@@ -7,7 +7,7 @@
  * help fallback handles every incoming message cleanly.
  *
  * Environment variables:
- *  - TELEGRAM_BOT_TOKEN_STUDIO       (required) — Bot API token for @GSIStudioBot.
+ *  - TELEGRAM_BOT_TOKEN_STUDIO       (required) — Bot API token for @GSIPersonalAssistantBot.
  *  - TELEGRAM_WEBHOOK_SECRET_STUDIO  (optional) — Shared secret token sent by
  *    Telegram in `X-Telegram-Bot-Api-Secret-Token`. When set, requests
  *    without a matching header are rejected with 401.
@@ -60,7 +60,7 @@ const handler: Handler = async (event) => {
   }
 
   try {
-    await router.route(message, 'GSIStudioBot');
+    await router.route(message, 'GSIPersonalAssistantBot');
     return { statusCode: 200, body: 'OK' };
   } catch (err) {
     const raw = parsed as { update_id?: number | string };

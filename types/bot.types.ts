@@ -1,4 +1,4 @@
-/** Shared Telegram / messenger bot layer types — powers @GSIStudioBot and @GSIKidCeoBot
+/** Shared Telegram / messenger bot layer types — powers @GSIPersonalAssistantBot and @GSIKidCeoAssistantBot
  *  via a platform-agnostic adapter + feature-module architecture. */
 
 import type { KidProfile } from './user.types';
@@ -11,7 +11,7 @@ type Timestamp = { seconds: number; nanoseconds: number } | string;
 
 export type BotPlatform = 'telegram' | 'whatsapp' | 'discord';
 
-export type BotHandle = 'GSIStudioBot' | 'GSIKidCeoBot';
+export type BotHandle = 'GSIPersonalAssistantBot' | 'GSIKidCeoAssistantBot';
 
 export type BotIncomingMessageType =
   | 'text'

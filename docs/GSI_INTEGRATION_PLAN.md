@@ -1,7 +1,7 @@
 # FoundersDNA → GSI-AI-STUDIO Integration Plan
 ## Feature Name: **Kid CEO**
 > "Run your first business before you spend a rupee."
-> Target age **10+** · Delivered via web app + `@GSIKidCeoBot` on Telegram · Source port: `C:\Yuvi\Development\SimPrenuer`
+> Target age **10+** · Delivered via web app + `@GSIKidCeoAssistantBot` on Telegram · Source port: `C:\Yuvi\Development\SimPrenuer`
 
 ---
 
@@ -22,7 +22,7 @@
 | PWA + mobile-first | In-app event feed (dual delivery) |
 
 **What changes:**
-- Delivery: **Dual mode** — in-app event feed AND a dedicated Telegram bot (`@GSIKidCeoBot`). Same Firestore, same events, kid picks their preferred channel. WhatsApp is not in v1 — the adapter interface is ready to plug in after Meta Business approval.
+- Delivery: **Dual mode** — in-app event feed AND a dedicated Telegram bot (`@GSIKidCeoAssistantBot`). Same Firestore, same events, kid picks their preferred channel. WhatsApp is not in v1 — the adapter interface is ready to plug in after Meta Business approval.
 - Supabase → Firestore (same data, different store)
 - 6 adult dimensions → Kid-friendly rebranding
 - Adult business types → Age-appropriate businesses
@@ -358,8 +358,8 @@ GSI-AI-STUDIO runs **two separate Telegram bots** that share the same `lib/bot/`
 
 | Bot Handle | Purpose | Modules Registered |
 |---|---|---|
-| `@GSIStudioBot` | General studio features — homework, challenges, skill assessments, creation alerts, parent summaries | `homework`, `challenge`, `skills`, `notifications` |
-| `@GSIKidCeoBot` | Kid CEO business simulation (this feature) — long-running 30/60/90-day sims | `ceo` only |
+| `@GSIPersonalAssistantBot` | General studio features — homework, challenges, skill assessments, creation alerts, parent summaries | `homework`, `challenge`, `skills`, `notifications` |
+| `@GSIKidCeoAssistantBot` | Kid CEO business simulation (this feature) — long-running 30/60/90-day sims | `ceo` only |
 
 **Why two bots, not one:**
 - **Long-running nature** — Kid CEO runs for weeks. A dedicated chat keeps CEO context mentally separate from day-to-day homework/challenges.
@@ -371,8 +371,8 @@ GSI-AI-STUDIO runs **two separate Telegram bots** that share the same `lib/bot/`
 
 ```
 netlify/functions/
-├── telegram-webhook-studio.ts    # @GSIStudioBot  → router registers: homework, challenge, skills
-└── telegram-webhook-ceo.ts       # @GSIKidCeoBot  → router registers: ceo
+├── telegram-webhook-studio.ts    # @GSIPersonalAssistantBot  → router registers: homework, challenge, skills
+└── telegram-webhook-ceo.ts       # @GSIKidCeoAssistantBot  → router registers: ceo
 
 lib/bot/                          # Shared across both bots
 ├── adapters/telegram.ts          # One adapter, reused
@@ -387,9 +387,9 @@ lib/bot/                          # Shared across both bots
 └── services/                     # Shared STT (Groq Whisper) / TTS (Google) / OCR / sessionStore
 ```
 
-Session linking works identically across both bots — a kid's XP, badges, and AI Points sync to their single web app profile via `gsiSessionId`. A kid can play Kid CEO on `@GSIKidCeoBot` and do homework on `@GSIStudioBot` and both roll up to the same web dashboard.
+Session linking works identically across both bots — a kid's XP, badges, and AI Points sync to their single web app profile via `gsiSessionId`. A kid can play Kid CEO on `@GSIKidCeoAssistantBot` and do homework on `@GSIPersonalAssistantBot` and both roll up to the same web dashboard.
 
-The school channel is **completely separate** from both bots. Teachers post homework in the school channel. Kids forward messages from that channel to `@GSIStudioBot`'s DM (NOT `@GSIKidCeoBot`). Neither bot posts in the school channel.
+The school channel is **completely separate** from both bots. Teachers post homework in the school channel. Kids forward messages from that channel to `@GSIPersonalAssistantBot`'s DM (NOT `@GSIKidCeoAssistantBot`). Neither bot posts in the school channel.
 
 ### Linking a Bot Chat to a Web App Account
 
@@ -397,7 +397,7 @@ The kid's Telegram `chatId` is bound to their web session (and eventually Fireba
 
 **Primary — Telegram deep link:**
 1. Signed-in user in the web app taps "Connect Telegram" → server creates `botLinkCodes/{token}` in Firestore with `{gsiSessionId, userId, kidId, botHandle, expiresAt: now+10min, used: false}`
-2. Button opens `https://t.me/GSIKidCeoBot?start=link_<token>` (or `...t.me/GSIStudioBot?...` for the studio bot)
+2. Button opens `https://t.me/GSIKidCeoAssistantBot?start=link_<token>` (or `...t.me/GSIPersonalAssistantBot?...` for the studio bot)
 3. Bot receives `/start` with the token param → validates → writes `botSessions/{chatId}` with the `gsiSessionId`, `userId`, `kidId` → marks the token `used: true`
 
 **Fallback — 6-digit code:** if deep link fails (kid opens bot manually), web shows a 6-digit code and kid types `/link 123456` in the bot. Same `botLinkCodes` collection, same flow.
@@ -414,15 +414,15 @@ Event generated → Stored in Firestore → In-app event feed →
   Kid opens app, sees pending event, taps choice
 ```
 
-**Channel B — Telegram bot (`@GSIKidCeoBot`)**
+**Channel B — Telegram bot (`@GSIKidCeoAssistantBot`)**
 ```
 Event generated → Stored in Firestore → Bot pushes to private chat →
-  Kid taps inline button in @GSIKidCeoBot
+  Kid taps inline button in @GSIKidCeoAssistantBot
 ```
 
 > WhatsApp is not wired in v1. The adapter interface (`MessengerAdapter`) is built so a WhatsApp adapter can be added without touching the `ceo` module — see `docs/MESSENGER_BOT_ARCHITECTURE.md`.
 
-**Both channels read/write the same Firestore documents.** A kid can start a business on the web app and get events on Telegram, or start via `/ceo` in `@GSIKidCeoBot` and view their profile on the web app. The session is linked by `gsiSessionId`.
+**Both channels read/write the same Firestore documents.** A kid can start a business on the web app and get events on Telegram, or start via `/ceo` in `@GSIKidCeoAssistantBot` and view their profile on the web app. The session is linked by `gsiSessionId`.
 
 ### Event Feed UI (in-app channel)
 The `/ceo/play/` page shows:
@@ -433,7 +433,7 @@ The `/ceo/play/` page shows:
 
 ### Notification System
 - **In-app**: Toast notification when new event is ready
-- **Telegram**: `@GSIKidCeoBot` sends event as interactive message with inline buttons
+- **Telegram**: `@GSIKidCeoAssistantBot` sends event as interactive message with inline buttons
 - **PWA push** (Phase 2): Web Push API via Firebase Cloud Messaging
 - **WhatsApp** (Phase 2 — after Meta Business approval): adapter already wired, activate by registering the WhatsApp adapter in `telegram-webhook-ceo.ts`
 - **Pace-based timing**: Events arrive based on chosen pace (30/60/90 day)
@@ -512,7 +512,7 @@ The `/ceo/play/` page shows:
 | **Subtotal** | | **~33h** |
 
 ### Phase D — Telegram Bot Layer (Week 4)
-**Goal:** Shared bot infra + `@GSIKidCeoBot` live on Telegram. `@GSIStudioBot` webhook handler stubbed (homework module ships separately).
+**Goal:** Shared bot infra + `@GSIKidCeoAssistantBot` live on Telegram. `@GSIPersonalAssistantBot` webhook handler stubbed (homework module ships separately).
 
 | Task | Files | Effort |
 |---|---|---|
@@ -520,8 +520,8 @@ The `/ceo/play/` page shows:
 | Bot router (command + callback + forward routing) | `lib/bot/router.ts` | 4h |
 | Telegram adapter (Grammy, webhook mode) | `lib/bot/adapters/telegram.ts` | 4h |
 | Bot context + session store | `lib/bot/context.ts`, `lib/bot/services/sessionStore.ts` | 3h |
-| `@GSIKidCeoBot` webhook handler | `netlify/functions/telegram-webhook-ceo.ts` | 2h |
-| `@GSIStudioBot` webhook handler (stub — CEO module NOT registered here) | `netlify/functions/telegram-webhook-studio.ts` | 1h |
+| `@GSIKidCeoAssistantBot` webhook handler | `netlify/functions/telegram-webhook-ceo.ts` | 2h |
+| `@GSIPersonalAssistantBot` webhook handler (stub — CEO module NOT registered here) | `netlify/functions/telegram-webhook-studio.ts` | 1h |
 | Webhook registration script (registers both bot URLs) | `netlify/functions/bot-setup.ts` | 1h |
 | CEO bot module (port `SimPrenuer/bot.js` → module) | `lib/bot/modules/ceo.ts` | 5h |
 | Deep-link auth binding (`/start link_<token>` + `/link <code>`) | `lib/bot/services/linkService.ts`, `app/api/bot/link/route.ts` | 4h |
@@ -545,7 +545,7 @@ The `/ceo/play/` page shows:
 
 ### **Total: ~132 hours (~3.5 weeks full-time, ~5 weeks part-time)**
 
-> **Note:** The `lib/bot/` infrastructure built in Phase D is shared between `@GSIKidCeoBot` and `@GSIStudioBot`. Adding homework/challenges/skills later is just a new `lib/bot/modules/*.ts` file registered in `telegram-webhook-studio.ts` — no new infrastructure.
+> **Note:** The `lib/bot/` infrastructure built in Phase D is shared between `@GSIKidCeoAssistantBot` and `@GSIPersonalAssistantBot`. Adding homework/challenges/skills later is just a new `lib/bot/modules/*.ts` file registered in `telegram-webhook-studio.ts` — no new infrastructure.
 
 ---
 
@@ -573,7 +573,7 @@ The `/ceo/play/` page shows:
 - Registration flow → In-app wizard + bot `/ceo` command (dual entry)
 
 ### Adapt into Shared Bot Layer
-- `SimPrenuer/bot.js` (Grammy, long-polling) → `lib/bot/modules/ceo.ts` (webhook mode, module pattern) — registered only in `telegram-webhook-ceo.ts` for `@GSIKidCeoBot`
+- `SimPrenuer/bot.js` (Grammy, long-polling) → `lib/bot/modules/ceo.ts` (webhook mode, module pattern) — registered only in `telegram-webhook-ceo.ts` for `@GSIKidCeoAssistantBot`
 - `SimPrenuer/server.js` (Express, `bot.start()`) → Netlify Functions webhook handler
 - Bot logic is **not dropped** — it's refactored into the shared `lib/bot/` codebase
 - See `docs/MESSENGER_BOT_ARCHITECTURE.md` for full bot layer design
@@ -635,7 +635,7 @@ Kid opens /ceo/ in browser
 
 ### Entry Point B — Bot
 ```
-Kid types /ceo in @GSIKidCeoBot   (or opens via deep link from web)
+Kid types /ceo in @GSIKidCeoAssistantBot   (or opens via deep link from web)
         ↓
 [Register Business] via bot button picker
   → Bot module calls same ceoService.createBusiness()
@@ -680,7 +680,7 @@ Kid types /ceo in @GSIKidCeoBot   (or opens via deep link from web)
 
 ### Cross-Channel Sync
 ```
-Kid starts on web → taps "Connect Telegram" → deep link opens @GSIKidCeoBot with link_<token>
+Kid starts on web → taps "Connect Telegram" → deep link opens @GSIKidCeoAssistantBot with link_<token>
   → Bot validates token → writes botSessions/{chatId} with gsiSessionId + userId + kidId
   → Both channels now read/write same ceoBusiness document
   → Event decided on web = bot shows "Already decided ✅" on next poll/open
@@ -718,9 +718,9 @@ Kid starts on web → taps "Connect Telegram" → deep link opens @GSIKidCeoBot 
 
 1. **Feature name** — **Kid CEO**.
 2. **Age target** — **10+** only in v1. No separate 8-10 variant.
-3. **Bot handles** — `@GSIStudioBot` (homework, challenges, skills, notifications) + `@GSIKidCeoBot` (Kid CEO only). Shared `lib/bot/` infra.
+3. **Bot handles** — `@GSIPersonalAssistantBot` (homework, challenges, skills, notifications) + `@GSIKidCeoAssistantBot` (Kid CEO only). Shared `lib/bot/` infra.
 4. **Platforms in v1** — **Telegram only**. `MessengerAdapter` interface built so WhatsApp plugs in after Meta Business approval.
-5. **Auth binding** — Deep link (`https://t.me/GSIKidCeoBot?start=link_<token>`) primary; 6-digit `/link <code>` fallback. See `docs/MESSENGER_BOT_ARCHITECTURE.md` §Auth Binding.
+5. **Auth binding** — Deep link (`https://t.me/GSIKidCeoAssistantBot?start=link_<token>`) primary; 6-digit `/link <code>` fallback. See `docs/MESSENGER_BOT_ARCHITECTURE.md` §Auth Binding.
 6. **Firestore security** — All new collections (`ceoBusiness`, `ceoEvents`, `ceoProfiles`, `botSessions`, `botLinkCodes`, `homeworkSessions`) are **server-write-only via Admin SDK** (matches existing `creations` pattern).
 7. **Content safety** — All bot inputs (forwarded homework, voice transcripts, free-form text) flow through the existing `lib/safety/inputFilter.ts`. Kid CEO LLM prompts include standard kid-safety rules.
 8. **TTS for dictation / read-aloud** — Google Cloud TTS (already in stack, Hindi + English).
@@ -732,5 +732,5 @@ Kid starts on web → taps "Connect Telegram" → deep link opens @GSIKidCeoBot 
 2. **Parent reports** — Should Kid CEO profile feed into GrowthMap dashboard (Phase 2+)?
 3. **Curriculum mapping** — Can this map to CBSE financial literacy / entrepreneurship standards?
 4. **Monetisation** — Free tier (1 business) + premium (unlimited businesses, advanced analytics)?
-5. **Default channel on cross-channel play** — If a kid is active on both web and `@GSIKidCeoBot`, which channel pushes new events? (Current suggestion: last-active channel wins; otherwise web toast + optional Telegram push.)
+5. **Default channel on cross-channel play** — If a kid is active on both web and `@GSIKidCeoAssistantBot`, which channel pushes new events? (Current suggestion: last-active channel wins; otherwise web toast + optional Telegram push.)
 6. **LLM cost ceiling** — per-kid-per-day token budget? (Decision #9 above defers this.)
