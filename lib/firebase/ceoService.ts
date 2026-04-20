@@ -207,6 +207,62 @@ export async function getActiveBusinessForSession(
   return docToCeoBusiness(snapshot.docs[0]!);
 }
 
+/** Move every ceoBusiness / ceoEvents / ceoProfiles doc owned by
+ *  `fromSessionId` onto `toSessionId`.
+ *
+ *  Called when a Telegram chat links to a web session — any businesses the
+ *  kid started on the (anonymous) bot session are merged into the web
+ *  session so they appear in the /ceo landing list alongside web-created
+ *  businesses. No-op when `fromSessionId === toSessionId`.
+ *
+ *  Uses Firestore batched writes (max 500 ops per batch). Idempotent:
+ *  running twice on the same pair is safe because the second run finds
+ *  zero docs owned by `fromSessionId`. */
+export async function migrateSessionBusinesses(
+  fromSessionId: string,
+  toSessionId: string,
+): Promise<{ businesses: number; events: number; profiles: number }> {
+  if (fromSessionId === toSessionId) {
+    return { businesses: 0, events: 0, profiles: 0 };
+  }
+
+  const now = Timestamp.now();
+
+  // Read all three collections concurrently. Firestore caps each batched
+  // write at 500 ops — in practice a single kid will have at most a handful
+  // of businesses + tens of events, well under the cap. Paginate if you
+  // ever cross that ceiling.
+  const [businessSnap, eventSnap, profileSnap] = await Promise.all([
+    adminDb.collection(CEO_BUSINESS_COLLECTION).where('sessionId', '==', fromSessionId).get(),
+    adminDb.collection(CEO_EVENTS_COLLECTION).where('sessionId', '==', fromSessionId).get(),
+    adminDb.collection(CEO_PROFILES_COLLECTION).where('sessionId', '==', fromSessionId).get(),
+  ]);
+
+  const totalOps = businessSnap.size + eventSnap.size + profileSnap.size;
+  if (totalOps === 0) {
+    return { businesses: 0, events: 0, profiles: 0 };
+  }
+  if (totalOps > 500) {
+    throw new AppException(
+      'MIGRATION_TOO_LARGE',
+      `Session migration would exceed the 500-op Firestore batch limit (${totalOps} docs). Paginate.`,
+      500,
+    );
+  }
+
+  const batch = adminDb.batch();
+  for (const doc of businessSnap.docs) batch.update(doc.ref, { sessionId: toSessionId, updatedAt: now });
+  for (const doc of eventSnap.docs) batch.update(doc.ref, { sessionId: toSessionId });
+  for (const doc of profileSnap.docs) batch.update(doc.ref, { sessionId: toSessionId, updatedAt: now });
+  await batch.commit();
+
+  return {
+    businesses: businessSnap.size,
+    events: eventSnap.size,
+    profiles: profileSnap.size,
+  };
+}
+
 /** List all businesses (active + completed) for a session, newest first.
  *  Used for the "past businesses" view. */
 export async function listBusinessesForSession(

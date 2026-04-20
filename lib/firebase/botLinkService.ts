@@ -13,6 +13,10 @@ export interface CreateBotLinkParams {
   userId?: string | null;
   kidId?: string | null;
   botHandle: BotHandle;
+  /** Optional: pre-bind this token to a specific ceoBusiness. The bot will
+   *  resume THAT business after /start redeems the link. Null for a plain
+   *  landing-page "Connect Telegram" that just binds the chat. */
+  businessId?: string | null;
 }
 
 /**
@@ -43,6 +47,7 @@ export async function createBotLinkCode(
       kidId: params.kidId ?? null,
       botHandle: params.botHandle,
       code,
+      businessId: params.businessId ?? null,
       used: false,
       usedByChatId: null,
       expiresAt: Timestamp.fromMillis(nowMs + LINK_TTL_MS),

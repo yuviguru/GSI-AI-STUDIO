@@ -9,6 +9,7 @@ import { CeoProfileCard } from '@/components/ceo/CeoProfileCard';
 import { DecisionFeedback } from '@/components/ceo/DecisionFeedback';
 import { EventFeed } from '@/components/ceo/EventFeed';
 import { PhaseProgress } from '@/components/ceo/PhaseProgress';
+import { TelegramConnectButton } from '@/components/ceo/TelegramConnectButton';
 import { Mascot } from '@/components/mascot/Mascot';
 import { useCeoBusiness } from '@/hooks/useCeoBusiness';
 import { useCeoProfile } from '@/hooks/useCeoProfile';
@@ -254,6 +255,8 @@ function PlayPageInner() {
           currentPhase={business.phase}
           phaseMilestones={business.phaseMilestones}
         />
+
+        <TelegramConnectButton businessId={business.id} />
 
         <EventFeed
           activeEvent={pendingEvent}

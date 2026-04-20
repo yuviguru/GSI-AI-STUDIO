@@ -43,6 +43,7 @@ import {
   getCeoProfileByBusiness,
   getOrCreateCeoProfile,
   getPendingEventForBusiness,
+  migrateSessionBusinesses,
   recordEventDecision,
   saveCeoEvent,
 } from '@/lib/firebase/ceoService';
@@ -97,9 +98,9 @@ export const ceoModule: BotFeatureModule = {
       if (message.type === 'command') {
         switch (message.command) {
           case '/start':
-            return await handleStart(message, send);
+            return await handleStart(message, send, context);
           case '/link':
-            return await handleLink(message, send);
+            return await handleLink(message, send, context);
           case '/ceo':
             return await handleCeo(message, send, context);
           case '/mybusiness':
@@ -138,7 +139,11 @@ export const ceoModule: BotFeatureModule = {
 /** /start with optional `link_<token>` deep-link payload.
  *  NOTE: `TelegramAdapter.parseWebhook` strips the command already — `message.text`
  *  is only the args part (e.g. `link_abc123`, not `/start link_abc123`). */
-async function handleStart(message: BotIncomingMessage, send: Send): Promise<void> {
+async function handleStart(
+  message: BotIncomingMessage,
+  send: Send,
+  context: BotContext,
+): Promise<void> {
   const payload = (message.text ?? '').trim();
   const firstToken = payload.split(/\s+/)[0] ?? '';
 
@@ -150,17 +155,7 @@ async function handleStart(message: BotIncomingMessage, send: Send): Promise<voi
         chatId: message.chatId,
         botHandle: BOT_HANDLE,
       });
-      await linkBotSession({
-        chatId: message.chatId,
-        gsiSessionId: redeemed.gsiSessionId,
-        userId: redeemed.userId,
-        kidId: redeemed.kidId,
-      });
-      await send({
-        chatId: message.chatId,
-        text: 'Connected! Type /ceo to start your business.',
-        parseMode: 'markdown',
-      });
+      await finalizeBotLink(context, redeemed, send, message.chatId);
     } catch (err) {
       await send({
         chatId: message.chatId,
@@ -183,7 +178,11 @@ async function handleStart(message: BotIncomingMessage, send: Send): Promise<voi
 /** /link <6-digit-code> fallback for kids who did not tap the deep-link.
  *  NOTE: `TelegramAdapter.parseWebhook` strips the command — `message.text`
  *  is only the args part (e.g. `123456`, not `/link 123456`). */
-async function handleLink(message: BotIncomingMessage, send: Send): Promise<void> {
+async function handleLink(
+  message: BotIncomingMessage,
+  send: Send,
+  context: BotContext,
+): Promise<void> {
   const code = (message.text ?? '').trim();
 
   if (!/^\d{6}$/.test(code)) {
@@ -201,22 +200,126 @@ async function handleLink(message: BotIncomingMessage, send: Send): Promise<void
       chatId: message.chatId,
       botHandle: BOT_HANDLE,
     });
-    await linkBotSession({
-      chatId: message.chatId,
-      gsiSessionId: redeemed.gsiSessionId,
-      userId: redeemed.userId,
-      kidId: redeemed.kidId,
-    });
-    await send({
-      chatId: message.chatId,
-      text: 'Connected! Type /ceo to start your business.',
-    });
+    await finalizeBotLink(context, redeemed, send, message.chatId);
   } catch (err) {
     await send({
       chatId: message.chatId,
       text: err instanceof AppException ? err.message : GENERIC_ERROR,
     });
   }
+}
+
+/** Shared tail of both link flows.
+ *
+ *  1. Migrates any pre-existing CEO data (businesses, events, profiles)
+ *     from the chat's current anonymous session into the target web session.
+ *     Without this step, a business the kid started inside the bot would be
+ *     stranded on an abandoned session and never appear in the web `/ceo`
+ *     landing list. `migrateSessionBusinesses` is a no-op when the two
+ *     sessions already match.
+ *  2. Rewrites `botSessions.gsiSessionId` to the target.
+ *  3. Sends the Connected! confirmation.
+ *
+ *  Kept as a single helper so `/start link_...` and `/link <code>` produce
+ *  identical behavior. */
+async function finalizeBotLink(
+  context: BotContext,
+  redeemed: {
+    gsiSessionId: string;
+    userId: string | null;
+    kidId: string | null;
+    businessId?: string | null;
+  },
+  send: Send,
+  chatId: string,
+): Promise<void> {
+  const oldSessionId = context.session.gsiSessionId;
+  const newSessionId = redeemed.gsiSessionId;
+
+  if (oldSessionId && oldSessionId !== newSessionId) {
+    try {
+      const moved = await migrateSessionBusinesses(oldSessionId, newSessionId);
+      if (moved.businesses > 0) {
+        console.log(
+          `[ceo module] Migrated ${moved.businesses} businesses, ${moved.events} events, ${moved.profiles} profiles from ${oldSessionId} → ${newSessionId}`,
+        );
+      }
+    } catch (err) {
+      // Migration failure shouldn't block the link — log and continue so
+      // the kid at least gets bound to the web session going forward.
+      console.error('[ceo module] migrateSessionBusinesses failed:', (err as Error).message);
+    }
+  }
+
+  await linkBotSession({
+    chatId,
+    gsiSessionId: newSessionId,
+    userId: redeemed.userId,
+    kidId: redeemed.kidId,
+  });
+
+  // If the link carried a specific businessId ("Continue on Telegram" on a
+  // particular business's play page), jump straight into that business's
+  // pending event. Otherwise show the generic Connected! welcome.
+  if (redeemed.businessId) {
+    try {
+      await resumeSpecificBusiness({
+        chatId,
+        businessId: redeemed.businessId,
+        sessionId: newSessionId,
+        send,
+      });
+      return;
+    } catch (err) {
+      // Falls through to the generic confirmation if the jump fails — at
+      // minimum the chat is still linked.
+      console.error(
+        '[ceo module] resumeSpecificBusiness failed:',
+        (err as Error).message,
+      );
+    }
+  }
+
+  await send({
+    chatId,
+    text: 'Connected! Type /ceo to start your business.',
+    parseMode: 'markdown',
+  });
+}
+
+/** Post-link jump — after a deep link carries `businessId`, resume THAT
+ *  business's pending event in the chat. Silently throws on ownership /
+ *  missing-event so the caller can fall back to the generic Connected! msg. */
+async function resumeSpecificBusiness(params: {
+  chatId: string;
+  businessId: string;
+  sessionId: string;
+  send: Send;
+}): Promise<void> {
+  const business = await getCeoBusiness(params.businessId);
+  if (business.sessionId !== params.sessionId) {
+    throw new AppException('FORBIDDEN', 'Business belongs to a different session', 403);
+  }
+
+  await params.send({
+    chatId: params.chatId,
+    text: `Connected! Resuming *${escapeMd(business.businessName)}*…`,
+    parseMode: 'markdown',
+  });
+
+  const pending = await getPendingEventForBusiness(business.id);
+  if (pending) {
+    await sendEvent(params.chatId, pending, params.send);
+    return;
+  }
+
+  // No pending event — let the kid know they're caught up and point them
+  // at /mybusiness so they can see state.
+  await params.send({
+    chatId: params.chatId,
+    text: 'No pending decision right now — type /mybusiness to see where you are.',
+    parseMode: 'markdown',
+  });
 }
 
 /** /ceo — resume or start a business. */

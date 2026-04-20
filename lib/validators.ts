@@ -183,6 +183,9 @@ export const ceoProfilePublicSchema = z.object({
 
 export const botLinkCreateSchema = z.object({
   botHandle: z.enum(['GSIPersonalAssistantBot', 'GSIKidCeoAssistantBot']),
+  /** Optional: pre-bind this token to a specific business so the bot
+   *  resumes THAT business immediately after /start redeems the link. */
+  businessId: z.string().min(1).max(128).optional(),
 });
 
 export type CeoRegisterInput = z.infer<typeof ceoRegisterSchema>;

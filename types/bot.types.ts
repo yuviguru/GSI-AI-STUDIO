@@ -143,6 +143,10 @@ export interface BotLinkCode {
   kidId: string | null;
   botHandle: BotHandle;
   code: string; // 6-digit numeric fallback for manual entry
+  /** Optional business to resume after redemption. Set when the web app's
+   *  "Continue on Telegram" button is tapped inside a specific business;
+   *  null for a plain "Connect Telegram" from the landing page. */
+  businessId: string | null;
   used: boolean;
   usedByChatId: string | null;
   expiresAt: Timestamp;

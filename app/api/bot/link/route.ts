@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { botHandle } = botLinkCreateSchema.parse(body);
+    const { botHandle, businessId } = botLinkCreateSchema.parse(body);
 
     // Phase-2 optional auth: only call verifyAuth when an Authorization
     // header is present, so anonymous callers aren't forced through the
@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
       userId,
       kidId,
       botHandle,
+      businessId: businessId ?? null,
     });
 
     // Telegram deep links always live on https://t.me/<botHandle>; this is
