@@ -131,6 +131,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Homework forward rate-limit windows — server-side only
+    match /homeworkRateLimits/{key} {
+      allow read, write: if false;
+    }
+
     // Default: deny all
     match /{document=**} {
       allow read, write: if false;

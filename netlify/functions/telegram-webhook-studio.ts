@@ -1,10 +1,10 @@
 /**
  * Telegram webhook handler for @GSIPersonalAssistantBot.
  *
- * Same shape as `telegram-webhook-ceo.ts` but for the Studio bot. No feature
- * modules are registered yet — homework, challenge, skills, and notifications
- * will be wired here in later sprints. Until then, `BotRouter`'s built-in
- * help fallback handles every incoming message cleanly.
+ * Registers studio deep-link commands + the interactive homework helper.
+ * Challenge, skills, and notifications modules will be added in later
+ * sprints — order of registration doesn't matter (the router dispatches
+ * by command/prefix/forward-predicate).
  *
  * Environment variables:
  *  - TELEGRAM_BOT_TOKEN_STUDIO       (required) — Bot API token for @GSIPersonalAssistantBot.
@@ -17,6 +17,7 @@ import type { Handler } from '@netlify/functions';
 import { BotRouter } from '../../lib/bot/router';
 import { TelegramAdapter } from '../../lib/bot/adapters/telegram';
 import { studioLinksModule } from '../../lib/bot/modules/studioLinks';
+import { homeworkModule } from '../../lib/bot/modules/homework';
 
 // Instantiate at module load. Netlify warm containers reuse this.
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN_STUDIO ?? '';
@@ -31,7 +32,8 @@ const router = new BotRouter();
 if (telegram) {
   router.registerAdapter(telegram);
   router.registerModule(studioLinksModule);
-  // Future: register homework, challenge, skills, notifications modules here.
+  router.registerModule(homeworkModule);
+  // Future: register challenge, skills, notifications modules here.
 }
 
 const handler: Handler = async (event) => {
