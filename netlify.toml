@@ -10,3 +10,8 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# Sunday 19:00 IST = 13:30 UTC. Sends the weekly homework digest DM to
+# every linked @GSIPersonalAssistantBot chat that had activity this week.
+[functions."homework-weekly-digest"]
+  schedule = "30 13 * * 0"
