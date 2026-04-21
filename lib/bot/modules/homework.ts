@@ -13,7 +13,6 @@
  *  See /docs/MESSENGER_BOT_ARCHITECTURE.md §5 for the v1 design decisions.
  *  See stories/phase-2/HOMEWORK-001 (to be written) for the story. */
 
-import { Timestamp } from 'firebase-admin/firestore';
 import { AppException } from '@/lib/api-utils';
 import type {
   BotContext,
@@ -373,7 +372,7 @@ async function handleCallback(
   if (data.startsWith('hw_hint:')) {
     const sessionId = parts[1];
     if (!sessionId) return;
-    await sendHint(sessionId, message, send);
+    await sendHint(sessionId, message, send, context);
     return;
   }
 
@@ -394,14 +393,14 @@ async function handleCallback(
   if (data.startsWith('hw_next:')) {
     const sessionId = parts[1];
     if (!sessionId) return;
-    await sendCurrentQuestion(sessionId, message, send);
+    await sendCurrentQuestion(sessionId, message, send, context);
     return;
   }
 
   if (data.startsWith('hw_continue:')) {
     const sessionId = parts[1];
     if (!sessionId) return;
-    await sendCurrentQuestion(sessionId, message, send);
+    await sendCurrentQuestion(sessionId, message, send, context);
     return;
   }
 }
@@ -433,19 +432,13 @@ async function startMode(
   send: Send,
   context: BotContext,
 ): Promise<void> {
-  const session = await getHomeworkSession(sessionId);
-  if (!session) {
-    await send({
-      chatId: message.chatId,
-      text: "That homework session is gone — forward your homework again!",
-    });
-    return;
-  }
+  const session = await loadOwnedSession(sessionId, message, send, context);
+  if (!session) return;
   await setMode(sessionId, mode);
   await updateModuleState(context.session.chatId, 'homework', {
     currentSessionId: sessionId,
   });
-  await sendCurrentQuestion(sessionId, message, send);
+  await sendCurrentQuestion(sessionId, message, send, context);
 }
 
 // ─── Asking questions ──────────────────────────────────────
@@ -454,12 +447,19 @@ async function sendCurrentQuestion(
   sessionId: string,
   message: BotIncomingMessage,
   send: Send,
+  context?: BotContext,
 ): Promise<void> {
-  const session = await getHomeworkSession(sessionId);
+  // When a context is passed we run the ownership gate — this is the
+  // hot path (every question send). Call sites that already vetted the
+  // session (immediately after recordAnswer in the same handler) skip
+  // it to avoid a second Firestore read on the critical path.
+  const session = context
+    ? await loadOwnedSession(sessionId, message, send, context)
+    : await getHomeworkSession(sessionId);
   if (!session) return;
 
   if (session.progress.currentIndex >= session.totalQuestions) {
-    await sendCompletion(session, message, send);
+    await sendCompletion(session, message, send, context);
     return;
   }
 
@@ -528,7 +528,7 @@ async function handleMcqAnswer(
   send: Send,
   context: BotContext,
 ): Promise<void> {
-  const session = await getHomeworkSession(sessionId);
+  const session = await loadOwnedSession(sessionId, message, send, context);
   if (!session) return;
   const q = session.questions[session.progress.currentIndex];
   if (!q || q.type !== 'multiple_choice' || !q.options) return;
@@ -562,8 +562,13 @@ async function handleTextAnswer(
     // No active session — pass through to the router's help fallback.
     return;
   }
+  // This path is reached from a `text` update — the router only dispatches
+  // here when the chat's activeModule is 'homework', and currentSessionId
+  // came from THIS chat's moduleState. That's already the ownership check
+  // for this path, so we don't need the extra chatId comparison.
   const session = await getHomeworkSession(sessionId);
   if (!session) return;
+  if (session.sessionId !== context.session.chatId) return;
   if (session.progress.currentIndex >= session.totalQuestions) return;
 
   const q = session.questions[session.progress.currentIndex];
@@ -630,6 +635,11 @@ async function handleVoiceAnswer(
   if (!sessionId || !message.voiceUrl) return;
   const session = await getHomeworkSession(sessionId);
   if (!session) return;
+  // Same reasoning as handleTextAnswer — sessionId comes from THIS chat's
+  // moduleState so it implicitly belongs to us. Double-check anyway so a
+  // bad moduleState (copied via backup restore / race) can't mutate a
+  // session from another chat.
+  if (session.sessionId !== context.session.chatId) return;
   const q = session.questions[session.progress.currentIndex];
   if (!q || q.type !== 'recitation' || !q.recitationText) return;
 
@@ -687,8 +697,9 @@ async function sendHint(
   sessionId: string,
   message: BotIncomingMessage,
   send: Send,
+  context: BotContext,
 ): Promise<void> {
-  const session = await getHomeworkSession(sessionId);
+  const session = await loadOwnedSession(sessionId, message, send, context);
   if (!session) return;
   const q = session.questions[session.progress.currentIndex];
   if (!q) return;
@@ -705,7 +716,7 @@ async function explainCurrent(
   send: Send,
   context: BotContext,
 ): Promise<void> {
-  const session = await getHomeworkSession(sessionId);
+  const session = await loadOwnedSession(sessionId, message, send, context);
   if (!session) return;
   const q = session.questions[session.progress.currentIndex];
   if (!q) return;
@@ -742,18 +753,25 @@ async function skipCurrent(
   sessionId: string,
   message: BotIncomingMessage,
   send: Send,
-  _context: BotContext,
+  context: BotContext,
 ): Promise<void> {
+  // Verify ownership BEFORE mutating the session — without this, a
+  // crafted callback could advance someone else's homework.
+  const existing = await loadOwnedSession(sessionId, message, send, context);
+  if (!existing) return;
   const session = await skipCurrentQuestion(sessionId);
   if (session.progress.currentIndex >= session.totalQuestions) {
-    await sendCompletion(session, message, send);
+    // Pass context through so sendCompletion can clear moduleState /
+    // activeModule and apply the AI Points + Homework Hero rewards.
+    // Skipping the last question should still end the session cleanly.
+    await sendCompletion(session, message, send, context);
     return;
   }
   await send({
     chatId: message.chatId,
     text: "No worries — we'll come back to that later.",
   });
-  await sendCurrentQuestion(sessionId, message, send);
+  await sendCurrentQuestion(sessionId, message, send, context);
 }
 
 // ─── Answer finalisation + reveal-after-3 ──────────────────
@@ -928,6 +946,30 @@ function badgeLabel(id: string): string {
 
 // ─── Misc helpers ──────────────────────────────────────────
 
+/** Load a homework session by id AND verify it belongs to the calling
+ *  chat. Returns `null` when the session is missing OR owned by a
+ *  different chat; in the "not yours" case we also send a friendly
+ *  "that session is gone" reply so the kid isn't left staring at a
+ *  dead button. This is the authorisation gate that prevents a
+ *  forged callback (`hw_ans:<other_kid_session>:0`) from mutating
+ *  someone else's homework progress. */
+async function loadOwnedSession(
+  sessionId: string,
+  message: BotIncomingMessage,
+  send: Send,
+  context: BotContext,
+): Promise<HomeworkSession | null> {
+  const session = await getHomeworkSession(sessionId);
+  if (!session || session.sessionId !== context.session.chatId) {
+    await send({
+      chatId: message.chatId,
+      text: "That homework session is gone — forward your homework again!",
+    });
+    return null;
+  }
+  return session;
+}
+
 function getChatState(context: BotContext): HomeworkChatState {
   const raw = (context.session.moduleState ?? {}) as Record<string, unknown>;
   const hw = (raw.homework ?? {}) as Partial<HomeworkChatState>;
@@ -964,8 +1006,3 @@ function escapeMarkdown(text: string): string {
   // Telegram legacy Markdown only cares about `*`, `_`, `` ` ``, `[`.
   return text.replace(/([*_`\[])/g, '\\$1');
 }
-
-// Hint to the TypeScript compiler that Timestamp is imported for side
-// effects (used implicitly by transitive imports). A tiny reference here
-// ensures tree-shakers don't accidentally drop it in a future refactor.
-void Timestamp;

@@ -84,20 +84,29 @@ export async function runWeeklyDigest(
     const chatData = chatDoc.data() as {
       chatId: string;
       gsiSessionId?: string;
+      kidId?: string | null;
     };
     const chatId = chatData.chatId ?? chatDoc.id;
     const gsiSessionId = chatData.gsiSessionId;
+    const chatKidId = chatData.kidId ?? null;
     if (!gsiSessionId) {
       chatsSkippedNoActivity += 1;
       continue;
     }
 
-    const sessionsSnap = await adminDb
+    // Scope to THIS chat's kidId when bound. Without this filter, two
+    // siblings sharing a parent's chat would see each other's homework
+    // in the digest (same gsiSessionId, different kids). When the chat
+    // has no kidId yet (anonymous / pre-link) we fall back to gsiSessionId
+    // alone — still correct because no other kid can have joined yet.
+    let query = adminDb
       .collection(HOMEWORK_SESSIONS)
       .where('gsiSessionId', '==', gsiSessionId)
-      .where('createdAt', '>=', Timestamp.fromMillis(sinceMs))
-      .orderBy('createdAt', 'desc')
-      .get();
+      .where('createdAt', '>=', Timestamp.fromMillis(sinceMs));
+    if (chatKidId) {
+      query = query.where('kidId', '==', chatKidId);
+    }
+    const sessionsSnap = await query.orderBy('createdAt', 'desc').get();
 
     if (sessionsSnap.empty) {
       chatsSkippedNoActivity += 1;

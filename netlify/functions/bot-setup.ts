@@ -44,9 +44,11 @@ const CEO_COMMANDS: Array<{ command: string; description: string }> = [
 ];
 
 /** Command menu for @GSIPersonalAssistantBot — deep-links into each studio,
- *  plus account linking and help. Keep in sync with `studioLinksModule.commands`
- *  in `lib/bot/modules/studioLinks.ts`. */
+ *  the homework helper, plus account linking and help. Keep in sync with
+ *  `studioLinksModule.commands` in `lib/bot/modules/studioLinks.ts` and
+ *  `homeworkModule.commands` in `lib/bot/modules/homework.ts`. */
 const STUDIO_COMMANDS: Array<{ command: string; description: string }> = [
+  { command: 'homework', description: '📚 Forward homework — I will quiz you on it' },
   { command: 'story', description: '📖 Write an AI-illustrated story' },
   { command: 'music', description: '🎵 Make a song with lyrics and beats' },
   { command: 'quiz', description: '🧠 Build a quiz on any topic' },

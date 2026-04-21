@@ -55,7 +55,7 @@ export class BotRouter {
       }
     }
 
-    const context = await buildBotContext({ message, botHandle });
+    const context = await buildBotContext({ message, botHandle, adapter });
 
     // 1. Command routing — exact match.
     if (message.type === 'command' && message.command) {
