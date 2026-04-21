@@ -11,6 +11,7 @@ import { useAiPoints } from '@/contexts/AiPointsContext';
 import { MusicPromptForm } from '@/components/studios/music/MusicPromptForm';
 import { MusicProgress } from '@/components/studios/music/MusicProgress';
 import { MusicPlayer } from '@/components/studios/music/MusicPlayer';
+import { AssignmentBanner } from '@/components/student/AssignmentBanner';
 import type { MusicContent } from '@/types';
 import type { MusicInput } from '@/lib/validators';
 
@@ -73,6 +74,9 @@ export function MusicStudioClient() {
             </div>
           </div>
         )}
+
+        {/* Assignment context banner (auto-submits on publish) */}
+        <AssignmentBanner creationType="music" creationId={creationId} />
 
         {/* Error banner */}
         {error && step === 'inspire' && (

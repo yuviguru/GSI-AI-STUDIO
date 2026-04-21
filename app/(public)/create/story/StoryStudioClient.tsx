@@ -11,6 +11,7 @@ import { useAiPoints } from '@/contexts/AiPointsContext';
 import { StoryPromptForm } from '@/components/studios/story/StoryPromptForm';
 import { StoryProgress } from '@/components/studios/story/StoryProgress';
 import { StoryViewer } from '@/components/studios/story/StoryViewer';
+import { AssignmentBanner } from '@/components/student/AssignmentBanner';
 import type { StoryContent, AiXrayData } from '@/types';
 import type { StoryInput } from '@/lib/validators';
 
@@ -73,6 +74,9 @@ export function StoryStudioClient() {
             </div>
           </div>
         )}
+
+        {/* Assignment context banner (auto-submits on publish) */}
+        <AssignmentBanner creationType="story" creationId={creationId} />
 
         {/* Error banner */}
         {error && step === 'inspire' && (

@@ -11,6 +11,7 @@ import { useAiPoints } from '@/contexts/AiPointsContext';
 import { ComicPromptForm } from '@/components/studios/comic/ComicPromptForm';
 import { ComicProgress } from '@/components/studios/comic/ComicProgress';
 import { ComicViewer } from '@/components/studios/comic/ComicViewer';
+import { AssignmentBanner } from '@/components/student/AssignmentBanner';
 import type { ComicContent } from '@/types';
 import type { ComicInput } from '@/lib/validators';
 
@@ -73,6 +74,9 @@ export function ComicStudioClient() {
             </div>
           </div>
         )}
+
+        {/* Assignment context banner (auto-submits on publish) */}
+        <AssignmentBanner creationType="comic" creationId={creationId} />
 
         {/* Error banner */}
         {error && step === 'inspire' && (
