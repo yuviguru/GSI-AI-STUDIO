@@ -377,6 +377,12 @@ export async function saveCeoEvent(
   const now = Timestamp.fromMillis(nowMs);
   const expiresAt = Timestamp.fromMillis(nowMs + EVENT_TTL_MS);
 
+  // PR2: derive eventType from the caller's input (eventEngine always sets
+  // it now, but older code paths that still pass only `milestone` are
+  // handled by deriving from milestone-presence).
+  const eventType: CeoEvent['eventType'] =
+    event.eventType ?? (event.milestone ? 'milestone' : 'regular');
+
   const doc: CeoEvent = {
     id,
     businessId: event.businessId,
@@ -397,6 +403,10 @@ export async function saveCeoEvent(
     deliveredVia: event.deliveredVia ?? null,
     createdAt: now,
     expiresAt,
+    eventType,
+    namedTitle: event.namedTitle,
+    scheduledFor: event.scheduledFor ?? null,
+    stakesMultiplier: event.stakesMultiplier,
   };
 
   await docRef.set(stripUndefined(doc));

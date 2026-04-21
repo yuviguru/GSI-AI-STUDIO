@@ -1,29 +1,49 @@
-/** Kid CEO event generator. Port of SimPrenuer/eventEngine.js with:
- *    - Groq (llama-3.3-70b) primary, Claude (Sonnet) fallback — matches
- *      GSI's existing LLM pipeline. No new clients introduced.
- *    - Template fallback if both providers fail or return malformed JSON.
- *    - Milestone-steered prompts: the LLM is told exactly which beat to
- *      write for, which keeps phase progression reliable even on weaker
- *      models. Milestone names match SimPrenuer so the fallback category
- *      mapping from constants.ts ports cleanly.
+/** Kid CEO event generator — TWO-PATH MODEL (PR 2 redesign).
  *
- *  Pure event generation only — does NOT write to Firestore. The caller
- *  (API route) passes the generated event to ceoService.saveCeoEvent. */
+ *  Paths:
+ *  - REGULAR event: small-stakes, daily fiddling, NEVER advances phase,
+ *    capped 5/day via the business doc counters. Uses EVENT_GENERATION_PROMPT.
+ *  - MILESTONE event: named "TODAY'S BIG CHOICE", big cash/rep swings, the
+ *    ONLY event that can advance a phase. Uses MILESTONE_EVENT_PROMPT and
+ *    asks the LLM for a dynamic `named_title`. Delivered by the daily cron.
+ *
+ *  `generateEvent()` auto-routes: if a milestone is passed → milestone path,
+ *  otherwise → regular path. Direct callers that KNOW the type can use
+ *  `generateRegularEvent()` / `generateMilestoneEvent()`.
+ *
+ *  Pipeline (same for both): Groq (llama-3.3-70b) primary, Claude (Sonnet)
+ *  fallback, template events as last resort. Pure generation only — no
+ *  Firestore writes; caller hands the result to ceoService.saveCeoEvent. */
 
 import { generateJsonWithGroq } from '@/lib/ai/groqClient';
 import { generateJsonWithClaude } from '@/lib/ai/claudeClient';
-import type { CeoBusiness, CeoChoice, CeoChoiceId, CeoEvent } from '@/types';
-import { MILESTONE_FALLBACK_CATEGORY, type CeoEventCategory } from './constants';
+import type {
+  CeoBusiness,
+  CeoChoice,
+  CeoChoiceId,
+  CeoEvent,
+  CeoEventType,
+} from '@/types';
+import {
+  MILESTONE_FALLBACK_CATEGORY,
+  stakesMultiplierFor,
+  STAKES_MULTIPLIER,
+  type CeoEventCategory,
+} from './constants';
 import {
   EVENT_GENERATION_PROMPT,
+  MILESTONE_EVENT_PROMPT,
   buildEventPrompt,
-  buildMilestonePrompt,
+  buildMilestoneEventPrompt,
 } from './prompts/eventPrompt';
 import fallbackEvents from './templates/events.json';
 
-/** Shape the LLM is asked to return. Matches EVENT_GENERATION_PROMPT spec. */
+/** Shape the LLM is asked to return. `named_title` is ONLY emitted for
+ *  milestone events — the regular prompt doesn't ask for it and we don't
+ *  require it there. */
 interface LlmEventResponse {
   title: string;
+  named_title?: string;
   category: string;
   event_type: string;
   content: string;
@@ -50,50 +70,107 @@ export interface GeneratedEvent {
   phase: CeoBusiness['phase'];
   milestone: string | null;
   choices: CeoChoice[];
+  // PR2: two-path differentiation.
+  eventType: CeoEventType;
+  namedTitle?: string;
+  stakesMultiplier: number;
 }
 
 interface GenerateEventParams {
   business: CeoBusiness;
   milestone?: string | null;
+  /** Titles of the last 3-5 events on this business (any type). Lets the
+   *  LLM avoid repeating the prior beat. */
+  recentEventTitles?: string[];
+  /** Named titles already used on prior milestone events (so the LLM picks
+   *  a NEW headline). */
+  recentNamedTitles?: string[];
 }
 
-/** Main entry. Generates an event — LLM-steered if a milestone is given, else
- *  freeform; falls back to template events on LLM failure. */
+/** Main entry. Auto-routes to regular-event or milestone-event generation
+ *  based on whether `milestone` is provided. Falls back to template events
+ *  on LLM failure. */
 export async function generateEvent(params: GenerateEventParams): Promise<GeneratedEvent> {
-  const { business, milestone = null } = params;
+  return params.milestone
+    ? generateMilestoneEvent({
+        business: params.business,
+        milestone: params.milestone,
+        recentEventTitles: params.recentEventTitles,
+        recentNamedTitles: params.recentNamedTitles,
+      })
+    : generateRegularEvent({
+        business: params.business,
+        recentEventTitles: params.recentEventTitles,
+      });
+}
 
-  const userPrompt = milestone
-    ? buildMilestonePrompt(business, milestone)
-    : buildEventPrompt(business);
+/** Regular event — small stakes, no phase advance, cap enforced at the
+ *  route layer. */
+export async function generateRegularEvent(params: {
+  business: CeoBusiness;
+  recentEventTitles?: string[];
+}): Promise<GeneratedEvent> {
+  const { business, recentEventTitles } = params;
+  const userPrompt = buildEventPrompt(business, { recentEventTitles });
 
-  // 1. Try Groq
+  const raw = await runLlmPipeline(EVENT_GENERATION_PROMPT, userPrompt);
+  if (!raw) return buildFallbackEvent(business, null);
+  return shapeLlmEvent(raw, business, null, 'regular');
+}
+
+/** Milestone event — "TODAY'S BIG CHOICE", named + big stakes, ONLY events
+ *  that can advance phases. Always targets one specific milestone. */
+export async function generateMilestoneEvent(params: {
+  business: CeoBusiness;
+  milestone: string;
+  recentEventTitles?: string[];
+  recentNamedTitles?: string[];
+}): Promise<GeneratedEvent> {
+  const { business, milestone, recentEventTitles, recentNamedTitles } = params;
+  const userPrompt = buildMilestoneEventPrompt({
+    business,
+    milestone,
+    recentEventTitles,
+    recentNamedTitles,
+  });
+
+  const raw = await runLlmPipeline(MILESTONE_EVENT_PROMPT, userPrompt);
+  if (!raw) return buildFallbackEvent(business, milestone);
+  return shapeLlmEvent(raw, business, milestone, 'milestone');
+}
+
+/** Run the Groq → Claude LLM pipeline and return parsed JSON, or null if
+ *  both providers fail (caller should fall back to templates). */
+async function runLlmPipeline(
+  systemPrompt: string,
+  userMessage: string,
+): Promise<LlmEventResponse | null> {
   try {
-    const raw = await generateJsonWithGroq<LlmEventResponse>({
-      systemPrompt: EVENT_GENERATION_PROMPT,
-      userMessage: userPrompt,
-      temperature: 0.85,
-      maxTokens: 1200,
+    return await generateJsonWithGroq<LlmEventResponse>({
+      systemPrompt,
+      userMessage,
+      temperature: 0.9, // Bumped from 0.85 — variety is a PR2 priority
+      maxTokens: 1400,
     });
-    return shapeLlmEvent(raw, business, milestone);
   } catch (groqErr) {
     console.warn('[ceo/eventEngine] Groq failed, trying Claude:', (groqErr as Error).message);
   }
 
-  // 2. Try Claude
   try {
-    const raw = await generateJsonWithClaude<LlmEventResponse>({
-      systemPrompt: EVENT_GENERATION_PROMPT,
-      userMessage: userPrompt,
-      temperature: 0.85,
-      maxTokens: 1200,
+    return await generateJsonWithClaude<LlmEventResponse>({
+      systemPrompt,
+      userMessage,
+      temperature: 0.9,
+      maxTokens: 1400,
     });
-    return shapeLlmEvent(raw, business, milestone);
   } catch (claudeErr) {
-    console.warn('[ceo/eventEngine] Claude failed, using template fallback:', (claudeErr as Error).message);
+    console.warn(
+      '[ceo/eventEngine] Claude failed, using template fallback:',
+      (claudeErr as Error).message,
+    );
   }
 
-  // 3. Template fallback
-  return buildFallbackEvent(business, milestone);
+  return null;
 }
 
 /** Validate + normalize the LLM response into our CeoChoice shape.
@@ -103,6 +180,7 @@ function shapeLlmEvent(
   raw: LlmEventResponse,
   business: CeoBusiness,
   milestone: string | null,
+  eventType: CeoEventType,
 ): GeneratedEvent {
   if (!raw.title || !raw.category || !raw.content || !Array.isArray(raw.choices) || raw.choices.length !== 3) {
     throw new Error('Invalid event structure from LLM');
@@ -116,6 +194,18 @@ function shapeLlmEvent(
     weights: sanitizeWeights(c.weights),
   }));
 
+  // Milestone events SHOULD carry a named_title from the LLM; if the LLM
+  // skipped it (happens ~1% of the time with Groq), synthesise one from
+  // the milestone name so the "TODAY'S BIG CHOICE" banner still has a
+  // meaningful headline.
+  const namedTitle =
+    eventType === 'milestone'
+      ? (raw.named_title?.trim() || synthNamedTitle(milestone)) || undefined
+      : undefined;
+
+  const stakesMultiplier =
+    eventType === 'milestone' ? stakesMultiplierFor(milestone) : STAKES_MULTIPLIER.regular;
+
   return {
     businessId: business.id,
     userId: business.userId,
@@ -126,7 +216,22 @@ function shapeLlmEvent(
     phase: business.phase,
     milestone,
     choices,
+    eventType,
+    namedTitle,
+    stakesMultiplier,
   };
+}
+
+/** Fallback named_title when the LLM omits one. Kid-facing — used only when
+ *  the model didn't emit a proper headline. Readable but unmemorable, which
+ *  is fine since it's rare. */
+function synthNamedTitle(milestone: string | null): string {
+  if (!milestone) return "Today's Big Choice";
+  const cleaned = milestone
+    .toLowerCase()
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return `The ${cleaned} Call`;
 }
 
 /** Drop any weight keys that aren't valid dimensions and clamp values. */
@@ -170,7 +275,12 @@ let fallbackCursor = 0;
 
 /** Pick a template event whose category matches the target milestone's natural
  *  category. Substitutes business name where the template references "your
- *  business" / "your stand" generically. Keeps the queue moving even offline. */
+ *  business" / "your stand" generically. Keeps the queue moving even offline.
+ *
+ *  Post-PR2: a fallback event still respects eventType — if a milestone was
+ *  requested we still return a milestone-typed fallback (with synthesised
+ *  named_title + stakes multiplier) so downstream phase-advance logic keeps
+ *  working even in the no-LLM degraded mode. */
 export function buildFallbackEvent(business: CeoBusiness, milestone: string | null): GeneratedEvent {
   const targetCategory: CeoEventCategory | null = milestone
     ? MILESTONE_FALLBACK_CATEGORY[milestone] ?? null
@@ -200,6 +310,7 @@ export function buildFallbackEvent(business: CeoBusiness, milestone: string | nu
     weights: sanitizeWeights(c.weights),
   }));
 
+  const eventType: CeoEventType = milestone ? 'milestone' : 'regular';
   return {
     businessId: business.id,
     userId: business.userId,
@@ -210,5 +321,11 @@ export function buildFallbackEvent(business: CeoBusiness, milestone: string | nu
     phase: business.phase,
     milestone,
     choices,
+    eventType,
+    namedTitle: eventType === 'milestone' ? synthNamedTitle(milestone) : undefined,
+    stakesMultiplier:
+      eventType === 'milestone'
+        ? stakesMultiplierFor(milestone)
+        : STAKES_MULTIPLIER.regular,
   };
 }
