@@ -1362,5 +1362,156 @@ Fetch a single homework session with the full transcript — every question, ans
 | GrowthMap | N/A | 10/hour | 10/hour |
 | Public Read | 100/min | 100/min | 100/min |
 | Auth | N/A | 5/min | 5/min |
+| Teacher/Admin writes | N/A | 30/min | 30/min |
 
 **Note:** Kid CEO rate limits are shared across web and bot channels for the same `sessionId`.
+
+---
+
+## School Side (Phase 3)
+
+All school-side endpoints require `Authorization: Bearer <firebase_id_token>` and are gated by server-side role checks via `requireRole()` from `lib/auth-utils.ts`. The `role` is read from the user's Firestore doc — no custom claims.
+
+### POST /api/auth/teacher/register
+
+Upgrade the authenticated user to a `teacher` role and attach them to a school. The first teacher to register against a given `schoolCode` becomes the school `adminUid`; subsequent teachers join the existing school.
+
+**Auth:** authenticated (any role; upgrades to `teacher`).
+
+**Request:**
+```json
+{
+  "schoolCode": "DPS-DEL-042",
+  "name": "Ms. Priya Sharma",
+  "school": {
+    "name": "Delhi Public School",
+    "city": "New Delhi",
+    "state": "Delhi",
+    "board": "cbse"
+  }
+}
+```
+`school` is only required when no school with this `schoolCode` exists yet (the first teacher bootstraps it).
+
+**Response (201):**
+```json
+{ "success": true, "data": { "schoolId": "...", "role": "teacher", "isAdmin": true }, "error": null }
+```
+
+**Errors:** `INVALID_INPUT` (400), `SCHOOL_CODE_TAKEN` (409) when code exists with a different school name.
+
+### GET /api/auth/teacher/verify
+
+Check if the authenticated user has `teacher` or `schoolAdmin` role.
+
+**Response (200):**
+```json
+{ "success": true, "data": { "role": "teacher", "schoolId": "..." }, "error": null }
+```
+
+### POST /api/schools/[id]/classes
+
+Create a class in the teacher's school. Gated to `teacher`/`schoolAdmin`.
+
+**Request:**
+```json
+{ "name": "Class 5A", "grade": "5", "section": "A" }
+```
+
+**Response (201):** returns `ClassDoc` with a generated `inviteCode`.
+
+### GET /api/schools/[id]/classes
+
+List all classes in the school. Teachers see all; kept simple for v1 — no per-teacher filtering.
+
+### POST /api/classes/join
+
+A signed-in parent (on behalf of their active kid) joins a class by code. Links the kid to the class and the school.
+
+**Request:**
+```json
+{ "inviteCode": "AB12CD", "kidId": "kid_123" }
+```
+
+**Response (200):** returns the `ClassDoc` the kid joined.
+
+**Errors:** `INVALID_CODE` (400), `KID_NOT_FOUND` (404), `FORBIDDEN` (403) if kid isn't owned by the caller.
+
+### POST /api/assignments
+
+Create an assignment. `teacher`/`schoolAdmin` only.
+
+**Request:**
+```json
+{
+  "classId": "...",
+  "title": "Water Cycle Story",
+  "description": "Write a story that explains evaporation, condensation, and precipitation.",
+  "creationType": "story",
+  "dueDate": "2026-05-01T18:30:00Z",
+  "curriculumTags": ["storytelling_with_ai", "responsible_use"]
+}
+```
+
+**Response (201):** returns `AssignmentDoc`.
+
+### GET /api/assignments
+
+- **Teacher**: returns all assignments across their classes.
+- **Parent**: requires `X-Active-Kid-Id`; returns assignments for the kid's classes with `submissionStatus` per assignment (`pending` / `submitted` / `approved` / `revision_requested` / `late`).
+
+### GET /api/assignments/[id]
+
+Returns assignment detail. Teachers also get a `submissions` summary (count + by-status).
+
+### PATCH /api/assignments/[id]
+
+Teacher-only update — typically extending `dueDate` or flipping `status: 'closed'`.
+
+### POST /api/assignments/[id]/submissions
+
+Student (via parent-authenticated request with `X-Active-Kid-Id`) submits a creation to an assignment. Idempotent per `(assignmentId, kidId)` — re-submit updates the existing submission and resets status to `pending`.
+
+**Request:**
+```json
+{ "creationId": "cr_abc" }
+```
+
+**Response (201):** returns `SubmissionDoc`.
+
+**Errors:** `INVALID_CREATION_TYPE` (400) if the creation type doesn't match the assignment, `NOT_IN_CLASS` (403) if the kid isn't enrolled in the assignment's class.
+
+### GET /api/assignments/[id]/submissions
+
+Teacher-only. Returns `[{ submission, kid, creation }]` for the submission grid.
+
+### PATCH /api/assignments/[id]/submissions/[submissionId]
+
+Teacher review.
+
+**Request:**
+```json
+{ "status": "approved", "feedback": "Great plot!", "starred": true }
+```
+
+### GET /api/admin/analytics/school/[schoolId]
+
+`schoolAdmin`-only. Returns the cached `SchoolAnalyticsDoc`; optional `?refresh=1` query forces a re-aggregation (rate-limited per school to avoid quota abuse).
+
+### GET /api/admin/competitions/leaderboard
+
+`schoolAdmin`-only. Returns top 20 schools ranked by creations, curriculum coverage, and active-student %. Optional filters: `?board=cbse`, `?state=Delhi`, `?gradeMin=3&gradeMax=8`.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "rankings": [
+      { "schoolId": "...", "name": "...", "city": "...", "board": "cbse",
+        "creations": 1204, "curriculumCoverage": 0.68, "activeStudentPct": 0.82, "rank": 1 }
+    ]
+  },
+  "error": null
+}
+```

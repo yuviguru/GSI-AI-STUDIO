@@ -69,6 +69,29 @@ service cloud.firestore {
       }
     }
 
+    // ─── Assignments (Phase 3) ──────────────────────────────
+    // Top-level collection (not nested under schools) so teachers can query
+    // their own assignments across classes efficiently. Access control is
+    // enforced server-side via requireRole + ownership checks.
+    match /assignments/{assignmentId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Server-side only
+    }
+
+    // ─── Submissions (Phase 3) ──────────────────────────────
+    // Creations submitted to assignments. Reads are server-gated — clients
+    // use authenticated API endpoints which filter by class membership.
+    match /submissions/{submissionId} {
+      allow read, write: if false; // Server-side only
+    }
+
+    // ─── School Analytics (Phase 3) ─────────────────────────
+    // Cached aggregate metrics per school. Refreshed daily by scheduled
+    // Netlify function; never written by clients.
+    match /schoolAnalytics/{schoolId} {
+      allow read, write: if false; // Server-side only
+    }
+
     // ─── Cerebro Competitions (Phase 2+) ─────────────────────
     match /competitions/{competitionId} {
       allow read: if true;

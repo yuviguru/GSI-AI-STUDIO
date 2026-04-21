@@ -58,10 +58,14 @@ firestore/
 ├── schools/                # Phase 3: school accounts
 │   └── {schoolId}/
 │       ├── [school document]
-│       ├── classes/
-│       │   └── {classId}
-│       └── assignments/
-│           └── {assignmentId}
+│       └── classes/
+│           └── {classId}
+├── assignments/            # Phase 3: teacher-created assignments (top-level)
+│   └── {assignmentId}
+├── submissions/            # Phase 3: student creations submitted to assignments
+│   └── {submissionId}
+├── schoolAnalytics/        # Phase 3: per-school cached aggregate metrics
+│   └── {schoolId}
 └── analytics/              # Aggregated analytics (Cloud Function maintained)
     └── {period}
 ```
@@ -831,47 +835,127 @@ Weekly creation challenges.
 
 ### schools (Phase 3)
 
-School accounts for B2B.
+School accounts for B2B. Teachers register against an existing school record using `schoolCode`; the first teacher becomes `adminUid`.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | id | string | auto | School ID |
 | name | string | yes | School name |
-| board | string | yes | `cbse` \| `icse` \| `state_tn` \| `state_ap` |
+| board | string | yes | `cbse` \| `icse` \| `state` |
 | city | string | yes | City |
 | state | string | yes | State |
+| schoolCode | string | yes | Short human-readable code used during teacher registration (unique) |
 | plan | string | yes | `trial` \| `basic` \| `premium` |
-| studentCount | number | yes | Licensed student count |
-| adminUserId | string | yes | Primary admin (teacher/principal) user ID |
-| teacherIds | array\<string\> | no | Teacher user IDs |
+| studentCount | number | yes | Current student headcount (denormalized) |
+| adminUid | string | yes | Primary admin (teacher/principal) user ID |
+| teacherIds | array\<string\> | yes | All teacher user IDs for this school |
 | createdAt | timestamp | yes | Registration date |
+| updatedAt | timestamp | yes | Last update timestamp |
+
+**Indexes**:
+- `schoolCode` — unique lookup during teacher registration
 
 ---
 
 ### schools/{schoolId}/classes (Phase 3)
 
+Classes live as a subcollection under schools. Each class has a unique 6-char `inviteCode` that students enter to join.
+
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | id | string | auto | Class ID |
+| schoolId | string | yes | Parent school (denormalized for queries) |
 | name | string | yes | Class name (e.g., "Class 5A") |
-| grade | string | yes | Grade level |
-| teacherId | string | yes | Assigned teacher user ID |
+| grade | string | yes | Grade level (`3`–`12`) |
+| section | string | no | Optional section letter (e.g., "A") |
+| teacherUid | string | yes | Assigned teacher user ID |
 | studentKidIds | array\<string\> | yes | Kid profile IDs in this class |
+| inviteCode | string | yes | 6-char alphanumeric code — unique across all classes |
+| createdAt | timestamp | yes | Creation timestamp |
+| updatedAt | timestamp | yes | Last update timestamp |
+
+**Indexes**:
+- `inviteCode` — collection-group unique lookup when a kid joins via code
+- `teacherUid` + `createdAt` (desc) — teacher's classes
+- `schoolId` + `createdAt` (desc) — all classes in a school
 
 ---
 
-### schools/{schoolId}/assignments (Phase 3)
+### assignments (Phase 3, top-level)
+
+Teacher-created assignments. Stored as a top-level collection (not nested under schools) so teachers can query `where('teacherUid', '==', uid)` across all their classes efficiently.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | id | string | auto | Assignment ID |
+| schoolId | string | yes | Owning school |
 | classId | string | yes | Target class |
+| teacherUid | string | yes | Creating teacher |
 | title | string | yes | Assignment title |
 | description | string | yes | Instructions |
-| creationType | string | yes | Required creation type |
-| curriculumTopicId | string | no | Linked curriculum topic |
+| creationType | string | yes | `story` \| `music` \| `quiz` \| `game` \| `comic` |
 | dueDate | timestamp | yes | Deadline |
-| submissions | number | yes | Submission count (default 0) |
+| curriculumTags | array\<string\> | yes | Curriculum concept IDs (from `lib/curriculum/curriculumMap.ts`) |
+| templateId | string | no | Optional creation template to pre-fill |
+| status | string | yes | `active` \| `closed` |
+| submissions | number | yes | Denormalized submission count (default 0) |
+| createdAt | timestamp | yes | Creation timestamp |
+| updatedAt | timestamp | yes | Last update timestamp |
+
+**Indexes**:
+- `teacherUid` + `createdAt` (desc) — teacher's assignments across classes
+- `classId` + `dueDate` (asc) — pending assignments for a class/student
+- `schoolId` + `createdAt` (desc) — all assignments in a school (analytics)
+
+---
+
+### submissions (Phase 3, top-level)
+
+A submission represents a kid's creation submitted to a specific assignment. One submission per `(assignmentId, kidId)` pair — re-submissions update the existing doc.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | auto | Submission ID |
+| assignmentId | string | yes | Parent assignment |
+| classId | string | yes | Denormalized class ID |
+| schoolId | string | yes | Denormalized school ID |
+| kidId | string | yes | Student kid profile |
+| creationId | string | yes | The creation that was submitted |
+| status | string | yes | `pending` \| `approved` \| `revision_requested` |
+| feedback | string | no | Teacher's written feedback |
+| starred | boolean | no | Teacher-marked as exemplary |
+| reviewedBy | string | no | Teacher UID who reviewed |
+| reviewedAt | timestamp | no | When reviewed |
+| submittedAt | timestamp | yes | When the kid hit submit |
+| createdAt | timestamp | yes | First submission timestamp |
+| updatedAt | timestamp | yes | Last update timestamp |
+
+**Indexes**:
+- `assignmentId` + `submittedAt` (desc) — teacher's submission grid
+- `kidId` + `createdAt` (desc) — a kid's submission history
+- `classId` + `status` — per-class status breakdown
+- `assignmentId` + `kidId` — uniqueness check on re-submit
+
+**Creation linkage**: when a submission is created the referenced `creations/{creationId}` doc is updated with `assignmentId`, `classId`, and `schoolId` for analytics queries.
+
+---
+
+### schoolAnalytics (Phase 3)
+
+Cached per-school aggregate metrics, refreshed daily by a scheduled Netlify function and on-demand from the admin dashboard. One doc per school (ID = `schoolId`).
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| schoolId | string | yes | School ID (also the document ID) |
+| totalStudents | number | yes | Total kid profiles linked to any class in the school |
+| activeStudentsThisWeek | number | yes | Distinct kids with at least one creation in last 7 days |
+| totalCreations | number | yes | Lifetime creations from kids in this school |
+| creationsThisWeek | number | yes | Creations in last 7 days |
+| creationsByType | map | yes | `{story, music, quiz, game, comic}` lifetime counts |
+| curriculumCoverage | array\<map\> | yes | `[{conceptId, conceptName, studentsExposed, percentage}]` — one per concept |
+| teacherActivity | array\<map\> | yes | `[{teacherUid, teacherName, classes, assignmentsCreated, avgCompletionRate, lastActiveAt}]` |
+| weeklyTrend | array\<map\> | yes | `[{week: 'YYYY-Www', creations, students}]` — last 8 weeks |
+| updatedAt | timestamp | yes | Last refresh timestamp |
 
 ## Security Rules (Firestore)
 
