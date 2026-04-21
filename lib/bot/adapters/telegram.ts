@@ -298,6 +298,21 @@ export class TelegramAdapter implements MessengerAdapter {
     });
   }
 
+  /**
+   * Register the bot's slash-command menu with Telegram (the `☰ Menu` button
+   * in the Telegram UI, plus autocomplete when a kid types `/`).
+   *
+   * `commands` is `{ command, description }[]` — `command` WITHOUT the leading
+   * slash (Telegram adds it), description shows up as the hint text in the
+   * autocomplete dropdown so kids know what each command does without having
+   * to try them.
+   *
+   * Call once per deploy alongside `registerWebhook`. Descriptions are 1–256
+   * chars per Telegram API; we keep them short and kid-friendly. */
+  async setMyCommands(commands: Array<{ command: string; description: string }>): Promise<void> {
+    await this.request('setMyCommands', { commands });
+  }
+
   // ─── Private ─────────────────────────────────────────────────────────────
 
   /** POST JSON to a Telegram Bot API method. Throws on `ok: false`. */

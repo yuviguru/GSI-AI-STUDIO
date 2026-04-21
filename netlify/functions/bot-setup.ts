@@ -29,6 +29,35 @@ import { TelegramAdapter } from '../../lib/bot/adapters/telegram';
 const DEPLOY_SECRET = process.env.BOT_SETUP_SECRET;
 const SITE_URL = process.env.URL ?? process.env.NEXT_PUBLIC_URL ?? '';
 
+/** Command menu for @GSIKidCeoAssistantBot — what kids see in the Telegram
+ *  `☰ Menu` button and the `/` autocomplete. Keep descriptions short (under
+ *  ~60 chars) and kid-friendly. Keep in sync with `ceoModule.commands` in
+ *  `lib/bot/modules/ceo.ts` — the bot won't recognize a command it doesn't
+ *  register, and this list won't show one it doesn't advertise. */
+const CEO_COMMANDS: Array<{ command: string; description: string }> = [
+  { command: 'ceo', description: '🏪 Pick a business to play or start a new one' },
+  { command: 'mybusiness', description: '📊 See your business stats (cash, rep, morale)' },
+  { command: 'ceoprofile', description: '🧠 Open your CEO Profile Card in the web app' },
+  { command: 'link', description: '🔗 Connect this chat with a 6-digit code' },
+  { command: 'help', description: '❓ Show every command and what it does' },
+  { command: 'start', description: '👋 Welcome message' },
+];
+
+/** Command menu for @GSIPersonalAssistantBot — deep-links into each studio,
+ *  plus account linking and help. Keep in sync with `studioLinksModule.commands`
+ *  in `lib/bot/modules/studioLinks.ts`. */
+const STUDIO_COMMANDS: Array<{ command: string; description: string }> = [
+  { command: 'story', description: '📖 Write an AI-illustrated story' },
+  { command: 'music', description: '🎵 Make a song with lyrics and beats' },
+  { command: 'quiz', description: '🧠 Build a quiz on any topic' },
+  { command: 'game', description: '🎮 Design a choose-your-own-adventure game' },
+  { command: 'comic', description: '💥 Draw a comic strip from your idea' },
+  { command: 'creations', description: '🎨 See every creation you have made' },
+  { command: 'link', description: '🔗 Connect this chat with a 6-digit code' },
+  { command: 'help', description: '❓ Show every command and what it does' },
+  { command: 'start', description: '👋 Welcome message' },
+];
+
 const handler: Handler = async (event) => {
   // Require a deploy secret to prevent random internet people hitting setup.
   const providedSecret =
@@ -56,7 +85,16 @@ const handler: Handler = async (event) => {
         ceoSecret ? { secretToken: ceoSecret } : undefined,
       );
       await adapter.registerWebhook(`${SITE_URL}/.netlify/functions/telegram-webhook-ceo`);
-      results.ceo = 'registered';
+      // Command-menu registration is best-effort — webhook is what actually
+      // wires the bot up. If the menu call fails (e.g. Telegram rate-limited
+      // us mid-deploy) we still want the bot functional, so we report the
+      // menu status separately rather than failing the whole row.
+      try {
+        await adapter.setMyCommands(CEO_COMMANDS);
+        results.ceo = 'registered (webhook + commands)';
+      } catch (menuErr) {
+        results.ceo = `registered (webhook only — commands failed: ${(menuErr as Error).message})`;
+      }
     } catch (err) {
       results.ceo = `failed: ${(err as Error).message}`;
     }
@@ -74,7 +112,12 @@ const handler: Handler = async (event) => {
         studioSecret ? { secretToken: studioSecret } : undefined,
       );
       await adapter.registerWebhook(`${SITE_URL}/.netlify/functions/telegram-webhook-studio`);
-      results.studio = 'registered';
+      try {
+        await adapter.setMyCommands(STUDIO_COMMANDS);
+        results.studio = 'registered (webhook + commands)';
+      } catch (menuErr) {
+        results.studio = `registered (webhook only — commands failed: ${(menuErr as Error).message})`;
+      }
     } catch (err) {
       results.studio = `failed: ${(err as Error).message}`;
     }

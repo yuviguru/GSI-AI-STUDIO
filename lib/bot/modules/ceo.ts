@@ -95,7 +95,7 @@ const PACES: readonly CeoPace[] = ['30', '60', '90'];
 
 export const ceoModule: BotFeatureModule = {
   id: 'ceo',
-  commands: ['/start', '/ceo', '/mybusiness', '/ceoprofile', '/link'],
+  commands: ['/start', '/ceo', '/mybusiness', '/ceoprofile', '/link', '/help'],
   callbackPrefixes: ['ceo_biz:', 'ceo_choice:', 'ceo_pace:', 'ceo_loc:', 'ceo_resume:'],
 
   async handle(message, send, context) {
@@ -112,6 +112,8 @@ export const ceoModule: BotFeatureModule = {
             return await handleMyBusiness(message, send, context);
           case '/ceoprofile':
             return await handleCeoProfile(message, send, context);
+          case '/help':
+            return await handleHelp(message, send);
           default:
             return;
         }
@@ -657,6 +659,40 @@ async function handleCeoProfile(
   await send({
     chatId: message.chatId,
     text: `See your *CEO Profile* here:\n${base}/ceo/play?businessId=${business.id}`,
+    parseMode: 'markdown',
+  });
+}
+
+/** /help — kid-friendly menu of every Kid CEO command, written for a 10-year-old.
+ *  Plain sentences, one line per command, concrete examples for `/link`. No
+ *  auth gate — kids who aren't connected yet should still be able to see what
+ *  the bot can do. */
+async function handleHelp(message: BotIncomingMessage, send: Send): Promise<void> {
+  await send({
+    chatId: message.chatId,
+    text: [
+      '*Kid CEO — what can I do?* 🚀',
+      '',
+      "I'm your Kid CEO sidekick. Here's every command and what it does:",
+      '',
+      '🏪 /ceo — Pick a business to play, or start a brand-new one.',
+      '    You can run up to 5 businesses at once.',
+      '',
+      '📊 /mybusiness — See how your business is doing right now:',
+      '    cash, reputation, morale, phase, and milestones.',
+      '',
+      '🧠 /ceoprofile — Open your *CEO Profile Card* in the web app.',
+      '    Shows your strengths as a founder — creativity, grit, and more.',
+      '',
+      '🔗 /link `123456` — Connect this chat to your web account using a',
+      '    6-digit code from the Kid CEO page. Needed once per kid profile.',
+      '',
+      '👋 /start — Welcome message, anytime you want to say hi again.',
+      '',
+      '❓ /help — Show this menu.',
+      '',
+      '_Tip: if a decision pops up, just tap one of the buttons — A, B, or C._',
+    ].join('\n'),
     parseMode: 'markdown',
   });
 }
