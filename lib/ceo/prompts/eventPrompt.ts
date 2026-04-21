@@ -17,6 +17,7 @@
 import type { CeoBusiness, CeoBusinessType } from '@/types';
 import { PHASE_CONFIG, milestoneDescription, milestoneSummary } from '../phases';
 import { stakesMultiplierFor } from '../constants';
+import type { CurrentAffairTheme } from '../currentAffairs';
 
 // ─── Shared core rules used by both prompts ────────────────────────────
 
@@ -305,8 +306,18 @@ export function buildMilestoneEventPrompt(params: {
   recentEventTitles?: string[];
   /** Dynamic named_titles from prior milestones — don't reuse them. */
   recentNamedTitles?: string[];
+  /** Optional "what's happening in the world right now" hooks pulled from the
+   *  daily current-affairs cache. LLM is instructed to OPTIONALLY weave ONE
+   *  of these into the scenario so today's Big Choice feels timely. */
+  currentAffairs?: CurrentAffairTheme[];
 }): string {
-  const { business, milestone, recentEventTitles = [], recentNamedTitles = [] } = params;
+  const {
+    business,
+    milestone,
+    recentEventTitles = [],
+    recentNamedTitles = [],
+    currentAffairs = [],
+  } = params;
   const base = buildEventPrompt(business, { recentEventTitles });
   const desc = milestoneDescription(business.phase, milestone);
   const summary = milestoneSummary(business.phase, business.phaseMilestones);
@@ -322,6 +333,15 @@ export function buildMilestoneEventPrompt(params: {
         ? 'MODERATE (launch/growth beat — cash ±1500, rep ±8, morale ±8)'
         : 'HIGH (phase-transition beat — cash ±5000, rep ±15, morale ±15)';
 
+  const currentAffairsBlock =
+    currentAffairs.length > 0
+      ? `\nTODAY'S WORLD (optional inspiration — weave AT MOST ONE into the scenario if it fits naturally; otherwise ignore):
+${currentAffairs.map((t) => `- ${t.label}: ${t.hook}`).join('\n')}
+
+If you use one, make it feel like a natural part of the kid's world — not "here's a news headline and here's your reaction to it".
+`
+      : '';
+
   return `${base}
 
 CURRENT PHASE: ${phaseLabel}
@@ -331,7 +351,7 @@ TARGET MILESTONE: ${milestone}
 This BIG CHOICE must force a decision about: ${desc}
 
 STAKES LEVEL: ${stakesBand}. Emit state_changes in this range — the scoring engine applies its own multiplier on top.
-
+${currentAffairsBlock}
 ${
   recentNamedTitles.length > 0
     ? `Named titles already used on this business (DO NOT REUSE THESE OR VARIATIONS):

@@ -37,6 +37,7 @@ import {
   buildMilestoneEventPrompt,
 } from './prompts/eventPrompt';
 import fallbackEvents from './templates/events.json';
+import { getCurrentAffairsReadOnly, pickThemes } from './currentAffairs';
 
 /** Shape the LLM is asked to return. `named_title` is ONLY emitted for
  *  milestone events — the regular prompt doesn't ask for it and we don't
@@ -119,7 +120,12 @@ export async function generateRegularEvent(params: {
 }
 
 /** Milestone event — "TODAY'S BIG CHOICE", named + big stakes, ONLY events
- *  that can advance phases. Always targets one specific milestone. */
+ *  that can advance phases. Always targets one specific milestone.
+ *
+ *  Pulls 2 current-affairs themes from today's cache and passes them as
+ *  optional inspiration — the LLM is instructed to weave AT MOST ONE into
+ *  the scenario if it fits, else ignore. Keeps milestones feeling timely
+ *  without forcing every event to be about the headlines. */
 export async function generateMilestoneEvent(params: {
   business: CeoBusiness;
   milestone: string;
@@ -127,11 +133,33 @@ export async function generateMilestoneEvent(params: {
   recentNamedTitles?: string[];
 }): Promise<GeneratedEvent> {
   const { business, milestone, recentEventTitles, recentNamedTitles } = params;
+
+  // Best-effort pull — read-only (cache or evergreen fallback), never hits
+  // the LLM synchronously. If Firestore hiccups it returns the evergreen
+  // pool, so this never throws or blocks the generation.
+  let currentAffairs: Awaited<ReturnType<typeof getCurrentAffairsReadOnly>> = [];
+  try {
+    const all = await getCurrentAffairsReadOnly();
+    // Pick 2 themes, preferring ones that match this milestone's natural
+    // category (e.g. a crisis milestone prefers crisis-tagged themes).
+    const fallbackCategory = MILESTONE_FALLBACK_CATEGORY[milestone];
+    currentAffairs = pickThemes(all, {
+      count: 2,
+      preferCategories: fallbackCategory ? [fallbackCategory] : [],
+    });
+  } catch (err) {
+    console.warn(
+      '[ceo/eventEngine] current-affairs read failed, proceeding without:',
+      (err as Error).message,
+    );
+  }
+
   const userPrompt = buildMilestoneEventPrompt({
     business,
     milestone,
     recentEventTitles,
     recentNamedTitles,
+    currentAffairs,
   });
 
   const raw = await runLlmPipeline(MILESTONE_EVENT_PROMPT, userPrompt);
