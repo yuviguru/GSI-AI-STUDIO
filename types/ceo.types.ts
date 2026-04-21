@@ -179,7 +179,12 @@ export interface CeoEvent {
   stakesMultiplier?: number;
 }
 
-/** Firestore document in `ceoProfiles` collection — shareable DNA Card / CEO profile snapshot. */
+/** Firestore document in `ceoProfiles` collection — shareable DNA Card / CEO profile snapshot.
+ *
+ *  The `ending` block is populated once at simulation completion (status →
+ *  'completed' in decide route) by `generateEndingReport()`. It's absent
+ *  on in-flight profiles. All fields are optional to make legacy profiles
+ *  (created before the ending report was added) still render. */
 export interface CeoProfile {
   id: string;
   userId: string;
@@ -193,4 +198,80 @@ export interface CeoProfile {
   isPublic: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+
+  /** Ending report — generated on simulation completion. Absent on
+   *  profiles whose business is still `active`. See generateEndingReport()
+   *  in `lib/ceo/endingReport.ts`. */
+  ending?: CeoEndingReport;
+}
+
+// ─── Ending report (PR3) ───────────────────────────────────
+
+/** One fictional advisor speaking directly to the kid. Persona is picked
+ *  by the LLM to echo the kid's pattern (e.g. "cautious thinker" archetype
+ *  → an advisor who's also cautious and reassuring). */
+export interface CeoAdvisor {
+  /** Fictional first name + short role, e.g. "Priya, your auntie-who-runs-a-bakery". */
+  name: string;
+  /** Voice/tone cue for UI styling. "warm" uses soft colours; "sharp" uses
+   *  punchier typography. Cosmetic only. */
+  tone: 'warm' | 'sharp' | 'playful';
+  /** 2-3 sentence specific piece of advice, kid-readable. */
+  advice: string;
+}
+
+/** One moment in the simulation that really mattered — large cash/rep
+ *  swing. Computed from event history, then LLM writes the takeaway. */
+export interface CeoDramaticMoment {
+  eventId: string;
+  /** namedTitle for milestone events; title for regulars. */
+  headline: string;
+  /** Plain-English recap, 1-2 sentences. */
+  whatHappened: string;
+  /** What this kid can take from that moment, 1 sentence. */
+  takeaway: string;
+  /** Cash swing in rupees (signed). */
+  cashDelta: number;
+  /** Reputation swing (signed). */
+  reputationDelta: number;
+}
+
+/** Real-world founder archetype this kid's pattern most closely matches.
+ *  NOT a specific named person (kid-safety — no real brand names). */
+export interface CeoRealWorldParallel {
+  /** e.g. "the neighbourhood-first founder" / "the relentless optimizer". */
+  archetype: string;
+  /** 1-2 sentence description of the type of real-world business this
+   *  archetype runs (generic, never a named company). */
+  parallel: string;
+  /** Practical 1-sentence takeaway for a kid. */
+  takeaway: string;
+}
+
+/** The "your style" snapshot — top 3 strengths, bottom 2 growth areas,
+ *  plus the patterns that emerged over the simulation. */
+export interface CeoStyleSnapshot {
+  /** Top-3 strengths from dimensions (kid-facing labels, e.g. "Bold Moves"). */
+  strengths: string[];
+  /** Bottom-2 growth areas (kid-facing labels). */
+  growthAreas: string[];
+  /** One-sentence "what you tended to do" — patterns across decisions. */
+  yourTendency: string;
+  /** One-sentence "what you tended to skip/avoid" — the complementary side. */
+  blindSpot: string;
+}
+
+export interface CeoEndingReport {
+  /** How the simulation actually ended — kid-facing recap, 2-3 sentences. */
+  howItEnded: string;
+  style: CeoStyleSnapshot;
+  /** 2-3 fictional advisors echoing the kid's profile archetype. */
+  advisors: CeoAdvisor[];
+  /** Top 3 biggest-impact moments across the whole simulation. */
+  dramaticMoments: CeoDramaticMoment[];
+  /** 1-2 real-world founder archetypes this profile matches. */
+  parallels: CeoRealWorldParallel[];
+  /** When the report was computed. Lets UI show "generated X days ago" if
+   *  the kid re-opens an old profile. */
+  generatedAt: Timestamp;
 }

@@ -7,9 +7,11 @@ import {
   getCeoBusiness,
   getCeoEvent,
   getCeoProfileByBusiness,
+  listDecidedEventsForBusiness,
   recordEventDecision,
   advanceBusinessPhase,
   saveCeoEvent,
+  saveCeoProfileEnding,
   reserveRegularEventSlot,
   getRecentEventsForBusiness,
 } from '@/lib/firebase/ceoService';
@@ -18,6 +20,7 @@ import { applyStateChanges } from '@/lib/ceo/businessState';
 import { applyScoreAdjustments } from '@/lib/ceo/profileEngine';
 import { scoreDecision } from '@/lib/ceo/scoringEngine';
 import { generateRegularEvent } from '@/lib/ceo/eventEngine';
+import { generateEndingReport } from '@/lib/ceo/endingReport';
 import { isPhaseComplete } from '@/lib/ceo/phases';
 import { CEO_AI_POINTS, REGULAR_EVENTS_PER_DAY_CAP } from '@/lib/ceo/constants';
 import type { CeoBusiness, CeoEvent } from '@/types';
@@ -165,6 +168,36 @@ export async function POST(request: NextRequest) {
       console.error('[ceo/decide] updateKidPoints failed:', (err as Error).message);
       // Decision is already saved — don't reject the response over a
       // best-effort points write. Kid just won't see the +X toast.
+    }
+
+    // ── Ending report — fire-and-forget on simulation completion ─────
+    // Generating the report calls the LLM (2s+) so we DO NOT await — the
+    // kid's decide response stays fast and the report lands in Firestore
+    // shortly after. Re-fetch the profile because recordEventDecision
+    // updated its dimensions inside the transaction above.
+    if (latestBusiness.status === 'completed') {
+      const businessId = latestBusiness.id;
+      void (async () => {
+        try {
+          const [freshProfile, decidedEvents] = await Promise.all([
+            getCeoProfileByBusiness(businessId),
+            listDecidedEventsForBusiness(businessId, 200),
+          ]);
+          const ending = await generateEndingReport({
+            business: latestBusiness,
+            profile: freshProfile,
+            decidedEvents,
+          });
+          await saveCeoProfileEnding(freshProfile.id, ending);
+        } catch (err) {
+          // Report is a post-completion enhancement — failure must never
+          // crash the node process or leak back to the kid. Log + swallow.
+          console.error(
+            '[ceo/decide] ending report generation failed:',
+            (err as Error).message,
+          );
+        }
+      })();
     }
 
     return apiSuccess({

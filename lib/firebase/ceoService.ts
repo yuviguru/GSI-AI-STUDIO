@@ -11,6 +11,7 @@ import {
 } from '@/lib/ceo/constants';
 import type {
   CeoBusiness,
+  CeoEndingReport,
   CeoEvent,
   CeoProfile,
   CeoBusinessType,
@@ -876,4 +877,29 @@ export async function setCeoProfilePublic(params: {
 
     return { ...existing, ...update };
   });
+}
+
+/** Merge an ending report onto the profile doc. Fire-and-forgotten by the
+ *  decide route when a business transitions to `status === 'completed'`.
+ *
+ *  Uses `set({ merge: true })` so this overwrites `ending` + `updatedAt`
+ *  without touching other fields (isPublic, shareUrl, dimensions, etc.).
+ *  Idempotent — regenerating the report replaces the prior one. */
+export async function saveCeoProfileEnding(
+  profileId: string,
+  ending: CeoEndingReport,
+): Promise<void> {
+  if (!profileId) {
+    throw new AppException('INVALID_INPUT', 'profileId is required', 400);
+  }
+  await adminDb
+    .collection(CEO_PROFILES_COLLECTION)
+    .doc(profileId)
+    .set(
+      stripUndefined({
+        ending,
+        updatedAt: Timestamp.now(),
+      }),
+      { merge: true },
+    );
 }
