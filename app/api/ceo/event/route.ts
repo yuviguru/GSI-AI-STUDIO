@@ -6,14 +6,31 @@ import {
   getCeoBusiness,
   getPendingEventForBusiness,
   saveCeoEvent,
+  reserveRegularEventSlot,
+  releaseRegularEventSlot,
+  getRecentEventsForBusiness,
 } from '@/lib/firebase/ceoService';
-import { generateEvent } from '@/lib/ceo/eventEngine';
-import { pickNextMilestone } from '@/lib/ceo/phases';
+import { generateRegularEvent } from '@/lib/ceo/eventEngine';
+import { REGULAR_EVENTS_PER_DAY_CAP } from '@/lib/ceo/constants';
 
 /**
  * POST /api/ceo/event
- * Generate the next milestone-steered event for a business, or return the
- * existing pending event if one is already outstanding (idempotent).
+ *
+ * Regular-event mint endpoint. Called by the kid when they open /ceo and
+ * want something to do between milestone beats.
+ *
+ * PR2: this endpoint ONLY mints regular (small-stakes, non-phase-advancing)
+ * events. Milestone events are delivered by the scheduled cron — kids
+ * don't trigger them by polling. The 5-per-UTC-day cap is enforced here.
+ *
+ * Responses:
+ * - `event: {…}, pendingDecisionExists: true`  — an unresolved event was
+ *   already outstanding (idempotent), returned unchanged. Does NOT count
+ *   against the daily cap (reservation only fires when we actually mint).
+ * - `event: {…}, pendingDecisionExists: false` — a fresh regular event
+ *   was minted. `regularEventsToday` reflects the post-mint count.
+ * - `event: null, regularCapHit: true` — kid has used all 5 regular slots
+ *   today. UI should show "Come back tomorrow for your Big Choice".
  */
 export async function POST(request: NextRequest) {
   try {
@@ -27,11 +44,18 @@ export async function POST(request: NextRequest) {
       throw new AppException('FORBIDDEN', 'You do not own this business', 403);
     }
 
-    // Idempotency: if a pending event already exists, return it unchanged so
-    // repeated polls don't spam the LLM or create duplicate events.
+    // Idempotency: if a pending event already exists (could be a regular OR
+    // a milestone delivered by the cron), return it unchanged so repeated
+    // polls don't spam the LLM or duplicate events. Does not touch the cap.
     const pending = await getPendingEventForBusiness(businessId);
     if (pending) {
-      return apiSuccess({ event: pending, pendingDecisionExists: true });
+      return apiSuccess({
+        event: pending,
+        pendingDecisionExists: true,
+        regularEventsToday: business.dailyRegularEventCount ?? 0,
+        regularEventsCap: REGULAR_EVENTS_PER_DAY_CAP,
+        regularCapHit: false,
+      });
     }
 
     if (business.status !== 'active') {
@@ -42,18 +66,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Milestone may be null if the current phase is complete but hasn't been
-    // advanced yet (rare edge case — the decide endpoint normally handles
-    // phase progression). Fall through to generateEvent with null so it
-    // produces a freeform event rather than crashing; the next decision will
-    // advance the phase.
-    const milestone = pickNextMilestone(business.phase, business.phaseMilestones);
+    // Reserve a daily-cap slot BEFORE hitting the LLM so a kid who's at the
+    // cap gets a fast "come back tomorrow" response instead of paying for
+    // a generation we're about to throw away. If generation or save fails,
+    // we release the slot so the kid doesn't lose a day-cap credit to a
+    // transient error they can't see.
+    const reservation = await reserveRegularEventSlot(businessId, REGULAR_EVENTS_PER_DAY_CAP);
+    if (!reservation.allowed) {
+      return apiSuccess({
+        event: null,
+        pendingDecisionExists: false,
+        regularEventsToday: reservation.countToday,
+        regularEventsCap: reservation.cap,
+        regularCapHit: true,
+      });
+    }
 
-    let generated;
+    const recent = await getRecentEventsForBusiness(businessId, 5);
+    const recentEventTitles = recent.map((e) => e.title);
+
+    let saved;
     try {
-      generated = await generateEvent({ business, milestone });
+      const generated = await generateRegularEvent({ business, recentEventTitles });
+      saved = await saveCeoEvent({ ...generated, deliveredVia: 'web' });
     } catch (genErr) {
-      console.error('[ceo/event] generateEvent failed:', genErr);
+      console.error('[ceo/event] generateRegularEvent failed, releasing slot:', genErr);
+      // Best-effort release so the kid keeps their slot. If the release
+      // itself fails the worst case is the kid loses one slot today — we
+      // swallow the error and surface the ORIGINAL generation failure.
+      try {
+        await releaseRegularEventSlot(businessId);
+      } catch (relErr) {
+        console.error(
+          '[ceo/event] slot release after gen failure also failed:',
+          (relErr as Error).message,
+        );
+      }
       throw new AppException(
         'AI_GENERATION_FAILED',
         'Could not generate the next event. Try again in a moment.',
@@ -61,9 +109,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const saved = await saveCeoEvent({ ...generated, deliveredVia: 'web' });
-
-    return apiSuccess({ event: saved, pendingDecisionExists: false });
+    return apiSuccess({
+      event: saved,
+      pendingDecisionExists: false,
+      regularEventsToday: reservation.countToday,
+      regularEventsCap: reservation.cap,
+      regularCapHit: false,
+    });
   } catch (error) {
     return handleApiError(error);
   }

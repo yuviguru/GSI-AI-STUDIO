@@ -24,9 +24,9 @@ const BUSINESSES = businessesJson as unknown as BusinessTemplate[];
 const LOCATION_OPTIONS = ['Bangalore', 'Mumbai', 'Delhi', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune'];
 
 const PACE_OPTIONS: Array<{ key: CeoPace; label: string; desc: string }> = [
-  { key: '30', label: 'Sprint', desc: 'About 1 event/day · ~30 days' },
-  { key: '60', label: 'Journey', desc: 'One every 2 days · ~60 days' },
-  { key: '90', label: 'Marathon', desc: 'One every 3 days · ~90 days' },
+  { key: '15', label: 'Snappy', desc: 'Big decision every day · ~15 days' },
+  { key: '30', label: 'Balanced', desc: 'Big decision most days · ~30 days' },
+  { key: '45', label: 'Deep', desc: 'Big decision every 2 days · ~45 days' },
 ];
 
 interface BusinessRegistrationProps {
@@ -47,7 +47,7 @@ export function BusinessRegistration({ onSubmit, submitting = false }: BusinessR
   const [name, setName] = useState('');
   const [location, setLocation] = useState('');
   const [customCity, setCustomCity] = useState('');
-  const [pace, setPace] = useState<CeoPace>('60');
+  const [pace, setPace] = useState<CeoPace>('30');
 
   const selected = type ? BUSINESSES.find((b) => b.type === type) : null;
   const canStep2 = !!type && (type !== 'custom' || customDesc.trim().length >= 3);

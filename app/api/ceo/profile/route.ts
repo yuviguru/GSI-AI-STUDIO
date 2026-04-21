@@ -8,7 +8,7 @@ import {
   setCeoProfilePublic,
   getCeoBusiness,
 } from '@/lib/firebase/ceoService';
-import { updateSessionPoints } from '@/lib/firebase/sessionService';
+import { updateKidPoints } from '@/lib/firebase/sessionService';
 import type { CeoBusiness, CeoProfile } from '@/types';
 
 type PublicCeoProfile = Omit<CeoProfile, 'userId' | 'kidId'>;
@@ -78,9 +78,6 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const { kidId } = await requireAuthWithKid(request);
-    // Points still live on the session counter; fall back to kidId as key if
-    // the header isn't sent.
-    const sessionId = request.headers.get('X-Session-Id') ?? kidId;
 
     const body = await request.json();
     const input = ceoProfilePublicSchema.parse(body);
@@ -95,10 +92,12 @@ export async function PATCH(request: NextRequest) {
       isPublic: input.isPublic,
     });
 
-    let newBadges: Awaited<ReturnType<typeof updateSessionPoints>>['newBadges'] = [];
+    let newBadges: Awaited<ReturnType<typeof updateKidPoints>>['newBadges'] = [];
     if (input.isPublic && !existing.isPublic) {
       try {
-        const result = await updateSessionPoints(sessionId, { action: 'track_share' });
+        // Kid CEO is authenticated-only — track_share writes directly to the
+        // kid doc (source of truth for this kid's gamification state).
+        const result = await updateKidPoints(kidId, { action: 'track_share' });
         newBadges = result.newBadges;
       } catch (err) {
         console.error('[ceo/profile] track_share failed:', (err as Error).message);

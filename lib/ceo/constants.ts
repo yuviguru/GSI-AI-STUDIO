@@ -2,7 +2,7 @@
  *  and default capital per business type. Ported from SimPrenuer/profileEngine.js
  *  (PHASE_MULTIPLIERS, DIMENSIONS) with kid-adapted amounts. */
 
-import type { CeoBusinessType, CeoDimensionKey, CeoPhaseKey } from '@/types';
+import type { CeoBusinessType, CeoDimensionKey, CeoPace, CeoPhaseKey } from '@/types';
 
 export const DIMENSIONS: readonly CeoDimensionKey[] = [
   'risk_calibration',
@@ -121,15 +121,121 @@ export const BUSINESS_TYPE_DEFAULT_NAMES: Record<CeoBusinessType, string> = {
 };
 
 /** AI Points awarded by Kid CEO actions. Matches the table in
- *  docs/GSI_INTEGRATION_PLAN.md §6. */
+ *  docs/GSI_INTEGRATION_PLAN.md §6.
+ *
+ *  MAKE_DECISION_REGULAR is smaller than MAKE_DECISION_MILESTONE on
+ *  purpose — milestone events are the "big moments" and the points award
+ *  should reflect that. Totals roughly match the old flat 5/decision rate
+ *  when you count both event types at typical 1-milestone + 2-regular/day. */
 export const CEO_AI_POINTS = {
   REGISTER_BUSINESS: 15,
-  MAKE_DECISION: 5,
+  MAKE_DECISION_REGULAR: 3,
+  MAKE_DECISION_MILESTONE: 10,
+  /** @deprecated kept for transition to avoid breaking imports; aliases MAKE_DECISION_REGULAR. */
+  MAKE_DECISION: 3,
   COMPLETE_MILESTONE: 10,
   COMPLETE_PHASE: 25,
   COMPLETE_SIMULATION: 50,
   SHARE_PROFILE: 10,
 } as const;
+
+// ─── Pace (simulation length) ────────────────────────────────────────────
+
+/** In-game days per pace option. These are the NEW shorter paces — the old
+ *  30/60/90 options are gone from the picker but tolerated on reads via
+ *  `coerceLegacyPace`. */
+export const PACE_DAYS: Record<CeoPace, number> = {
+  '15': 15,
+  '30': 30,
+  '45': 45,
+};
+
+/** How many milestone events to deliver per calendar day, keyed by pace.
+ *  Tuned so the total ≈ the milestone count (currently 20 across all 5
+ *  phases) — faster paces compress with multiple milestone events some days,
+ *  slower paces spread with rest days between. */
+export const MILESTONE_EVENTS_PER_DAY: Record<CeoPace, number> = {
+  '15': 1.3,
+  '30': 0.7,
+  '45': 0.5,
+};
+
+/** Daily cap on REGULAR events. Regular events never advance phase, they
+ *  just let the kid fiddle with their business between milestone beats. */
+export const REGULAR_EVENTS_PER_DAY_CAP = 5;
+
+/** Map any pace value stored in Firestore (including legacy 30/60/90 docs
+ *  created before the pace change) down to one of the new `CeoPace` values.
+ *  Used for rendering + cron scheduling so old businesses keep working. */
+export function coerceLegacyPace(raw: string | number | null | undefined): CeoPace {
+  const s = String(raw ?? '').trim();
+  if (s === '15') return '15';
+  if (s === '30') return '30';
+  if (s === '45') return '45';
+  // Legacy: 60 was the middle option, now 30 is. 90 was the longest, now 45 is.
+  if (s === '60') return '30';
+  if (s === '90') return '45';
+  return '30'; // unknown / missing → default
+}
+
+// ─── Stakes multipliers ──────────────────────────────────────────────────
+
+/** Stakes multiplier range per event type. Applied to cash_delta /
+ *  reputation_delta / morale_delta after scoring. A regular event scoring
+ *  "bold aggressive" → ~₹150 cash swing; the same call on a milestone
+ *  event → ~₹1,500. The LLM is also told the range when generating so
+ *  milestone prompts ask for bigger deltas. */
+export const STAKES_MULTIPLIER = {
+  regular: 1.0,
+  /** Minimum milestone multiplier — early milestones in pre_launch feel
+   *  consequential but not business-ending. */
+  milestoneMin: 3.0,
+  /** Max multiplier — reserved for phase-changing milestone beats
+   *  (e.g. OPENING_STRATEGY, COMPETITION, STRATEGIC_PIVOT) where a
+   *  wrong call should meaningfully hurt. */
+  milestoneMax: 10.0,
+} as const;
+
+/** Default milestone multiplier when no specific beat-override applies.
+ *  5× is the mid of the 3×–10× range — strong but survivable. */
+export const DEFAULT_MILESTONE_MULTIPLIER = 5.0;
+
+/** Per-milestone stakes override. Milestones that mark phase transitions
+ *  or make-or-break moments get higher multipliers so kids FEEL them.
+ *  Anything not listed falls back to DEFAULT_MILESTONE_MULTIPLIER. */
+export const MILESTONE_STAKES_MULTIPLIER: Record<string, number> = {
+  // pre_launch — picking a path, not stakes yet
+  BRAND: 3,
+  LOCATION: 3,
+  INITIAL_TEAM: 4,
+  PRICING: 5,
+  FUNDING_STANCE: 6,
+  // launch — first real money moves
+  OPENING_STRATEGY: 8,
+  OPERATIONS_SETUP: 4,
+  FIRST_CUSTOMERS: 7,
+  EARLY_FEEDBACK: 6,
+  // early_growth — retention makes/breaks
+  RETENTION: 7,
+  FIRST_HIRE: 6,
+  SUPPLIER_RELATIONSHIP: 5,
+  WORD_OF_MOUTH: 6,
+  // scale — big swings
+  EXPANSION: 9,
+  COMPETITION: 10,
+  TEAM_GROWTH: 6,
+  CAPITAL_STRATEGY: 9,
+  // mature — defining decisions
+  STRATEGIC_PIVOT: 10,
+  LEGACY: 6,
+  EXIT_STRATEGY: 10,
+};
+
+/** Resolve the stakes multiplier for a milestone name with a safe default. */
+export function stakesMultiplierFor(milestone: string | null): number {
+  if (!milestone) return STAKES_MULTIPLIER.regular;
+  return MILESTONE_STAKES_MULTIPLIER[milestone] ?? DEFAULT_MILESTONE_MULTIPLIER;
+}
 
 /** Categories a Kid CEO event can fall into (same as SimPrenuer). */
 export const CEO_EVENT_CATEGORIES = [

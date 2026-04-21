@@ -52,6 +52,29 @@ function mapDoc(data: BotSessionDoc): BotSession {
   };
 }
 
+/** Find all linked bot sessions for a given kidId — used by the scheduled
+ *  daily-milestone cron to push a "TODAY'S BIG CHOICE" message to every
+ *  chat the kid has connected (e.g. their phone's Telegram + a tablet's).
+ *  Returns [] if the index is still building — graceful degradation: the
+ *  kid still gets the milestone in the web app, they just don't get the
+ *  push notification for that one kid-day. */
+export async function findBotSessionsForKid(kidId: string): Promise<BotSession[]> {
+  try {
+    const snap = await adminDb
+      .collection(BOT_SESSIONS_COLLECTION)
+      .where('kidId', '==', kidId)
+      .get();
+    return snap.docs.map((doc) => mapDoc(doc.data() as BotSessionDoc));
+  } catch (err) {
+    const msg = String((err as { message?: unknown })?.message ?? '').toLowerCase();
+    if (msg.includes('index') && (msg.includes('build') || msg.includes('creat'))) {
+      console.warn('[sessionStore] index still building for kidId lookup; returning []');
+      return [];
+    }
+    throw err;
+  }
+}
+
 /** Get the session for a chatId, creating a blank anonymous one if missing. */
 export async function getOrCreateBotSession(params: {
   chatId: string;

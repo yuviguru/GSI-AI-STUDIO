@@ -3,9 +3,15 @@ import crypto from 'crypto';
 import { adminDb } from './admin';
 import { AppException } from '@/lib/api-utils';
 import { initialMilestones, nextPhase, isPhaseComplete } from '@/lib/ceo/phases';
-import { STARTING_CAPITAL, BUSINESS_TYPE_DEFAULT_NAMES, DIMENSIONS } from '@/lib/ceo/constants';
+import {
+  STARTING_CAPITAL,
+  BUSINESS_TYPE_DEFAULT_NAMES,
+  DIMENSIONS,
+  coerceLegacyPace,
+} from '@/lib/ceo/constants';
 import type {
   CeoBusiness,
+  CeoEndingReport,
   CeoEvent,
   CeoProfile,
   CeoBusinessType,
@@ -33,6 +39,14 @@ const SHARE_URL_MAX_RETRIES = 3;
 
 /** Recursively strip `undefined` values from an object so Firestore never
  *  rejects the write. Mirrors creationService.stripUndefined. */
+/** YYYY-MM-DD in UTC — used as the `lastRegularEventDayUtc` bucket key.
+ *  UTC is deliberate so the daily cap resets uniformly regardless of the
+ *  kid's timezone (kids anywhere in the world hit the same midnight roll-
+ *  over; also dodges DST quirks). */
+export function utcDayKey(now: Date = new Date()): string {
+  return now.toISOString().slice(0, 10);
+}
+
 function stripUndefined<T>(obj: T): T {
   if (obj === null || obj === undefined || typeof obj !== 'object') return obj;
   if (Array.isArray(obj)) return obj.map(stripUndefined) as unknown as T;
@@ -97,16 +111,27 @@ function docToCeoBusiness(doc: FirebaseFirestore.DocumentSnapshot): CeoBusiness 
     phaseMilestones: data.phaseMilestones ?? {},
     totalDecisions: data.totalDecisions ?? 0,
     status: data.status,
-    pace: data.pace,
+    // Legacy 30/60/90 docs from pre-refactor coerced to the new 15/30/45
+    // union so callers downstream can treat pace as a typed enum.
+    pace: coerceLegacyPace(data.pace),
     nextEventAt: data.nextEventAt ?? null,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
     completedAt: data.completedAt ?? null,
+    dailyRegularEventCount: data.dailyRegularEventCount ?? 0,
+    lastRegularEventDayUtc: data.lastRegularEventDayUtc ?? undefined,
+    lastMilestoneDeliveredAt: data.lastMilestoneDeliveredAt ?? null,
   };
 }
 
 function docToCeoEvent(doc: FirebaseFirestore.DocumentSnapshot): CeoEvent {
   const data = doc.data()!;
+  // Legacy events written before PR2 have neither eventType nor namedTitle.
+  // Derive eventType from `milestone` so existing data still classifies
+  // correctly (milestone set → milestone event, else regular).
+  const eventType: CeoEvent['eventType'] =
+    (data.eventType as CeoEvent['eventType']) ??
+    (data.milestone ? 'milestone' : 'regular');
   return {
     id: doc.id,
     businessId: data.businessId,
@@ -127,6 +152,10 @@ function docToCeoEvent(doc: FirebaseFirestore.DocumentSnapshot): CeoEvent {
     deliveredVia: data.deliveredVia ?? null,
     createdAt: data.createdAt,
     expiresAt: data.expiresAt,
+    eventType,
+    namedTitle: data.namedTitle ?? undefined,
+    scheduledFor: data.scheduledFor ?? null,
+    stakesMultiplier: data.stakesMultiplier ?? undefined,
   };
 }
 
@@ -191,6 +220,13 @@ export async function createCeoBusiness(params: {
     createdAt: now,
     updatedAt: now,
     completedAt: null,
+    // PR2 — regular-event cap + milestone-cron tracking.
+    // lastMilestoneDeliveredAt = now because /api/ceo/register immediately
+    // generates the first milestone event, so the cron should wait a full
+    // day before delivering the next one.
+    dailyRegularEventCount: 0,
+    lastRegularEventDayUtc: utcDayKey(),
+    lastMilestoneDeliveredAt: now,
   };
 
   await docRef.set(stripUndefined(business));
@@ -357,6 +393,12 @@ export async function saveCeoEvent(
   const now = Timestamp.fromMillis(nowMs);
   const expiresAt = Timestamp.fromMillis(nowMs + EVENT_TTL_MS);
 
+  // PR2: derive eventType from the caller's input (eventEngine always sets
+  // it now, but older code paths that still pass only `milestone` are
+  // handled by deriving from milestone-presence).
+  const eventType: CeoEvent['eventType'] =
+    event.eventType ?? (event.milestone ? 'milestone' : 'regular');
+
   const doc: CeoEvent = {
     id,
     businessId: event.businessId,
@@ -377,6 +419,10 @@ export async function saveCeoEvent(
     deliveredVia: event.deliveredVia ?? null,
     createdAt: now,
     expiresAt,
+    eventType,
+    namedTitle: event.namedTitle,
+    scheduledFor: event.scheduledFor ?? null,
+    stakesMultiplier: event.stakesMultiplier,
   };
 
   await docRef.set(stripUndefined(doc));
@@ -554,6 +600,173 @@ export async function recordEventDecision(params: {
   return result;
 }
 
+// ─── Regular-event daily cap ─────────────────────────────────
+
+/** Result of reserving a regular-event slot for today. `allowed: false`
+ *  means the kid hit the daily cap — caller should surface a
+ *  "Come back tomorrow" message rather than minting another event. */
+export interface RegularEventReservation {
+  allowed: boolean;
+  /** How many regular events have been decided TODAY (after this
+   *  reservation fires if allowed). Exposed so the UI can render
+   *  "3 of 5" progress. */
+  countToday: number;
+  cap: number;
+}
+
+/** Reserve a regular-event slot inside a Firestore transaction. Bumps
+ *  `dailyRegularEventCount` by 1 if we're still under the cap, rolling
+ *  the counter over when the kid crosses UTC midnight. Does NOT generate
+ *  the event — caller does that on `allowed: true`.
+ *
+ *  Lives on `ceoBusiness` (not sessions) so the cap is per-business, not
+ *  global — a kid juggling 3 active businesses can decide 5 regulars per
+ *  business per day. */
+export async function reserveRegularEventSlot(
+  businessId: string,
+  cap: number,
+): Promise<RegularEventReservation> {
+  const ref = adminDb.collection(CEO_BUSINESS_COLLECTION).doc(businessId);
+  const today = utcDayKey();
+
+  return adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) {
+      throw new AppException('NOT_FOUND', 'Business not found', 404);
+    }
+    const data = snap.data() ?? {};
+    const lastDay = data.lastRegularEventDayUtc as string | undefined;
+    const prevCount = (data.dailyRegularEventCount as number | undefined) ?? 0;
+
+    const effectiveCount = lastDay === today ? prevCount : 0;
+    if (effectiveCount >= cap) {
+      return { allowed: false, countToday: effectiveCount, cap };
+    }
+
+    const nextCount = effectiveCount + 1;
+    tx.update(ref, {
+      dailyRegularEventCount: nextCount,
+      lastRegularEventDayUtc: today,
+      updatedAt: Timestamp.now(),
+    });
+    return { allowed: true, countToday: nextCount, cap };
+  });
+}
+
+/** Inverse of `reserveRegularEventSlot` — decrements the day counter by 1
+ *  (floored at 0) in the same UTC day. Called when the generation/save AFTER
+ *  a successful reservation fails, so the kid doesn't lose a slot to a
+ *  transient error they couldn't see.
+ *
+ *  Safe across the UTC-midnight boundary: if the day key has rolled over
+ *  since the reservation, we DON'T decrement the new day's count — old-day
+ *  slot is effectively forfeited (acceptable vs. the alternative of
+ *  clobbering today's legitimate count). */
+export async function releaseRegularEventSlot(
+  businessId: string,
+): Promise<{ countToday: number }> {
+  const ref = adminDb.collection(CEO_BUSINESS_COLLECTION).doc(businessId);
+  const today = utcDayKey();
+
+  return adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) {
+      throw new AppException('NOT_FOUND', 'Business not found', 404);
+    }
+    const data = snap.data() ?? {};
+    const lastDay = data.lastRegularEventDayUtc as string | undefined;
+    const prevCount = (data.dailyRegularEventCount as number | undefined) ?? 0;
+
+    // If the day has rolled over between reservation and release, the slot
+    // we reserved was on a PRIOR UTC day whose counter has already been
+    // reset. Releasing would clobber today's legitimate count — no-op.
+    // `lastDay !== today` means either the counter is for an earlier day
+    // (returns 0 as-if-empty) or there's never been a regular-event write
+    // on this doc at all (also 0).
+    if (lastDay !== today) {
+      return { countToday: 0 };
+    }
+
+    const next = Math.max(0, prevCount - 1);
+    tx.update(ref, {
+      dailyRegularEventCount: next,
+      lastRegularEventDayUtc: today,
+      updatedAt: Timestamp.now(),
+    });
+    return { countToday: next };
+  });
+}
+
+/** Mark a milestone event as delivered for scheduling purposes. The daily
+ *  cron uses `lastMilestoneDeliveredAt` to decide whether a business is due
+ *  for its next milestone event. Called by the cron + on register (where
+ *  the first milestone is delivered synchronously). */
+export async function markMilestoneDelivered(businessId: string): Promise<void> {
+  await adminDb
+    .collection(CEO_BUSINESS_COLLECTION)
+    .doc(businessId)
+    .update({
+      lastMilestoneDeliveredAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+}
+
+/** Return active businesses whose last milestone delivery was ≥ `minIntervalMs`
+ *  ago — candidates for the daily cron to send the next TODAY'S BIG CHOICE to.
+ *
+ *  Page-size capped at `limit` to keep the cron's worst-case runtime bounded
+ *  (Netlify scheduled functions get ~10s wall clock). If we ever exceed that
+ *  on a single run, the next run 2h later picks up the tail — no business is
+ *  starved for long. */
+export async function listBusinessesDueForMilestone(params: {
+  minIntervalMs: number;
+  limit?: number;
+}): Promise<CeoBusiness[]> {
+  const cutoff = Timestamp.fromMillis(Date.now() - params.minIntervalMs);
+  const limit = params.limit ?? 100;
+
+  try {
+    const snap = await adminDb
+      .collection(CEO_BUSINESS_COLLECTION)
+      .where('status', '==', 'active')
+      .where('lastMilestoneDeliveredAt', '<=', cutoff)
+      .orderBy('lastMilestoneDeliveredAt', 'asc')
+      .limit(limit)
+      .get();
+    return snap.docs.map(docToCeoBusiness);
+  } catch (err) {
+    if (isIndexBuildingError(err)) {
+      console.warn('[ceoService] milestone-due index still building; returning []');
+      return [];
+    }
+    throw err;
+  }
+}
+
+/** Return the last N decided events for a business, newest first. Used
+ *  to feed `recentEventTitles` + `recentNamedTitles` into the event
+ *  generator so it can avoid repeating angles. Returns [] if the index
+ *  is still building — graceful degradation, the LLM just loses variety
+ *  context for that generation. */
+export async function getRecentEventsForBusiness(
+  businessId: string,
+  limit = 5,
+): Promise<CeoEvent[]> {
+  try {
+    const snapshot = await adminDb
+      .collection(CEO_EVENTS_COLLECTION)
+      .where('businessId', '==', businessId)
+      .where('status', '==', 'decided')
+      .orderBy('decisionTimestamp', 'desc')
+      .limit(limit)
+      .get();
+    return snapshot.docs.map(docToCeoEvent);
+  } catch (err) {
+    if (isIndexBuildingError(err)) return [];
+    throw err;
+  }
+}
+
 // ─── Profiles ────────────────────────────────────────────────
 
 /** Get or create the CeoProfile for a business. Seeds with all dimensions at
@@ -708,4 +921,29 @@ export async function setCeoProfilePublic(params: {
 
     return { ...existing, ...update };
   });
+}
+
+/** Merge an ending report onto the profile doc. Fire-and-forgotten by the
+ *  decide route when a business transitions to `status === 'completed'`.
+ *
+ *  Uses `set({ merge: true })` so this overwrites `ending` + `updatedAt`
+ *  without touching other fields (isPublic, shareUrl, dimensions, etc.).
+ *  Idempotent — regenerating the report replaces the prior one. */
+export async function saveCeoProfileEnding(
+  profileId: string,
+  ending: CeoEndingReport,
+): Promise<void> {
+  if (!profileId) {
+    throw new AppException('INVALID_INPUT', 'profileId is required', 400);
+  }
+  await adminDb
+    .collection(CEO_PROFILES_COLLECTION)
+    .doc(profileId)
+    .set(
+      stripUndefined({
+        ending,
+        updatedAt: Timestamp.now(),
+      }),
+      { merge: true },
+    );
 }

@@ -42,14 +42,29 @@ interface LlmScoringResponse {
 }
 
 interface ScoreDecisionParams {
-  event: Pick<CeoEvent, 'category' | 'title' | 'description' | 'phase' | 'milestone' | 'choices'>;
+  event: Pick<
+    CeoEvent,
+    | 'category'
+    | 'title'
+    | 'description'
+    | 'phase'
+    | 'milestone'
+    | 'choices'
+    | 'eventType'
+    | 'stakesMultiplier'
+  >;
   choiceId: CeoChoiceId;
   responseTimeSeconds: number;
   business: CeoBusiness;
 }
 
 /** Main entry. Tries Groq → Claude → per-choice-weights fallback. Always
- *  applies the 3-axis enrichment, even to LLM-generated scores. */
+ *  applies the 3-axis enrichment, even to LLM-generated scores.
+ *
+ *  PR2: milestone events carry a `stakesMultiplier` (3×–10×). We multiply
+ *  cash/rep/morale deltas by it AFTER clamping so a milestone decision
+ *  can genuinely swing the business, while a regular event stays at 1×
+ *  (bounded by the ±150/±3/±3 range). */
 export async function scoreDecision(params: ScoreDecisionParams): Promise<ScoringResult> {
   const { event, choiceId, responseTimeSeconds, business } = params;
 
@@ -59,6 +74,14 @@ export async function scoreDecision(params: ScoreDecisionParams): Promise<Scorin
   }
 
   const category = event.category as CeoEventCategory;
+  const stakesMultiplier = Math.max(1, event.stakesMultiplier ?? 1);
+  const finalCtx = {
+    phase: business.phase,
+    responseTimeSeconds,
+    category,
+    business,
+    stakesMultiplier,
+  };
 
   // 1. Try Groq
   try {
@@ -69,7 +92,7 @@ export async function scoreDecision(params: ScoreDecisionParams): Promise<Scorin
       responseTimeSeconds,
       business,
     });
-    return finalize(raw, { phase: business.phase, responseTimeSeconds, category, business });
+    return finalize(raw, finalCtx);
   } catch (groqErr) {
     console.warn('[ceo/scoringEngine] Groq failed, trying Claude:', (groqErr as Error).message);
   }
@@ -83,14 +106,14 @@ export async function scoreDecision(params: ScoreDecisionParams): Promise<Scorin
       responseTimeSeconds,
       business,
     });
-    return finalize(raw, { phase: business.phase, responseTimeSeconds, category, business });
+    return finalize(raw, finalCtx);
   } catch (claudeErr) {
     console.warn('[ceo/scoringEngine] Claude failed, using choice.weights fallback:', (claudeErr as Error).message);
   }
 
   // 3. Fallback: use the choice's own weights as raw scores + derive state changes heuristically
   const fallback = fallbackScoring(chosen, category);
-  return finalize(fallback, { phase: business.phase, responseTimeSeconds, category, business });
+  return finalize(fallback, finalCtx);
 }
 
 async function callScoringLLM(
@@ -115,7 +138,12 @@ async function callScoringLLM(
   return result;
 }
 
-/** Apply the 3-axis enrichment and return a normalized ScoringResult. */
+/** Apply the 3-axis enrichment and return a normalized ScoringResult.
+ *
+ *  Milestone events: cash/rep/morale deltas are scaled by
+ *  `ctx.stakesMultiplier` (3-10×) AFTER base clamping, so a BRAND milestone
+ *  caps at ±₹1500 (500 × 3) but a COMPETITION milestone can swing ±₹20,000
+ *  (2000 × 10). Regular events pass through at 1×. */
 function finalize(
   raw: LlmScoringResponse,
   ctx: {
@@ -123,6 +151,7 @@ function finalize(
     responseTimeSeconds: number;
     category: CeoEventCategory;
     business: CeoBusiness;
+    stakesMultiplier: number;
   },
 ): ScoringResult {
   const enrichedScores = enrichScores(raw.scores, ctx);
@@ -130,7 +159,7 @@ function finalize(
   return {
     scores: enrichedScores,
     reasoning: (raw.reasoning || '').trim(),
-    state_changes: normalizeStateChanges(raw.state_changes, enrichedScores),
+    state_changes: normalizeStateChanges(raw.state_changes, enrichedScores, ctx.stakesMultiplier),
   };
 }
 
@@ -216,23 +245,49 @@ function stateContextMultipliers(business: CeoBusiness): Partial<Record<CeoDimen
 }
 
 /** Derive sensible default state-changes when the LLM didn't return any or
- *  when we're in pure-fallback mode. Kid-scale numbers. */
+ *  when we're in pure-fallback mode. Kid-scale numbers.
+ *
+ *  `stakesMultiplier`:
+ *  - Regular events = 1×   → cash ±₹2000, rep/morale ±10 (unchanged)
+ *  - Milestone events = 3-10× (per-milestone MILESTONE_STAKES_MULTIPLIER)
+ *    → cash up to ±₹20,000 on top-tier COMPETITION/EXIT beats, rep/morale
+ *    ±30-100 (clamped 0-100 downstream by businessState.ts).
+ *
+ *  We apply the multiplier AFTER clamping the LLM's base value so a
+ *  milestone event still feels right-scaled even if the LLM emits a
+ *  conservative delta. */
 function normalizeStateChanges(
   raw: Partial<StateChanges> | undefined,
   scores: CeoDimensionScores,
+  stakesMultiplier: number,
 ): StateChanges {
   const netScore = DIMENSIONS.reduce((sum, d) => sum + scores[d], 0);
   const isAggressive = netScore > 2;
   const isConservative = netScore < -1;
 
+  const baseCash = clampCashDelta(
+    raw?.cash_delta,
+    isAggressive ? -150 : isConservative ? 75 : -40,
+  );
+  const baseRep = clampSmall(
+    raw?.reputation_delta,
+    scores.people_leadership > 0 ? 2 : scores.crisis_response < 0 ? -2 : 0,
+  );
+  const baseMorale = clampSmall(
+    raw?.morale_delta,
+    Math.round(scores.people_leadership) || 0,
+  );
+  const baseSat = clampSmall(
+    raw?.customer_satisfaction_delta,
+    Math.round(scores.crisis_response) || 0,
+  );
+
+  const m = Math.max(1, stakesMultiplier);
   return {
-    cash_delta: clampCashDelta(raw?.cash_delta, isAggressive ? -150 : isConservative ? 75 : -40),
-    reputation_delta: clampSmall(
-      raw?.reputation_delta,
-      scores.people_leadership > 0 ? 2 : scores.crisis_response < 0 ? -2 : 0,
-    ),
-    morale_delta: clampSmall(raw?.morale_delta, Math.round(scores.people_leadership) || 0),
-    customer_satisfaction_delta: clampSmall(raw?.customer_satisfaction_delta, Math.round(scores.crisis_response) || 0),
+    cash_delta: Math.round(baseCash * m),
+    reputation_delta: Math.round(baseRep * m),
+    morale_delta: Math.round(baseMorale * m),
+    customer_satisfaction_delta: Math.round(baseSat * m),
     revenue_delta: Number.isFinite(raw?.revenue_delta) ? (raw!.revenue_delta as number) : 0,
     expenses_delta: Number.isFinite(raw?.expenses_delta) ? (raw!.expenses_delta as number) : 0,
   };

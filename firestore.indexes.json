@@ -193,6 +193,31 @@
       ]
     },
     {
+      "collectionGroup": "ceoEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "businessId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "decisionTimestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ceoBusiness",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "lastMilestoneDeliveredAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "botSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "kidId", "order": "ASCENDING" },
+        { "fieldPath": "linkedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "botLinkCodes",
       "queryScope": "COLLECTION",
       "fields": [

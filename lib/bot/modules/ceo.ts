@@ -42,14 +42,20 @@ import {
   getCeoProfileByBusiness,
   getOrCreateCeoProfile,
   getPendingEventForBusiness,
+  getRecentEventsForBusiness,
   listBusinessesForKid,
+  markMilestoneDelivered,
   recordEventDecision,
+  reserveRegularEventSlot,
   saveCeoEvent,
 } from '@/lib/firebase/ceoService';
 import { timestampToMillis } from '@/lib/utils/timestamps';
 import { applyStateChanges } from '@/lib/ceo/businessState';
 import { applyScoreAdjustments } from '@/lib/ceo/profileEngine';
-import { generateEvent } from '@/lib/ceo/eventEngine';
+import {
+  generateMilestoneEvent,
+  generateRegularEvent,
+} from '@/lib/ceo/eventEngine';
 import { scoreDecision } from '@/lib/ceo/scoringEngine';
 import { isPhaseComplete, pickNextMilestone } from '@/lib/ceo/phases';
 import {
@@ -57,9 +63,10 @@ import {
   CEO_AI_POINTS,
   DIMENSION_LABELS,
   PHASE_LABELS,
+  REGULAR_EVENTS_PER_DAY_CAP,
 } from '@/lib/ceo/constants';
 import businessesCatalog from '@/lib/ceo/templates/businesses.json';
-import { updateSessionPoints } from '@/lib/firebase/sessionService';
+import { updateKidPoints } from '@/lib/firebase/sessionService';
 
 type Send = (msg: BotOutgoingMessage) => Promise<string>;
 
@@ -89,7 +96,7 @@ const BUSINESS_TYPES: readonly CeoBusinessType[] = [
   'custom',
 ];
 
-const PACES: readonly CeoPace[] = ['30', '60', '90'];
+const PACES: readonly CeoPace[] = ['15', '30', '45'];
 
 // ─── Module export ───────────────────────────────────────────
 
@@ -539,9 +546,9 @@ async function handleBizPick(
     parseMode: 'markdown',
     buttons: [
       [
+        { text: '15 days (snappy)', callbackData: `ceo_pace:${type}:15` },
         { text: '30 days', callbackData: `ceo_pace:${type}:30` },
-        { text: '60 days', callbackData: `ceo_pace:${type}:60` },
-        { text: '90 days', callbackData: `ceo_pace:${type}:90` },
+        { text: '45 days (deep)', callbackData: `ceo_pace:${type}:45` },
       ],
     ],
   });
@@ -578,10 +585,17 @@ async function handlePacePick(
     pace,
   });
 
-  // Seed first event so the kid has something to decide right away.
-  const milestone = pickNextMilestone(business.phase, business.phaseMilestones);
-  const generated = await generateEvent({ business, milestone });
+  // Seed the FIRST MILESTONE EVENT so the kid has a "TODAY'S BIG CHOICE" to
+  // decide right away (otherwise they'd wait until tomorrow's 6:30am cron).
+  // pickNextMilestone always returns a pre-launch milestone here since the
+  // business is freshly created with an all-pending milestone dict, so the
+  // `!` assertion is safe.
+  const milestone = pickNextMilestone(business.phase, business.phaseMilestones)!;
+  const generated = await generateMilestoneEvent({ business, milestone });
   const firstEvent = await saveCeoEvent({ ...generated, deliveredVia: 'telegram' });
+  // Mark the milestone as delivered so the cron knows to wait a full kid-day
+  // before firing the next milestone event for this business.
+  await markMilestoneDelivered(business.id);
 
   // Profile is keyed by businessId — create it now so /decide later can find it.
   await getOrCreateCeoProfile({
@@ -699,7 +713,15 @@ async function handleHelp(message: BotIncomingMessage, send: Send): Promise<void
 
 // ─── Event rendering + decision loop ─────────────────────────
 
-/** Send a pending event as a markdown message + A/B/C choice keyboard. */
+/** Send a pending event as a markdown message + A/B/C choice keyboard.
+ *
+ *  PR2 dual shape: milestone events render with a "⭐ TODAY'S BIG CHOICE ⭐"
+ *  banner, a hyphen-rule, the named title (or legacy title fallback), the
+ *  category + phase label, and a closing stakes reminder — so kids instantly
+ *  feel the weight of a once-a-day Big Choice. Regular events get a compact
+ *  💼-prefixed shape so they read as everyday small decisions. Detection:
+ *  prefer `event.eventType`, falling back to "milestone if there's a
+ *  `milestone` field" for legacy events that pre-date the typed field. */
 async function sendEvent(chatId: string, event: CeoEvent, send: Send): Promise<void> {
   const buttons: BotButton[][] = event.choices.map((choice) => [
     {
@@ -708,12 +730,30 @@ async function sendEvent(chatId: string, event: CeoEvent, send: Send): Promise<v
     },
   ]);
 
+  const isMilestone =
+    (event.eventType ?? (event.milestone ? 'milestone' : 'regular')) === 'milestone';
+
+  let text: string;
+  if (isMilestone) {
+    const headline = escapeMd(event.namedTitle ?? event.title);
+    const phaseLabel = PHASE_LABELS[event.phase];
+    text =
+      `⭐ *TODAY'S BIG CHOICE* ⭐\n` +
+      `━━━━━━━━━━━━━━━━\n` +
+      `*${headline}*\n` +
+      `_${escapeMd(event.category)} · ${phaseLabel}_\n\n` +
+      `${event.description}\n\n` +
+      `_Pick A, B, or C — this one counts._`;
+  } else {
+    text =
+      `💼 *${escapeMd(event.title)}*\n` +
+      `_${escapeMd(event.category)}_\n\n` +
+      event.description;
+  }
+
   await send({
     chatId,
-    text:
-      `*${escapeMd(event.title)}*\n` +
-      `_${escapeMd(event.category)}_\n\n` +
-      event.description,
+    text,
     parseMode: 'markdown',
     buttons,
   });
@@ -808,40 +848,74 @@ async function handleChoice(
     profileDimensionUpdates: nextDimensions,
   });
 
+  // PR2: phase advance is gated on eventType === 'milestone'. Regular
+  // events can't advance a phase even if they happened to resolve the
+  // last milestone.
+  const isMilestoneDecision =
+    (event.eventType ?? (event.milestone ? 'milestone' : 'regular')) === 'milestone';
+
   let latestBusiness: CeoBusiness = postDecisionBusiness;
   let phaseAdvanced = false;
-  if (event.milestone && isPhaseComplete(latestBusiness.phase, latestBusiness.phaseMilestones)) {
+  if (
+    isMilestoneDecision &&
+    event.milestone &&
+    isPhaseComplete(latestBusiness.phase, latestBusiness.phaseMilestones)
+  ) {
     latestBusiness = await advanceBusinessPhase(business.id);
     phaseAdvanced = true;
   }
 
+  // Next-event auto-generation:
+  // - After MILESTONE decision → no next event here. Kid waits for the
+  //   scheduled cron's next morning delivery. This is the habit hook.
+  // - After REGULAR decision → mint another regular event IF under cap.
   let nextEvent: CeoEvent | null = null;
-  if (latestBusiness.status === 'active') {
-    const nextMilestone = pickNextMilestone(latestBusiness.phase, latestBusiness.phaseMilestones);
-    const generated = await generateEvent({ business: latestBusiness, milestone: nextMilestone });
-    nextEvent = await saveCeoEvent({ ...generated, deliveredVia: 'telegram' });
+  let regularCapHit = false;
+  let regularEventsToday = latestBusiness.dailyRegularEventCount ?? 0;
+  if (latestBusiness.status === 'active' && !isMilestoneDecision) {
+    const reservation = await reserveRegularEventSlot(
+      latestBusiness.id,
+      REGULAR_EVENTS_PER_DAY_CAP,
+    );
+    regularEventsToday = reservation.countToday;
+    if (reservation.allowed) {
+      const recent = await getRecentEventsForBusiness(latestBusiness.id, 5);
+      const recentEventTitles = recent.map((e) => e.title);
+      const generated = await generateRegularEvent({
+        business: latestBusiness,
+        recentEventTitles,
+      });
+      nextEvent = await saveCeoEvent({ ...generated, deliveredVia: 'telegram' });
+    } else {
+      regularCapHit = true;
+    }
   }
 
-  // AI Points — same formula as the web /api/ceo/decide route.
-  let aiPointsEarned = CEO_AI_POINTS.MAKE_DECISION;
-  if (event.milestone) aiPointsEarned += CEO_AI_POINTS.COMPLETE_MILESTONE;
+  // AI Points — split by event type; phase/simulation bonuses layered on.
+  let aiPointsEarned = isMilestoneDecision
+    ? CEO_AI_POINTS.MAKE_DECISION_MILESTONE
+    : CEO_AI_POINTS.MAKE_DECISION_REGULAR;
+  if (isMilestoneDecision && event.milestone) {
+    aiPointsEarned += CEO_AI_POINTS.COMPLETE_MILESTONE;
+  }
   if (phaseAdvanced) aiPointsEarned += CEO_AI_POINTS.COMPLETE_PHASE;
   if (latestBusiness.status === 'completed') aiPointsEarned += CEO_AI_POINTS.COMPLETE_SIMULATION;
 
   // Don't lie to the kid: only claim points if the points write succeeded.
-  // Points live on the existing `sessions/{gsiSessionId}` doc — that's the
-  // web session bound to this chat via the link flow.
+  // Kid CEO is authenticated-only — points live on the kid doc (same source
+  // of truth the web UI reads from), so the running total ticks up in the
+  // web app the next time the kid opens it.
   let actualPointsEarned = 0;
   let pointsSaveFailed = false;
   try {
-    await updateSessionPoints(context.session.gsiSessionId, {
+    await updateKidPoints(linked.kidId, {
       action: 'add_points',
       points: aiPointsEarned,
     });
     actualPointsEarned = aiPointsEarned;
   } catch (err) {
     pointsSaveFailed = true;
-    console.error('[ceo module] updateSessionPoints failed:', (err as Error).message);
+    console.error('[ceo module] updateKidPoints failed:', (err as Error).message);
   }
 
   // Build + send feedback message
@@ -875,10 +949,29 @@ async function handleChoice(
     return;
   }
 
-  // Next event follows on an 800ms delay so the feedback lands first.
+  // Next-step UX:
+  // - Milestone decision → nudge the kid to come back tomorrow.
+  // - Regular decision, cap not hit → send the next regular event.
+  // - Regular decision, cap hit → "come back tomorrow" prompt.
   if (nextEvent) {
     await new Promise((resolve) => setTimeout(resolve, 800));
     await sendEvent(message.chatId, nextEvent, send);
+  } else if (isMilestoneDecision) {
+    await send({
+      chatId: message.chatId,
+      text:
+        '⭐ You made *today\'s Big Choice*. Tomorrow morning I\'ll bring the next one.\n\n' +
+        'Meanwhile, type /ceo to handle small everyday decisions (up to 5/day).',
+      parseMode: 'markdown',
+    });
+  } else if (regularCapHit) {
+    await send({
+      chatId: message.chatId,
+      text:
+        `You've handled all *${REGULAR_EVENTS_PER_DAY_CAP}* small decisions for today (${regularEventsToday}/${REGULAR_EVENTS_PER_DAY_CAP}).\n\n` +
+        '⭐ Tomorrow morning your next *Big Choice* arrives. See you then!',
+      parseMode: 'markdown',
+    });
   }
 }
 
