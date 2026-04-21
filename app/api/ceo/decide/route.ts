@@ -13,6 +13,7 @@ import {
   saveCeoEvent,
   saveCeoProfileEnding,
   reserveRegularEventSlot,
+  releaseRegularEventSlot,
   getRecentEventsForBusiness,
 } from '@/lib/firebase/ceoService';
 import { updateKidPoints } from '@/lib/firebase/sessionService';
@@ -119,27 +120,66 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Next event — regular cadence only; milestones wait for cron ──
+    // Critical invariant: the decision above is ALREADY committed. Any
+    // failure in this block (LLM blip, Firestore hiccup, cap-reservation
+    // error) must NOT surface as a 500 — otherwise the client retries into
+    // ALREADY_DECIDED, loses the points/badges/ending-report that follow,
+    // and the decision becomes non-idempotent from the kid's perspective.
+    // So: swallow everything here, log, and fall through. The kid sees
+    // nextEvent: null and can poll /api/ceo/event for their next regular.
     let nextEvent: CeoEvent | null = null;
     let regularEventsToday = latestBusiness.dailyRegularEventCount ?? 0;
     let regularCapHit = false;
+    let nextEventFailed = false;
 
     if (latestBusiness.status === 'active' && !isMilestoneDecision) {
-      // Kid just decided a REGULAR event — try to reserve the next slot.
-      const reservation = await reserveRegularEventSlot(
-        latestBusiness.id,
-        REGULAR_EVENTS_PER_DAY_CAP,
-      );
-      regularEventsToday = reservation.countToday;
-      if (reservation.allowed) {
-        const recent = await getRecentEventsForBusiness(latestBusiness.id, 5);
-        const recentEventTitles = recent.map((e) => e.title);
-        const generated = await generateRegularEvent({
-          business: latestBusiness,
-          recentEventTitles,
-        });
-        nextEvent = await saveCeoEvent({ ...generated, deliveredVia: 'web' });
-      } else {
-        regularCapHit = true;
+      try {
+        // Kid just decided a REGULAR event — try to reserve the next slot.
+        const reservation = await reserveRegularEventSlot(
+          latestBusiness.id,
+          REGULAR_EVENTS_PER_DAY_CAP,
+        );
+        regularEventsToday = reservation.countToday;
+        if (reservation.allowed) {
+          try {
+            const recent = await getRecentEventsForBusiness(latestBusiness.id, 5);
+            const recentEventTitles = recent.map((e) => e.title);
+            const generated = await generateRegularEvent({
+              business: latestBusiness,
+              recentEventTitles,
+            });
+            nextEvent = await saveCeoEvent({ ...generated, deliveredVia: 'web' });
+          } catch (genErr) {
+            // Generation/save failed AFTER we reserved — release the slot
+            // so the kid isn't penalised for a transient error they can't
+            // see. If the release itself fails, at worst the kid loses 1 of
+            // 5 slots today (same UX as Codex P2 guidance).
+            nextEventFailed = true;
+            console.error(
+              '[ceo/decide] next regular event generation failed, releasing slot:',
+              (genErr as Error).message,
+            );
+            try {
+              const released = await releaseRegularEventSlot(latestBusiness.id);
+              regularEventsToday = released.countToday;
+            } catch (relErr) {
+              console.error(
+                '[ceo/decide] slot release failed (kid may lose one slot today):',
+                (relErr as Error).message,
+              );
+            }
+          }
+        } else {
+          regularCapHit = true;
+        }
+      } catch (resErr) {
+        // Reservation itself failed before the slot was consumed — nothing
+        // to release. Just log and proceed with nextEvent: null.
+        nextEventFailed = true;
+        console.error(
+          '[ceo/decide] regular-event slot reservation failed:',
+          (resErr as Error).message,
+        );
       }
     }
 
@@ -211,6 +251,11 @@ export async function POST(request: NextRequest) {
       regularEventsToday,
       regularEventsCap: REGULAR_EVENTS_PER_DAY_CAP,
       regularCapHit,
+      // Signals to the client that the decision was saved + points/badges
+      // applied, but the auto-follow-up next event couldn't be generated.
+      // Client should either poll /api/ceo/event for a retry or show a
+      // friendly "we'll have your next one in a moment" nudge.
+      nextEventFailed,
       aiPointsEarned,
       newBadges,
     });

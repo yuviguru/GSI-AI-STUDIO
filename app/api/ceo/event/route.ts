@@ -7,6 +7,7 @@ import {
   getPendingEventForBusiness,
   saveCeoEvent,
   reserveRegularEventSlot,
+  releaseRegularEventSlot,
   getRecentEventsForBusiness,
 } from '@/lib/firebase/ceoService';
 import { generateRegularEvent } from '@/lib/ceo/eventEngine';
@@ -67,7 +68,9 @@ export async function POST(request: NextRequest) {
 
     // Reserve a daily-cap slot BEFORE hitting the LLM so a kid who's at the
     // cap gets a fast "come back tomorrow" response instead of paying for
-    // a generation we're about to throw away.
+    // a generation we're about to throw away. If generation or save fails,
+    // we release the slot so the kid doesn't lose a day-cap credit to a
+    // transient error they can't see.
     const reservation = await reserveRegularEventSlot(businessId, REGULAR_EVENTS_PER_DAY_CAP);
     if (!reservation.allowed) {
       return apiSuccess({
@@ -82,19 +85,29 @@ export async function POST(request: NextRequest) {
     const recent = await getRecentEventsForBusiness(businessId, 5);
     const recentEventTitles = recent.map((e) => e.title);
 
-    let generated;
+    let saved;
     try {
-      generated = await generateRegularEvent({ business, recentEventTitles });
+      const generated = await generateRegularEvent({ business, recentEventTitles });
+      saved = await saveCeoEvent({ ...generated, deliveredVia: 'web' });
     } catch (genErr) {
-      console.error('[ceo/event] generateRegularEvent failed:', genErr);
+      console.error('[ceo/event] generateRegularEvent failed, releasing slot:', genErr);
+      // Best-effort release so the kid keeps their slot. If the release
+      // itself fails the worst case is the kid loses one slot today — we
+      // swallow the error and surface the ORIGINAL generation failure.
+      try {
+        await releaseRegularEventSlot(businessId);
+      } catch (relErr) {
+        console.error(
+          '[ceo/event] slot release after gen failure also failed:',
+          (relErr as Error).message,
+        );
+      }
       throw new AppException(
         'AI_GENERATION_FAILED',
         'Could not generate the next event. Try again in a moment.',
         502,
       );
     }
-
-    const saved = await saveCeoEvent({ ...generated, deliveredVia: 'web' });
 
     return apiSuccess({
       event: saved,

@@ -39,8 +39,9 @@
  *   - TELEGRAM_BOT_TOKEN_CEO       (required) — for the push-to-chat side
  */
 
-import type { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
+import type { Handler, HandlerContext } from '@netlify/functions';
 import { schedule } from '@netlify/functions';
+import { isAuthorizedCronCall } from '../../lib/netlify-cron-auth';
 import { Timestamp } from 'firebase-admin/firestore';
 import { TelegramAdapter } from '../../lib/bot/adapters/telegram';
 import {
@@ -89,7 +90,7 @@ interface DeliveryOutcome {
 }
 
 const baseHandler: Handler = async (event, _context: HandlerContext) => {
-  if (!authorized(event)) {
+  if (!isAuthorizedCronCall(event, DEPLOY_SECRET)) {
     return { statusCode: 401, body: 'Unauthorized' };
   }
 
@@ -332,18 +333,8 @@ function toMillisSafe(ts: unknown): number {
   return 0;
 }
 
-/** Accept Netlify's scheduler invocations (they set `x-nf-scheduled-function`)
- *  AND manual calls carrying `BOT_SETUP_SECRET`. */
-function authorized(event: HandlerEvent): boolean {
-  const headers = Object.fromEntries(
-    Object.entries(event.headers ?? {}).map(([k, v]) => [k.toLowerCase(), v]),
-  );
-  if (headers['x-nf-scheduled-function']) return true;
-
-  const providedSecret =
-    event.queryStringParameters?.secret ?? headers['x-bot-setup-secret'];
-  return !!DEPLOY_SECRET && providedSecret === DEPLOY_SECRET;
-}
+// Auth moved to lib/netlify-cron-auth.ts — shared with the
+// ceo-refresh-current-affairs function.
 
 /** Netlify scheduled function — fires every 2 hours. Wrapping with
  *  `schedule()` registers the cron at deploy time; the /.netlify/functions/

@@ -21,14 +21,15 @@
  *  - GROQ_API_KEY + ANTHROPIC_API_KEY (required) — LLM providers
  */
 
-import type { Handler, HandlerEvent } from '@netlify/functions';
+import type { Handler } from '@netlify/functions';
 import { schedule } from '@netlify/functions';
 import { getOrFreshenCurrentAffairs } from '../../lib/ceo/currentAffairs';
+import { isAuthorizedCronCall } from '../../lib/netlify-cron-auth';
 
 const DEPLOY_SECRET = process.env.BOT_SETUP_SECRET;
 
 const baseHandler: Handler = async (event) => {
-  if (!authorized(event)) {
+  if (!isAuthorizedCronCall(event, DEPLOY_SECRET)) {
     return { statusCode: 401, body: 'Unauthorized' };
   }
 
@@ -56,15 +57,8 @@ const baseHandler: Handler = async (event) => {
   }
 };
 
-function authorized(event: HandlerEvent): boolean {
-  const headers = Object.fromEntries(
-    Object.entries(event.headers ?? {}).map(([k, v]) => [k.toLowerCase(), v]),
-  );
-  if (headers['x-nf-scheduled-function']) return true;
-  const providedSecret =
-    event.queryStringParameters?.secret ?? headers['x-bot-setup-secret'];
-  return !!DEPLOY_SECRET && providedSecret === DEPLOY_SECRET;
-}
+// Auth moved to lib/netlify-cron-auth.ts — shared with the
+// ceo-deliver-milestones function.
 
 /** Daily at 00:30 UTC = ~6am IST. Generates before the milestone delivery
  *  cron starts firing, so the first milestone of any IST morning has fresh

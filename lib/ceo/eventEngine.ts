@@ -38,6 +38,7 @@ import {
 } from './prompts/eventPrompt';
 import fallbackEvents from './templates/events.json';
 import { getCurrentAffairsReadOnly, pickThemes } from './currentAffairs';
+import { filterOutput } from '@/lib/safety/inputFilter';
 
 /** Shape the LLM is asked to return. `named_title` is ONLY emitted for
  *  milestone events — the regular prompt doesn't ask for it and we don't
@@ -215,10 +216,18 @@ function shapeLlmEvent(
   }
 
   const choiceIds: readonly CeoChoiceId[] = ['A', 'B', 'C'] as const;
+  // SECURITY: every user-facing field from the LLM is run through
+  // filterOutput() before it lands in Firestore. Redacts PII (phone,
+  // email, addresses, Aadhaar) that the LLM might hallucinate into a
+  // scenario. choice.text is rendered to the kid; scoring_hint is
+  // internal-only per the prompt but filtered defensively in case the
+  // model leaks it into the text field. This complements (not replaces)
+  // the kid-safety rules in the system prompt — prompts alone can't
+  // guarantee zero PII leaks from a stochastic model.
   const choices: CeoChoice[] = raw.choices.slice(0, 3).map((c, idx) => ({
     id: choiceIds[idx] ?? 'A',
-    text: String(c.text).trim(),
-    scoring_hint: String(c.scoring_hint ?? '').trim(),
+    text: filterOutput(String(c.text).trim()),
+    scoring_hint: filterOutput(String(c.scoring_hint ?? '').trim()),
     weights: sanitizeWeights(c.weights),
   }));
 
@@ -228,7 +237,9 @@ function shapeLlmEvent(
   // meaningful headline.
   const namedTitle =
     eventType === 'milestone'
-      ? (raw.named_title?.trim() || synthNamedTitle(milestone)) || undefined
+      ? filterOutput(
+          raw.named_title?.trim() || synthNamedTitle(milestone),
+        ) || undefined
       : undefined;
 
   const stakesMultiplier =
@@ -238,8 +249,8 @@ function shapeLlmEvent(
     businessId: business.id,
     userId: business.userId,
     kidId: business.kidId,
-    title: raw.title.trim(),
-    description: raw.content.trim(),
+    title: filterOutput(raw.title.trim()),
+    description: filterOutput(raw.content.trim()),
     category: raw.category.trim(),
     phase: business.phase,
     milestone,
@@ -325,16 +336,23 @@ export function buildFallbackEvent(business: CeoBusiness, milestone: string | nu
   const template = pool[fallbackCursor % pool.length]!;
   fallbackCursor += 1;
 
-  const description = template.content
-    .replace(/your business/gi, business.businessName)
-    .replace(/your stand/gi, business.businessName)
-    .replace(/your shop/gi, business.businessName);
+  // Template content is hand-authored, but `business.businessName` is
+  // substituted in — and that string originated from kid/parent input
+  // (register route filters at the AppException level). Defensive
+  // filterOutput pass so nothing PII-shaped leaks through even in the
+  // degraded LLM-off fallback path.
+  const description = filterOutput(
+    template.content
+      .replace(/your business/gi, business.businessName)
+      .replace(/your stand/gi, business.businessName)
+      .replace(/your shop/gi, business.businessName),
+  );
 
   const choiceIds: readonly CeoChoiceId[] = ['A', 'B', 'C'] as const;
   const choices: CeoChoice[] = template.choices.slice(0, 3).map((c, idx) => ({
     id: choiceIds[idx] ?? 'A',
-    text: c.text,
-    scoring_hint: c.scoring_hint,
+    text: filterOutput(c.text),
+    scoring_hint: filterOutput(c.scoring_hint),
     weights: sanitizeWeights(c.weights),
   }));
 
@@ -343,14 +361,15 @@ export function buildFallbackEvent(business: CeoBusiness, milestone: string | nu
     businessId: business.id,
     userId: business.userId,
     kidId: business.kidId,
-    title: template.title,
+    title: filterOutput(template.title),
     description,
     category: template.category,
     phase: business.phase,
     milestone,
     choices,
     eventType,
-    namedTitle: eventType === 'milestone' ? synthNamedTitle(milestone) : undefined,
+    namedTitle:
+      eventType === 'milestone' ? filterOutput(synthNamedTitle(milestone)) : undefined,
     stakesMultiplier:
       eventType === 'milestone'
         ? stakesMultiplierFor(milestone)

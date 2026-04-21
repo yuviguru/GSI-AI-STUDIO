@@ -24,6 +24,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { generateJsonWithGroq } from '@/lib/ai/groqClient';
 import { generateJsonWithClaude } from '@/lib/ai/claudeClient';
 import { DIMENSIONS, DIMENSION_LABELS } from '@/lib/ceo/constants';
+import { filterOutput } from '@/lib/safety/inputFilter';
 import type {
   CeoAdvisor,
   CeoBusiness,
@@ -469,8 +470,13 @@ export async function generateEndingReport(
   const style: CeoStyleSnapshot = {
     strengths,
     growthAreas,
-    yourTendency: llm?.yourTendency?.trim() || 'You showed up, made calls, and kept the story moving.',
-    blindSpot: llm?.blindSpot?.trim() || 'There were quieter corners of the business you could explore next time.',
+    yourTendency: filterOutput(
+      llm?.yourTendency?.trim() || 'You showed up, made calls, and kept the story moving.',
+    ),
+    blindSpot: filterOutput(
+      llm?.blindSpot?.trim() ||
+        'There were quieter corners of the business you could explore next time.',
+    ),
   };
 
   if (!llm) {
@@ -478,11 +484,19 @@ export async function generateEndingReport(
   }
 
   // ── Compose the final report ─────────────────────────────────
+  // SECURITY: every LLM-authored user-facing field is run through
+  // filterOutput() to redact any PII the model might hallucinate (phone,
+  // email, address, Aadhaar). This complements (doesn't replace) the
+  // kid-safety rules in the system prompt. Deterministic fields (headline
+  // coming from our own event data) don't need re-filtering — events were
+  // already filtered at generation time in eventEngine.
   const advisors: CeoAdvisor[] = Array.isArray(llm.advisors)
     ? llm.advisors.slice(0, 3).map((a) => ({
-        name: String(a.name ?? '').trim() || 'A kind mentor',
+        name: filterOutput(String(a.name ?? '').trim()) || 'A kind mentor',
         tone: coerceAdvisorTone(a.tone),
-        advice: String(a.advice ?? '').trim() || 'Keep going — every run teaches you something.',
+        advice:
+          filterOutput(String(a.advice ?? '').trim()) ||
+          'Keep going — every run teaches you something.',
       }))
     : [];
 
@@ -493,10 +507,13 @@ export async function generateEndingReport(
     return {
       eventId: event.id,
       headline: event.namedTitle ?? event.title,
-      whatHappened:
+      whatHappened: filterOutput(
         narrative?.whatHappened?.trim() ||
-        `You faced a ${event.category} moment — ${event.title}.`,
-      takeaway: narrative?.takeaway?.trim() || 'Every big call teaches you something about how you lead.',
+          `You faced a ${event.category} moment — ${event.title}.`,
+      ),
+      takeaway: filterOutput(
+        narrative?.takeaway?.trim() || 'Every big call teaches you something about how you lead.',
+      ),
       // Applied deltas aren't persisted per-event, so these stay 0. The UI
       // should treat them as "cosmetic"; the headline + narrative carries
       // the weight. See task spec.
@@ -507,16 +524,19 @@ export async function generateEndingReport(
 
   const parallels: CeoRealWorldParallel[] = Array.isArray(llm.parallels)
     ? llm.parallels.slice(0, 2).map((p) => ({
-        archetype: String(p.archetype ?? '').trim() || 'the steady builder',
-        parallel: String(p.parallel ?? '').trim() || 'A founder who grows by showing up every day.',
-        takeaway: String(p.takeaway ?? '').trim() || 'Consistency beats flash.',
+        archetype: filterOutput(String(p.archetype ?? '').trim()) || 'the steady builder',
+        parallel:
+          filterOutput(String(p.parallel ?? '').trim()) ||
+          'A founder who grows by showing up every day.',
+        takeaway: filterOutput(String(p.takeaway ?? '').trim()) || 'Consistency beats flash.',
       }))
     : [];
 
   return {
-    howItEnded:
+    howItEnded: filterOutput(
       llm.howItEnded?.trim() ||
-      `You wrapped up your run with ${business.businessName}. That's a real journey — and you made real calls.`,
+        `You wrapped up your run with ${business.businessName}. That's a real journey — and you made real calls.`,
+    ),
     style,
     advisors: advisors.length > 0 ? advisors : buildFallbackReport({ business, style, dramaticEvents, outcome }).advisors,
     dramaticMoments,

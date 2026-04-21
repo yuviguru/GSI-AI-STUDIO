@@ -653,6 +653,50 @@ export async function reserveRegularEventSlot(
   });
 }
 
+/** Inverse of `reserveRegularEventSlot` — decrements the day counter by 1
+ *  (floored at 0) in the same UTC day. Called when the generation/save AFTER
+ *  a successful reservation fails, so the kid doesn't lose a slot to a
+ *  transient error they couldn't see.
+ *
+ *  Safe across the UTC-midnight boundary: if the day key has rolled over
+ *  since the reservation, we DON'T decrement the new day's count — old-day
+ *  slot is effectively forfeited (acceptable vs. the alternative of
+ *  clobbering today's legitimate count). */
+export async function releaseRegularEventSlot(
+  businessId: string,
+): Promise<{ countToday: number }> {
+  const ref = adminDb.collection(CEO_BUSINESS_COLLECTION).doc(businessId);
+  const today = utcDayKey();
+
+  return adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) {
+      throw new AppException('NOT_FOUND', 'Business not found', 404);
+    }
+    const data = snap.data() ?? {};
+    const lastDay = data.lastRegularEventDayUtc as string | undefined;
+    const prevCount = (data.dailyRegularEventCount as number | undefined) ?? 0;
+
+    // If the day has rolled over between reservation and release, the slot
+    // we reserved was on a PRIOR UTC day whose counter has already been
+    // reset. Releasing would clobber today's legitimate count — no-op.
+    // `lastDay !== today` means either the counter is for an earlier day
+    // (returns 0 as-if-empty) or there's never been a regular-event write
+    // on this doc at all (also 0).
+    if (lastDay !== today) {
+      return { countToday: 0 };
+    }
+
+    const next = Math.max(0, prevCount - 1);
+    tx.update(ref, {
+      dailyRegularEventCount: next,
+      lastRegularEventDayUtc: today,
+      updatedAt: Timestamp.now(),
+    });
+    return { countToday: next };
+  });
+}
+
 /** Mark a milestone event as delivered for scheduling purposes. The daily
  *  cron uses `lastMilestoneDeliveredAt` to decide whether a business is due
  *  for its next milestone event. Called by the cron + on register (where
