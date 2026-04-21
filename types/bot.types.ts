@@ -40,6 +40,8 @@ export type HomeworkQuestionType =
   | 'explanation'
   | 'calculation';
 
+export type HomeworkLanguage = 'en' | 'hi';
+
 // ─── Incoming / Outgoing Messages ──────────────────────────
 
 export interface BotIncomingMessage {
@@ -159,6 +161,15 @@ export interface BotLinkCode {
 
 // ─── Homework Helper ───────────────────────────────────────
 
+/** Type-specific payload for a HomeworkQuestion. `steps` ships in v1 for
+ *  multi-step math scaffolding; `latex` and `diagramUrl` are reserved for
+ *  v1.1 (Mathpix + KaTeX rendering) and not populated by v1 code paths. */
+export interface HomeworkQuestionMeta {
+  steps?: { prompt: string; expected: string }[];
+  latex?: string;
+  diagramUrl?: string;
+}
+
 export interface HomeworkQuestion {
   id: number;
   text: string;
@@ -168,6 +179,12 @@ export interface HomeworkQuestion {
   hint: string;
   recitationText: string | null;
   similarPractice: string | null;
+  /** Per-question language override for mixed-language homework (e.g. an
+   *  English paragraph with a Hindi follow-up question). Falls back to
+   *  `HomeworkSession.language` when absent. */
+  language?: HomeworkLanguage;
+  /** Type-specific extension payload. v1 populates `steps` only. */
+  meta?: HomeworkQuestionMeta;
 }
 
 export interface HomeworkAnswer {
@@ -176,6 +193,10 @@ export interface HomeworkAnswer {
   correct: boolean;
   score: number;
   attempts: number;
+  /** True when the bot revealed the answer + worked explanation after N
+   *  failed attempts (see product decision: reveal after 3 fails). Revealed
+   *  questions are excluded from "mastery" when computing session score. */
+  revealed: boolean;
 }
 
 export interface HomeworkProgress {
@@ -195,11 +216,24 @@ export interface HomeworkSession {
   platform: BotPlatform;
   subject: string;
   gradeEstimate: number;
+  /** Detected primary language of the homework. English + Hindi in v1. */
+  language: HomeworkLanguage;
   originalText: string;
   totalQuestions: number;
   questions: HomeworkQuestion[];
   progress: HomeworkProgress;
   score: number;
+  /** Question IDs where the answer was revealed after the 3-attempt cap.
+   *  Tracked separately from the per-answer `revealed` flag so the weekly
+   *  digest can summarise "where the kid needed the answer shown" in O(1). */
+  revealedQuestionIds: number[];
+  /** Optional school anchor — populated when the forwarded message origin
+   *  maps to a registered school channel. Enables the future (Phase 3)
+   *  teacher heatmap without a schema migration. */
+  schoolId: string | null;
+  /** Optional source-channel ID (e.g. Telegram channel ID the homework was
+   *  forwarded from). Null when the forward has no detectable origin. */
+  sourceChannelId: string | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

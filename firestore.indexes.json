@@ -234,6 +234,47 @@
         { "fieldPath": "readAt", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "homeworkSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "gsiSessionId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "homeworkSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "gsiSessionId", "order": "ASCENDING" },
+        { "fieldPath": "kidId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "homeworkSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "schoolId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "botSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "botHandle", "order": "ASCENDING" },
+        { "fieldPath": "lastActiveAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "botSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "kidId", "order": "ASCENDING" },
+        { "fieldPath": "lastActiveAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

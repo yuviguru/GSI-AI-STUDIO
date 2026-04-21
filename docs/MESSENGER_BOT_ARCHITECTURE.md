@@ -589,6 +589,27 @@ export const ceoModule: BotFeatureModule = {
 
 This is the key new module. School sends homework via channel → parent/kid forwards to bot → bot creates interactive session.
 
+### v1 design decisions (shipped)
+
+The original design for this module (in the flow + module-template below) was the aspirational spec. v1 ships a scoped subset with the following deliberate choices:
+
+| # | Decision | Rationale |
+|---|---|---|
+| 1 | **Telegram only** | `@GSIPersonalAssistantBot`. WhatsApp via `MessengerAdapter` interface later (Meta approval timeline). |
+| 2 | **English + Hindi** | Language detected per forward (session-level) with optional per-question override (`HomeworkQuestion.language`). TTS + Whisper voice selection follows `HomeworkSession.language`. |
+| 3 | **"Is this homework?" classifier before parse** | After OCR/STT, a cheap LLM classifier returns `{ isHomework: boolean, reason }`. On `no`, the bot replies with a confirm-to-continue prompt instead of hallucinating questions from random forwards. |
+| 4 | **Reveal answer + worked explanation after 3 failed attempts** | Quiz loop tracks `HomeworkAnswer.attempts`; at 3, the answer is revealed, `revealed` flips to `true`, and the session `revealedQuestionIds` list grows by that qId. Revealed questions contribute 0 to the mastery score but still earn reduced AI Points. |
+| 5 | **Half math scope** | Arithmetic, word problems, and text-expressible equations shipped. `HomeworkQuestion.meta.steps[]` is populated for multi-step scaffolding. `meta.latex` and `meta.diagramUrl` are reserved in the schema but NOT populated in v1 — v1.1 adds Mathpix equation OCR + KaTeX web rendering + diagram handling. |
+| 6 | **"I'm stuck" / "Explain first" escape hatches** | New callbacks: `hw_explain:<sessionId>:<qId>` (teach me before I try — never penalised) and `hw_skip:<sessionId>:<qId>` (come back later — session persists). `hw_continue:<sessionId>` resumes an in-progress session from the help menu. |
+| 7 | **Parent surface: weekly digest + on-demand transcript** | Scheduled function (Sunday evening IST) sends a Telegram DM summary per linked kid. Web app exposes `/homework/history` for full transcripts as a trust lever. |
+| 8 | **School/teacher anchor on day 1** | `homeworkSessions.schoolId` + `sourceChannelId` shipped as nullable fields. v1 populates `sourceChannelId` from `forward_from_chat.id` when present; `schoolId` stays null until the Phase 3 school-channel registry exists. |
+| 9 | **Rewards integration** | Completing a homework session = `complete_homework` points action → AI Points (scaled by score, revealed questions weighted 0.3×) + Homework Hero badge family (Bronze/Silver/Gold on 1/5/15 sessions) + daily streak counter on `sessions.homeworkStats`. |
+| 10 | **Recitation scoring = WER + LLM encouragement** | Numeric accuracy comes from word-level alignment against `recitationText` (cheap, deterministic); the LLM only writes the warm encouragement + one concrete tip. |
+
+See `docs/data-model.md` §homeworkSessions for the full updated schema, and `docs/api-contracts.md` §Homework for the web-facing endpoints (history + digest). Rate limits and retention live in `docs/security.md` §Telegram Bot Safety.
+
+### Original flow (design intent preserved for reference)
+
 ### Flow
 
 ```
