@@ -666,6 +666,38 @@ export async function markMilestoneDelivered(businessId: string): Promise<void> 
     });
 }
 
+/** Return active businesses whose last milestone delivery was ≥ `minIntervalMs`
+ *  ago — candidates for the daily cron to send the next TODAY'S BIG CHOICE to.
+ *
+ *  Page-size capped at `limit` to keep the cron's worst-case runtime bounded
+ *  (Netlify scheduled functions get ~10s wall clock). If we ever exceed that
+ *  on a single run, the next run 2h later picks up the tail — no business is
+ *  starved for long. */
+export async function listBusinessesDueForMilestone(params: {
+  minIntervalMs: number;
+  limit?: number;
+}): Promise<CeoBusiness[]> {
+  const cutoff = Timestamp.fromMillis(Date.now() - params.minIntervalMs);
+  const limit = params.limit ?? 100;
+
+  try {
+    const snap = await adminDb
+      .collection(CEO_BUSINESS_COLLECTION)
+      .where('status', '==', 'active')
+      .where('lastMilestoneDeliveredAt', '<=', cutoff)
+      .orderBy('lastMilestoneDeliveredAt', 'asc')
+      .limit(limit)
+      .get();
+    return snap.docs.map(docToCeoBusiness);
+  } catch (err) {
+    if (isIndexBuildingError(err)) {
+      console.warn('[ceoService] milestone-due index still building; returning []');
+      return [];
+    }
+    throw err;
+  }
+}
+
 /** Return the last N decided events for a business, newest first. Used
  *  to feed `recentEventTitles` + `recentNamedTitles` into the event
  *  generator so it can avoid repeating angles. Returns [] if the index

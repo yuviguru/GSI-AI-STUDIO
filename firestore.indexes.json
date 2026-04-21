@@ -210,6 +210,14 @@
       ]
     },
     {
+      "collectionGroup": "botSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "kidId", "order": "ASCENDING" },
+        { "fieldPath": "linkedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "botLinkCodes",
       "queryScope": "COLLECTION",
       "fields": [
