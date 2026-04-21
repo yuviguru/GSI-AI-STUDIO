@@ -10,22 +10,36 @@ import {
   recordEventDecision,
   advanceBusinessPhase,
   saveCeoEvent,
+  reserveRegularEventSlot,
+  getRecentEventsForBusiness,
 } from '@/lib/firebase/ceoService';
 import { updateKidPoints } from '@/lib/firebase/sessionService';
 import { applyStateChanges } from '@/lib/ceo/businessState';
 import { applyScoreAdjustments } from '@/lib/ceo/profileEngine';
 import { scoreDecision } from '@/lib/ceo/scoringEngine';
-import { generateEvent } from '@/lib/ceo/eventEngine';
-import { isPhaseComplete, pickNextMilestone } from '@/lib/ceo/phases';
-import { CEO_AI_POINTS } from '@/lib/ceo/constants';
+import { generateRegularEvent } from '@/lib/ceo/eventEngine';
+import { isPhaseComplete } from '@/lib/ceo/phases';
+import { CEO_AI_POINTS, REGULAR_EVENTS_PER_DAY_CAP } from '@/lib/ceo/constants';
 import type { CeoBusiness, CeoEvent } from '@/types';
 
 /**
  * POST /api/ceo/decide
  *
  * Submit a choice on an event. Scores the decision, applies state + profile
- * updates atomically, advances the phase if complete, generates the next
- * event, and awards AI Points.
+ * updates atomically, optionally advances the phase, optionally auto-
+ * generates a follow-up REGULAR event, and awards AI Points.
+ *
+ * PR2 behaviour (regular vs milestone split):
+ * - Phase advance is gated on `event.eventType === 'milestone'`. Regular
+ *   events never advance a phase.
+ * - After a MILESTONE decision, no next event is generated here — the kid
+ *   waits for tomorrow's scheduled cron. This is the daily-habit hook.
+ * - After a REGULAR decision, we auto-generate another regular event IF
+ *   the kid is under the daily cap (5/business/UTC-day). At the cap,
+ *   nextEvent is null and the response carries `regularCapHit: true` so
+ *   the UI can prompt "Come back tomorrow for your Big Choice".
+ * - Points are split by event type: milestone decision = 10 base, regular
+ *   decision = 3 base. Phase / simulation bonuses layer on top of both.
  *
  * Auth: Firebase Bearer + X-Active-Kid-Id. Kid must own the event.
  */
@@ -84,9 +98,16 @@ export async function POST(request: NextRequest) {
       profileDimensionUpdates: nextDimensions,
     });
 
+    // ── Phase advance — milestone events only ────────────────────────
+    // docToCeoEvent shim coerces legacy events without an eventType (milestone
+    // set → 'milestone', else 'regular'), so this check is safe for old data.
+    const isMilestoneDecision =
+      (event.eventType ?? (event.milestone ? 'milestone' : 'regular')) === 'milestone';
+
     let latestBusiness: CeoBusiness = postDecisionBusiness;
     let phaseAdvanced = false;
     if (
+      isMilestoneDecision &&
       event.milestone &&
       isPhaseComplete(latestBusiness.phase, latestBusiness.phaseMilestones)
     ) {
@@ -94,15 +115,38 @@ export async function POST(request: NextRequest) {
       phaseAdvanced = true;
     }
 
+    // ── Next event — regular cadence only; milestones wait for cron ──
     let nextEvent: CeoEvent | null = null;
-    if (latestBusiness.status === 'active') {
-      const nextMilestone = pickNextMilestone(latestBusiness.phase, latestBusiness.phaseMilestones);
-      const generated = await generateEvent({ business: latestBusiness, milestone: nextMilestone });
-      nextEvent = await saveCeoEvent({ ...generated, deliveredVia: 'web' });
+    let regularEventsToday = latestBusiness.dailyRegularEventCount ?? 0;
+    let regularCapHit = false;
+
+    if (latestBusiness.status === 'active' && !isMilestoneDecision) {
+      // Kid just decided a REGULAR event — try to reserve the next slot.
+      const reservation = await reserveRegularEventSlot(
+        latestBusiness.id,
+        REGULAR_EVENTS_PER_DAY_CAP,
+      );
+      regularEventsToday = reservation.countToday;
+      if (reservation.allowed) {
+        const recent = await getRecentEventsForBusiness(latestBusiness.id, 5);
+        const recentEventTitles = recent.map((e) => e.title);
+        const generated = await generateRegularEvent({
+          business: latestBusiness,
+          recentEventTitles,
+        });
+        nextEvent = await saveCeoEvent({ ...generated, deliveredVia: 'web' });
+      } else {
+        regularCapHit = true;
+      }
     }
 
-    let aiPointsEarned = CEO_AI_POINTS.MAKE_DECISION;
-    if (event.milestone) aiPointsEarned += CEO_AI_POINTS.COMPLETE_MILESTONE;
+    // ── Points — split by event type ─────────────────────────────────
+    let aiPointsEarned = isMilestoneDecision
+      ? CEO_AI_POINTS.MAKE_DECISION_MILESTONE
+      : CEO_AI_POINTS.MAKE_DECISION_REGULAR;
+    if (isMilestoneDecision && event.milestone) {
+      aiPointsEarned += CEO_AI_POINTS.COMPLETE_MILESTONE;
+    }
     if (phaseAdvanced) aiPointsEarned += CEO_AI_POINTS.COMPLETE_PHASE;
     if (latestBusiness.status === 'completed') aiPointsEarned += CEO_AI_POINTS.COMPLETE_SIMULATION;
 
@@ -130,6 +174,10 @@ export async function POST(request: NextRequest) {
       nextEvent,
       phaseAdvanced,
       milestoneResolved: event.milestone ?? null,
+      decidedEventType: isMilestoneDecision ? ('milestone' as const) : ('regular' as const),
+      regularEventsToday,
+      regularEventsCap: REGULAR_EVENTS_PER_DAY_CAP,
+      regularCapHit,
       aiPointsEarned,
       newBadges,
     });

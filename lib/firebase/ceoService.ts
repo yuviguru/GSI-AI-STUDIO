@@ -38,6 +38,14 @@ const SHARE_URL_MAX_RETRIES = 3;
 
 /** Recursively strip `undefined` values from an object so Firestore never
  *  rejects the write. Mirrors creationService.stripUndefined. */
+/** YYYY-MM-DD in UTC — used as the `lastRegularEventDayUtc` bucket key.
+ *  UTC is deliberate so the daily cap resets uniformly regardless of the
+ *  kid's timezone (kids anywhere in the world hit the same midnight roll-
+ *  over; also dodges DST quirks). */
+export function utcDayKey(now: Date = new Date()): string {
+  return now.toISOString().slice(0, 10);
+}
+
 function stripUndefined<T>(obj: T): T {
   if (obj === null || obj === undefined || typeof obj !== 'object') return obj;
   if (Array.isArray(obj)) return obj.map(stripUndefined) as unknown as T;
@@ -211,6 +219,13 @@ export async function createCeoBusiness(params: {
     createdAt: now,
     updatedAt: now,
     completedAt: null,
+    // PR2 — regular-event cap + milestone-cron tracking.
+    // lastMilestoneDeliveredAt = now because /api/ceo/register immediately
+    // generates the first milestone event, so the cron should wait a full
+    // day before delivering the next one.
+    dailyRegularEventCount: 0,
+    lastRegularEventDayUtc: utcDayKey(),
+    lastMilestoneDeliveredAt: now,
   };
 
   await docRef.set(stripUndefined(business));
@@ -582,6 +597,97 @@ export async function recordEventDecision(params: {
   });
 
   return result;
+}
+
+// ─── Regular-event daily cap ─────────────────────────────────
+
+/** Result of reserving a regular-event slot for today. `allowed: false`
+ *  means the kid hit the daily cap — caller should surface a
+ *  "Come back tomorrow" message rather than minting another event. */
+export interface RegularEventReservation {
+  allowed: boolean;
+  /** How many regular events have been decided TODAY (after this
+   *  reservation fires if allowed). Exposed so the UI can render
+   *  "3 of 5" progress. */
+  countToday: number;
+  cap: number;
+}
+
+/** Reserve a regular-event slot inside a Firestore transaction. Bumps
+ *  `dailyRegularEventCount` by 1 if we're still under the cap, rolling
+ *  the counter over when the kid crosses UTC midnight. Does NOT generate
+ *  the event — caller does that on `allowed: true`.
+ *
+ *  Lives on `ceoBusiness` (not sessions) so the cap is per-business, not
+ *  global — a kid juggling 3 active businesses can decide 5 regulars per
+ *  business per day. */
+export async function reserveRegularEventSlot(
+  businessId: string,
+  cap: number,
+): Promise<RegularEventReservation> {
+  const ref = adminDb.collection(CEO_BUSINESS_COLLECTION).doc(businessId);
+  const today = utcDayKey();
+
+  return adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) {
+      throw new AppException('NOT_FOUND', 'Business not found', 404);
+    }
+    const data = snap.data() ?? {};
+    const lastDay = data.lastRegularEventDayUtc as string | undefined;
+    const prevCount = (data.dailyRegularEventCount as number | undefined) ?? 0;
+
+    const effectiveCount = lastDay === today ? prevCount : 0;
+    if (effectiveCount >= cap) {
+      return { allowed: false, countToday: effectiveCount, cap };
+    }
+
+    const nextCount = effectiveCount + 1;
+    tx.update(ref, {
+      dailyRegularEventCount: nextCount,
+      lastRegularEventDayUtc: today,
+      updatedAt: Timestamp.now(),
+    });
+    return { allowed: true, countToday: nextCount, cap };
+  });
+}
+
+/** Mark a milestone event as delivered for scheduling purposes. The daily
+ *  cron uses `lastMilestoneDeliveredAt` to decide whether a business is due
+ *  for its next milestone event. Called by the cron + on register (where
+ *  the first milestone is delivered synchronously). */
+export async function markMilestoneDelivered(businessId: string): Promise<void> {
+  await adminDb
+    .collection(CEO_BUSINESS_COLLECTION)
+    .doc(businessId)
+    .update({
+      lastMilestoneDeliveredAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+}
+
+/** Return the last N decided events for a business, newest first. Used
+ *  to feed `recentEventTitles` + `recentNamedTitles` into the event
+ *  generator so it can avoid repeating angles. Returns [] if the index
+ *  is still building — graceful degradation, the LLM just loses variety
+ *  context for that generation. */
+export async function getRecentEventsForBusiness(
+  businessId: string,
+  limit = 5,
+): Promise<CeoEvent[]> {
+  try {
+    const snapshot = await adminDb
+      .collection(CEO_EVENTS_COLLECTION)
+      .where('businessId', '==', businessId)
+      .where('status', '==', 'decided')
+      .orderBy('decisionTimestamp', 'desc')
+      .limit(limit)
+      .get();
+    return snapshot.docs.map(docToCeoEvent);
+  } catch (err) {
+    if (isIndexBuildingError(err)) return [];
+    throw err;
+  }
 }
 
 // ─── Profiles ────────────────────────────────────────────────

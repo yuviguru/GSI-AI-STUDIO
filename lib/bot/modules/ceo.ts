@@ -42,14 +42,20 @@ import {
   getCeoProfileByBusiness,
   getOrCreateCeoProfile,
   getPendingEventForBusiness,
+  getRecentEventsForBusiness,
   listBusinessesForKid,
+  markMilestoneDelivered,
   recordEventDecision,
+  reserveRegularEventSlot,
   saveCeoEvent,
 } from '@/lib/firebase/ceoService';
 import { timestampToMillis } from '@/lib/utils/timestamps';
 import { applyStateChanges } from '@/lib/ceo/businessState';
 import { applyScoreAdjustments } from '@/lib/ceo/profileEngine';
-import { generateEvent } from '@/lib/ceo/eventEngine';
+import {
+  generateMilestoneEvent,
+  generateRegularEvent,
+} from '@/lib/ceo/eventEngine';
 import { scoreDecision } from '@/lib/ceo/scoringEngine';
 import { isPhaseComplete, pickNextMilestone } from '@/lib/ceo/phases';
 import {
@@ -57,6 +63,7 @@ import {
   CEO_AI_POINTS,
   DIMENSION_LABELS,
   PHASE_LABELS,
+  REGULAR_EVENTS_PER_DAY_CAP,
 } from '@/lib/ceo/constants';
 import businessesCatalog from '@/lib/ceo/templates/businesses.json';
 import { updateKidPoints } from '@/lib/firebase/sessionService';
@@ -578,10 +585,17 @@ async function handlePacePick(
     pace,
   });
 
-  // Seed first event so the kid has something to decide right away.
-  const milestone = pickNextMilestone(business.phase, business.phaseMilestones);
-  const generated = await generateEvent({ business, milestone });
+  // Seed the FIRST MILESTONE EVENT so the kid has a "TODAY'S BIG CHOICE" to
+  // decide right away (otherwise they'd wait until tomorrow's 6:30am cron).
+  // pickNextMilestone always returns a pre-launch milestone here since the
+  // business is freshly created with an all-pending milestone dict, so the
+  // `!` assertion is safe.
+  const milestone = pickNextMilestone(business.phase, business.phaseMilestones)!;
+  const generated = await generateMilestoneEvent({ business, milestone });
   const firstEvent = await saveCeoEvent({ ...generated, deliveredVia: 'telegram' });
+  // Mark the milestone as delivered so the cron knows to wait a full kid-day
+  // before firing the next milestone event for this business.
+  await markMilestoneDelivered(business.id);
 
   // Profile is keyed by businessId — create it now so /decide later can find it.
   await getOrCreateCeoProfile({
@@ -808,23 +822,56 @@ async function handleChoice(
     profileDimensionUpdates: nextDimensions,
   });
 
+  // PR2: phase advance is gated on eventType === 'milestone'. Regular
+  // events can't advance a phase even if they happened to resolve the
+  // last milestone.
+  const isMilestoneDecision =
+    (event.eventType ?? (event.milestone ? 'milestone' : 'regular')) === 'milestone';
+
   let latestBusiness: CeoBusiness = postDecisionBusiness;
   let phaseAdvanced = false;
-  if (event.milestone && isPhaseComplete(latestBusiness.phase, latestBusiness.phaseMilestones)) {
+  if (
+    isMilestoneDecision &&
+    event.milestone &&
+    isPhaseComplete(latestBusiness.phase, latestBusiness.phaseMilestones)
+  ) {
     latestBusiness = await advanceBusinessPhase(business.id);
     phaseAdvanced = true;
   }
 
+  // Next-event auto-generation:
+  // - After MILESTONE decision → no next event here. Kid waits for the
+  //   scheduled cron's next morning delivery. This is the habit hook.
+  // - After REGULAR decision → mint another regular event IF under cap.
   let nextEvent: CeoEvent | null = null;
-  if (latestBusiness.status === 'active') {
-    const nextMilestone = pickNextMilestone(latestBusiness.phase, latestBusiness.phaseMilestones);
-    const generated = await generateEvent({ business: latestBusiness, milestone: nextMilestone });
-    nextEvent = await saveCeoEvent({ ...generated, deliveredVia: 'telegram' });
+  let regularCapHit = false;
+  let regularEventsToday = latestBusiness.dailyRegularEventCount ?? 0;
+  if (latestBusiness.status === 'active' && !isMilestoneDecision) {
+    const reservation = await reserveRegularEventSlot(
+      latestBusiness.id,
+      REGULAR_EVENTS_PER_DAY_CAP,
+    );
+    regularEventsToday = reservation.countToday;
+    if (reservation.allowed) {
+      const recent = await getRecentEventsForBusiness(latestBusiness.id, 5);
+      const recentEventTitles = recent.map((e) => e.title);
+      const generated = await generateRegularEvent({
+        business: latestBusiness,
+        recentEventTitles,
+      });
+      nextEvent = await saveCeoEvent({ ...generated, deliveredVia: 'telegram' });
+    } else {
+      regularCapHit = true;
+    }
   }
 
-  // AI Points — same formula as the web /api/ceo/decide route.
-  let aiPointsEarned = CEO_AI_POINTS.MAKE_DECISION;
-  if (event.milestone) aiPointsEarned += CEO_AI_POINTS.COMPLETE_MILESTONE;
+  // AI Points — split by event type; phase/simulation bonuses layered on.
+  let aiPointsEarned = isMilestoneDecision
+    ? CEO_AI_POINTS.MAKE_DECISION_MILESTONE
+    : CEO_AI_POINTS.MAKE_DECISION_REGULAR;
+  if (isMilestoneDecision && event.milestone) {
+    aiPointsEarned += CEO_AI_POINTS.COMPLETE_MILESTONE;
+  }
   if (phaseAdvanced) aiPointsEarned += CEO_AI_POINTS.COMPLETE_PHASE;
   if (latestBusiness.status === 'completed') aiPointsEarned += CEO_AI_POINTS.COMPLETE_SIMULATION;
 
@@ -876,10 +923,29 @@ async function handleChoice(
     return;
   }
 
-  // Next event follows on an 800ms delay so the feedback lands first.
+  // Next-step UX:
+  // - Milestone decision → nudge the kid to come back tomorrow.
+  // - Regular decision, cap not hit → send the next regular event.
+  // - Regular decision, cap hit → "come back tomorrow" prompt.
   if (nextEvent) {
     await new Promise((resolve) => setTimeout(resolve, 800));
     await sendEvent(message.chatId, nextEvent, send);
+  } else if (isMilestoneDecision) {
+    await send({
+      chatId: message.chatId,
+      text:
+        '⭐ You made *today\'s Big Choice*. Tomorrow morning I\'ll bring the next one.\n\n' +
+        'Meanwhile, type /ceo to handle small everyday decisions (up to 5/day).',
+      parseMode: 'markdown',
+    });
+  } else if (regularCapHit) {
+    await send({
+      chatId: message.chatId,
+      text:
+        `You've handled all *${REGULAR_EVENTS_PER_DAY_CAP}* small decisions for today (${regularEventsToday}/${REGULAR_EVENTS_PER_DAY_CAP}).\n\n` +
+        '⭐ Tomorrow morning your next *Big Choice* arrives. See you then!',
+      parseMode: 'markdown',
+    });
   }
 }
 

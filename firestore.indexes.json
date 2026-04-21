@@ -193,6 +193,23 @@
       ]
     },
     {
+      "collectionGroup": "ceoEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "businessId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "decisionTimestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ceoBusiness",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "lastMilestoneDeliveredAt", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "botLinkCodes",
       "queryScope": "COLLECTION",
       "fields": [
