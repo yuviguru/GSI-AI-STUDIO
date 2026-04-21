@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
   Bot,
+  Briefcase,
   Compass,
   FolderOpen,
   HelpCircle,
@@ -58,6 +59,12 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Beat AI',
     icon: Bot,
     match: (p) => p === '/beat-the-ai',
+  },
+  {
+    href: '/ceo',
+    label: 'Kid CEO',
+    icon: Briefcase,
+    match: (p) => p.startsWith('/ceo'),
   },
   {
     href: '/explore',

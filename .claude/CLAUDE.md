@@ -2,7 +2,24 @@
 
 AI creation + learning platform for Indian kids (ages 8-17). Create stories, music, quizzes and games with AI while learning how it works — aligned to CBSE AI & CT curriculum.
 
-**Tech Stack**: Next.js 14 (App Router) + Tailwind CSS + shadcn/ui | Netlify Functions (serverless) + Firebase Firestore | Claude API (text), Replicate (images), Suno (audio)
+**Tech Stack**: Next.js 14 (App Router) + Tailwind CSS + shadcn/ui | Netlify Functions (serverless) + Firebase Firestore | Claude API (text), Pixazo Flux Schnell → Replicate SDXL → Pollinations (images, cascading), Gemini (audio)
+
+---
+
+## Code Graph — CONSULT FIRST (saves tokens)
+
+Before running any Grep / Glob / Explore-agent search to understand the codebase, **check the pre-built code graph at `graphify-out/`**. It maps the whole repo as ~1,367 nodes / ~1,616 edges / ~289 communities covering every module, route, component, and service.
+
+| File | Use |
+|---|---|
+| `graphify-out/GRAPH_REPORT.md` | Human-readable index of modules, communities, and architecture hubs. **Read this first** for any "where does X live?" / "what module handles Y?" question. |
+| `graphify-out/graph.json` | Full machine-readable dependency graph. Grep/jq through it to answer "who imports X?" / "what calls Y?" without spawning an agent. |
+| `graphify-out/manifest.json` | File → timestamp manifest; scope of what's covered. |
+| `graphify-out/graph.html` | Interactive browser viewer (not useful for agents). |
+
+**Hard rule for agents**: any exploratory question that would otherwise trigger an Explore agent or multi-round Grep/Glob **must start** with `Read graphify-out/GRAPH_REPORT.md` (or Grep into `graphify-out/graph.json`). Only fall back to live code search when the graph has no concrete answer — and when you do, explicitly note "graph had no answer" so it's clear the fallback was deliberate.
+
+**Regeneration**: after a large refactor that renames or restructures modules, rebuild `graphify-out/` by re-running graphify against the repo. Otherwise the cached graph is authoritative.
 
 ---
 
@@ -14,9 +31,10 @@ Every task — whether triggered by a Linear ticket, a terminal command, or a ma
 
 Before writing any code, load the project's knowledge base:
 
-1. **Read this file** (`.claude/CLAUDE.md`) for conventions and workflow
-2. **Find the story file** in `stories/` matching the ticket prefix (e.g., `STUDIO-004`, `UI-001`). If no story exists and the task is non-trivial, create one using `.claude/skills/story-creator.md`
-3. **Load context for every file you'll touch**:
+1. **Check the code graph FIRST** (see "Code Graph — CONSULT FIRST" section above). For any "where does X live?" / "how do modules relate?" question, read `graphify-out/GRAPH_REPORT.md` and Grep `graphify-out/graph.json` before spawning Explore agents or running broad Grep/Glob. Live code search is a fallback, not the first move.
+2. **Read this file** (`.claude/CLAUDE.md`) for conventions and workflow
+3. **Find the story file** in `stories/` matching the ticket prefix (e.g., `STUDIO-004`, `UI-001`). If no story exists and the task is non-trivial, create one using `.claude/skills/story-creator.md`
+4. **Load context for every file you'll touch**:
    - Read `CONTEXT.md` in the target file's directory (if it exists)
    - Read `CONTEXT.md` in each parent directory up to the repo root
    - For each `@import /docs/file.md#section` directive found, read that doc section

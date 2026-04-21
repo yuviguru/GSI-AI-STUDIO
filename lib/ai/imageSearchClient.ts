@@ -156,6 +156,30 @@ export async function searchImage({
   return fallbackDataUri(width, height);
 }
 
+/**
+ * Same as searchImage but returns `null` on miss instead of a fallback SVG.
+ * Used by the hybrid image provider so it knows when to cascade to AI generation.
+ */
+export async function tryStockImage({
+  prompt,
+  style: _style,
+  width = 512,
+  height = 384,
+}: ImageSearchOptions): Promise<string | null> {
+  const query = extractSearchQuery(prompt);
+  const pexelsUrl = await searchPexels(query, width, height);
+  if (pexelsUrl) {
+    console.log(`[ImageSearch/hybrid] ✓ Pexels hit for "${query}"`);
+    return pexelsUrl;
+  }
+  const unsplashUrl = await searchUnsplash(query, width, height);
+  if (unsplashUrl) {
+    console.log(`[ImageSearch/hybrid] ✓ Unsplash hit for "${query}"`);
+    return unsplashUrl;
+  }
+  return null;
+}
+
 function fallbackDataUri(width: number, height: number): string {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
     <defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#f3e8ff"/><stop offset="100%" style="stop-color:#fef3c7"/></linearGradient></defs>

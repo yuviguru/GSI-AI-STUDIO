@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { storyInputSchema } from '@/lib/validators';
 import { filterInput, filterOutput, filterImagePrompt } from '@/lib/safety/inputFilter';
-import { checkRateLimit, trackCreation } from '@/lib/firebase/sessionService';
+import { checkRateLimit, trackCreation, enforceIpRateLimit } from '@/lib/firebase/sessionService';
 import { saveCreation } from '@/lib/firebase/creationService';
 import { generateJsonWithClaude } from '@/lib/ai/claudeClient';
 import { generateJsonWithGroq } from '@/lib/ai/groqClient';
@@ -13,6 +13,10 @@ import type { AiXrayData, StoryContent } from '@/types';
 /** Shape returned by LLM for a story */
 interface LlmStoryResponse {
   title: string;
+  /** Art style applied to every page — e.g. "soft watercolor storybook, pastel palette". */
+  visualStyleGuide?: string;
+  /** Visual description of recurring characters — prepended to every imagePrompt. */
+  characterSheet?: string;
   pages: Array<{
     pageNumber: number;
     text: string;
@@ -30,7 +34,7 @@ interface LlmStoryResponse {
 }
 
 const IMAGE_CONCURRENCY = 3;
-const PLACEHOLDER_IMAGE = '/images/placeholder-story.png';
+const PLACEHOLDER_IMAGE = '/images/placeholder-story.svg';
 
 // Auto-detect which providers to use based on available API keys
 function shouldUseGroq(): boolean {
@@ -57,7 +61,12 @@ export async function POST(request: NextRequest) {
     // 3. Safety filter
     filterInput(input.premise);
 
-    // 4. Check rate limit
+    // 4. Check rate limit (IP first, then per-session)
+    const ipAddress =
+      request.headers.get('x-nf-client-connection-ip') ??
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+      null;
+    await enforceIpRateLimit(ipAddress);
     await checkRateLimit(sessionId);
 
     // 5. Generate story text via LLM
@@ -82,10 +91,33 @@ export async function POST(request: NextRequest) {
       imagePrompt: filterImagePrompt(page.imagePrompt),
     }));
 
-    // 7. Generate illustrations in parallel (batched)
+    // 7. Generate illustrations in parallel (batched).
+    //    Use a single seed per story + prepend the visualStyleGuide and
+    //    characterSheet to every imagePrompt so characters/art-style stay
+    //    consistent across pages. Falls back gracefully if the LLM skips
+    //    emitting those fields (old model responses).
     const { imageFunction, providerName } = getImageProvider();
     console.log(`[Story] Using image provider: ${providerName}`);
-    const imageUrls = await generateImagesParallel(filteredPages, input.style, imageFunction);
+
+    const storySeed = Math.floor(Math.random() * 1_000_000);
+    const styleGuide = llmResponse.visualStyleGuide?.trim() || '';
+    const characterSheet = llmResponse.characterSheet?.trim() || '';
+    const promptPrefix = [styleGuide, characterSheet]
+      .filter(Boolean)
+      .join(' | ');
+
+    const pagesForImages = filteredPages.map((p) => ({
+      imagePrompt: promptPrefix
+        ? `${promptPrefix} | SCENE: ${p.imagePrompt}`
+        : p.imagePrompt,
+    }));
+
+    const imageUrls = await generateImagesParallel(
+      pagesForImages,
+      input.style,
+      imageFunction,
+      storySeed,
+    );
 
     // 8. Build story content
     const modelName = shouldUseGroq() ? 'llama-3.3-70b' : 'claude-sonnet';
@@ -136,11 +168,20 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/** Generate images in parallel with concurrency limit */
+/** Generate images in parallel with concurrency limit.
+ *  `seed` is reused across every page — combined with the character-sheet
+ *  prefix it keeps Flux output visually coherent page-to-page. */
 async function generateImagesParallel(
   pages: Array<{ imagePrompt: string }>,
   style: string,
-  genImage: (opts: { prompt: string; style: 'watercolor' | 'cartoon' | 'pixel-art' | 'comic'; width: number; height: number }) => Promise<string>
+  genImage: (opts: {
+    prompt: string;
+    style: 'watercolor' | 'cartoon' | 'pixel-art' | 'comic';
+    width: number;
+    height: number;
+    seed?: number;
+  }) => Promise<string>,
+  seed?: number,
 ): Promise<string[]> {
   const urls: string[] = new Array(pages.length).fill(PLACEHOLDER_IMAGE);
 
@@ -153,6 +194,7 @@ async function generateImagesParallel(
           style: style as 'watercolor' | 'cartoon' | 'pixel-art' | 'comic',
           width: 512,
           height: 384,
+          seed,
         })
       )
     );

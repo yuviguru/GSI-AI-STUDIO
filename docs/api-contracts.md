@@ -930,6 +930,330 @@ Get past assessments for the session. Cursor-paginated.
 
 ---
 
+## Kid CEO Endpoints
+
+Schemas: see `types/ceo.types.ts` and `docs/data-model.md`.
+
+### POST /api/ceo/register
+
+Register a new business and generate the first event.
+
+**Headers:** `X-Session-Id: <session_id>`
+
+**Request:**
+```json
+{
+  "businessType": "lemonade",
+  "businessName": "Luna's Lemonade Stand",
+  "customBusinessDescription": null,
+  "location": "Bengaluru, Karnataka",
+  "pace": "60"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| businessType | string | yes | `lemonade` \| `icecream` \| `tshirt` \| `games` \| `crafts` \| `blog` \| `custom` |
+| businessName | string | no | Optional display name (safety-filtered) |
+| customBusinessDescription | string | no | Required when `businessType === 'custom'` (safety-filtered) |
+| location | string | yes | City / region string used to flavour events |
+| pace | string | yes | `30` \| `60` \| `90` — target minutes between events |
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "businessId": "biz_abc123",
+    "business": {
+      "id": "biz_abc123",
+      "sessionId": "uuid-v4",
+      "businessType": "lemonade",
+      "businessName": "Luna's Lemonade Stand",
+      "location": "Bengaluru, Karnataka",
+      "pace": "60",
+      "phase": 1,
+      "cash": 500,
+      "reputation": 50,
+      "morale": 70,
+      "nextEventAt": "2026-04-19T10:30:00Z"
+    },
+    "firstEvent": {
+      "id": "evt_first01",
+      "businessId": "biz_abc123",
+      "phase": 1,
+      "title": "Your first customer arrives",
+      "narrative": "A neighbor walks up to your stand and asks how much a cup costs...",
+      "choices": [
+        { "id": "A", "text": "Offer a friendly discount" },
+        { "id": "B", "text": "Stick to the list price" },
+        { "id": "C", "text": "Give a free sample first" }
+      ],
+      "expiresAt": "2026-04-19T10:35:00Z"
+    }
+  }
+}
+```
+
+**Pipeline:** validate → rate limit → safety filter (on `businessName` + `customBusinessDescription`) → seed Phase 1 milestones → generate first event via LLM → save → respond.
+
+**Errors:**
+- `400 INVALID_INPUT` — Missing required fields or invalid enum values
+- `400 UNSAFE_CONTENT` — Business name or custom description flagged
+- `429 RATE_LIMITED` — Registration cap reached
+- `502 AI_GENERATION_FAILED` — LLM provider failure
+
+---
+
+### POST /api/ceo/event
+
+Generate the next event for a business, or return the current pending event if one exists (idempotent).
+
+**Headers:** `X-Session-Id: <session_id>`
+
+**Request:**
+```json
+{
+  "businessId": "biz_abc123"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "event": {
+      "id": "evt_next02",
+      "businessId": "biz_abc123",
+      "phase": 1,
+      "title": "Supplier raises prices",
+      "narrative": "Your lemon supplier says prices are going up 20% next week...",
+      "choices": [
+        { "id": "A", "text": "Switch to a cheaper supplier" },
+        { "id": "B", "text": "Absorb the cost for now" },
+        { "id": "C", "text": "Raise your own prices" }
+      ],
+      "expiresAt": "2026-04-19T11:30:00Z"
+    },
+    "pendingDecisionExists": false
+  }
+}
+```
+
+**Pipeline:** verify ownership → if pending event exists, return it (idempotent) → else check `nextEventAt` timing → generate new event via LLM (Groq primary, Claude fallback) → safety filter output → save.
+
+**Errors:**
+- `404 NOT_FOUND` — Business not found
+- `403 FORBIDDEN` — Caller does not own this business
+- `429 COOLDOWN` — `nextEventAt` is still in the future
+- `502 AI_GENERATION_FAILED` — LLM provider failure
+
+---
+
+### POST /api/ceo/decide
+
+Submit a decision on a pending event.
+
+**Headers:** `X-Session-Id: <session_id>`
+
+**Request:**
+```json
+{
+  "eventId": "evt_next02",
+  "choiceId": "A"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "scores": {
+      "strategy": 14,
+      "empathy": 11,
+      "resilience": 13,
+      "creativity": 9,
+      "ethics": 15,
+      "execution": 12
+    },
+    "feedback": "Switching suppliers protects your margins, but check the new supplier's quality before committing...",
+    "updatedBusiness": {
+      "id": "biz_abc123",
+      "phase": 1,
+      "cash": 620,
+      "reputation": 52,
+      "morale": 68,
+      "nextEventAt": "2026-04-19T12:30:00Z"
+    },
+    "nextEvent": {
+      "id": "evt_next03",
+      "businessId": "biz_abc123",
+      "phase": 1,
+      "title": "A local newspaper wants to interview you",
+      "choices": [
+        { "id": "A", "text": "Say yes — tell your story" },
+        { "id": "B", "text": "Politely decline" },
+        { "id": "C", "text": "Offer a written quote instead" }
+      ]
+    },
+    "phaseAdvanced": false,
+    "milestoneResolved": "first_price_shock",
+    "aiPointsEarned": 15,
+    "newBadges": ["first_decision"]
+  }
+}
+```
+
+**Pipeline:** verify ownership → stop timer → score via LLM (6 dimensions) → apply enrichment layers (phase × response-time × state-context) → update business state (cash, reputation, morale) → check phase completion → generate next event if applicable → award AI points → check badge unlocks → respond.
+
+**Errors:**
+- `404 NOT_FOUND` — Event not found
+- `403 FORBIDDEN` — Caller does not own the parent business
+- `400 INVALID_INPUT` — `choiceId` not in `A` \| `B` \| `C`
+- `409 ALREADY_DECIDED` — Event has already been decided (see idempotency note)
+
+**Idempotent:** If the event has already been decided, the endpoint returns the stored scores + feedback instead of re-scoring.
+
+---
+
+### GET /api/ceo/business
+
+Get current business state, any pending event, and recent decision history.
+
+**Headers:** `X-Session-Id: <session_id>`
+
+**Query Params:**
+- `businessId` (string, optional) — Defaults to the most recent active business for this session
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "business": {
+      "id": "biz_abc123",
+      "businessType": "lemonade",
+      "businessName": "Luna's Lemonade Stand",
+      "phase": 1,
+      "cash": 620,
+      "reputation": 52,
+      "morale": 68,
+      "nextEventAt": "2026-04-19T12:30:00Z"
+    },
+    "pendingEvent": null,
+    "decisionHistory": [
+      {
+        "event": { "id": "evt_next02", "title": "Supplier raises prices" },
+        "decision": { "choiceId": "A", "decidedAt": "2026-04-19T11:00:00Z" },
+        "scores": { "strategy": 14, "empathy": 11, "resilience": 13, "creativity": 9, "ethics": 15, "execution": 12 }
+      }
+    ]
+  }
+}
+```
+
+**Errors:**
+- `404 NOT_FOUND` — No business found for this session
+- `403 FORBIDDEN` — Caller does not own the requested business
+
+---
+
+### GET /api/ceo/profile
+
+Get the CEO profile (6-dimension DNA Card) for a business.
+
+**Headers:** `X-Session-Id: <session_id>` (authenticated view) OR query `?s=<shareUrl>` (public view when `isPublic === true`)
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "profile": {
+      "dimensions": {
+        "strategy": 62,
+        "empathy": 58,
+        "resilience": 71,
+        "creativity": 49,
+        "ethics": 80,
+        "execution": 55
+      },
+      "archetype": "The Principled Builder",
+      "summary": "You make steady, values-driven decisions and bounce back from setbacks well...",
+      "totalDecisions": 8,
+      "shareUrl": "abc-share-token"
+    },
+    "business": {
+      "id": "biz_abc123",
+      "businessType": "lemonade",
+      "businessName": "Luna's Lemonade Stand",
+      "phase": 2,
+      "isPublic": true
+    }
+  }
+}
+```
+
+**Note:** The public view accessed via `?s=<shareUrl>` returns only display-safe fields — it never includes `sessionId` or `userId`.
+
+**Errors:**
+- `404 NOT_FOUND` — Business or share token not found
+- `403 FORBIDDEN` — Caller does not own this business and `isPublic` is `false`
+
+---
+
+## Bot Endpoints
+
+### POST /api/bot/link/create
+
+Mint a short-lived link token for binding a web-app session (or Phase 2 authenticated user) to a Telegram bot conversation.
+
+**Headers:** `X-Session-Id: <session_id>` (Phase 1) OR `Authorization: Bearer <firebase_id_token>` (Phase 2)
+
+**Request:**
+```json
+{
+  "botHandle": "GSIKidCeoAssistantBot"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| botHandle | string | yes | `GSIPersonalAssistantBot` \| `GSIKidCeoAssistantBot` |
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "token": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+    "deepLink": "https://t.me/GSIKidCeoAssistantBot?start=link_a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+    "code": "482913",
+    "expiresAt": "2026-04-19T10:40:00Z"
+  }
+}
+```
+
+- `deepLink`: `https://t.me/<botHandle>?start=link_<token>` — opens Telegram and auto-sends `/start link_<token>` to the bot
+- `code`: user-readable 6-digit numeric code for `/link <code>` fallback inside the bot when the deep link cannot be used
+- `token`: 32-byte hex string, stored in `botLinkCodes`, single-use, 10-minute TTL, bot-scoped
+
+**Pipeline:** validate session → generate token + 6-digit code → write `botLinkCodes/{token}` → return.
+
+**Errors:**
+- `400 INVALID_INPUT` — Unknown `botHandle`
+- `429 RATE_LIMITED` — Link-create cap reached for this session
+
+---
+
+### Telegram Webhooks
+
+`POST /.netlify/functions/telegram-webhook-ceo` and `POST /.netlify/functions/telegram-webhook-studio` are **Netlify Functions**, not Next.js API routes. They receive Telegram Bot API update payloads for `@GSIKidCeoAssistantBot` and `@GSIPersonalAssistantBot` respectively. Full request/response contracts, secret-token verification, and update handling are documented in `MESSENGER_BOT_ARCHITECTURE.md` §3.
+
+---
+
 ## Rate Limits
 
 | Endpoint Category | Phase 1 (Anonymous) | Phase 2 (Free) | Phase 2 (Paid) |
@@ -938,7 +1262,13 @@ Get past assessments for the session. Cursor-paginated.
 | Creation Save | 5/day | 10/week | Unlimited |
 | Beat the AI | 5/day, 1/2min | 5/week | Unlimited |
 | MindX | 3/day | 5/week | Unlimited |
+| Kid CEO Register | 3/day, 1/10min | 3/week | Unlimited |
+| Kid CEO Event generate | 50/day | 50/day | Unlimited |
+| Kid CEO Decide | 50/day | 50/day | Unlimited |
+| Bot Link Create | 5/hour | 5/hour | 5/hour |
 | Cerebro | N/A | 1/exam window | 1/exam window |
 | GrowthMap | N/A | 10/hour | 10/hour |
 | Public Read | 100/min | 100/min | 100/min |
 | Auth | N/A | 5/min | 5/min |
+
+**Note:** Kid CEO rate limits are shared across web and bot channels for the same `sessionId`.

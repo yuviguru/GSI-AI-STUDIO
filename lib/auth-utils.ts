@@ -57,6 +57,54 @@ export async function requireRole(
 }
 
 /**
+ * Verify auth AND bind to a specific kid profile.
+ *
+ * Reads the active kid id from the `X-Active-Kid-Id` header (Kid CEO
+ * convention — matches the existing Phase-2 studio pattern in
+ * `/api/sessions/points`). Verifies that kid is owned by the authed user
+ * before returning.
+ *
+ * Throws:
+ *   - UNAUTHORIZED (401) — no/invalid Bearer token (via verifyAuth)
+ *   - KID_REQUIRED (400) — Authorization OK but no X-Active-Kid-Id header
+ *   - FORBIDDEN (403)    — kid doc exists but parentId !== auth.userId
+ *   - NOT_FOUND (404)    — kid doc missing
+ */
+export async function requireAuthWithKid(
+  request: NextRequest,
+): Promise<{ userId: string; kidId: string; role: UserRole; plan: string }> {
+  const auth = await verifyAuth(request);
+
+  const kidId = request.headers.get('X-Active-Kid-Id');
+  if (!kidId) {
+    throw new AppException(
+      'KID_REQUIRED',
+      'Pick a kid profile first — this action needs an active kid.',
+      400,
+    );
+  }
+
+  const kidDoc = await adminDb.collection('kids').doc(kidId).get();
+  if (!kidDoc.exists) {
+    throw new AppException('NOT_FOUND', 'Kid profile not found.', 404);
+  }
+  if (kidDoc.data()?.parentId !== auth.userId) {
+    throw new AppException(
+      'FORBIDDEN',
+      'That kid profile does not belong to you.',
+      403,
+    );
+  }
+
+  return {
+    userId: auth.userId,
+    kidId,
+    role: auth.role,
+    plan: auth.plan,
+  };
+}
+
+/**
  * Hybrid auth: accepts EITHER X-Session-Id (anonymous) OR Authorization Bearer (authenticated).
  * Used during the transition period so existing API routes work with both auth modes.
  *
