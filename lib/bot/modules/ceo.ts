@@ -713,7 +713,15 @@ async function handleHelp(message: BotIncomingMessage, send: Send): Promise<void
 
 // ─── Event rendering + decision loop ─────────────────────────
 
-/** Send a pending event as a markdown message + A/B/C choice keyboard. */
+/** Send a pending event as a markdown message + A/B/C choice keyboard.
+ *
+ *  PR2 dual shape: milestone events render with a "⭐ TODAY'S BIG CHOICE ⭐"
+ *  banner, a hyphen-rule, the named title (or legacy title fallback), the
+ *  category + phase label, and a closing stakes reminder — so kids instantly
+ *  feel the weight of a once-a-day Big Choice. Regular events get a compact
+ *  💼-prefixed shape so they read as everyday small decisions. Detection:
+ *  prefer `event.eventType`, falling back to "milestone if there's a
+ *  `milestone` field" for legacy events that pre-date the typed field. */
 async function sendEvent(chatId: string, event: CeoEvent, send: Send): Promise<void> {
   const buttons: BotButton[][] = event.choices.map((choice) => [
     {
@@ -722,12 +730,30 @@ async function sendEvent(chatId: string, event: CeoEvent, send: Send): Promise<v
     },
   ]);
 
+  const isMilestone =
+    (event.eventType ?? (event.milestone ? 'milestone' : 'regular')) === 'milestone';
+
+  let text: string;
+  if (isMilestone) {
+    const headline = escapeMd(event.namedTitle ?? event.title);
+    const phaseLabel = PHASE_LABELS[event.phase];
+    text =
+      `⭐ *TODAY'S BIG CHOICE* ⭐\n` +
+      `━━━━━━━━━━━━━━━━\n` +
+      `*${headline}*\n` +
+      `_${escapeMd(event.category)} · ${phaseLabel}_\n\n` +
+      `${event.description}\n\n` +
+      `_Pick A, B, or C — this one counts._`;
+  } else {
+    text =
+      `💼 *${escapeMd(event.title)}*\n` +
+      `_${escapeMd(event.category)}_\n\n` +
+      event.description;
+  }
+
   await send({
     chatId,
-    text:
-      `*${escapeMd(event.title)}*\n` +
-      `_${escapeMd(event.category)}_\n\n` +
-      event.description,
+    text,
     parseMode: 'markdown',
     buttons,
   });
