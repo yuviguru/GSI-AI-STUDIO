@@ -14,7 +14,9 @@ export type BadgeCriteria =
   | { type: 'ceo_distinct_business_types'; min: number }
   | { type: 'ceo_dimension_score'; dimension: string; min: number }
   | { type: 'ceo_quick_decisions'; responseSeconds: number; count: number }
-  | { type: 'ceo_completed_with_cash_ratio'; min: number };
+  | { type: 'ceo_completed_with_cash_ratio'; min: number }
+  | { type: 'homework_sessions_completed'; min: number }
+  | { type: 'homework_streak'; min: number };
 
 export interface Badge {
   id: string;
@@ -36,6 +38,17 @@ export interface CeoProgressSnapshot {
   dimensionScores?: Record<string, number>;
   quickDecisionsCount?: number; // count of decisions made under responseSeconds threshold
   bestCashRatio?: number; // max ratio at completion across all sims
+}
+
+/** Snapshot of a kid's homework completion stats. When undefined, homework
+ *  badges simply never unlock. Written atomically by the `complete_homework`
+ *  action (see `lib/firebase/sessionService.ts`). */
+export interface HomeworkStatsSnapshot {
+  sessionsCompleted?: number;
+  currentStreak?: number;
+  longestStreak?: number;
+  /** ISO `YYYY-MM-DD` of the most recent completion day (local/UTC fallback). */
+  lastCompletedDate?: string | null;
 }
 
 // ─── Badge catalog (12 badges) ───────────────────────────────────────────────
@@ -167,6 +180,41 @@ export const BADGE_CATALOG: Badge[] = [
     emoji: '🧊',
     criteria: { type: 'ceo_dimension_score', dimension: 'crisis_response', min: 70 },
   },
+  {
+    id: 'homework_hero_bronze',
+    name: 'Homework Hero — Bronze',
+    description: 'Finish your first homework session with the bot',
+    emoji: '🥉',
+    criteria: { type: 'homework_sessions_completed', min: 1 },
+  },
+  {
+    id: 'homework_hero_silver',
+    name: 'Homework Hero — Silver',
+    description: 'Finish 5 homework sessions with the bot',
+    emoji: '🥈',
+    criteria: { type: 'homework_sessions_completed', min: 5 },
+  },
+  {
+    id: 'homework_hero_gold',
+    name: 'Homework Hero — Gold',
+    description: 'Finish 15 homework sessions with the bot',
+    emoji: '🥇',
+    criteria: { type: 'homework_sessions_completed', min: 15 },
+  },
+  {
+    id: 'homework_streak_3',
+    name: 'On a Roll',
+    description: 'Homework 3 days in a row',
+    emoji: '🔥',
+    criteria: { type: 'homework_streak', min: 3 },
+  },
+  {
+    id: 'homework_streak_7',
+    name: 'Week Warrior',
+    description: 'Homework 7 days in a row',
+    emoji: '⚡',
+    criteria: { type: 'homework_streak', min: 7 },
+  },
 ];
 
 // ─── Unlock evaluator ─────────────────────────────────────────────────────────
@@ -175,6 +223,7 @@ function meetsCriteria(
   criteria: BadgeCriteria,
   data: SessionPointsData,
   ceoProgress?: CeoProgressSnapshot,
+  homeworkStats?: HomeworkStatsSnapshot,
 ): boolean {
   const totalCreations = Object.values(data.creationsByType).reduce((sum, n) => sum + n, 0);
 
@@ -219,6 +268,12 @@ function meetsCriteria(
 
     case 'ceo_completed_with_cash_ratio':
       return (ceoProgress?.bestCashRatio ?? 0) >= criteria.min;
+
+    case 'homework_sessions_completed':
+      return (homeworkStats?.sessionsCompleted ?? 0) >= criteria.min;
+
+    case 'homework_streak':
+      return (homeworkStats?.currentStreak ?? 0) >= criteria.min;
   }
 }
 
@@ -233,10 +288,11 @@ function meetsCriteria(
 export function checkBadgeUnlocks(
   data: SessionPointsData,
   ceoProgress?: CeoProgressSnapshot,
+  homeworkStats?: HomeworkStatsSnapshot,
 ): string[] {
-  return BADGE_CATALOG.filter((badge) => meetsCriteria(badge.criteria, data, ceoProgress)).map(
-    (badge) => badge.id,
-  );
+  return BADGE_CATALOG.filter((badge) =>
+    meetsCriteria(badge.criteria, data, ceoProgress, homeworkStats),
+  ).map((badge) => badge.id);
 }
 
 /**
@@ -247,6 +303,7 @@ export function getBadgeProgressHint(
   badge: Badge,
   data: SessionPointsData,
   ceoProgress?: CeoProgressSnapshot,
+  homeworkStats?: HomeworkStatsSnapshot,
 ): string {
   const totalCreations = Object.values(data.creationsByType).reduce((sum, n) => sum + n, 0);
 
@@ -310,6 +367,18 @@ export function getBadgeProgressHint(
       return (ceoProgress?.bestCashRatio ?? 0) >= badge.criteria.min
         ? ''
         : `Finish a business with ${pct}%+ of your starting cash`;
+    }
+    case 'homework_sessions_completed': {
+      const remaining = badge.criteria.min - (homeworkStats?.sessionsCompleted ?? 0);
+      return remaining <= 0
+        ? ''
+        : `Finish ${remaining} more homework session${remaining === 1 ? '' : 's'} with me`;
+    }
+    case 'homework_streak': {
+      const remaining = badge.criteria.min - (homeworkStats?.currentStreak ?? 0);
+      return remaining <= 0
+        ? ''
+        : `Keep going — ${remaining} more day${remaining === 1 ? '' : 's'} in a row`;
     }
   }
 }

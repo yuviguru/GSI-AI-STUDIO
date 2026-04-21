@@ -220,6 +220,7 @@ Anonymous session tracking for Phase 1 rate limiting, AI Points, and badges.
 | conceptsLearned | array\<string\> | no | AI concepts discovered, e.g. `["natural_language_generation", "text_to_image"]` |
 | creationsByType | map | no | Denormalized creation counts per type `{story: 3, music: 1, quiz: 2}` |
 | shareCount | number | no | Total shares across all creations (default 0) |
+| homeworkStats | map | no | Homework rewards counters — `{sessionsCompleted, currentStreak, longestStreak, lastCompletedDate}`. Added for Homework Hero badge family. `lastCompletedDate` is an ISO `YYYY-MM-DD` string in the kid's local day (UTC fallback); streak increments when `lastCompletedDate` is yesterday, resets when it's older than that, no-ops when same day. |
 
 **Rate Limits (Phase 1)**:
 - 5 creations per session per day
@@ -749,36 +750,47 @@ Forwarded homework interactive sessions. Kid forwards a homework photo / text to
 | platform | string | yes | `telegram` \| `whatsapp` |
 | subject | string | yes | Subject detected (e.g., "Math", "Science", "English") |
 | gradeEstimate | number | yes | Estimated grade level (e.g., 5, 9) |
+| language | string | yes | Detected primary language — `en` \| `hi` (v1) |
 | originalText | string | yes | OCR'd / forwarded homework text |
 | totalQuestions | number | yes | Number of questions extracted |
 | questions | array\<map\> | yes | Extracted questions (see structure below) |
 | progress | map | yes | Interactive progress state (see structure below) |
-| score | number | no | Overall score (0-100%) once completed |
+| score | number | no | Overall score (0-100%) once completed (excludes revealed questions from the mastery denominator) |
+| revealedQuestionIds | array\<number\> | yes | Question IDs where the answer was revealed after 3 failed attempts. Empty array when nothing was revealed. |
+| schoolId | string \| null | yes | Optional school anchor. Populated when the forwarded-from channel maps to a registered school (`schools` collection — Phase 3). Null otherwise. |
+| sourceChannelId | string \| null | yes | Optional source-channel ID (e.g. Telegram `forward_from_chat.id`) for provenance + teacher-heatmap aggregation. Null when no detectable origin. |
 | createdAt | timestamp | yes | Forwarding timestamp |
 | updatedAt | timestamp | yes | Last interaction timestamp |
 
 **Question structure** (inside `questions` array):
 ```json
 {
-  "id": "q1",
+  "id": 1,
   "text": "What is 7 x 8?",
   "type": "multiple_choice | short_answer | recitation | explanation | calculation",
   "options": ["54", "56", "48", "63"],
   "correctAnswer": "56",
   "hint": "Think of it as 7 x 8 = 7 x 4 x 2.",
   "recitationText": "Twice two are four, twice three are six...",
-  "similarPractice": "What is 6 x 9?"
+  "similarPractice": "What is 6 x 9?",
+  "language": "en",
+  "meta": {
+    "steps": [
+      { "prompt": "First, break 8 into 4 + 4.", "expected": "7 x 4 + 7 x 4" },
+      { "prompt": "Now add them.", "expected": "56" }
+    ]
+  }
 }
 ```
-`options` and `correctAnswer` apply to `multiple_choice`. `recitationText` applies to `recitation`. `similarPractice` provides a follow-up drill question.
+`options` and `correctAnswer` apply to `multiple_choice`. `recitationText` applies to `recitation`. `similarPractice` provides a follow-up drill question. `language` overrides the session-level language for mixed-language homework. `meta.steps` enables multi-step scaffolding for math (v1); `meta.latex` and `meta.diagramUrl` are reserved for v1.1 (Mathpix + KaTeX) and not populated by v1 code paths.
 
 **Progress structure** (inside `progress` map):
 ```json
 {
   "currentIndex": 2,
   "answers": [
-    { "questionId": "q1", "answer": "56", "correct": true, "attempts": 1 },
-    { "questionId": "q2", "answer": "wrong", "correct": false, "attempts": 2 }
+    { "questionId": 1, "answer": "56", "correct": true, "attempts": 1, "score": 100, "revealed": false },
+    { "questionId": 2, "answer": "48", "correct": false, "attempts": 3, "score": 0, "revealed": true }
   ],
   "mode": "quiz | recite | explain | practice",
   "startedAt": "2026-04-19T10:15:00Z",
@@ -786,8 +798,15 @@ Forwarded homework interactive sessions. Kid forwards a homework photo / text to
 }
 ```
 
+`revealed` is `true` when the bot revealed the answer + worked explanation after 3 failed attempts. Revealed questions contribute 0 to the mastery score but still count toward participation (and so still earn reduced AI Points in the rewards pipeline).
+
 **Indexes**:
 - `gsiSessionId` + `createdAt` (desc) — session's homework history
+- `schoolId` + `createdAt` (desc) — teacher heatmap aggregation (Phase 3). Sparse — only hits docs with `schoolId != null`.
+
+**Rate limits** (see `docs/security.md`):
+- Per-chat: 5 forwards / hour (abuse guard).
+- Per-kid once identity is bound: 5 forwards / hour / kid (avoids one family's shared phone getting throttled when two siblings forward homework back-to-back).
 
 ---
 

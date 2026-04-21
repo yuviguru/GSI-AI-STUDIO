@@ -1254,6 +1254,96 @@ Mint a short-lived link token for binding a web-app session (or Phase 2 authenti
 
 ---
 
+## Homework Endpoints
+
+Transparency surface for the Homework messenger module. Parents use these to review what the bot asked / what the kid answered (the primary trust lever documented in `docs/MESSENGER_BOT_ARCHITECTURE.md` §5). The bot itself writes to `homeworkSessions` via the shared server-side service (`lib/bot/services/homeworkSessionStore.ts`); these endpoints only read.
+
+### GET /api/homework/history
+
+List recent homework sessions for the caller. Paginated, ordered by `createdAt` desc.
+
+**Headers:** `X-Session-Id: <session_id>` (Phase 1) OR `Authorization: Bearer <firebase_id_token>` (Phase 2)
+
+**Query:**
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| kidId | string | no (P2) | Scope results to a specific kid profile when the auth user has multiple kids. Ignored in Phase 1 / anonymous. |
+| limit | number | no | Default 20, max 50. |
+| cursor | string | no | Opaque pagination cursor returned by a previous call. |
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "sessions": [
+      {
+        "id": "hw_01HX...",
+        "subject": "Math",
+        "language": "en",
+        "gradeEstimate": 5,
+        "totalQuestions": 6,
+        "score": 83,
+        "revealedCount": 1,
+        "mode": "quiz",
+        "startedAt": "2026-04-19T10:15:00Z",
+        "completedAt": "2026-04-19T10:32:00Z"
+      }
+    ],
+    "nextCursor": "eyJjcmVhdGVkQXQiOiIuLi4ifQ"
+  }
+}
+```
+
+**Errors:**
+- `401 UNAUTHENTICATED` — Missing session or invalid token.
+
+---
+
+### GET /api/homework/sessions/:id
+
+Fetch a single homework session with the full transcript — every question, answer, attempt count, and whether the answer was revealed. Used by the web `/homework/history/[id]` transparency view.
+
+**Headers:** same as above.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "hw_01HX...",
+    "subject": "Math",
+    "language": "en",
+    "gradeEstimate": 5,
+    "totalQuestions": 6,
+    "score": 83,
+    "revealedQuestionIds": [3],
+    "mode": "quiz",
+    "startedAt": "2026-04-19T10:15:00Z",
+    "completedAt": "2026-04-19T10:32:00Z",
+    "questions": [
+      {
+        "id": 1,
+        "text": "What is 7 x 8?",
+        "type": "multiple_choice",
+        "correctAnswer": "56",
+        "hint": "Think of it as 7 x 8 = 7 x 4 x 2."
+      }
+    ],
+    "answers": [
+      { "questionId": 1, "answer": "56", "correct": true, "attempts": 1, "score": 100, "revealed": false }
+    ]
+  }
+}
+```
+
+**Errors:**
+- `401 UNAUTHENTICATED`
+- `403 FORBIDDEN` — Session exists but does not belong to the caller's session/kid scope.
+- `404 NOT_FOUND` — Session does not exist.
+
+---
+
 ## Rate Limits
 
 | Endpoint Category | Phase 1 (Anonymous) | Phase 2 (Free) | Phase 2 (Paid) |
@@ -1266,6 +1356,8 @@ Mint a short-lived link token for binding a web-app session (or Phase 2 authenti
 | Kid CEO Event generate | 50/day | 50/day | Unlimited |
 | Kid CEO Decide | 50/day | 50/day | Unlimited |
 | Bot Link Create | 5/hour | 5/hour | 5/hour |
+| Homework Forwards | 5/hour/chat, 5/hour/kid | 5/hour/chat, 5/hour/kid | 5/hour/chat, 5/hour/kid |
+| Homework History Read | 30/min | 30/min | 30/min |
 | Cerebro | N/A | 1/exam window | 1/exam window |
 | GrowthMap | N/A | 10/hour | 10/hour |
 | Public Read | 100/min | 100/min | 100/min |

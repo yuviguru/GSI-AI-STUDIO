@@ -1,7 +1,7 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { adminDb } from './admin';
 import { AppException } from '@/lib/api-utils';
-import { checkBadgeUnlocks } from '@/lib/badges';
+import { checkBadgeUnlocks, type HomeworkStatsSnapshot } from '@/lib/badges';
 
 const SESSIONS_COLLECTION = 'sessions';
 const IP_RATE_LIMITS_COLLECTION = 'ipRateLimits';
@@ -38,6 +38,13 @@ interface SessionDoc {
   // MindX — Skill Arena fields (Phase 1.5)
   skillArenaProgress?: Record<string, { band: number; score: number; assessments: number }>;
   skillArenaStats?: { totalAssessments: number; averageBand: number };
+  // Homework fields (Phase 2) — populated by the `complete_homework` action
+  homeworkStats?: {
+    sessionsCompleted: number;
+    currentStreak: number;
+    longestStreak: number;
+    lastCompletedDate: string | null;
+  };
 }
 
 // ─── Points types ─────────────────────────────────────────────────────────────
@@ -48,13 +55,30 @@ export interface SessionPointsData {
   conceptsLearned: string[];
   creationsByType: Record<string, number>;
   shareCount: number;
+  /** Homework completion counters. Absent on sessions that predate the
+   *  homework feature — treat missing/undefined as all-zero. */
+  homeworkStats?: HomeworkStatsSnapshot;
 }
 
 export type PointsAction =
   | { action: 'add_points'; points: number; concept?: string }
   | { action: 'learn_concept'; concept: string }
   | { action: 'track_creation'; creationType: string }
-  | { action: 'track_share' };
+  | { action: 'track_share' }
+  | {
+      /** Completion of a homework session via the bot. Awards points and
+       *  updates the per-day homework streak. Streak logic:
+       *    - `todayDate` same as `lastCompletedDate` → streak unchanged (idempotent for same-day completions)
+       *    - `todayDate` = `lastCompletedDate + 1 day` → streak += 1
+       *    - otherwise → streak resets to 1.
+       *  `longestStreak` monotonically grows. */
+      action: 'complete_homework';
+      points: number;
+      /** ISO `YYYY-MM-DD` of the completion day. Caller supplies so the
+       *  day boundary follows the kid's local day when we have a kid
+       *  profile with a tz; Asia/Kolkata used in the bot caller. */
+      todayDate: string;
+    };
 
 function extractPointsData(data: SessionDoc): SessionPointsData {
   return {
@@ -63,6 +87,48 @@ function extractPointsData(data: SessionDoc): SessionPointsData {
     conceptsLearned: data.conceptsLearned ?? [],
     creationsByType: data.creationsByType ?? {},
     shareCount: data.shareCount ?? 0,
+    homeworkStats: data.homeworkStats
+      ? { ...data.homeworkStats }
+      : undefined,
+  };
+}
+
+/** Compute the new streak state given the previous `lastCompletedDate`
+ *  (ISO `YYYY-MM-DD`) and the `today` value supplied by the caller.
+ *  Exported for unit testing. */
+export function computeHomeworkStreak(params: {
+  previousStreak: number;
+  previousLongest: number;
+  lastCompletedDate: string | null | undefined;
+  today: string;
+}): { currentStreak: number; longestStreak: number; lastCompletedDate: string } {
+  const { previousStreak, previousLongest, lastCompletedDate, today } = params;
+
+  // Idempotent same-day completion — don't double-count streaks when a kid
+  // finishes two homework sessions back-to-back.
+  if (lastCompletedDate === today) {
+    return {
+      currentStreak: Math.max(previousStreak, 1),
+      longestStreak: Math.max(previousLongest, previousStreak, 1),
+      lastCompletedDate: today,
+    };
+  }
+
+  const yesterdayISO = (() => {
+    // today is YYYY-MM-DD → step back one UTC day. Caller already aligned
+    // the value to the kid's local day, so simple UTC math is fine here.
+    const d = new Date(`${today}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - 1);
+    return d.toISOString().slice(0, 10);
+  })();
+
+  const next =
+    lastCompletedDate === yesterdayISO ? previousStreak + 1 : 1;
+
+  return {
+    currentStreak: next,
+    longestStreak: Math.max(previousLongest, next),
+    lastCompletedDate: today,
   };
 }
 
@@ -91,6 +157,33 @@ function applyAction(current: SessionPointsData, action: PointsAction): SessionP
     }
     case 'track_share':
       return { ...current, shareCount: current.shareCount + 1 };
+    case 'complete_homework': {
+      const prev = current.homeworkStats ?? {
+        sessionsCompleted: 0,
+        currentStreak: 0,
+        longestStreak: 0,
+        lastCompletedDate: null,
+      };
+      const streak = computeHomeworkStreak({
+        previousStreak: prev.currentStreak ?? 0,
+        previousLongest: prev.longestStreak ?? 0,
+        lastCompletedDate: prev.lastCompletedDate ?? null,
+        today: action.todayDate,
+      });
+      // Count same-day repeat completions toward sessionsCompleted so the
+      // "sessions" badge reflects raw effort; streak stays idempotent.
+      const sessionsCompleted = (prev.sessionsCompleted ?? 0) + 1;
+      return {
+        ...current,
+        aiPoints: current.aiPoints + action.points,
+        homeworkStats: {
+          sessionsCompleted,
+          currentStreak: streak.currentStreak,
+          longestStreak: streak.longestStreak,
+          lastCompletedDate: streak.lastCompletedDate,
+        },
+      };
+    }
   }
 }
 
@@ -292,6 +385,9 @@ export async function updateSessionPoints(
           creationsByType:
             (kidData.creationsByType as Record<string, number>) ?? {},
           shareCount: (kidData.shareCount as number) ?? 0,
+          homeworkStats:
+            (kidData.homeworkStats as SessionPointsData['homeworkStats']) ??
+            undefined,
         };
       } else {
         current = extractPointsData(sessionDoc.data() as SessionDoc);
@@ -304,19 +400,25 @@ export async function updateSessionPoints(
 
     // Determine which badges are newly earned
     const alreadyEarned = new Set(current.badges);
-    const nowEligible = checkBadgeUnlocks(updated);
+    const nowEligible = checkBadgeUnlocks(updated, undefined, updated.homeworkStats);
     const newBadges = nowEligible.filter((id) => !alreadyEarned.has(id));
     if (newBadges.length > 0) {
       updated.badges = [...current.badges, ...newBadges];
     }
 
-    const pointsUpdate = {
+    const pointsUpdate: Record<string, unknown> = {
       aiPoints: updated.aiPoints,
       badges: updated.badges,
       conceptsLearned: updated.conceptsLearned,
       creationsByType: updated.creationsByType,
       shareCount: updated.shareCount,
     };
+    // Only write homeworkStats when the action actually touched it —
+    // otherwise we'd stamp `undefined` into documents that have never
+    // seen a homework action (harmless but noisy in Firestore exports).
+    if (updated.homeworkStats) {
+      pointsUpdate.homeworkStats = updated.homeworkStats;
+    }
 
     tx.update(sessionRef, pointsUpdate);
 
