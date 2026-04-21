@@ -59,7 +59,7 @@ import {
   PHASE_LABELS,
 } from '@/lib/ceo/constants';
 import businessesCatalog from '@/lib/ceo/templates/businesses.json';
-import { updateSessionPoints } from '@/lib/firebase/sessionService';
+import { updateKidPoints } from '@/lib/firebase/sessionService';
 
 type Send = (msg: BotOutgoingMessage) => Promise<string>;
 
@@ -829,19 +829,20 @@ async function handleChoice(
   if (latestBusiness.status === 'completed') aiPointsEarned += CEO_AI_POINTS.COMPLETE_SIMULATION;
 
   // Don't lie to the kid: only claim points if the points write succeeded.
-  // Points live on the existing `sessions/{gsiSessionId}` doc — that's the
-  // web session bound to this chat via the link flow.
+  // Kid CEO is authenticated-only — points live on the kid doc (same source
+  // of truth the web UI reads from), so the running total ticks up in the
+  // web app the next time the kid opens it.
   let actualPointsEarned = 0;
   let pointsSaveFailed = false;
   try {
-    await updateSessionPoints(context.session.gsiSessionId, {
+    await updateKidPoints(linked.kidId, {
       action: 'add_points',
       points: aiPointsEarned,
     });
     actualPointsEarned = aiPointsEarned;
   } catch (err) {
     pointsSaveFailed = true;
-    console.error('[ceo module] updateSessionPoints failed:', (err as Error).message);
+    console.error('[ceo module] updateKidPoints failed:', (err as Error).message);
   }
 
   // Build + send feedback message

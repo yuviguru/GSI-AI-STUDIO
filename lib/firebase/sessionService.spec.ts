@@ -32,7 +32,7 @@ vi.mock('./admin', () => ({
 
 // ─── Import after mocks ────────────────────────────────
 
-import { getOrCreateSession, trackCreation, checkRateLimit } from './sessionService';
+import { getOrCreateSession, trackCreation, checkRateLimit, updateKidPoints } from './sessionService';
 
 // ─── Helpers ────────────────────────────────────────────
 
@@ -200,6 +200,125 @@ describe('sessionService', () => {
         const err = error as Error;
         expect(err.message).toMatch(/wait \d+ seconds/);
       }
+    });
+  });
+
+  describe('updateKidPoints', () => {
+    /** Helper — stub a `kids/{kidId}` read inside the transaction mock. */
+    function makeKidDoc(data: Record<string, unknown>) {
+      return {
+        exists: true,
+        data: () => data,
+      };
+    }
+
+    it('adds points to the kid document', async () => {
+      mockTxGet.mockResolvedValue(
+        makeKidDoc({ aiPoints: 30, badges: [], conceptsLearned: [], creationsByType: {}, shareCount: 0 }),
+      );
+
+      const result = await updateKidPoints('kid-1', { action: 'add_points', points: 15 });
+
+      expect(mockTxSet).toHaveBeenCalledOnce();
+      // Merge-set goes to kids/{kidId}, not the session collection.
+      const writtenPayload = mockTxSet.mock.calls[0]?.[1] as Record<string, unknown>;
+      expect(writtenPayload.aiPoints).toBe(45);
+      expect(writtenPayload.totalCreations).toBe(0);
+      expect(result.data.aiPoints).toBe(45);
+    });
+
+    it('does not touch sessions collection — writes only to kids/{kidId}', async () => {
+      mockTxGet.mockResolvedValue(
+        makeKidDoc({ aiPoints: 0, badges: [], conceptsLearned: [], creationsByType: {}, shareCount: 0 }),
+      );
+
+      await updateKidPoints('kid-2', { action: 'add_points', points: 5 });
+
+      // Only one tx.set call — the kid doc. Would be two if we were
+      // accidentally dual-writing to sessions.
+      expect(mockTxSet).toHaveBeenCalledOnce();
+    });
+
+    it('tracks creations and recomputes totalCreations', async () => {
+      mockTxGet.mockResolvedValue(
+        makeKidDoc({
+          aiPoints: 0,
+          badges: [],
+          conceptsLearned: [],
+          creationsByType: { story: 2, music: 1 },
+          shareCount: 0,
+        }),
+      );
+
+      await updateKidPoints('kid-3', { action: 'track_creation', creationType: 'story' });
+
+      const writtenPayload = mockTxSet.mock.calls[0]?.[1] as Record<string, unknown>;
+      const creationsByType = writtenPayload.creationsByType as Record<string, number>;
+      expect(creationsByType.story).toBe(3);
+      expect(creationsByType.music).toBe(1);
+      expect(writtenPayload.totalCreations).toBe(4); // 3 + 1
+    });
+
+    it('adds a learned concept without duplicating', async () => {
+      mockTxGet.mockResolvedValue(
+        makeKidDoc({
+          aiPoints: 0,
+          badges: [],
+          conceptsLearned: ['prompts'],
+          creationsByType: {},
+          shareCount: 0,
+        }),
+      );
+
+      await updateKidPoints('kid-4', { action: 'learn_concept', concept: 'prompts' });
+
+      const writtenPayload = mockTxSet.mock.calls[0]?.[1] as Record<string, unknown>;
+      expect(writtenPayload.conceptsLearned).toEqual(['prompts']);
+    });
+
+    it('throws NOT_FOUND when kid document does not exist', async () => {
+      mockTxGet.mockResolvedValue({ exists: false });
+
+      await expect(
+        updateKidPoints('missing-kid', { action: 'add_points', points: 10 }),
+      ).rejects.toThrow('Kid profile not found');
+    });
+
+    it('unlocks newly-earned badges', async () => {
+      // Kid at 45 points, about to hit the 50-points threshold (if that badge exists).
+      mockTxGet.mockResolvedValue(
+        makeKidDoc({
+          aiPoints: 45,
+          badges: [],
+          conceptsLearned: [],
+          creationsByType: {},
+          shareCount: 0,
+        }),
+      );
+
+      const result = await updateKidPoints('kid-5', { action: 'add_points', points: 10 });
+
+      // Don't assert the exact badge ids (that's the badge catalog's business)
+      // — just assert the newBadges array is wired through.
+      expect(Array.isArray(result.newBadges)).toBe(true);
+      expect(result.data.aiPoints).toBe(55);
+    });
+
+    it('increments shareCount on track_share', async () => {
+      mockTxGet.mockResolvedValue(
+        makeKidDoc({
+          aiPoints: 0,
+          badges: [],
+          conceptsLearned: [],
+          creationsByType: {},
+          shareCount: 2,
+        }),
+      );
+
+      await updateKidPoints('kid-6', { action: 'track_share' });
+
+      const writtenPayload = mockTxSet.mock.calls[0]?.[1] as Record<string, unknown>;
+      expect(writtenPayload.shareCount).toBe(3);
     });
   });
 });

@@ -341,6 +341,76 @@ export async function updateSessionPoints(
   return result;
 }
 
+/**
+ * Authenticated-kid points write. Keyed PURELY on `kidId` — the kid document
+ * is the single source of truth for points/badges/creationsByType/etc. for
+ * signed-in kids, and this function never touches the anonymous `sessions`
+ * collection.
+ *
+ * Use this from authenticated-only flows (Kid CEO, and any future flow that
+ * requires a Firebase Bearer token + X-Active-Kid-Id). The older
+ * `updateSessionPoints` still exists for anonymous studios (Beat the AI,
+ * Skill Arena, unsigned-in creations) where the session doc IS the source of
+ * truth; when those flows authenticate, they migrate to this function.
+ *
+ * Set-with-merge rather than `update` so the first points write after a
+ * freshly-created kid profile (without prior gamification fields) still
+ * succeeds instead of erroring on missing-field updates.
+ */
+export async function updateKidPoints(
+  kidId: string,
+  action: PointsAction,
+): Promise<{ data: SessionPointsData; newBadges: string[] }> {
+  const kidRef = adminDb.collection('kids').doc(kidId);
+
+  return await adminDb.runTransaction(async (tx) => {
+    const kidDoc = await tx.get(kidRef);
+    if (!kidDoc.exists) {
+      throw new AppException('NOT_FOUND', 'Kid profile not found', 404);
+    }
+    const kidData = kidDoc.data() as Record<string, unknown>;
+
+    const current: SessionPointsData = {
+      aiPoints: (kidData.aiPoints as number) ?? 0,
+      badges: (kidData.badges as string[]) ?? [],
+      conceptsLearned: (kidData.conceptsLearned as string[]) ?? [],
+      creationsByType: (kidData.creationsByType as Record<string, number>) ?? {},
+      shareCount: (kidData.shareCount as number) ?? 0,
+    };
+
+    const updated = applyAction(current, action);
+
+    // Badges — only award ones not already earned.
+    const alreadyEarned = new Set(current.badges);
+    const nowEligible = checkBadgeUnlocks(updated);
+    const newBadges = nowEligible.filter((id) => !alreadyEarned.has(id));
+    if (newBadges.length > 0) {
+      updated.badges = [...current.badges, ...newBadges];
+    }
+
+    const totalCreations = Object.values(updated.creationsByType).reduce(
+      (sum, n) => sum + n,
+      0,
+    );
+
+    tx.set(
+      kidRef,
+      {
+        aiPoints: updated.aiPoints,
+        badges: updated.badges,
+        conceptsLearned: updated.conceptsLearned,
+        creationsByType: updated.creationsByType,
+        shareCount: updated.shareCount,
+        totalCreations,
+        updatedAt: Timestamp.now(),
+      },
+      { merge: true },
+    );
+
+    return { data: updated, newBadges };
+  });
+}
+
 // ─── Internal helpers ────────────────────────────────────
 
 function buildNewSessionDoc(

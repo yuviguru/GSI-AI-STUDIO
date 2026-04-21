@@ -11,7 +11,7 @@ import {
   advanceBusinessPhase,
   saveCeoEvent,
 } from '@/lib/firebase/ceoService';
-import { updateSessionPoints } from '@/lib/firebase/sessionService';
+import { updateKidPoints } from '@/lib/firebase/sessionService';
 import { applyStateChanges } from '@/lib/ceo/businessState';
 import { applyScoreAdjustments } from '@/lib/ceo/profileEngine';
 import { scoreDecision } from '@/lib/ceo/scoringEngine';
@@ -32,11 +32,6 @@ import type { CeoBusiness, CeoEvent } from '@/types';
 export async function POST(request: NextRequest) {
   try {
     const { kidId } = await requireAuthWithKid(request);
-
-    // AI Points still live on the parent user's session counter, since that's
-    // the cross-kid gamification aggregate. Accept X-Session-Id optionally; fall
-    // back to the active kid id as the points key if missing.
-    const sessionId = request.headers.get('X-Session-Id') ?? kidId;
 
     const body = await request.json();
     const { eventId, choiceId, responseTimeSeconds } = ceoDecideSchema.parse(body);
@@ -113,13 +108,17 @@ export async function POST(request: NextRequest) {
 
     let newBadges: string[] = [];
     try {
-      const pointsResult = await updateSessionPoints(sessionId, {
+      // Kid CEO is authenticated-only — points live on the kid doc, not the
+      // anonymous session. This is what feeds the web UI's points display
+      // (hydrated from `activeKid.aiPoints`) so kids actually see their
+      // running total tick up after a decision.
+      const pointsResult = await updateKidPoints(kidId, {
         action: 'add_points',
         points: aiPointsEarned,
       });
       newBadges = pointsResult.newBadges;
     } catch (err) {
-      console.error('[ceo/decide] updateSessionPoints failed:', (err as Error).message);
+      console.error('[ceo/decide] updateKidPoints failed:', (err as Error).message);
       // Decision is already saved — don't reject the response over a
       // best-effort points write. Kid just won't see the +X toast.
     }
