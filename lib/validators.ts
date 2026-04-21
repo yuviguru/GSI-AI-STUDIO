@@ -149,7 +149,11 @@ const ceoBusinessTypeEnum = z.enum([
   'lemonade', 'icecream', 'tshirt', 'games', 'crafts', 'blog', 'custom',
 ]);
 
-const ceoPaceEnum = z.enum(['30', '60', '90']);
+// 15/30/45 are the supported pace values as of the PR 2 "regular vs milestone"
+// redesign. Old 30/60/90 businesses still exist in prod; their docs are
+// coerced via `coerceLegacyPace()` at read time — the validator only gates
+// NEW business registrations, so we don't need to accept legacy values here.
+const ceoPaceEnum = z.enum(['15', '30', '45']);
 
 const ceoChoiceIdEnum = z.enum(['A', 'B', 'C']);
 

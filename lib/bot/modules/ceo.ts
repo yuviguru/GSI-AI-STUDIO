@@ -89,7 +89,7 @@ const BUSINESS_TYPES: readonly CeoBusinessType[] = [
   'custom',
 ];
 
-const PACES: readonly CeoPace[] = ['30', '60', '90'];
+const PACES: readonly CeoPace[] = ['15', '30', '45'];
 
 // ─── Module export ───────────────────────────────────────────
 
@@ -539,9 +539,9 @@ async function handleBizPick(
     parseMode: 'markdown',
     buttons: [
       [
+        { text: '15 days (snappy)', callbackData: `ceo_pace:${type}:15` },
         { text: '30 days', callbackData: `ceo_pace:${type}:30` },
-        { text: '60 days', callbackData: `ceo_pace:${type}:60` },
-        { text: '90 days', callbackData: `ceo_pace:${type}:90` },
+        { text: '45 days (deep)', callbackData: `ceo_pace:${type}:45` },
       ],
     ],
   });

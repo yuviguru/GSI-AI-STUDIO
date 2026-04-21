@@ -3,7 +3,12 @@ import crypto from 'crypto';
 import { adminDb } from './admin';
 import { AppException } from '@/lib/api-utils';
 import { initialMilestones, nextPhase, isPhaseComplete } from '@/lib/ceo/phases';
-import { STARTING_CAPITAL, BUSINESS_TYPE_DEFAULT_NAMES, DIMENSIONS } from '@/lib/ceo/constants';
+import {
+  STARTING_CAPITAL,
+  BUSINESS_TYPE_DEFAULT_NAMES,
+  DIMENSIONS,
+  coerceLegacyPace,
+} from '@/lib/ceo/constants';
 import type {
   CeoBusiness,
   CeoEvent,
@@ -97,16 +102,27 @@ function docToCeoBusiness(doc: FirebaseFirestore.DocumentSnapshot): CeoBusiness 
     phaseMilestones: data.phaseMilestones ?? {},
     totalDecisions: data.totalDecisions ?? 0,
     status: data.status,
-    pace: data.pace,
+    // Legacy 30/60/90 docs from pre-refactor coerced to the new 15/30/45
+    // union so callers downstream can treat pace as a typed enum.
+    pace: coerceLegacyPace(data.pace),
     nextEventAt: data.nextEventAt ?? null,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
     completedAt: data.completedAt ?? null,
+    dailyRegularEventCount: data.dailyRegularEventCount ?? 0,
+    lastRegularEventDayUtc: data.lastRegularEventDayUtc ?? undefined,
+    lastMilestoneDeliveredAt: data.lastMilestoneDeliveredAt ?? null,
   };
 }
 
 function docToCeoEvent(doc: FirebaseFirestore.DocumentSnapshot): CeoEvent {
   const data = doc.data()!;
+  // Legacy events written before PR2 have neither eventType nor namedTitle.
+  // Derive eventType from `milestone` so existing data still classifies
+  // correctly (milestone set → milestone event, else regular).
+  const eventType: CeoEvent['eventType'] =
+    (data.eventType as CeoEvent['eventType']) ??
+    (data.milestone ? 'milestone' : 'regular');
   return {
     id: doc.id,
     businessId: data.businessId,
@@ -127,6 +143,10 @@ function docToCeoEvent(doc: FirebaseFirestore.DocumentSnapshot): CeoEvent {
     deliveredVia: data.deliveredVia ?? null,
     createdAt: data.createdAt,
     expiresAt: data.expiresAt,
+    eventType,
+    namedTitle: data.namedTitle ?? undefined,
+    scheduledFor: data.scheduledFor ?? null,
+    stakesMultiplier: data.stakesMultiplier ?? undefined,
   };
 }
 
