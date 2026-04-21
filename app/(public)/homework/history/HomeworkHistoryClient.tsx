@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { fetchWithSession } from '@/lib/fetchWithSession';
+import { TelegramConnectButton } from '@/components/ceo/TelegramConnectButton';
 
 interface HomeworkSummary {
   id: string;
@@ -86,20 +87,35 @@ export function HomeworkHistoryClient() {
         )}
 
         {!loading && !error && sessions.length === 0 && (
-          <div className="mt-8 rounded-xl bg-gray-50 p-6 text-center text-gray-600">
-            <p>No homework sessions yet.</p>
-            <p className="mt-2 text-sm">
-              Forward a school-group homework message to{' '}
-              <code className="rounded bg-white px-1 py-0.5">
-                @GSIPersonalAssistantBot
-              </code>{' '}
-              on Telegram to get started.
-            </p>
+          <div className="mt-8 flex flex-col items-center gap-4 rounded-xl bg-gray-50 p-6 text-center text-gray-600">
+            <div>
+              <p>No homework sessions yet.</p>
+              <p className="mt-2 text-sm">
+                Tap the button below to open{' '}
+                <code className="rounded bg-white px-1 py-0.5">
+                  @GSIPersonalAssistantBot
+                </code>{' '}
+                on Telegram. Forward any school-group homework message to
+                start a quiz.
+              </p>
+            </div>
+            <TelegramConnectButton
+              botHandle="GSIPersonalAssistantBot"
+              label="Open Homework Bot on Telegram"
+            />
           </div>
         )}
 
         {!loading && !error && sessions.length > 0 && (
-          <ul className="mt-6 space-y-3">
+          <>
+            <div className="mt-6 flex items-center justify-end">
+              <TelegramConnectButton
+                botHandle="GSIPersonalAssistantBot"
+                label="Open bot on Telegram"
+                className="w-auto"
+              />
+            </div>
+            <ul className="mt-4 space-y-3">
             {sessions.map((s) => (
               <li key={s.id}>
                 <Link
@@ -138,7 +154,8 @@ export function HomeworkHistoryClient() {
                 </Link>
               </li>
             ))}
-          </ul>
+            </ul>
+          </>
         )}
       </div>
     </div>

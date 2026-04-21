@@ -7,6 +7,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useKidProfile } from '@/hooks/useKidProfile';
 import { cn } from '@/lib/utils';
 
+type BotHandle = 'GSIKidCeoAssistantBot' | 'GSIPersonalAssistantBot';
+
 interface MintLinkResponse {
   token: string;
   deepLink: string;
@@ -15,20 +17,32 @@ interface MintLinkResponse {
 }
 
 interface TelegramConnectButtonProps {
-  /** If set, the bot resumes THAT business immediately after redeeming the
-   *  link. Leave undefined for a plain "connect the chat" flow from the
-   *  landing page. */
+  /** Which bot to link. Defaults to the Kid CEO bot for back-compat with
+   *  existing call sites. Pass 'GSIPersonalAssistantBot' for the homework
+   *  / studio helper. */
+  botHandle?: BotHandle;
+  /** If set, the CEO bot resumes THAT business immediately after redeeming
+   *  the link. Only meaningful when `botHandle === 'GSIKidCeoAssistantBot'`;
+   *  ignored (with a warning in dev) for the studio bot. */
   businessId?: string;
-  /** Label override — defaults to "Continue on Telegram" when bound to a
-   *  business, "Connect Telegram" otherwise. */
+  /** Label override. Defaults pick themselves based on bot + businessId. */
   label?: string;
   className?: string;
 }
 
+const DEFAULT_LABELS: Record<BotHandle, string> = {
+  GSIKidCeoAssistantBot: 'Connect Telegram',
+  GSIPersonalAssistantBot: 'Open Homework Bot',
+};
+
 /** Mints a single-use `botLinkCodes` token via `/api/bot/link/create`,
  *  then opens the Telegram deep link. Shows the 6-digit fallback code
- *  inline for kids on devices where the deep link won't open a chat. */
+ *  inline for kids on devices where the deep link won't open a chat.
+ *
+ *  Works for either bot — pass `botHandle` to pick. `businessId` only
+ *  applies to the CEO bot (the studio bot ignores it server-side). */
 export function TelegramConnectButton({
+  botHandle = 'GSIKidCeoAssistantBot',
   businessId,
   label,
   className,
@@ -41,7 +55,10 @@ export function TelegramConnectButton({
   const [copiedCode, setCopiedCode] = useState(false);
 
   const resolvedLabel =
-    label ?? (businessId ? 'Continue on Telegram' : 'Connect Telegram');
+    label ??
+    (businessId && botHandle === 'GSIKidCeoAssistantBot'
+      ? 'Continue on Telegram'
+      : DEFAULT_LABELS[botHandle]);
 
   const ready = isAuthenticated && !!activeKid;
 
@@ -72,14 +89,20 @@ export function TelegramConnectButton({
     setLoading(true);
     setError(null);
     try {
+      // businessId is only meaningful for the CEO bot — the studio bot
+      // has no concept of resuming a business. Guarding here avoids
+      // server-side 404/403 noise when a caller passes both.
+      const includeBusiness =
+        botHandle === 'GSIKidCeoAssistantBot' && !!businessId;
+
       const res = await fetchWithKidAuth(
         '/api/bot/link/create',
         { getIdToken, kidId: activeKid.id },
         {
           method: 'POST',
           body: JSON.stringify({
-            botHandle: 'GSIKidCeoAssistantBot',
-            ...(businessId ? { businessId } : {}),
+            botHandle,
+            ...(includeBusiness ? { businessId } : {}),
           }),
         },
       );
@@ -141,7 +164,7 @@ export function TelegramConnectButton({
       >
         <div className="flex items-center gap-2 text-sm font-semibold text-sky-900">
           <Send className="h-4 w-4" />
-          Opening @GSIKidCeoAssistantBot…
+          Opening @{botHandle}…
         </div>
         <p className="text-xs text-sky-800/80">
           If the bot didn&apos;t open, tap this link:
