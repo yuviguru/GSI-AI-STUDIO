@@ -283,6 +283,7 @@ function resolveAgentWorkflowId(
   if (eventType !== 'milestone' || !milestone) return undefined;
   const MILESTONE_TO_WORKFLOW: Record<string, string | undefined> = {
     BRAND: 'brand.package',
+    FIRST_CUSTOMERS: 'marketing.firstCampaign',
   };
   return MILESTONE_TO_WORKFLOW[milestone];
 }

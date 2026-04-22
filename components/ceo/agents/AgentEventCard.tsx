@@ -5,6 +5,8 @@ import { AlertCircle, Users } from 'lucide-react';
 import { useCeoAgents } from '@/hooks/useCeoAgents';
 import { BrandBriefingForm, type BrandBriefValue } from './BrandBriefingForm';
 import { BrandCandidateReview } from './BrandCandidateReview';
+import { CampaignBriefingForm, type CampaignBriefValue } from './CampaignBriefingForm';
+import { CampaignCandidateReview } from './CampaignCandidateReview';
 import {
   baseWorkflowCostInr,
   runMultiplier,
@@ -63,7 +65,7 @@ export function AgentEventCard({ event, business, onResolved }: AgentEventCardPr
   const predictedFirstCost = predictWorkflowCost(workflowId, 1);
   const predictedRerollCost = predictWorkflowCost(workflowId, runIndex + 1);
 
-  async function handleBrandSubmit(brief: BrandBriefValue) {
+  async function handleSubmit(brief: BrandBriefValue | CampaignBriefValue) {
     setError(null);
     try {
       let hire = existingHire;
@@ -102,11 +104,18 @@ export function AgentEventCard({ event, business, onResolved }: AgentEventCardPr
         return;
       }
       const prevBrief = artifact.trace[0]?.inputSummary;
-      const brief = tryExtractBrief(prevBrief) ?? {
-        mood: 'playful',
-        audience: 'kids_my_age',
-        oneWord: business.businessName.slice(0, 20),
-      };
+      const brief =
+        workflowId === 'brand.package'
+          ? tryExtractBrandBrief(prevBrief) ?? {
+              mood: 'playful',
+              audience: 'kids_my_age',
+              oneWord: business.businessName.slice(0, 20),
+            }
+          : tryExtractCampaignBrief(prevBrief) ?? {
+              offer: 'discount',
+              vibe: 'energetic',
+              hook: business.businessName.slice(0, 25),
+            };
       const run = await runWorkflow({
         hireId: hire.id,
         workflowId,
@@ -121,7 +130,7 @@ export function AgentEventCard({ event, business, onResolved }: AgentEventCardPr
     }
   }
 
-  async function handleAccept(selections: { logo: number; motto: number }) {
+  async function handleBrandAccept(selections: { logo: number; motto: number }) {
     if (!artifact) return;
     setError(null);
     try {
@@ -133,6 +142,21 @@ export function AgentEventCard({ event, business, onResolved }: AgentEventCardPr
       onResolved();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not accept this artifact.');
+    }
+  }
+
+  async function handleCampaignAccept(selections: { poster: number; post: number }) {
+    if (!artifact) return;
+    setError(null);
+    try {
+      await acceptArtifact({
+        artifactId: artifact.id,
+        selections: { poster: selections.poster, post: selections.post },
+        attachTo: { kind: 'marketing_feed' },
+      });
+      onResolved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not accept this campaign.');
     }
   }
 
@@ -173,7 +197,14 @@ export function AgentEventCard({ event, business, onResolved }: AgentEventCardPr
 
       {!artifact && workflowId === 'brand.package' && (
         <BrandBriefingForm
-          onSubmit={handleBrandSubmit}
+          onSubmit={handleSubmit}
+          predictedCostInr={predictedFirstCost}
+          helperText={`Business cash: ₹${business.currentCash.toLocaleString('en-IN')}`}
+        />
+      )}
+      {!artifact && workflowId === 'marketing.firstCampaign' && (
+        <CampaignBriefingForm
+          onSubmit={handleSubmit}
           predictedCostInr={predictedFirstCost}
           helperText={`Business cash: ₹${business.currentCash.toLocaleString('en-IN')}`}
         />
@@ -184,7 +215,16 @@ export function AgentEventCard({ event, business, onResolved }: AgentEventCardPr
           artifact={artifact}
           costInr={costInr}
           rerollCostInr={predictedRerollCost}
-          onAccept={handleAccept}
+          onAccept={handleBrandAccept}
+          onReroll={handleReroll}
+        />
+      )}
+      {artifact && workflowId === 'marketing.firstCampaign' && (
+        <CampaignCandidateReview
+          artifact={artifact}
+          costInr={costInr}
+          rerollCostInr={predictedRerollCost}
+          onAccept={handleCampaignAccept}
           onReroll={handleReroll}
         />
       )}
@@ -214,7 +254,13 @@ function predictWorkflowCost(workflowId: CeoWorkflowId, runIndex: number): numbe
       { tool: 'flux_schnell' },
       { tool: 'claude_haiku' },
     ],
-    'marketing.firstCampaign': [],
+    'marketing.firstCampaign': [
+      { tool: 'claude_haiku' },
+      { tool: 'flux_schnell' },
+      { tool: 'flux_schnell' },
+      { tool: 'flux_schnell' },
+      { tool: 'claude_haiku' },
+    ],
     'marketing.dailyPush': [],
     'ops.setupPackage': [],
     'ops.scheduleCheck': [],
@@ -227,19 +273,33 @@ function predictWorkflowCost(workflowId: CeoWorkflowId, runIndex: number): numbe
   return Math.round(base * runMultiplier(runIndex));
 }
 
-/** Best-effort reconstruction of the brief from the trace's first step
- *  input summary, so a re-roll reuses the same inputs. Returns null when
- *  the summary can't be parsed. */
-function tryExtractBrief(summary: string | undefined): BrandBriefValue | null {
+/** Best-effort reconstruction of the BRAND brief from the trace's first
+ *  step input summary. Returns null when the summary can't be parsed.  */
+function tryExtractBrandBrief(summary: string | undefined): BrandBriefValue | null {
   if (!summary) return null;
-  // The summary format is "Business: X\nLocation: Y\nMood: m\nAudience: a\nOne word: ...".
   const mood = summary.match(/Mood:\s*(\w+)/i)?.[1];
-  const audience = summary.match(/Audience:\s*([a-z_ ]+)/i)?.[1]?.trim().replace(/\s+/g, '_').toLowerCase();
+  const audience = summary
+    .match(/Audience:\s*([a-z_ ]+)/i)?.[1]
+    ?.trim()
+    .replace(/\s+/g, '_')
+    .toLowerCase();
   const oneWord = summary.match(/One word[^:]*:\s*"?([^"\n]+)"?/i)?.[1]?.trim();
   if (!mood || !audience || !oneWord) return null;
   return {
     mood: mood as BrandBriefValue['mood'],
     audience: audience as BrandBriefValue['audience'],
     oneWord: oneWord.slice(0, 20),
+  };
+}
+
+/** Same shape for the CAMPAIGN brief. */
+function tryExtractCampaignBrief(summary: string | undefined): CampaignBriefValue | null {
+  if (!summary) return null;
+  const hookMatch = summary.match(/hook:\s*"?([^"\n]+)"?/i)?.[1]?.trim();
+  if (!hookMatch) return null;
+  return {
+    offer: 'discount',
+    vibe: 'energetic',
+    hook: hookMatch.slice(0, 25),
   };
 }

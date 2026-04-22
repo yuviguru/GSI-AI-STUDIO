@@ -321,6 +321,14 @@ export interface CeoBusiness {
    *  the arc stays coherent around the kid's brand identity. */
   brandAssets?: CeoBrandAssets | null;
 
+  /** Count of Marketing "Post this" actions executed today (IST). Used
+   *  to enforce the C2 daily cap (+3 reputation / IST day across all
+   *  posts). Reset alongside `dailyRegularEventCount`. */
+  marketingDailyPostCount?: number;
+  /** IST day key of the last marketing post action (same scheme as
+   *  `lastRegularEventDayUtc`). */
+  marketingLastPostDayUtc?: string;
+
   // ── Phase 3 Daily Rhythm: dual pending slots + scheduled milestone ────
   /** Current pending MILESTONE event, or null. Set by saveCeoEvent when
    *  an `eventType === 'milestone'` event is minted; cleared atomically

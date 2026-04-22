@@ -8,6 +8,7 @@ import { BusinessDashboard } from '@/components/ceo/BusinessDashboard';
 import { CeoProfileCard } from '@/components/ceo/CeoProfileCard';
 import { DecisionFeedback } from '@/components/ceo/DecisionFeedback';
 import { EventFeed } from '@/components/ceo/EventFeed';
+import { MarketingTab } from '@/components/ceo/MarketingTab';
 import { MilestoneZone } from '@/components/ceo/MilestoneZone';
 import { PhaseProgress } from '@/components/ceo/PhaseProgress';
 import { SmallDecisionsZone } from '@/components/ceo/SmallDecisionsZone';
@@ -329,6 +330,10 @@ function PlayPageInner() {
 
         {business.phase !== 'pre_launch' && (
           <TeamTab business={business} onCashChanged={refetch} />
+        )}
+
+        {business.phase !== 'pre_launch' && (
+          <MarketingTab business={business} onBusinessChanged={refetch} />
         )}
 
         {decisionHistory.length > 0 && (

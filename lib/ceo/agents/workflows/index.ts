@@ -13,3 +13,4 @@ export type { AnyWorkflowSpec } from './registry';
 // load. Listing them here guarantees the registry is populated before
 // any API route reads it.
 import './brandPackage';
+import './marketingFirstCampaign';
