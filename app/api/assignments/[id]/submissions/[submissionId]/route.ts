@@ -1,7 +1,9 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { requireRole } from '@/lib/auth-utils';
+import { adminDb } from '@/lib/firebase/admin';
 import { reviewSubmission } from '@/lib/firebase/submissionService';
+import { enqueueNotification } from '@/lib/notifications/notificationService';
 import type { SubmissionStatus } from '@/types/user.types';
 
 const VALID_STATUSES: SubmissionStatus[] = [
@@ -64,6 +66,39 @@ export async function PATCH(
       auth.schoolId,
       updates,
     );
+
+    // Best-effort: notify the student's parent on status change.
+    if (updates.status && updates.status !== 'pending') {
+      try {
+        const kidSnap = await adminDb.collection('kids').doc(updated.kidId).get();
+        const parentId = kidSnap.data()?.parentId as string | null | undefined;
+        if (parentId) {
+          const body =
+            updates.status === 'approved'
+              ? 'Your child\'s submission was approved.'
+              : 'Your child\'s teacher asked for a revision.';
+          await enqueueNotification({
+            recipientUid: parentId,
+            type: 'submission_reviewed',
+            channels: ['in_app'],
+            payload: {
+              title: 'Assignment reviewed',
+              body,
+              href: `/parent?assignment=${updated.assignmentId}`,
+              context: {
+                assignmentId: updated.assignmentId,
+                submissionId: updated.id,
+                status: updates.status,
+              },
+            },
+          });
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to enqueue review notification:', err);
+      }
+    }
+
     return apiSuccess(updated);
   } catch (error) {
     return handleApiError(error);
