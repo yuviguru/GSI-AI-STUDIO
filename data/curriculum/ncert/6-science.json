@@ -1,0 +1,130 @@
+[
+  {
+    "id": "cbse-6-science-ch1",
+    "chapterNumber": 1,
+    "chapterName": "Food: Where Does It Come From?",
+    "class": "6",
+    "subject": "Science",
+    "board": "cbse",
+    "learningOutcomes": [
+      "Identify sources of commonly used food items",
+      "Classify ingredients as plant-based or animal-based",
+      "Describe eating habits: herbivore, carnivore, omnivore"
+    ],
+    "aiCtConceptTags": ["classification", "data-collection"],
+    "durationHours": 6,
+    "keyTerms": ["ingredients", "herbivore", "carnivore", "omnivore", "sprout"]
+  },
+  {
+    "id": "cbse-6-science-ch2",
+    "chapterNumber": 2,
+    "chapterName": "Components of Food",
+    "class": "6",
+    "subject": "Science",
+    "board": "cbse",
+    "learningOutcomes": [
+      "List the major nutrients in food and their functions",
+      "Describe simple tests for starch, protein, and fat",
+      "Connect a balanced diet to deficiency diseases"
+    ],
+    "aiCtConceptTags": ["classification", "pattern-recognition"],
+    "durationHours": 6,
+    "keyTerms": ["carbohydrates", "proteins", "vitamins", "balanced diet", "deficiency"]
+  },
+  {
+    "id": "cbse-6-science-ch3",
+    "chapterNumber": 3,
+    "chapterName": "Fibre to Fabric",
+    "class": "6",
+    "subject": "Science",
+    "board": "cbse",
+    "learningOutcomes": [
+      "Distinguish natural and synthetic fibres",
+      "Trace the journey of cotton from plant to fabric",
+      "Explain spinning, weaving, and knitting at a basic level"
+    ],
+    "aiCtConceptTags": ["sequencing", "classification"],
+    "durationHours": 5,
+    "keyTerms": ["fibre", "yarn", "spinning", "weaving", "jute"]
+  },
+  {
+    "id": "cbse-6-science-ch4",
+    "chapterNumber": 4,
+    "chapterName": "Sorting Materials into Groups",
+    "class": "6",
+    "subject": "Science",
+    "board": "cbse",
+    "learningOutcomes": [
+      "Group everyday objects by observable properties",
+      "Identify properties: hardness, transparency, solubility, magnetism",
+      "Justify why materials are chosen for specific uses"
+    ],
+    "aiCtConceptTags": ["classification", "decision-trees"],
+    "durationHours": 5,
+    "keyTerms": ["transparent", "opaque", "soluble", "lustre", "property"]
+  },
+  {
+    "id": "cbse-6-science-ch5",
+    "chapterNumber": 5,
+    "chapterName": "Separation of Substances",
+    "class": "6",
+    "subject": "Science",
+    "board": "cbse",
+    "learningOutcomes": [
+      "Explain why separation of substances is needed",
+      "Choose appropriate methods: handpicking, sieving, winnowing, filtration",
+      "Describe evaporation and sedimentation with examples"
+    ],
+    "aiCtConceptTags": ["decision-trees", "sequencing"],
+    "durationHours": 6,
+    "keyTerms": ["mixture", "sieving", "winnowing", "filtration", "evaporation"]
+  },
+  {
+    "id": "cbse-6-science-ch6",
+    "chapterNumber": 6,
+    "chapterName": "Changes Around Us",
+    "class": "6",
+    "subject": "Science",
+    "board": "cbse",
+    "learningOutcomes": [
+      "Classify changes as reversible or irreversible",
+      "Identify changes caused by heating or cooling",
+      "Give examples of changes in daily life"
+    ],
+    "aiCtConceptTags": ["classification", "pattern-recognition"],
+    "durationHours": 4,
+    "keyTerms": ["reversible", "irreversible", "expansion", "contraction"]
+  },
+  {
+    "id": "cbse-6-science-ch7",
+    "chapterNumber": 7,
+    "chapterName": "Getting to Know Plants",
+    "class": "6",
+    "subject": "Science",
+    "board": "cbse",
+    "learningOutcomes": [
+      "Identify herbs, shrubs, and trees",
+      "Describe parts of a plant and their functions",
+      "Observe and record leaf venation patterns"
+    ],
+    "aiCtConceptTags": ["classification", "data-collection", "pattern-recognition"],
+    "durationHours": 6,
+    "keyTerms": ["herb", "shrub", "venation", "stamen", "ovary"]
+  },
+  {
+    "id": "cbse-6-science-ch8",
+    "chapterNumber": 8,
+    "chapterName": "Body Movements",
+    "class": "6",
+    "subject": "Science",
+    "board": "cbse",
+    "learningOutcomes": [
+      "Describe the role of joints in body movement",
+      "Compare movement in humans and other animals",
+      "Identify major bones in the human body"
+    ],
+    "aiCtConceptTags": ["classification", "modeling"],
+    "durationHours": 5,
+    "keyTerms": ["joint", "vertebrae", "cartilage", "ribcage"]
+  }
+]
