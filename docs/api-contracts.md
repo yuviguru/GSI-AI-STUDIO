@@ -1515,3 +1515,97 @@ Teacher review.
   "error": null
 }
 ```
+
+---
+
+## Phase 4: School Productivity Suite Endpoints
+
+All Phase 4 endpoints require authenticated `teacher` or `schoolAdmin` role unless noted. Rate limits and auth rules follow the patterns in `lib/auth-utils.ts`. Every AI-generating endpoint gates on parent consent (`hasConsent(parentUid, kidId, 'ai_generation')`) before running; see `docs/security.md` DPDP section.
+
+### School Settings & Branding (ADMIN-009)
+
+- `PATCH /api/schools/[id]` — update metadata (name, city, state, board). schoolAdmin of school only.
+- `PATCH /api/schools/[id]/branding` — colors `{ primaryColor, secondaryColor }`.
+- `POST /api/schools/[id]/assets` — multipart upload `{ type: 'logo' | 'letterhead', file }`. Validates PNG/JPG ≤ 2MB.
+- `DELETE /api/schools/[id]/assets?type=logo|letterhead`.
+
+### HPC Narrative Assistant (ADMIN-004)
+
+- `POST /api/hpc/generate` — `{ kidId, term, teacherTags, locale }` → draft (not persisted).
+- `POST /api/hpc` — persist final narrative.
+- `GET /api/hpc?classId=&term=` — list for class + term.
+- `PATCH /api/hpc/[id]` — edit.
+- `GET /api/hpc/[id]/export` — CBSE-template PDF with school letterhead.
+
+### Question Paper Generator (ADMIN-005)
+
+- `POST /api/papers/generate` — `{ subject, classGrade, chapters, blueprint, totalMarks, durationMinutes, questionTypes, locale }` → draft.
+- `POST /api/papers`, `GET /api/papers`, `GET/PATCH /api/papers/[id]`.
+- `GET /api/papers/[id]/export?variant=question|answer|blueprint` — PDF.
+
+### AI-Assisted Feedback (ADMIN-006)
+
+- `POST /api/assignments/[id]/submissions/[submissionId]/suggest-feedback` — returns `{ positive, growthArea, followUpPrompts[] }`. Rate-limit 30/min per teacher. Does NOT persist.
+
+### Lesson Plan Generator (ADMIN-007)
+
+- `POST /api/lessons/generate`, `POST /api/lessons`, `GET /api/lessons`, `GET/PATCH /api/lessons/[id]`.
+- `POST /api/lessons/[id]/assignment` — create an assignment from lesson (internally invokes `/api/assignments`).
+
+### Substitute-Teacher Finder (ADMIN-008)
+
+- `POST /api/substitutes/find` — `{ absentTeacherUid, date, periodIdxs[] }` → ranked candidates per period.
+- `POST /api/substitutes/instructions` — Claude-drafted instructions for a period.
+
+### Parent Messaging — Multi-channel (COMMS-001, COMMS-002)
+
+- `POST /api/comms/parent-digest/preview` — teacher preview for student.
+- `POST /api/comms/parent-digest/send`, `.../send-batch`.
+- `POST /api/comms/ptm` — generate PTM talking points.
+- `POST /api/comms/adhoc/draft`, `.../adhoc/send` — ad-hoc parent message via MessagingService.
+- Webhooks: `POST /api/comms/webhooks/whatsapp`, `POST /api/comms/webhooks/telegram` — delivery/read receipts.
+
+### Notifications (NOTIF-001)
+
+- `GET /api/notifications` — list current user's notifications with unread count.
+- `PATCH /api/notifications/[id]` — mark read.
+- `POST /api/notifications/mark-all-read`.
+- `GET/PATCH /api/notifications/prefs` — per-type × per-channel preferences.
+
+### Class Feed (ENGAGE-008)
+
+- `GET /api/classes/[classId]/feed?cursor=` — teacher-approved + shared creations; paginated.
+- `POST /api/creations/[id]/reactions` — `{ emoji }` (whitelist: 👍 🎉 🌟 🔥 💯).
+- `DELETE /api/creations/[id]/reactions?emoji=`.
+
+### Progress Report (REPORT-001)
+
+- `GET /api/reports/progress?kidId=&range=month|term|year&locale=en|hi` — PDF stream. Parent-of-kid OR teacher-of-class OR schoolAdmin.
+
+### DPDP Consent & Erasure (COMPLIANCE-002)
+
+- `POST /api/dpdp/consent` — record consent post-OTP affirmation; body `{ kidId, scope, method }`.
+- `GET /api/dpdp/consent` — parent's consent status list.
+- `DELETE /api/dpdp/consent?kidId=&scope=` — revoke; stops downstream activity within 1 minute.
+- `GET /api/dpdp/consent/audit?kidId=` — full audit log.
+- `POST /api/dpdp/erasure` — queue erasure request; cascades within 30 days.
+- `GET /api/dpdp/erasure/[id]` — status + receipt URL.
+- `GET /api/dpdp/export?kidId=` — subject-access data export (JSON + PDF). Rate-limit: 1/7 days per kid.
+
+### Compliance Report v2 (COMPLIANCE-001)
+
+- `GET /api/admin/compliance?version=2&from=&to=` — enhanced PDF with DPDP register, teacher AI usage, CBSE coverage. schoolAdmin only. Cached in `complianceCache` for 1 day.
+
+### ERP Integration Layer (INTEGRATION-001)
+
+- `GET /api/integrations/erp` — current config + last sync health.
+- `PUT /api/integrations/erp` — `{ provider, credentials }` (encrypted server-side).
+- `DELETE /api/integrations/erp`.
+- `POST /api/integrations/erp/test` — validate credentials.
+- `POST /api/integrations/erp/sync` — manual sync trigger.
+
+### Consent & role notes
+
+- Every AI-generating endpoint (`/api/hpc`, `/api/papers`, `/api/lessons`, `/api/comms/*`, `/api/assignments/.../suggest-feedback`) logs a `teacherAiUsage` record and checks consent before writing / sending.
+- Every cross-student batch endpoint must isolate prompt context per student (no bleed).
+- All PDF exports route through `lib/pdf/schoolBranding.ts` to apply school letterhead uniformly.

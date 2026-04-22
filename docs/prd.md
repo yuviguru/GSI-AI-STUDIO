@@ -176,3 +176,64 @@ India's CBSE mandate (October 2025 announcement) requires AI & CT curriculum fro
 - [ ] Pricing validation with target parents (₹299/mo resonance testing)
 - [ ] Data retention policy for anonymous Phase 1 creations
 - [ ] WhatsApp Business API vs simple share links for Phase 1
+
+---
+
+## Phase 4: School Productivity Suite (Months 6-12)
+
+Phase 3 shipped school plumbing (teacher / school admin dashboards, classes, assignments, submissions, analytics, compliance export). Phase 4 turns that into a product schools actually buy — AI-powered teacher time-savers, multi-channel parent comms, DPDP compliance infrastructure, and an ERP integration layer. Full ticket set: `stories/phase-4/`.
+
+### Track A — Teacher Time-Savers
+
+- **F11: HPC Narrative Assistant** (ADMIN-004) — NEP Holistic Progress Card drafts from student data + teacher tags; English + Hindi; CBSE-template PDF export.
+- **F12: CBSE Blueprint-Aware Question Paper Generator** (ADMIN-005) — draft papers from chapters + Bloom's distribution; BYO chapter PDF or built-in NCERT index; print-ready.
+- **F13: AI-Assisted Submission Feedback** (ADMIN-006) — "Suggest feedback" button in submission review; teacher always edits before approving.
+- **F14: Lesson Plan Generator** (ADMIN-007) — chapter + duration → NEP-aligned plan; one-click "create assignment from plan".
+
+### Track B — School Admin & Operations
+
+- **F15: Multi-Channel Parent Weekly Digest** (COMMS-001) — Telegram + WhatsApp; provider-agnostic layer; parent chooses channel.
+- **F16: PTM Notes + Ad-Hoc Parent Messaging** (COMMS-002).
+- **F17: Substitute-Teacher Finder** (ADMIN-008) — ranks candidates + drafts sub instructions.
+- **F18: Compliance Report v2 + DPDP Artifact** (COMPLIANCE-001).
+- **F19: School Settings + White-Label Branding** (ADMIN-009) — logo + letterhead flow through all PDF exports.
+
+### Track C — Student-Facing Reinforcement
+
+- **F20: Assignment & Activity Notifications** (NOTIF-001).
+- **F21: Class-Shared Creation Feed** (ENGAGE-008) — positive-only reactions; teacher-gated sharing.
+- **F22: Parent-Facing Progress Report PDF** (REPORT-001).
+
+### Track D — Platform Investments
+
+- **F23: English + Hindi AI-Output Layer** (PLATFORM-007) — pluggable for more locales later.
+- **F24: NCERT Chapter Index** (CONTENT-001) — seed data for A2 / A4 generators.
+- **F25: DPDP Consent + Erasure Infrastructure** (COMPLIANCE-002).
+- **F26: AI Evaluation & Safety Harness** (QA-001).
+- **F27: ERP Integration Layer** (INTEGRATION-001) — provider interface + LocalProvider + Fedena reference adapter.
+
+### Explicitly Out of Scope — Trap Features
+
+- Auto-grading descriptive handwritten answers (59% accuracy = reputation risk).
+- Fully autonomous IEPs (human-in-the-loop only).
+- Fee reminders / dunning (regulated, sensitive).
+- Unsupervised AI chatbots for kids (DPDP trap).
+- Full ERP replacement (integrate, don't compete).
+- Full student-facing UI i18n (separate epic).
+
+### Phase 4 Success Metrics (6-month horizon)
+
+- 20 schools using ≥2 new features daily
+- Teachers self-report ≥5 hrs/week saved (survey n≥50)
+- HPC narrative drafts accepted with <30% edits
+- NPS ≥40 from school admins
+- ≥30% of Phase 3 schools upgrade to paid tier
+- Zero DPDP incidents in audit
+
+### Phase 4 Go-to-Market
+
+- **Pricing**: per-student annual, volume-tiered (ballpark ₹100-300/student/year, first 50 free on trial).
+- **Pilot window**: April-June 2026 Indian school buying cycle.
+- **Reference strategy**: 5 flagship pilot schools per tier-1 city before broadening.
+- **Positioning**: "AI layer on top of your ERP", not replacement.
+- **Support**: local-language phone support + in-product guided onboarding per dashboard role.
