@@ -84,7 +84,7 @@ const GENERIC_ERROR = 'Something went wrong — try again in a moment!';
  *  module-level constant rather than re-imported so the bot stays
  *  route-independent. If these drift, the server is source-of-truth —
  *  the kid will just see the 400 error from the register route. */
-const CONCURRENT_ACTIVE_CAP = 5;
+const CONCURRENT_ACTIVE_CAP = 3;
 
 const BUSINESS_TYPES: readonly CeoBusinessType[] = [
   'lemonade',
@@ -365,7 +365,7 @@ async function requireLinkedKid(
  *
  *  Mirrors the web `/ceo` landing-page model so the kid has the same mental
  *  model in both channels. Cap matches MAX_CONCURRENT_ACTIVE_BUSINESSES
- *  (5 — server-enforced in /api/ceo/register). */
+ *  (3 — server-enforced in /api/ceo/register). */
 async function handleCeo(
   message: BotIncomingMessage,
   send: Send,
