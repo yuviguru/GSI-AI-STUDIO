@@ -241,6 +241,127 @@ describe('TelegramAdapter.parseWebhook — forwards', () => {
     expect(result!.type).toBe('forward');
     expect(result!.forwardedFrom).toMatch(/class 5a/i);
   });
+
+  // Bot API 7.0 (Dec 2023) removed forward_from / forward_from_chat and
+  // replaced them with a single forward_origin union. Every modern
+  // Telegram client now sends only forward_origin, so missing this path
+  // meant the homework module never saw a forward at all.
+  it('classifies forward_origin=user as type=forward', () => {
+    const adapter = mk();
+    const result = adapter.parseWebhook(
+      {
+        update_id: 1,
+        message: {
+          message_id: 1,
+          date: 1,
+          chat: { id: 1, type: 'private' },
+          from: { id: 1, first_name: 'x' },
+          text: 'homework questions',
+          forward_origin: {
+            type: 'user',
+            date: 1,
+            sender_user: { id: 999, first_name: 'Teacher' },
+          },
+        },
+      },
+      {},
+    );
+    expect(result!.type).toBe('forward');
+    expect(result!.forwardedFrom).toMatch(/teacher/i);
+  });
+
+  it('classifies forward_origin=hidden_user as type=forward', () => {
+    const adapter = mk();
+    const result = adapter.parseWebhook(
+      {
+        update_id: 1,
+        message: {
+          message_id: 1,
+          date: 1,
+          chat: { id: 1, type: 'private' },
+          from: { id: 1, first_name: 'x' },
+          text: 'homework questions',
+          forward_origin: {
+            type: 'hidden_user',
+            date: 1,
+            sender_user_name: 'Anonymous Parent',
+          },
+        },
+      },
+      {},
+    );
+    expect(result!.type).toBe('forward');
+    expect(result!.forwardedFrom).toMatch(/anonymous parent/i);
+  });
+
+  it('classifies forward_origin=chat as type=forward (sender_chat.title)', () => {
+    const adapter = mk();
+    const result = adapter.parseWebhook(
+      {
+        update_id: 1,
+        message: {
+          message_id: 1,
+          date: 1,
+          chat: { id: 1, type: 'private' },
+          from: { id: 1, first_name: 'x' },
+          text: 'homework questions',
+          forward_origin: {
+            type: 'chat',
+            date: 1,
+            sender_chat: { id: 700, title: 'Parents WhatsApp Group', type: 'group' },
+          },
+        },
+      },
+      {},
+    );
+    expect(result!.type).toBe('forward');
+    expect(result!.forwardedFrom).toMatch(/parents whatsapp/i);
+  });
+
+  it('classifies forward_origin=channel as type=forward (chat.title)', () => {
+    const adapter = mk();
+    const result = adapter.parseWebhook(
+      {
+        update_id: 1,
+        message: {
+          message_id: 1,
+          date: 1,
+          chat: { id: 1, type: 'private' },
+          from: { id: 1, first_name: 'x' },
+          text: 'homework questions',
+          forward_origin: {
+            type: 'channel',
+            date: 1,
+            chat: { id: 800, title: 'Class 5A Channel', type: 'channel' },
+            message_id: 42,
+          },
+        },
+      },
+      {},
+    );
+    expect(result!.type).toBe('forward');
+    expect(result!.forwardedFrom).toMatch(/class 5a/i);
+  });
+
+  it('falls back to "unknown" for unrecognised forward_origin types', () => {
+    const adapter = mk();
+    const result = adapter.parseWebhook(
+      {
+        update_id: 1,
+        message: {
+          message_id: 1,
+          date: 1,
+          chat: { id: 1, type: 'private' },
+          from: { id: 1, first_name: 'x' },
+          text: 'homework questions',
+          forward_origin: { type: 'future_variant', date: 1 },
+        },
+      },
+      {},
+    );
+    expect(result!.type).toBe('forward');
+    expect(result!.forwardedFrom).toBe('unknown');
+  });
 });
 
 describe('TelegramAdapter.parseWebhook — rejection', () => {

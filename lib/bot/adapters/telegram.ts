@@ -58,6 +58,30 @@ interface TelegramDocument {
   mime_type?: string;
 }
 
+/**
+ * `forward_origin` (Bot API 7.0+) replaces the legacy `forward_from` /
+ * `forward_from_chat` fields. The legacy fields were removed from the
+ * webhook payload in December 2023, so every modern Telegram client
+ * sends only `forward_origin` when a message is forwarded.
+ * https://core.telegram.org/bots/api#messageorigin
+ */
+type TelegramMessageOrigin =
+  | { type: 'user'; date: number; sender_user: TelegramUser }
+  | { type: 'hidden_user'; date: number; sender_user_name: string }
+  | {
+      type: 'chat';
+      date: number;
+      sender_chat: TelegramChat;
+      author_signature?: string;
+    }
+  | {
+      type: 'channel';
+      date: number;
+      chat: TelegramChat;
+      message_id: number;
+      author_signature?: string;
+    };
+
 interface TelegramMessage {
   message_id: number;
   from?: TelegramUser;
@@ -69,6 +93,7 @@ interface TelegramMessage {
   photo?: TelegramPhotoSize[];
   forward_from?: TelegramUser;
   forward_from_chat?: TelegramChat;
+  forward_origin?: TelegramMessageOrigin;
   reply_to_message?: TelegramMessage;
 }
 
@@ -120,6 +145,31 @@ function toTelegramParseMode(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+/**
+ * Derive a human-readable sender name from a Bot API 7.0+ `forward_origin`.
+ * Returns `null` when the origin shape is unrecognised so the caller can
+ * fall back to `'unknown'` (matches the legacy-field branch's behaviour).
+ */
+function extractForwardOriginName(origin: Record<string, unknown>): string | null {
+  const originType = typeof origin.type === 'string' ? origin.type : null;
+  if (originType === 'user') {
+    const user = isRecord(origin.sender_user) ? origin.sender_user : null;
+    return user && typeof user.first_name === 'string' ? user.first_name : null;
+  }
+  if (originType === 'hidden_user') {
+    return typeof origin.sender_user_name === 'string' ? origin.sender_user_name : null;
+  }
+  if (originType === 'chat') {
+    const chat = isRecord(origin.sender_chat) ? origin.sender_chat : null;
+    return chat && typeof chat.title === 'string' ? chat.title : null;
+  }
+  if (originType === 'channel') {
+    const chat = isRecord(origin.chat) ? origin.chat : null;
+    return chat && typeof chat.title === 'string' ? chat.title : null;
+  }
+  return null;
 }
 
 // ─── Adapter ───────────────────────────────────────────────────────────────
@@ -370,7 +420,9 @@ export class TelegramAdapter implements MessengerAdapter {
 
     const forwardFrom = isRecord(msg.forward_from) ? msg.forward_from : null;
     const forwardFromChat = isRecord(msg.forward_from_chat) ? msg.forward_from_chat : null;
-    const isForward = forwardFrom !== null || forwardFromChat !== null;
+    const forwardOrigin = isRecord(msg.forward_origin) ? msg.forward_origin : null;
+    const isForward =
+      forwardFrom !== null || forwardFromChat !== null || forwardOrigin !== null;
 
     // Derive the payload type (attachment wins over text; forward only overrides type).
     let type: BotIncomingMessageType;
@@ -415,6 +467,8 @@ export class TelegramAdapter implements MessengerAdapter {
         forwardedFrom = forwardFrom.first_name;
       } else if (forwardFromChat && typeof forwardFromChat.title === 'string') {
         forwardedFrom = forwardFromChat.title;
+      } else if (forwardOrigin) {
+        forwardedFrom = extractForwardOriginName(forwardOrigin) ?? 'unknown';
       } else {
         forwardedFrom = 'unknown';
       }

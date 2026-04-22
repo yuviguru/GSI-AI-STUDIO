@@ -237,13 +237,35 @@ async function extractTextFromForward(
 }
 
 function deriveSourceChannelId(message: BotIncomingMessage): string | null {
-  // Telegram populates forward_from_chat for channel forwards. The parsed
-  // message carries the raw Telegram payload — dig into it carefully.
+  // Pre-Bot-API-7.0 clients still send forward_from_chat; newer ones send
+  // forward_origin (which we also need for anything forwarded after Dec 2023).
   const raw = message.raw as
-    | { message?: { forward_from_chat?: { id?: number | string } } }
+    | {
+        message?: {
+          forward_from_chat?: { id?: number | string };
+          forward_origin?: {
+            type?: string;
+            chat?: { id?: number | string };
+            sender_chat?: { id?: number | string };
+          };
+        };
+      }
     | undefined;
-  const id = raw?.message?.forward_from_chat?.id;
-  return typeof id === 'number' || typeof id === 'string' ? String(id) : null;
+  const msg = raw?.message;
+  const legacyId = msg?.forward_from_chat?.id;
+  if (typeof legacyId === 'number' || typeof legacyId === 'string') {
+    return String(legacyId);
+  }
+  const origin = msg?.forward_origin;
+  if (origin?.type === 'channel') {
+    const id = origin.chat?.id;
+    if (typeof id === 'number' || typeof id === 'string') return String(id);
+  }
+  if (origin?.type === 'chat') {
+    const id = origin.sender_chat?.id;
+    if (typeof id === 'number' || typeof id === 'string') return String(id);
+  }
+  return null;
 }
 
 async function savePendingConfirm(
