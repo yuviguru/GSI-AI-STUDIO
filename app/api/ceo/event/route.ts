@@ -4,7 +4,7 @@ import { requireAuthWithKid } from '@/lib/auth-utils';
 import { ceoEventRequestSchema } from '@/lib/validators';
 import {
   getCeoBusiness,
-  getPendingEventForBusiness,
+  getPendingRegularForBusiness,
   saveCeoEvent,
   reserveRegularEventSlot,
   releaseRegularEventSlot,
@@ -44,13 +44,14 @@ export async function POST(request: NextRequest) {
       throw new AppException('FORBIDDEN', 'You do not own this business', 403);
     }
 
-    // Idempotency: if a pending event already exists (could be a regular OR
-    // a milestone delivered by the cron), return it unchanged so repeated
-    // polls don't spam the LLM or duplicate events. Does not touch the cap.
-    const pending = await getPendingEventForBusiness(businessId);
-    if (pending) {
+    // Phase 3 Daily Rhythm: this endpoint only deals with REGULAR events
+    // (pull model). A pending MILESTONE should NOT short-circuit the pull
+    // — the two pending slots are independent. We only check for a pending
+    // regular.
+    const pendingRegular = await getPendingRegularForBusiness(businessId);
+    if (pendingRegular) {
       return apiSuccess({
-        event: pending,
+        event: pendingRegular,
         pendingDecisionExists: true,
         regularEventsToday: business.dailyRegularEventCount ?? 0,
         regularEventsCap: REGULAR_EVENTS_PER_DAY_CAP,

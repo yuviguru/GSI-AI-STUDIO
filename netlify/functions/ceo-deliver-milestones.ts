@@ -1,31 +1,32 @@
 /**
  * Scheduled Kid CEO milestone-event delivery — "TODAY'S BIG CHOICE" cron.
  *
- * Runs every 2 hours (see the `schedule` export at the bottom). On each
- * invocation:
- *   1. Queries ceoBusiness for `status == 'active'` AND
- *      `lastMilestoneDeliveredAt <= now - minIntervalHoursFor(pace)`.
- *   2. For each due business, picks the next milestone, generates a
- *      MILESTONE event (using the two-path engine and anti-repetition
- *      context), and saves it via saveCeoEvent with deliveredVia='scheduled'.
- *   3. Stamps lastMilestoneDeliveredAt = now on the business (so the next
- *      cron tick doesn't double-fire).
- *   4. Best-effort: pushes a "⭐ TODAY'S BIG CHOICE ⭐" ping to every
- *      linked Telegram chat for the owning kid. If the bot send fails,
- *      the event is still in Firestore — the kid will find it when they
- *      open the web app or hit /ceo in the bot.
+ * Phase 3 Daily Rhythm (decisions D1/D3/D5 locked in
+ * `stories/phase-3/KIDCEO-PHASE-3-DECISIONS.md`):
+ *   1. Fires every 2h (Netlify schedule). On each invocation, queries
+ *      ceoBusiness for `status == 'active'` AND
+ *      `nextMilestoneScheduledAt <= now`. Businesses without the new
+ *      field (pre-Phase-3) are also picked up via the legacy interval
+ *      query until the migration window closes.
+ *   2. For each candidate, verifies the scheduled tick is inside the
+ *      2h delivery window (so a tick that slipped past the window waits
+ *      for the next day's 18:30 IST instead of surprise-pinging at 9pm).
+ *   3. If `pendingMilestoneEventId` is set AND it's a stale milestone
+ *      from a PRIOR IST day, calls `expireStaleMilestone` to mark it
+ *      `status: 'expired'` and apply the D3 scaling penalty (rep -1xM,
+ *      morale -1xM, cash -R50xM when category is cash-adjacent).
+ *   4. Picks the next milestone, generates + saves via saveCeoEvent
+ *      (which also sets `pendingMilestoneEventId` atomically).
+ *   5. Stamps `lastMilestoneDeliveredAt` + bumps
+ *      `nextMilestoneScheduledAt` to tomorrow's 18:30 IST.
+ *   6. Best-effort: pushes a "⭐ TODAY'S BIG CHOICE ⭐" ping to every
+ *      linked Telegram chat for the kid. If the bot send fails, the
+ *      event is still in Firestore — the kid will find it on web.
  *
- * Pacing:
- *   - 15-day pace → ~1.3 milestones/day → min interval ~18h
- *   - 30-day pace → ~0.7/day           → min interval ~34h
- *   - 45-day pace → ~0.5/day           → min interval ~48h
- *   Cron fires every 2h so the 18/34/48h thresholds resolve within one tick
- *   of the ideal time. We don't try to align to the kid's local 6:30am —
- *   that would require per-kid timezone data we don't have yet.
- *
- * Idempotency: if a business still has a pending event (kid hasn't decided
- * the last milestone), we SKIP delivery — don't pile up two milestones on
- * top of each other. The kid decides yesterday's, next cron picks up today's.
+ * Delivery window: we target 18:30 IST ± 2h (the 2h tick frequency means
+ * we catch the target within one cron tick). A business that misses that
+ * window today doesn't get a late-evening surprise — it waits for
+ * tomorrow's tick.
  *
  * Auth: protected by `BOT_SETUP_SECRET` the same way bot-setup is — callers
  * (including Netlify's scheduler, which hits the endpoint with no auth) can
@@ -37,6 +38,9 @@
  * Environment variables:
  *   - BOT_SETUP_SECRET             (required) — same secret bot-setup uses
  *   - TELEGRAM_BOT_TOKEN_CEO       (required) — for the push-to-chat side
+ *   - CEO_MILESTONE_DELIVERY_HOUR_IST (optional, default 18) — override the
+ *                                 daily delivery hour (0-23, IST) without a
+ *                                 code change. Minute is locked at 30.
  */
 
 import type { Handler, HandlerContext } from '@netlify/functions';
@@ -45,14 +49,23 @@ import { isAuthorizedCronCall } from '../../lib/netlify-cron-auth';
 import { Timestamp } from 'firebase-admin/firestore';
 import { TelegramAdapter } from '../../lib/bot/adapters/telegram';
 import {
-  getPendingEventForBusiness,
+  expireStaleMilestone,
+  getCeoBusiness,
+  getPendingMilestoneForBusiness,
   getRecentEventsForBusiness,
-  listBusinessesDueForMilestone,
+  listBusinessesDueByScheduledAt,
   markMilestoneDelivered,
   saveCeoEvent,
+  type StaleMilestoneExpiryResult,
 } from '../../lib/firebase/ceoService';
 import { generateMilestoneEvent } from '../../lib/ceo/eventEngine';
 import { pickNextMilestone } from '../../lib/ceo/phases';
+import {
+  DEFAULT_MILESTONE_HOUR_IST,
+  DEFAULT_MILESTONE_MINUTE_IST,
+  DELIVERY_TOLERANCE_MS,
+  isSameIstDay,
+} from '../../lib/ceo/cadence';
 import { findBotSessionsForKid } from '../../lib/bot/services/sessionStore';
 import type { CeoBusiness, CeoEvent, CeoPace } from '../../types';
 import { coerceLegacyPace } from '../../lib/ceo/constants';
@@ -61,17 +74,14 @@ const DEPLOY_SECRET = process.env.BOT_SETUP_SECRET;
 const CEO_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN_CEO ?? '';
 const CEO_BOT_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET_CEO;
 
-/** How many hours since the last milestone before a business is "due" for
- *  the next one. Pace-aware: shorter pace → more frequent milestones. */
-function minIntervalHoursFor(pace: CeoPace): number {
-  switch (pace) {
-    case '15':
-      return 18; // ~1.3 milestones/day
-    case '30':
-      return 34; // ~0.7/day
-    case '45':
-      return 48; // ~0.5/day
-  }
+/** Resolve the current delivery hour from env (0-23), falling back to the
+ *  D1 default (18 = 6:30 PM IST). Minute is locked at 30. */
+function deliveryHourIst(): number {
+  const raw = process.env.CEO_MILESTONE_DELIVERY_HOUR_IST;
+  if (!raw) return DEFAULT_MILESTONE_HOUR_IST;
+  const n = Number.parseInt(raw, 10);
+  if (Number.isNaN(n) || n < 0 || n > 23) return DEFAULT_MILESTONE_HOUR_IST;
+  return n;
 }
 
 /** Max businesses handled per cron tick. Keeps the worst-case run under
@@ -84,9 +94,16 @@ interface DeliveryOutcome {
   businessId: string;
   kidId: string;
   pace: CeoPace;
-  status: 'delivered' | 'skipped-pending' | 'skipped-no-milestone' | 'failed';
+  status:
+    | 'delivered'
+    | 'skipped-pending-today'
+    | 'skipped-out-of-window'
+    | 'skipped-no-milestone'
+    | 'expired-and-delivered'
+    | 'failed';
   reason?: string;
   pushedToChats?: number;
+  expiredPenalty?: { reputation: number; morale: number; cash: number; stakesMultiplier: number };
 }
 
 const baseHandler: Handler = async (event, _context: HandlerContext) => {
@@ -105,12 +122,12 @@ const baseHandler: Handler = async (event, _context: HandlerContext) => {
       )
     : null;
 
-  // Query businesses that MIGHT be due — using the shortest interval (15-pace
-  // = 18h) as the filter, then per-business filter on actual pace inside the
-  // loop. This keeps the Firestore query O(log n) without needing a per-pace
-  // index explosion.
-  const candidates = await listBusinessesDueForMilestone({
-    minIntervalMs: 18 * 60 * 60 * 1000,
+  // Phase 3 fixed-hour gate — query by `nextMilestoneScheduledAt <= now`.
+  // We fetch up to 3× the per-tick budget so a handful of "not yet due
+  // today" candidates can be skipped without starving real deliveries.
+  const now = new Date();
+  const candidates = await listBusinessesDueByScheduledAt({
+    upTo: now,
     limit: MAX_BUSINESSES_PER_RUN * 3,
   });
 
@@ -121,28 +138,82 @@ const baseHandler: Handler = async (event, _context: HandlerContext) => {
     if (delivered >= MAX_BUSINESSES_PER_RUN) break;
 
     const pace = coerceLegacyPace(business.pace);
-    const minInterval = minIntervalHoursFor(pace) * 60 * 60 * 1000;
-    const lastMs = business.lastMilestoneDeliveredAt
-      ? (business.lastMilestoneDeliveredAt as unknown as Timestamp).toMillis?.() ??
-        toMillisSafe(business.lastMilestoneDeliveredAt)
-      : 0;
-    if (Date.now() - lastMs < minInterval) {
-      // Business came back in the wider "18h" query but its specific pace
-      // says it's not due yet. Skip without logging noise.
-      continue;
-    }
+    const scheduledAt = business.nextMilestoneScheduledAt
+      ? new Date(
+          (business.nextMilestoneScheduledAt as unknown as Timestamp).toMillis?.() ??
+            toMillisSafe(business.nextMilestoneScheduledAt),
+        )
+      : null;
 
-    // Don't double-fire on top of a pending event.
-    const pending = await getPendingEventForBusiness(business.id);
-    if (pending) {
+    // Out-of-window guard: the scheduled tick passed and we're already
+    // >2h past it. Skip rather than delivering at a weird hour — the next
+    // cron tick (max 2h later) will try again once we're back inside a
+    // fresh window or we've rolled to tomorrow's target.
+    if (scheduledAt && now.getTime() - scheduledAt.getTime() > DELIVERY_TOLERANCE_MS) {
       outcomes.push({
         businessId: business.id,
         kidId: business.kidId,
         pace,
-        status: 'skipped-pending',
-        reason: `pending event ${pending.id} not decided yet`,
+        status: 'skipped-out-of-window',
+        reason: `scheduled=${scheduledAt.toISOString()} now=${now.toISOString()}`,
       });
       continue;
+    }
+
+    // Already delivered today (same IST day) — short-circuit to avoid
+    // a double-mint if the scheduled pointer hasn't rolled yet.
+    const lastDelivered = business.lastMilestoneDeliveredAt
+      ? new Date(
+          (business.lastMilestoneDeliveredAt as unknown as Timestamp).toMillis?.() ??
+            toMillisSafe(business.lastMilestoneDeliveredAt),
+        )
+      : null;
+    if (lastDelivered && isSameIstDay(now, lastDelivered)) {
+      outcomes.push({
+        businessId: business.id,
+        kidId: business.kidId,
+        pace,
+        status: 'skipped-pending-today',
+        reason: 'milestone already delivered this IST day',
+      });
+      continue;
+    }
+
+    // Expire yesterday's stale milestone (if any) BEFORE minting today's.
+    // Applies the D3 scaling penalty atomically.
+    let expiredPenalty: StaleMilestoneExpiryResult['penalty'] | undefined;
+    const pendingMilestone = await getPendingMilestoneForBusiness(business.id);
+    if (pendingMilestone) {
+      const pendingCreatedAt = pendingMilestone.createdAt
+        ? new Date(
+            (pendingMilestone.createdAt as unknown as Timestamp).toMillis?.() ??
+              toMillisSafe(pendingMilestone.createdAt),
+          )
+        : null;
+      if (!pendingCreatedAt || !isSameIstDay(now, pendingCreatedAt)) {
+        const expired = await expireStaleMilestone(business.id);
+        expiredPenalty = expired?.penalty;
+        // Re-fetch the business so downstream uses the post-penalty cash /
+        // rep / morale when generating today's milestone context.
+        try {
+          const refreshed = await getCeoBusiness(business.id);
+          Object.assign(business, refreshed);
+        } catch {
+          // Business vanished mid-loop (deleted) — skip quietly on the
+          // next iteration; nothing to deliver to anyway.
+        }
+      } else {
+        // Pending AND same IST day → delivery already happened today,
+        // skip.
+        outcomes.push({
+          businessId: business.id,
+          kidId: business.kidId,
+          pace,
+          status: 'skipped-pending-today',
+          reason: `pending milestone ${pendingMilestone.id} from today`,
+        });
+        continue;
+      }
     }
 
     const milestone = pickNextMilestone(business.phase, business.phaseMilestones);
@@ -167,8 +238,9 @@ const baseHandler: Handler = async (event, _context: HandlerContext) => {
         businessId: business.id,
         kidId: business.kidId,
         pace,
-        status: 'delivered',
+        status: expiredPenalty ? 'expired-and-delivered' : 'delivered',
         pushedToChats: event.pushedToChats,
+        expiredPenalty,
       });
     } catch (err) {
       outcomes.push({

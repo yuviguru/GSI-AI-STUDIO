@@ -114,17 +114,34 @@ export interface CeoBusiness {
   completedAt: Timestamp | null;
 
   // ── Regular-event daily cap + milestone-delivery tracking ─────────────
-  /** Count of REGULAR events decided today (resets at UTC midnight so the
-   *  reset lines up cleanly with Firestore's TTL/scheduled-function clock).
-   *  Cap enforced in `/api/ceo/regular-event` + bot. */
+  /** Count of REGULAR events decided today (resets at IST midnight per
+   *  Phase 3 Daily Rhythm decision D2). Cap enforced in
+   *  `/api/ceo/event` + bot. */
   dailyRegularEventCount?: number;
-  /** UTC-date key (`YYYY-MM-DD`) of the last regular-event decision; used
-   *  to decide whether to reset `dailyRegularEventCount` above. */
+  /** IST-date key (`YYYY-MM-DD`, Asia/Kolkata) of the last regular-event
+   *  decision. Used to decide whether to reset `dailyRegularEventCount`.
+   *  Named `…Utc` for historical reasons; now stores the IST day per D2. */
   lastRegularEventDayUtc?: string;
-  /** Unix millis of the last MILESTONE event generated for this business.
-   *  The daily-delivery cron checks this to avoid firing a second milestone
-   *  event inside the same kid-day window. */
+  /** Timestamp of the last MILESTONE event generated for this business.
+   *  The daily-delivery cron checks this to avoid double-firing on the
+   *  same IST day. */
   lastMilestoneDeliveredAt?: Timestamp | null;
+
+  // ── Phase 3 Daily Rhythm: dual pending slots + scheduled milestone ────
+  /** Current pending MILESTONE event, or null. Set by saveCeoEvent when
+   *  an `eventType === 'milestone'` event is minted; cleared atomically
+   *  by recordEventDecision on decide or by expireStaleMilestone when
+   *  the next daily tick finds an un-answered stale milestone. */
+  pendingMilestoneEventId?: string | null;
+  /** Current pending REGULAR event, or null. Set when a regular is minted
+   *  (either auto-chained after another regular, or pulled by the kid);
+   *  cleared on decide. Coexists with pendingMilestoneEventId — they
+   *  never block each other. */
+  pendingRegularEventId?: string | null;
+  /** When the fixed-hour delivery cron should next mint a milestone.
+   *  Set to the next 18:30 IST tick after register or the last delivery.
+   *  Drives the `status + nextMilestoneScheduledAt` composite index. */
+  nextMilestoneScheduledAt?: Timestamp | null;
 }
 
 /** Firestore document in `ceoEvents` collection — a single decision event for a business.
