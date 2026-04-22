@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { Wallet, Star, Smile, Flag } from 'lucide-react';
 import { PHASE_LABELS } from '@/lib/ceo/constants';
 import { PHASE_CONFIG } from '@/lib/ceo/phases';
@@ -28,9 +29,26 @@ export function BusinessDashboard({ business }: BusinessDashboardProps) {
   return (
     <div className="rounded-2xl bg-white shadow-card p-5 flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-bold font-display">{business.businessName}</h2>
-          <p className="text-xs text-slate-500 capitalize">{business.businessType.replace('_', ' ')}</p>
+        <div className="flex items-center gap-3">
+          {business.brandAssets?.logoUrl ? (
+            <Image
+              src={business.brandAssets.logoUrl}
+              alt={`${business.businessName} logo`}
+              width={48}
+              height={48}
+              className="h-12 w-12 rounded-xl object-cover shadow-sm"
+              unoptimized
+            />
+          ) : null}
+          <div>
+            <h2 className="text-lg font-bold font-display">{business.businessName}</h2>
+            <p className="text-xs text-slate-500 capitalize">{business.businessType.replace('_', ' ')}</p>
+            {business.brandAssets?.motto ? (
+              <p className="mt-0.5 text-xs italic text-slate-600">
+                “{business.brandAssets.motto}”
+              </p>
+            ) : null}
+          </div>
         </div>
         <span
           className={cn(

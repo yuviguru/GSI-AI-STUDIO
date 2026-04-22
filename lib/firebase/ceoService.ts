@@ -162,6 +162,7 @@ function docToCeoEvent(doc: FirebaseFirestore.DocumentSnapshot): CeoEvent {
     namedTitle: data.namedTitle ?? undefined,
     scheduledFor: data.scheduledFor ?? null,
     stakesMultiplier: data.stakesMultiplier ?? undefined,
+    agentWorkflowId: data.agentWorkflowId ?? undefined,
   };
 }
 
@@ -446,6 +447,7 @@ export async function saveCeoEvent(
     namedTitle: event.namedTitle,
     scheduledFor: event.scheduledFor ?? null,
     stakesMultiplier: event.stakesMultiplier,
+    agentWorkflowId: event.agentWorkflowId,
   };
 
   const businessRef = adminDb.collection(CEO_BUSINESS_COLLECTION).doc(event.businessId);

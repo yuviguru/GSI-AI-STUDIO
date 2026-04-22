@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { Timestamp } from 'firebase-admin/firestore';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { requireAuthWithKid } from '@/lib/auth-utils';
 import { ceoAgentAcceptSchema } from '@/lib/validators';
@@ -6,7 +7,8 @@ import {
   acceptArtifact,
   getArtifact,
 } from '@/lib/firebase/ceoArtifactService';
-import type { CeoArtifactAsset } from '@/types';
+import { adminDb } from '@/lib/firebase/admin';
+import type { CeoArtifactAsset, CeoBusiness, CeoEvent } from '@/types';
 
 /**
  * POST /api/ceo/agents/accept
@@ -62,6 +64,19 @@ export async function POST(request: NextRequest) {
       attachTo,
     });
 
+    // When the artifact was generated to resolve a milestone event, mark
+    // that event decided + resolve the milestone + clear the pending
+    // pointer in one transaction. The kid's AI points award and phase-
+    // advance flow are handled by the legacy decide route at present;
+    // agent-driven milestones don't award dimension scores (tool use,
+    // not personality), so we just synthesise a neutral decided state.
+    if (accepted.decisionEventId && accepted.businessId) {
+      await resolveMilestoneFromAgentAccept({
+        eventId: accepted.decisionEventId,
+        businessId: accepted.businessId,
+      });
+    }
+
     return apiSuccess({ artifact: accepted });
   } catch (error) {
     return handleApiError(error);
@@ -101,6 +116,54 @@ function kindOf(asset: CeoArtifactAsset): string {
       return 'unknown';
     }
   }
+}
+
+async function resolveMilestoneFromAgentAccept(params: {
+  eventId: string;
+  businessId: string;
+}): Promise<void> {
+  const eventRef = adminDb.collection('ceoEvents').doc(params.eventId);
+  const businessRef = adminDb.collection('ceoBusiness').doc(params.businessId);
+
+  await adminDb.runTransaction(async (tx) => {
+    const [eventSnap, businessSnap] = await Promise.all([
+      tx.get(eventRef),
+      tx.get(businessRef),
+    ]);
+    if (!eventSnap.exists || !businessSnap.exists) return;
+    const event = eventSnap.data() as CeoEvent;
+    const business = businessSnap.data() as CeoBusiness;
+    if (event.status !== 'pending') return; // Already decided/expired — no-op.
+
+    const now = Timestamp.now();
+    const mergedMilestones = { ...business.phaseMilestones };
+    if (event.milestone) {
+      mergedMilestones[event.milestone] = 'resolved';
+    }
+
+    tx.update(eventRef, {
+      status: 'decided' as const,
+      decidedChoice: 'A' as const, // Synthetic — kids pick assets, not A/B/C.
+      decisionTimestamp: now,
+      responseTimeSeconds: 0,
+      scores: {
+        risk_calibration: 0,
+        capital_discipline: 0,
+        growth_instinct: 0,
+        operational_rigor: 0,
+        people_leadership: 0,
+        crisis_response: 0,
+      },
+      feedback: 'Your Design Agent delivered — brand assets saved.',
+    });
+
+    tx.update(businessRef, {
+      phaseMilestones: mergedMilestones,
+      totalDecisions: (business.totalDecisions ?? 0) + 1,
+      pendingMilestoneEventId: null,
+      updatedAt: now,
+    });
+  });
 }
 
 export const dynamic = 'force-dynamic';

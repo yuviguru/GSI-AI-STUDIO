@@ -237,19 +237,22 @@ export function buildEventPrompt(
   business: Pick<
     CeoBusiness,
     'businessName' | 'businessType' | 'location' | 'currentCash' | 'reputation' | 'morale' | 'employees' | 'startingCapital' | 'totalDecisions'
-  >,
+  > & { brandAssets?: CeoBusiness['brandAssets'] },
   opts: { recentEventTitles?: string[] } = {},
 ): string {
   const cash = business.currentCash.toLocaleString('en-IN');
   const startingCapital = business.startingCapital.toLocaleString('en-IN');
   const flavour = BUSINESS_TYPE_FLAVOUR[business.businessType];
   const recent = opts.recentEventTitles?.filter(Boolean) ?? [];
+  const brand = business.brandAssets
+    ? `\nBrand identity (stay consistent with this in every scenario):\n- Motto: “${business.brandAssets.motto}”\n- Voice: ${business.brandAssets.voice}\n`
+    : '';
 
   return `Business Type: ${business.businessType}
 Business Name: ${business.businessName}
 Location: ${business.location}
 Flavour: ${flavour}
-
+${brand}
 Current State (decision ${business.totalDecisions + 1}):
 - Cash: ₹${cash} (started with ₹${startingCapital})
 - Reputation: ${business.reputation}/100

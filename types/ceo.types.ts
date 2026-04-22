@@ -388,6 +388,11 @@ export interface CeoEvent {
    *  depending on the milestone beat. Absent on legacy events → treated as
    *  1.0. */
   stakesMultiplier?: number;
+  /** Phase 3 — when set, the web UI renders the AgentEventCard (briefing
+   *  + workflow + candidate review) instead of the legacy A/B/C picker.
+   *  Current values: `'brand.package'` for BRAND milestones. Absent on
+   *  all regular events and on milestones still on the legacy path. */
+  agentWorkflowId?: string;
 }
 
 /** Firestore document in `ceoProfiles` collection — shareable DNA Card / CEO profile snapshot.

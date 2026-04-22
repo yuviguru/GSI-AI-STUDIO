@@ -3,17 +3,22 @@
 import { useEffect, useState } from 'react';
 import { Clock, Trophy } from 'lucide-react';
 import { EventCard } from './EventCard';
+import { AgentEventCard } from './agents/AgentEventCard';
 import { Mascot } from '@/components/mascot/Mascot';
 import {
   DEFAULT_MILESTONE_HOUR_IST,
   DEFAULT_MILESTONE_MINUTE_IST,
   nextMilestoneAtIst,
 } from '@/lib/ceo/cadence';
-import type { CeoChoiceId, CeoEvent } from '@/types';
+import type { CeoBusiness, CeoChoiceId, CeoEvent } from '@/types';
 
 interface MilestoneZoneProps {
   pendingMilestone: CeoEvent | null;
+  business: CeoBusiness;
   onChoose: (choiceId: CeoChoiceId) => void;
+  /** Called when an agent-driven milestone resolves so the parent can
+   *  refresh pending pointers + cash. */
+  onAgentResolved?: () => void;
   loading?: boolean;
 }
 
@@ -30,7 +35,14 @@ interface MilestoneZoneProps {
  * habit. IST explicit so kids outside India see where the schedule comes
  * from; platform is India-first for now.
  */
-export function MilestoneZone({ pendingMilestone, onChoose, loading = false }: MilestoneZoneProps) {
+export function MilestoneZone({
+  pendingMilestone,
+  business,
+  onChoose,
+  onAgentResolved,
+  loading = false,
+}: MilestoneZoneProps) {
+  const isAgentDriven = !!pendingMilestone?.agentWorkflowId;
   return (
     <section
       aria-labelledby="milestone-zone-heading"
@@ -52,7 +64,15 @@ export function MilestoneZone({ pendingMilestone, onChoose, loading = false }: M
       </header>
 
       {pendingMilestone ? (
-        <EventCard event={pendingMilestone} onChoose={onChoose} disabled={loading} />
+        isAgentDriven ? (
+          <AgentEventCard
+            event={pendingMilestone}
+            business={business}
+            onResolved={() => onAgentResolved?.()}
+          />
+        ) : (
+          <EventCard event={pendingMilestone} onChoose={onChoose} disabled={loading} />
+        )
       ) : (
         <MilestoneCountdown />
       )}
