@@ -95,13 +95,50 @@ Total: ~8–10 weeks of focused work, shipped as 7 PRs.
 | D3 | Expired milestone penalty | **Scaling penalty** tied to `MILESTONE_STAKES_MULTIPLIER`: rep −1×M, morale −1×M, cash −₹50×M (cash only when category is cash-adjacent: pricing / funding / competition / capital). Floors at 0. See table below. | Yuvaraj | 2026-04-22 |
 | D4 | Regular auto-chain after decide | **Hybrid**: after a milestone → no auto-regular (kid chooses: pull or wait). After a regular → auto-chain next regular until 5/day cap hit. First regular of the day → kid pulls. | Yuvaraj | 2026-04-22 |
 | D5 | Telegram mirror of pull | **Yes** — full parity. `/ceo` shows "📋 Take a small decision (N/5 left)" button when appropriate; bot also respects the auto-chain hybrid. | Yuvaraj | 2026-04-22 |
-| A1–A5 | Agent primitive calls | _tbd — Batch 2_ | | |
+| A1 | Briefing form format | **Hybrid**: 2 MC + 1 short free-text (per-workflow schema) | Yuvaraj | 2026-04-22 |
+| A2 | Regeneration cost | **Always charged, per-step, with run-escalation**. Kids see a cost on every run so they learn LLM calls aren't free. See table below. | Yuvaraj | 2026-04-22 |
+| A3 | Artifact export | **Always on** — kid keeps their logos/posters/schedules forever, including post-sim | Yuvaraj | 2026-04-22 |
+| A4 | Trace visibility | **Collapsed by default**, tap "Show me how this worked" to expand | Yuvaraj | 2026-04-22 |
+| A5 | Team tab unlock | **Once `phase !== 'pre_launch'`** — kid earns it by answering their first milestone | Yuvaraj | 2026-04-22 |
 | B1–B5 | BRAND agent calls | _tbd — Batch 3_ | | |
 | C1–C2 | Marketing agent calls | _tbd — Batch 4_ | | |
 | E1–E3 | Ops / Finance agent calls | _tbd — Batch 4_ | | |
 | W1–W4 | Workflow builder calls | _tbd — Batch 5_ | | |
 | L1–L5 | AI Lab calls | _tbd — Batch 6_ | | |
 | P1–P3 | Pace options | _tbd — Batch 6_ | | |
+
+### A2 confirmed pricing model
+
+**Per-tool step cost** (the trace shows this on every run — teaches kids that each LLM/image call has a cost):
+
+| Tool | In-sim ₹ / call |
+|---|---|
+| Claude text generation | ₹5 |
+| Groq text generation | ₹2 |
+| Flux Schnell / SDXL image | ₹8 per image |
+| Brave Search | ₹3 per query |
+| Transformers.js (in-browser) | **₹0** (runs on the kid's device — free forever; explicit teaching moment) |
+| Deterministic compute (break-even math etc.) | ₹0 |
+
+**Run-escalation multiplier** applies to the summed step cost per workflow run:
+
+| Run # | Multiplier | Rationale |
+|---|---|---|
+| 1 (first attempt) | **1.0×** | Cheapest — kid commits to their brief |
+| 2 (first re-roll) | **1.5×** | "Try again" carries a nudge |
+| 3 | **2.0×** | Escalates fast enough that kids re-read their brief before re-rolling |
+| 4+ | **2.5× (cap)** | Cap — never punishing beyond this |
+
+Counter resets when the kid accepts or rejects the whole workflow (closing the "attempt session"). Running a different workflow starts fresh.
+
+**Worked examples**:
+- **BRAND package** (Claude ₹5 + 3 × Flux ₹8 + Claude ₹5 = ₹34 base):
+  Run 1 = ₹34, Run 2 = ₹51, Run 3 = ₹68, Run 4+ = ₹85 (cap)
+- **Marketing first campaign** (Claude ₹5 + 3 × Flux ₹8 + Claude ₹5 = ₹34 base): same curve
+- **Ops daily check** (1 Claude call, ₹5 base): ₹5 / ₹8 / ₹10 / ₹13 — very cheap
+- **Finance cash check** (deterministic + 1 Claude prose, ₹5 base): same as Ops
+
+Starting capital ranges ₹2,000–₹3,000, so even a 4-re-roll BRAND session (~₹238 total) is meaningful but not game-breaking.
 
 ### D3 confirmed penalty table
 

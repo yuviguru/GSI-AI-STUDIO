@@ -22,15 +22,20 @@ The primitive covers:
   (mood, audience, budget, etc.) so the UI can render a consistent
   briefing form.
 
-## Open decisions captured with defaults
-1. Briefing format → **hybrid** (2 multiple-choice + 1 free-text).
-   Scaffolds young kids, still teaches prompt-writing.
-2. Regeneration cost → **in-sim cash** (₹50–100 / run depending on
-   agent tier), 1 free re-roll per milestone. Teaches cost awareness.
-3. Artifact export → **always available** — kids can download
-   their logos/posters/etc. from the business dashboard.
-4. Workflow trace visibility → **collapsed by default**, tap "Show me
-   how this worked" to expand. Keeps the surface clean but teaches
+## Locked decisions (see KIDCEO-PHASE-3-DECISIONS.md)
+1. **Briefing form — hybrid** (2 MC + 1 free-text per workflow
+   schema). Scaffolds young kids; still teaches prompt-writing.
+2. **Regeneration cost — always charged, per-tool step, with run-
+   escalation**. Every run costs in-sim ₹ so kids learn LLM calls
+   aren't free. Per-tool rates (Claude ₹5, Groq ₹2, Flux ₹8/image,
+   Brave ₹3, Transformers.js ₹0, deterministic ₹0) summed per run;
+   multiplier escalates 1× → 1.5× → 2× → 2.5× (capped). Counter
+   resets on accept/reject. Full table in
+   `KIDCEO-PHASE-3-DECISIONS.md#a2-confirmed-pricing-model`.
+3. **Artifact export — always on**. Kids keep their logos /
+   posters / schedules forever, including after the sim completes.
+4. **Trace visibility — collapsed by default**, tap "Show me how
+   this worked" to expand. Keeps the surface clean day-1;
    transparency on demand.
 
 ## Requires KB Updates
@@ -95,23 +100,33 @@ The primitive covers:
 - Each agent references workflow IDs; the workflow registry
   (next subtask) resolves those to executables.
 
-### [LIB] Workflow registry + executor
+### [LIB] Workflow registry + executor + pricing
 **Target**: `lib/ceo/agents/workflows/index.ts`,
-`lib/ceo/agents/executor.ts`
+`lib/ceo/agents/executor.ts`,
+`lib/ceo/agents/pricing.ts`
 **Action**: Create
 **Requirements**:
 - `WORKFLOW_REGISTRY: Record<CeoWorkflowId, WorkflowSpec>` where
   `WorkflowSpec = { id, agentId, briefingSchema, steps, outputSchema }`.
 - `executeWorkflow(input: { spec, brief, business, kidId })` returns
-  `{ assets, trace }`. Wraps every tool call with a timing +
-  cost-estimate wrapper so the trace is populated consistently.
+  `{ assets, trace }`. Wraps every tool call with a timing + cost
+  wrapper so the trace is populated consistently.
 - Tool adapters live under `lib/ceo/agents/tools/` — one file per
   tool (`claude.ts`, `groq.ts`, `fluxSchnell.ts`, `pollinations.ts`,
-  `transformersJs.ts`). Each exports a `runTool(input)` with a
-  uniform shape.
+  `braveSearch.ts`, `transformersJs.ts`, `breakEven.ts`). Each exports
+  `runTool(input): { output, trace }` with a uniform shape. Each tool
+  module also exports a `TOOL_COST_INR` constant matching the A2
+  pricing table — the single source of truth for both display and
+  cash deduction.
+- Per-run cost calculation lives in `pricing.ts`:
+  - `stepCostInr(step)` — looks up `TOOL_COST_INR` for the step's
+    tool, multiplies by per-call unit (e.g. Flux × 3 images = ₹24).
+  - `runMultiplier(runIndex)` — 1.0 → 1.5 → 2.0 → 2.5 (cap at 2.5×).
+  - `workflowRunCostInr(spec, runIndex)` — Σ step costs × multiplier.
 - Fails closed: if ANY step fails, the executor returns the partial
-  trace and a typed `WorkflowExecutionError` so the UI can show
-  "something went wrong at step X — here's what we got so far".
+  trace and a typed `WorkflowExecutionError`. Partial-run cost is
+  still charged for the steps that succeeded (so the kid understands
+  even a failed attempt had a real dollar cost).
 
 ### [LIB] Artifact store
 **Target**: `lib/firebase/ceoArtifactService.ts`
@@ -141,10 +156,13 @@ The primitive covers:
   `lib/validators.ts#ceoAgentHireSchema` etc.
 - `/hire` — validates agent is unlocked for the business's phase,
   writes `ceoAgentHires`, deducts first-day salary (in-sim cash).
-- `/run` — validates a valid hire + workflow, runs
-  `executeWorkflow`, saves candidate artifact, returns artifact +
-  trace. Regeneration cost deducted on each run after the first free
-  re-roll per milestone.
+- `/run` — validates a valid hire + workflow, computes the run cost
+  (sum of per-step tool costs × run-escalation multiplier based on
+  the attempt counter for this hire+workflow+session), deducts it
+  from `business.currentCash`, runs `executeWorkflow`, saves candidate
+  artifact, returns artifact + trace + cost breakdown (per step +
+  multiplier applied). If cash insufficient → 402 with a clear
+  message. Every run costs ≥ ₹1 — no free runs, per A2.
 - `/accept` — saves as accepted + atomic attach to business/event.
 
 ### [FE] Briefing form + workflow runner
