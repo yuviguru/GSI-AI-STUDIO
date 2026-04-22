@@ -14,6 +14,13 @@ const CLASSES_SUBCOLLECTION = 'classes';
 const ASSIGNMENTS_COLLECTION = 'assignments';
 const USERS_COLLECTION = 'users';
 const KIDS_COLLECTION = 'kids';
+/**
+ * Top-level registry `classInviteCodes/{code}` stores `{ schoolId, classId }`.
+ * This replaces the previous `collectionGroup('classes').where('inviteCode')`
+ * uniqueness check, which needed an explicit Firestore collection-group
+ * index. Primary-key reads need no index and are dramatically faster.
+ */
+const CLASS_INVITE_CODES_COLLECTION = 'classInviteCodes';
 
 // ─── Firestore shapes (server-side) ────────────────────────────────────────
 
@@ -74,15 +81,20 @@ function generateInviteCodeValue(): string {
   return code;
 }
 
-async function mintUniqueInviteCode(): Promise<string> {
+/**
+ * Reserve a unique invite code inside a running transaction. Probes the
+ * `classInviteCodes/{code}` primary-key registry up to 10 times — no
+ * composite/collection-group index required. Caller is responsible for
+ * actually writing the class doc and registry entry within the same tx.
+ */
+async function reserveInviteCodeInTx(
+  tx: FirebaseFirestore.Transaction,
+): Promise<string> {
   for (let attempt = 0; attempt < 10; attempt++) {
     const code = generateInviteCodeValue();
-    const existing = await adminDb
-      .collectionGroup(CLASSES_SUBCOLLECTION)
-      .where('inviteCode', '==', code)
-      .limit(1)
-      .get();
-    if (existing.empty) return code;
+    const ref = adminDb.collection(CLASS_INVITE_CODES_COLLECTION).doc(code);
+    const snap = await tx.get(ref);
+    if (!snap.exists) return code;
   }
   throw new AppException(
     'INVITE_CODE_EXHAUSTED',
@@ -196,26 +208,37 @@ export interface CreateClassInput {
 }
 
 export async function createClass(input: CreateClassInput): Promise<ClassDoc> {
-  const now = Timestamp.now();
-  const inviteCode = await mintUniqueInviteCode();
-  const ref = adminDb
+  const classRef = adminDb
     .collection(SCHOOLS_COLLECTION)
     .doc(input.schoolId)
     .collection(CLASSES_SUBCOLLECTION)
     .doc();
-  const doc: ClassDocFirestore = {
-    id: ref.id,
-    schoolId: input.schoolId,
-    name: input.name,
-    grade: input.grade,
-    section: input.section,
-    teacherUid: input.teacherUid,
-    studentKidIds: [],
-    inviteCode,
-    createdAt: now,
-    updatedAt: now,
-  };
-  await ref.set(doc);
+
+  // Mint the invite code + write class + registry entry atomically.
+  const doc = await adminDb.runTransaction(async (tx) => {
+    const inviteCode = await reserveInviteCodeInTx(tx);
+    const now = Timestamp.now();
+    const classData: ClassDocFirestore = {
+      id: classRef.id,
+      schoolId: input.schoolId,
+      name: input.name,
+      grade: input.grade,
+      section: input.section,
+      teacherUid: input.teacherUid,
+      studentKidIds: [],
+      inviteCode,
+      createdAt: now,
+      updatedAt: now,
+    };
+    tx.set(classRef, classData);
+    tx.set(adminDb.collection(CLASS_INVITE_CODES_COLLECTION).doc(inviteCode), {
+      schoolId: input.schoolId,
+      classId: classRef.id,
+      createdAt: now,
+    });
+    return classData;
+  });
+
   return toClassDoc(doc);
 }
 
@@ -233,36 +256,38 @@ export async function getClass(
   return toClassDoc(doc.data() as ClassDocFirestore);
 }
 
+/**
+ * Classes within a school. Sorted in memory on createdAt so a single-field
+ * (auto-indexed) query is enough — no composite index needed.
+ */
 export async function listClassesForSchool(schoolId: string): Promise<ClassDoc[]> {
   const snap = await adminDb
     .collection(SCHOOLS_COLLECTION)
     .doc(schoolId)
     .collection(CLASSES_SUBCOLLECTION)
-    .orderBy('createdAt', 'asc')
-    .get();
-  return snap.docs.map((d) => toClassDoc(d.data() as ClassDocFirestore));
-}
-
-export async function listClassesForTeacher(teacherUid: string): Promise<ClassDoc[]> {
-  const snap = await adminDb
-    .collectionGroup(CLASSES_SUBCOLLECTION)
-    .where('teacherUid', '==', teacherUid)
     .get();
   return snap.docs
     .map((d) => toClassDoc(d.data() as ClassDocFirestore))
     .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 }
 
+/**
+ * Look up a class by invite code via the `classInviteCodes` registry.
+ * Primary-key read — no index required.
+ */
 export async function findClassByInviteCode(
   inviteCode: string,
 ): Promise<ClassDoc | null> {
-  const snap = await adminDb
-    .collectionGroup(CLASSES_SUBCOLLECTION)
-    .where('inviteCode', '==', inviteCode)
-    .limit(1)
-    .get();
-  if (snap.empty) return null;
-  return toClassDoc(snap.docs[0]!.data() as ClassDocFirestore);
+  const registryRef = adminDb
+    .collection(CLASS_INVITE_CODES_COLLECTION)
+    .doc(inviteCode);
+  const registrySnap = await registryRef.get();
+  if (!registrySnap.exists) return null;
+  const { schoolId, classId } = registrySnap.data() as {
+    schoolId: string;
+    classId: string;
+  };
+  return getClass(schoolId, classId);
 }
 
 /**
@@ -499,15 +524,21 @@ export async function getAssignment(
   return toAssignmentDoc(doc.data() as AssignmentDocFirestore);
 }
 
+/**
+ * Sort in memory on createdAt so the Firestore query only needs the
+ * single-field `teacherUid` index (auto-created). No composite index
+ * required.
+ */
 export async function listAssignmentsForTeacher(
   teacherUid: string,
 ): Promise<AssignmentDoc[]> {
   const snap = await adminDb
     .collection(ASSIGNMENTS_COLLECTION)
     .where('teacherUid', '==', teacherUid)
-    .orderBy('createdAt', 'desc')
     .get();
-  return snap.docs.map((d) => toAssignmentDoc(d.data() as AssignmentDocFirestore));
+  return snap.docs
+    .map((d) => toAssignmentDoc(d.data() as AssignmentDocFirestore))
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 export async function listAssignmentsForClass(
@@ -516,9 +547,10 @@ export async function listAssignmentsForClass(
   const snap = await adminDb
     .collection(ASSIGNMENTS_COLLECTION)
     .where('classId', '==', classId)
-    .orderBy('dueDate', 'asc')
     .get();
-  return snap.docs.map((d) => toAssignmentDoc(d.data() as AssignmentDocFirestore));
+  return snap.docs
+    .map((d) => toAssignmentDoc(d.data() as AssignmentDocFirestore))
+    .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
 }
 
 export async function listAssignmentsForKid(kidId: string): Promise<AssignmentDoc[]> {
