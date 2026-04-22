@@ -105,11 +105,23 @@ Total: ~8–10 weeks of focused work, shipped as 7 PRs.
 | B3 | Motto candidates per run | **3** (pairs 1:1 with logos visually; text is cheap on Claude anyway) | Yuvaraj (default accepted implicitly) | 2026-04-22 |
 | B4 | Brief mood options | **9**: playful, serious, bold, dreamy, mysterious, warm, clean, retro, energetic | Yuvaraj | 2026-04-22 |
 | B5 | Free-text brief field length | **20 chars** (BRAND "one word you love"); Marketing "hook" capped at 25 for its short-caption tradition | Yuvaraj | 2026-04-22 |
-| C1–C2 | Marketing agent calls | _tbd — Batch 4_ | | |
-| E1–E3 | Ops / Finance agent calls | _tbd — Batch 4_ | | |
-| W1–W4 | Workflow builder calls | _tbd — Batch 5_ | | |
-| L1–L5 | AI Lab calls | _tbd — Batch 6_ | | |
-| P1–P3 | Pace options | _tbd — Batch 6_ | | |
+| C1 | Marketing Agent unlock phase | **Launch** | Yuvaraj | 2026-04-22 |
+| C2 | "Post this" rep bump cap | **+3 reputation total per IST day** across all posts | Yuvaraj | 2026-04-22 |
+| E1 | Ops Agent unlock phase | **Launch** | Yuvaraj | 2026-04-22 |
+| E2 | Finance Agent unlock phase | **Early growth** (kid does PRICING solo once first) | Yuvaraj | 2026-04-22 |
+| E3 | Competitor-scan tool for Finance | **Brave Search free tier** (1000 queries/month); graceful fallback to LLM-only when key missing or throttled | Yuvaraj | 2026-04-22 |
+| W1 | Workflow builder unlock phase | **Scale** | Yuvaraj | 2026-04-22 |
+| W2 | Canvas engine | **React Flow** (`@xyflow/react`, MIT) | Yuvaraj | 2026-04-22 |
+| W3 | Trigger vocabulary | **~8 curated, closed enum** | Yuvaraj | 2026-04-22 |
+| W4 | Tool vocabulary in builder | **Same adapters as primitive** (no new tools) | Yuvaraj | 2026-04-22 |
+| L1 | AI Lab top-nav placement | **"Learn" peer to Create / Play / Explore** | Yuvaraj | 2026-04-22 |
+| L2 | Foundation card unlock model | **All visible day-1**; specific cards gated by prerequisites | Yuvaraj | 2026-04-22 |
+| L3 | Embed allowlist | **Hardcoded CSP in `next.config.js`** | Yuvaraj | 2026-04-22 |
+| L4 | Transformers.js size gate | **Auto ≤50 MB**, prompt for larger | Yuvaraj | 2026-04-22 |
+| L5 | Initial Foundation cards | **8 cards** at launch (LLM, prompt, token, temperature, hallucination, tool use, agent, embedding); more as content-only follow-ups | Yuvaraj | 2026-04-22 |
+| P1 | Available paces | **15 / 30 / 45 days** (as today) | Yuvaraj | 2026-04-22 |
+| P2 | Arc length = milestones count | **Yes** — 1 milestone/day, sim ends at pace-days | Yuvaraj | 2026-04-22 |
+| P3 | Milestone content for longer paces | **Hybrid** — 19 structured backbone + LLM-generated extensions | Yuvaraj | 2026-04-22 |
 
 ### A2 confirmed pricing model
 
