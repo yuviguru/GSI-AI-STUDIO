@@ -34,7 +34,22 @@ export async function getCachedAnalytics(
   const doc = await adminDb.collection(ANALYTICS_COLLECTION).doc(schoolId).get();
   if (!doc.exists) return null;
   const data = doc.data() as CachedAnalytics;
-  return { ...data, updatedAt: data.updatedAt.toDate() };
+  return {
+    ...data,
+    updatedAt: data.updatedAt.toDate(),
+    // Timestamps inside nested arrays don't auto-convert; surface them as
+    // JS Dates so the client receives ISO strings after JSON.stringify.
+    teacherActivity: (data.teacherActivity ?? []).map((t) => {
+      const raw = t.lastActiveAt as unknown;
+      let lastActiveAt: Date | undefined;
+      if (raw && typeof (raw as { toDate?: () => Date }).toDate === 'function') {
+        lastActiveAt = (raw as { toDate: () => Date }).toDate();
+      } else if (raw instanceof Date) {
+        lastActiveAt = raw;
+      }
+      return { ...t, lastActiveAt };
+    }),
+  };
 }
 
 /**

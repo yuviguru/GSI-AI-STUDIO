@@ -44,6 +44,34 @@ export async function POST(request: NextRequest) {
     let school = await findSchoolByCode(schoolCode);
     let isAdmin = false;
 
+    // Guard against silently transferring an already-registered teacher to a
+    // different school. Transfers require explicit admin intervention so a
+    // malicious or mistyped schoolCode can't detach a teacher from their
+    // existing students.
+    if (
+      (auth.role === 'teacher' || auth.role === 'schoolAdmin') &&
+      auth.schoolId &&
+      school &&
+      auth.schoolId !== school.id
+    ) {
+      throw new AppException(
+        'ALREADY_TEACHER_ELSEWHERE',
+        'You are already registered as a teacher at another school. Contact support to transfer.',
+        409,
+      );
+    }
+    if (
+      (auth.role === 'teacher' || auth.role === 'schoolAdmin') &&
+      auth.schoolId &&
+      !school
+    ) {
+      throw new AppException(
+        'ALREADY_TEACHER_ELSEWHERE',
+        'You are already registered at another school — you cannot bootstrap a new one from this account.',
+        409,
+      );
+    }
+
     if (!school) {
       // First teacher bootstraps the school. Require school metadata.
       const meta = body?.school;

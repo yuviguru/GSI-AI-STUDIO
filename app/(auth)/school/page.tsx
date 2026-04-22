@@ -32,8 +32,12 @@ export default function SchoolDashboardPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (!isAuthenticated) router.replace('/teacher/login');
-    else if (user && user.role !== 'schoolAdmin') router.replace('/teacher');
+    if (!isAuthenticated) {
+      router.replace('/teacher/login');
+      return;
+    }
+    if (!user || user.role === undefined) return;
+    if (user.role !== 'schoolAdmin') router.replace('/teacher');
   }, [loading, isAuthenticated, user, router]);
 
   const load = useCallback(async (forceRefresh = false) => {

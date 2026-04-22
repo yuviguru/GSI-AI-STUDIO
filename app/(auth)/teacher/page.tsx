@@ -28,13 +28,18 @@ export default function TeacherDashboardPage() {
   const [classError, setClassError] = useState<string | null>(null);
 
   // Redirect unauthenticated or non-teacher users to the teacher login.
+  // Wait until the Firestore user profile has loaded before deciding —
+  // useAuth fills `role` from /api/auth/me asynchronously, and redirecting
+  // while `role` is still undefined would flash users off the page on a
+  // hard refresh.
   useEffect(() => {
     if (loading) return;
     if (!isAuthenticated) {
       router.replace('/teacher/login');
       return;
     }
-    if (user && user.role !== 'teacher' && user.role !== 'schoolAdmin') {
+    if (!user || user.role === undefined) return;
+    if (user.role !== 'teacher' && user.role !== 'schoolAdmin') {
       router.replace('/teacher/login');
     }
   }, [loading, isAuthenticated, user, router]);

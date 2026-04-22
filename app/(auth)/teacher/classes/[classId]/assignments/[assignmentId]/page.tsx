@@ -23,8 +23,12 @@ export default function AssignmentReviewPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (!isAuthenticated) return router.replace('/teacher/login');
-    if (user && user.role !== 'teacher' && user.role !== 'schoolAdmin') {
+    if (!isAuthenticated) {
+      router.replace('/teacher/login');
+      return;
+    }
+    if (!user || user.role === undefined) return;
+    if (user.role !== 'teacher' && user.role !== 'schoolAdmin') {
       router.replace('/teacher/login');
     }
   }, [loading, isAuthenticated, user, router]);

@@ -1,12 +1,22 @@
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from './admin';
 import { AppException } from '@/lib/api-utils';
-import { incrementSubmissionCount, getAssignment } from './schoolService';
+import { getAssignment } from './schoolService';
 import type { SubmissionDoc, SubmissionStatus } from '@/types/user.types';
 
 const SUBMISSIONS_COLLECTION = 'submissions';
+const ASSIGNMENTS_COLLECTION = 'assignments';
 const CREATIONS_COLLECTION = 'creations';
 const KIDS_COLLECTION = 'kids';
+
+/**
+ * Deterministic submission doc ID — enforces one submission per
+ * (assignmentId, kidId) at the Firestore layer. Concurrent re-submits
+ * race on the same document instead of creating duplicates.
+ */
+function submissionDocId(assignmentId: string, kidId: string): string {
+  return `${assignmentId}_${kidId}`;
+}
 
 interface SubmissionDocFirestore {
   id: string;
@@ -36,10 +46,13 @@ function toSubmissionDoc(raw: SubmissionDocFirestore): SubmissionDoc {
 }
 
 /**
- * Submit (or re-submit) a creation to an assignment. Idempotent per
- * (assignmentId, kidId) — re-submission updates the existing doc and
- * resets status to pending. Also stamps the creation doc with assignmentId /
- * classId / schoolId so analytics queries can filter cheaply.
+ * Submit (or re-submit) a creation to an assignment.
+ *
+ * Idempotent per (assignmentId, kidId): the submission doc ID is
+ * deterministic, so concurrent retries always race on the same document
+ * instead of creating duplicates. The submission-count bump and the
+ * creation-doc stamp all happen inside a single transaction so partial
+ * failures cannot drift the counter.
  */
 export async function submitCreation(input: {
   assignmentId: string;
@@ -64,58 +77,48 @@ export async function submitCreation(input: {
     );
   }
 
-  const creationRef = adminDb.collection(CREATIONS_COLLECTION).doc(input.creationId);
-  const creationDoc = await creationRef.get();
-  if (!creationDoc.exists) {
-    throw new AppException('NOT_FOUND', 'Creation not found.', 404);
-  }
-  const creationData = creationDoc.data()!;
-  if (creationData.type !== assignment.creationType) {
-    throw new AppException(
-      'INVALID_CREATION_TYPE',
-      `This assignment needs a ${assignment.creationType}; you submitted a ${creationData.type}.`,
-      400,
-    );
-  }
-  if (creationData.kidId && creationData.kidId !== input.kidId) {
-    throw new AppException(
-      'FORBIDDEN',
-      'That creation belongs to another kid.',
-      403,
-    );
-  }
-
-  const now = Timestamp.now();
-
-  // Upsert submission (one per (assignmentId, kidId))
-  const existingSnap = await adminDb
+  const submissionRef = adminDb
     .collection(SUBMISSIONS_COLLECTION)
-    .where('assignmentId', '==', input.assignmentId)
-    .where('kidId', '==', input.kidId)
-    .limit(1)
-    .get();
+    .doc(submissionDocId(input.assignmentId, input.kidId));
+  const creationRef = adminDb.collection(CREATIONS_COLLECTION).doc(input.creationId);
+  const assignmentRef = adminDb
+    .collection(ASSIGNMENTS_COLLECTION)
+    .doc(input.assignmentId);
 
-  let submission: SubmissionDocFirestore;
-  let isNew = false;
+  const result = await adminDb.runTransaction(async (tx) => {
+    const [creationSnap, existingSubSnap] = await Promise.all([
+      tx.get(creationRef),
+      tx.get(submissionRef),
+    ]);
 
-  if (!existingSnap.empty) {
-    const ref = existingSnap.docs[0]!.ref;
-    submission = {
-      ...(existingSnap.docs[0]!.data() as SubmissionDocFirestore),
-      creationId: input.creationId,
-      status: 'pending',
-      feedback: undefined,
-      starred: false,
-      reviewedBy: undefined,
-      reviewedAt: undefined,
-      submittedAt: now,
-      updatedAt: now,
-    };
-    await ref.set(submission);
-  } else {
-    const ref = adminDb.collection(SUBMISSIONS_COLLECTION).doc();
-    submission = {
-      id: ref.id,
+    if (!creationSnap.exists) {
+      throw new AppException('NOT_FOUND', 'Creation not found.', 404);
+    }
+    const creationData = creationSnap.data()!;
+    if (creationData.type !== assignment.creationType) {
+      throw new AppException(
+        'INVALID_CREATION_TYPE',
+        `This assignment needs a ${assignment.creationType}; you submitted a ${creationData.type}.`,
+        400,
+      );
+    }
+    if (creationData.kidId && creationData.kidId !== input.kidId) {
+      throw new AppException(
+        'FORBIDDEN',
+        'That creation belongs to another kid.',
+        403,
+      );
+    }
+
+    const now = Timestamp.now();
+    const isNew = !existingSubSnap.exists;
+
+    const existing = existingSubSnap.exists
+      ? (existingSubSnap.data() as SubmissionDocFirestore)
+      : null;
+
+    const nextSubmission: SubmissionDocFirestore = {
+      id: submissionRef.id,
       assignmentId: input.assignmentId,
       classId: assignment.classId,
       schoolId: assignment.schoolId,
@@ -123,26 +126,28 @@ export async function submitCreation(input: {
       creationId: input.creationId,
       status: 'pending',
       submittedAt: now,
-      createdAt: now,
+      createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
-    await ref.set(submission);
-    isNew = true;
-  }
 
-  // Stamp the creation
-  await creationRef.update({
-    assignmentId: input.assignmentId,
-    classId: assignment.classId,
-    schoolId: assignment.schoolId,
-    updatedAt: now,
+    tx.set(submissionRef, nextSubmission);
+    tx.update(creationRef, {
+      assignmentId: input.assignmentId,
+      classId: assignment.classId,
+      schoolId: assignment.schoolId,
+      updatedAt: now,
+    });
+    if (isNew) {
+      tx.update(assignmentRef, {
+        submissions: FieldValue.increment(1),
+        updatedAt: now,
+      });
+    }
+
+    return nextSubmission;
   });
 
-  if (isNew) {
-    await incrementSubmissionCount(input.assignmentId, 1);
-  }
-
-  return toSubmissionDoc(submission);
+  return toSubmissionDoc(result);
 }
 
 export async function getSubmission(submissionId: string): Promise<SubmissionDoc | null> {

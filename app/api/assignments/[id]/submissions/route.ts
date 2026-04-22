@@ -74,6 +74,10 @@ export async function GET(
 /**
  * PATCH /api/assignments/[id]/submissions
  * Teacher bulk-approve all pending submissions.
+ *
+ * Only the teacher who created the assignment (or a schoolAdmin in the
+ * same school) may run bulk approval — a generic "anyone in the same
+ * school" check is not sufficient. Mirrors the ownership gate in GET.
  */
 export async function PATCH(
   request: NextRequest,
@@ -84,6 +88,22 @@ export async function PATCH(
     if (!auth.schoolId) {
       throw new AppException('FORBIDDEN', 'Teacher is not attached to a school.', 403);
     }
+
+    const assignment = await getAssignment(params.id);
+    if (!assignment) {
+      throw new AppException('NOT_FOUND', 'Assignment not found.', 404);
+    }
+    if (assignment.schoolId !== auth.schoolId) {
+      throw new AppException('FORBIDDEN', 'Not your school.', 403);
+    }
+    if (auth.role === 'teacher' && assignment.teacherUid !== auth.userId) {
+      throw new AppException(
+        'FORBIDDEN',
+        'Only the assigning teacher or a school admin can bulk-approve.',
+        403,
+      );
+    }
+
     const body = await request.json();
     if (body?.action !== 'bulk_approve_pending') {
       throw new AppException(

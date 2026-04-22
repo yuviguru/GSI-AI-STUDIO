@@ -267,8 +267,11 @@ export async function findClassByInviteCode(
 
 /**
  * Link a kid profile to a class. Idempotent — a kid already in the class is a
- * no-op. Also updates the kid doc with the class + school ids, and increments
- * the school's studentCount when this is a new attachment.
+ * no-op. The school's `studentCount` counter only advances when this join is
+ * the kid's *first* class in that school: re-joining, or joining a second
+ * class in the same school, must not inflate the count.
+ *
+ * Runs in a transaction so concurrent joins don't double-increment.
  */
 export async function joinClassByCode(
   inviteCode: string,
@@ -280,11 +283,6 @@ export async function joinClassByCode(
   }
 
   const kidRef = adminDb.collection(KIDS_COLLECTION).doc(kidId);
-  const kidDoc = await kidRef.get();
-  if (!kidDoc.exists) {
-    throw new AppException('KID_NOT_FOUND', 'Kid profile not found.', 404);
-  }
-
   const classRef = adminDb
     .collection(SCHOOLS_COLLECTION)
     .doc(cls.schoolId)
@@ -292,31 +290,48 @@ export async function joinClassByCode(
     .doc(cls.id);
   const schoolRef = adminDb.collection(SCHOOLS_COLLECTION).doc(cls.schoolId);
 
-  const alreadyEnrolled = cls.studentKidIds.includes(kidId);
-  const now = Timestamp.now();
+  const result = await adminDb.runTransaction(async (tx) => {
+    const [kidSnap, classSnap] = await Promise.all([tx.get(kidRef), tx.get(classRef)]);
+    if (!kidSnap.exists) {
+      throw new AppException('KID_NOT_FOUND', 'Kid profile not found.', 404);
+    }
+    if (!classSnap.exists) {
+      throw new AppException('NOT_FOUND', 'Class no longer exists.', 404);
+    }
+    const kidData = kidSnap.data()!;
+    const latestClass = classSnap.data() as ClassDocFirestore;
 
-  const batch = adminDb.batch();
-  batch.update(classRef, {
-    studentKidIds: FieldValue.arrayUnion(kidId),
-    updatedAt: now,
-  });
-  batch.update(kidRef, {
-    schoolId: cls.schoolId,
-    classIds: FieldValue.arrayUnion(cls.id),
-    updatedAt: now,
-  });
-  if (!alreadyEnrolled) {
-    batch.update(schoolRef, {
-      studentCount: FieldValue.increment(1),
+    const alreadyInClass = (latestClass.studentKidIds ?? []).includes(kidId);
+    const previousSchoolId: string | null = kidData.schoolId ?? null;
+    const becomingNewStudentForSchool = previousSchoolId !== cls.schoolId;
+
+    const now = Timestamp.now();
+
+    tx.update(classRef, {
+      studentKidIds: FieldValue.arrayUnion(kidId),
       updatedAt: now,
     });
-  }
-  await batch.commit();
+    tx.update(kidRef, {
+      schoolId: cls.schoolId,
+      classIds: FieldValue.arrayUnion(cls.id),
+      updatedAt: now,
+    });
+    if (!alreadyInClass && becomingNewStudentForSchool) {
+      tx.update(schoolRef, {
+        studentCount: FieldValue.increment(1),
+        updatedAt: now,
+      });
+    }
+
+    return { alreadyInClass, now };
+  });
 
   return {
     ...cls,
-    studentKidIds: alreadyEnrolled ? cls.studentKidIds : [...cls.studentKidIds, kidId],
-    updatedAt: now.toDate(),
+    studentKidIds: result.alreadyInClass
+      ? cls.studentKidIds
+      : [...cls.studentKidIds, kidId],
+    updatedAt: result.now.toDate(),
   };
 }
 
@@ -333,28 +348,56 @@ export async function removeStudentFromClass(
   const schoolRef = adminDb.collection(SCHOOLS_COLLECTION).doc(schoolId);
   const kidRef = adminDb.collection(KIDS_COLLECTION).doc(kidId);
 
-  const classDoc = await classRef.get();
-  if (!classDoc.exists) {
-    throw new AppException('NOT_FOUND', 'Class not found.', 404);
-  }
-  const data = classDoc.data() as ClassDocFirestore;
-  if (!data.studentKidIds.includes(kidId)) return;
+  await adminDb.runTransaction(async (tx) => {
+    const [classSnap, kidSnap] = await Promise.all([
+      tx.get(classRef),
+      tx.get(kidRef),
+    ]);
+    if (!classSnap.exists) {
+      throw new AppException('NOT_FOUND', 'Class not found.', 404);
+    }
+    const classData = classSnap.data() as ClassDocFirestore;
+    if (!classData.studentKidIds.includes(kidId)) return;
 
-  const now = Timestamp.now();
-  const batch = adminDb.batch();
-  batch.update(classRef, {
-    studentKidIds: FieldValue.arrayRemove(kidId),
-    updatedAt: now,
+    // Does the kid still belong to another class in this school after we
+    // remove them from this one? If yes, leave the school-wide counter alone.
+    // Walk the other classes in this school (cheap — kids typically belong
+    // to 1-3 classes) and check if any still include the kid.
+    const kidClassIds: string[] = kidSnap.exists
+      ? ((kidSnap.data()?.classIds as string[] | undefined) ?? [])
+      : [];
+    const otherClassIds = kidClassIds.filter((id) => id !== classId);
+    let stillInSchool = false;
+    for (const otherId of otherClassIds) {
+      const otherSnap = await tx.get(
+        adminDb
+          .collection(SCHOOLS_COLLECTION)
+          .doc(schoolId)
+          .collection(CLASSES_SUBCOLLECTION)
+          .doc(otherId),
+      );
+      if (otherSnap.exists) {
+        stillInSchool = true;
+        break;
+      }
+    }
+
+    const now = Timestamp.now();
+    tx.update(classRef, {
+      studentKidIds: FieldValue.arrayRemove(kidId),
+      updatedAt: now,
+    });
+    tx.update(kidRef, {
+      classIds: FieldValue.arrayRemove(classId),
+      updatedAt: now,
+    });
+    if (!stillInSchool) {
+      tx.update(schoolRef, {
+        studentCount: FieldValue.increment(-1),
+        updatedAt: now,
+      });
+    }
   });
-  batch.update(kidRef, {
-    classIds: FieldValue.arrayRemove(classId),
-    updatedAt: now,
-  });
-  batch.update(schoolRef, {
-    studentCount: FieldValue.increment(-1),
-    updatedAt: now,
-  });
-  await batch.commit();
 }
 
 /**
@@ -535,16 +578,6 @@ export async function updateAssignment(
   await ref.update(updates);
   const updated = await ref.get();
   return toAssignmentDoc(updated.data() as AssignmentDocFirestore);
-}
-
-export async function incrementSubmissionCount(
-  assignmentId: string,
-  delta = 1,
-): Promise<void> {
-  await adminDb.collection(ASSIGNMENTS_COLLECTION).doc(assignmentId).update({
-    submissions: FieldValue.increment(delta),
-    updatedAt: Timestamp.now(),
-  });
 }
 
 // ─── Role helpers ──────────────────────────────────────────────────────────
