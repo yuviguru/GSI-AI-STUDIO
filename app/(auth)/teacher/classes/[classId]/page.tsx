@@ -7,6 +7,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { ClassManagement } from '@/components/teacher/ClassManagement';
 import { AssignmentCreator } from '@/components/teacher/AssignmentCreator';
+import { HPCAssistant } from '@/components/teacher/HPCAssistant';
 import type { AssignmentDoc, ClassDoc } from '@/types/user.types';
 
 interface Student {
@@ -31,6 +32,7 @@ export default function ClassDetailPage() {
   const [assignments, setAssignments] = useState<AssignmentDoc[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [showAssignmentCreator, setShowAssignmentCreator] = useState(false);
+  const [hpcStudent, setHpcStudent] = useState<Student | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -121,6 +123,7 @@ export default function ClassDetailPage() {
         classDoc={classDoc}
         students={students}
         onOpenAssignmentCreator={() => setShowAssignmentCreator(true)}
+        onOpenHpc={(s) => setHpcStudent(s)}
       />
 
       <section>
@@ -166,6 +169,15 @@ export default function ClassDetailPage() {
           }}
           onClose={() => setShowAssignmentCreator(false)}
           getIdToken={getIdToken}
+        />
+      )}
+
+      {hpcStudent && (
+        <HPCAssistant
+          kidId={hpcStudent.id}
+          kidName={hpcStudent.name}
+          grade={hpcStudent.grade}
+          onClose={() => setHpcStudent(null)}
         />
       )}
     </div>

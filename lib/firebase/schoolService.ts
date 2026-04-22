@@ -342,6 +342,121 @@ export async function setSchoolPlan(
   return toSchoolDoc(updated.data() as SchoolDocFirestore);
 }
 
+// ─── Phase 4 (ADMIN-004): HPC narratives ──────────────────────────────────
+
+export type HpcStatus = 'draft' | 'published';
+
+export interface HpcNarrativeDoc {
+  id: string;
+  kidId: string;
+  schoolId: string;
+  term: string;
+  locale: 'en' | 'hi';
+  cognitive: string;
+  affective: string;
+  psychomotor: string;
+  nextTermFocus?: string;
+  teacherTags: string[];
+  status: HpcStatus;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface HpcNarrativeDocFirestore extends Omit<HpcNarrativeDoc, 'createdAt' | 'updatedAt'> {
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+function toHpc(raw: HpcNarrativeDocFirestore): HpcNarrativeDoc {
+  return {
+    ...raw,
+    createdAt: raw.createdAt.toDate(),
+    updatedAt: raw.updatedAt.toDate(),
+  };
+}
+
+function hpcRef(schoolId: string, kidId: string, term: string) {
+  return adminDb
+    .collection(SCHOOLS_COLLECTION)
+    .doc(schoolId)
+    .collection('students')
+    .doc(kidId)
+    .collection('hpcNarratives')
+    .doc(term);
+}
+
+export interface SaveHpcInput {
+  schoolId: string;
+  kidId: string;
+  term: string;
+  locale: 'en' | 'hi';
+  cognitive: string;
+  affective: string;
+  psychomotor: string;
+  nextTermFocus?: string;
+  teacherTags: string[];
+  status: HpcStatus;
+  actingUid: string;
+}
+
+export async function saveHpcNarrative(input: SaveHpcInput): Promise<HpcNarrativeDoc> {
+  const ref = hpcRef(input.schoolId, input.kidId, input.term);
+  const existing = await ref.get();
+  const now = Timestamp.now();
+  const doc: HpcNarrativeDocFirestore = {
+    id: input.term,
+    kidId: input.kidId,
+    schoolId: input.schoolId,
+    term: input.term,
+    locale: input.locale,
+    cognitive: input.cognitive,
+    affective: input.affective,
+    psychomotor: input.psychomotor,
+    nextTermFocus: input.nextTermFocus,
+    teacherTags: input.teacherTags,
+    status: input.status,
+    createdBy: input.actingUid,
+    createdAt: existing.exists
+      ? (existing.data() as HpcNarrativeDocFirestore).createdAt
+      : now,
+    updatedAt: now,
+  };
+  await ref.set(doc);
+  return toHpc(doc);
+}
+
+export async function getHpcNarrative(
+  schoolId: string,
+  kidId: string,
+  term: string,
+): Promise<HpcNarrativeDoc | null> {
+  const snap = await hpcRef(schoolId, kidId, term).get();
+  if (!snap.exists) return null;
+  return toHpc(snap.data() as HpcNarrativeDocFirestore);
+}
+
+export async function listHpcNarrativesForClass(
+  schoolId: string,
+  classId: string,
+  term: string,
+): Promise<HpcNarrativeDoc[]> {
+  const classDoc = await adminDb
+    .collection(SCHOOLS_COLLECTION)
+    .doc(schoolId)
+    .collection(CLASSES_SUBCOLLECTION)
+    .doc(classId)
+    .get();
+  if (!classDoc.exists) return [];
+  const kidIds = ((classDoc.data() as ClassDocFirestore).studentKidIds ?? []) as string[];
+  const results: HpcNarrativeDoc[] = [];
+  for (const kidId of kidIds) {
+    const snap = await hpcRef(schoolId, kidId, term).get();
+    if (snap.exists) results.push(toHpc(snap.data() as HpcNarrativeDocFirestore));
+  }
+  return results;
+}
+
 // ─── Classes ────────────────────────────────────────────────────────────────
 
 export interface CreateClassInput {
