@@ -159,12 +159,15 @@ export async function getSubmission(submissionId: string): Promise<SubmissionDoc
 export async function listSubmissionsForAssignment(
   assignmentId: string,
 ): Promise<SubmissionDoc[]> {
+  // Sort in memory on submittedAt so a single-field `assignmentId` index
+  // (auto-created) is enough — no composite index needed.
   const snap = await adminDb
     .collection(SUBMISSIONS_COLLECTION)
     .where('assignmentId', '==', assignmentId)
-    .orderBy('submittedAt', 'desc')
     .get();
-  return snap.docs.map((d) => toSubmissionDoc(d.data() as SubmissionDocFirestore));
+  return snap.docs
+    .map((d) => toSubmissionDoc(d.data() as SubmissionDocFirestore))
+    .sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
 }
 
 /**
@@ -302,10 +305,11 @@ export async function bulkApprovePending(
   teacherUid: string,
   schoolId: string,
 ): Promise<number> {
+  // Filter `status === 'pending'` in memory so the Firestore query only
+  // uses the single-field `assignmentId` index (auto-created).
   const snap = await adminDb
     .collection(SUBMISSIONS_COLLECTION)
     .where('assignmentId', '==', assignmentId)
-    .where('status', '==', 'pending')
     .get();
   if (snap.empty) return 0;
 
@@ -314,6 +318,7 @@ export async function bulkApprovePending(
   let count = 0;
   for (const d of snap.docs) {
     const data = d.data() as SubmissionDocFirestore;
+    if (data.status !== 'pending') continue;
     if (data.schoolId !== schoolId) continue;
     batch.update(d.ref, {
       status: 'approved',

@@ -72,6 +72,15 @@ service cloud.firestore {
       }
     }
 
+    // ─── Class Invite Codes registry (Phase 3) ──────────────
+    // Primary-key uniqueness registry: classInviteCodes/{code} ->
+    // { schoolId, classId }. Locked to server-only; clients look up
+    // classes through /api/classes/join which validates the kid's
+    // ownership before enrolling.
+    match /classInviteCodes/{code} {
+      allow read, write: if false; // Server-side only
+    }
+
     // ─── Assignments (Phase 3) ──────────────────────────────
     // Top-level collection. Access control is enforced server-side via
     // requireRole + ownership checks; clients never read this directly.
