@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, Users, BookOpen, Award, Activity, Trophy } from 'lucide-react';
+import Link from 'next/link';
+import { RefreshCw, Users, BookOpen, Award, Activity, Trophy, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { CurriculumHeatmap } from '@/components/admin/CurriculumHeatmap';
 import { TeacherActivityTable } from '@/components/admin/TeacherActivityTable';
@@ -128,17 +129,26 @@ export default function SchoolDashboardPage() {
             Last refreshed {lastUpdatedLabel}
           </p>
         </div>
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className={cn(
-            'inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-white px-3 py-2 text-sm font-medium text-purple-700 hover:bg-purple-50',
-            refreshing && 'opacity-60',
-          )}
-        >
-          <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
-          {refreshing ? 'Refreshing…' : 'Refresh now'}
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/school/settings"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <Settings className="h-4 w-4" />
+            Settings
+          </Link>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-white px-3 py-2 text-sm font-medium text-purple-700 hover:bg-purple-50',
+              refreshing && 'opacity-60',
+            )}
+          >
+            <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
+            {refreshing ? 'Refreshing…' : 'Refresh now'}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
