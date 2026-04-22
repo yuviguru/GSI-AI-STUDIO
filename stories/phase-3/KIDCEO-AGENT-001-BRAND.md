@@ -1,11 +1,13 @@
-# KIDCEO-AGENT-001-BRAND: Design Agent for the BRAND milestone (POC)
+# KIDCEO-AGENT-001-BRAND: Design Agent for the BRAND milestone
 
 ## Description
-First kid-facing agent. Proves the agent primitive end-to-end on a
-single, bounded, high-value milestone: **BRAND** in the pre_launch
-phase. Replaces the current "pick A/B/C for your brand vibe" abstract
-decision with a real workflow that generates logos, a motto, and a
-brand voice the kid keeps.
+First kid-facing agent, **production-ready**. Ships as a complete
+feature (error handling, retries, telemetry, full test coverage,
+kid-safe edge cases, accessibility, mobile + desktop, Telegram
+parity) — not a POC. Handles the **BRAND** milestone in the
+pre_launch phase end-to-end, replacing the current "pick A/B/C for
+your brand vibe" abstract decision with a workflow that generates
+logos, a motto, and a brand voice the kid keeps forever.
 
 Flow:
 1. Kid hits the BRAND milestone. Event card switches to "Let your
@@ -23,19 +25,21 @@ Flow:
    event prompt gets "your brand is {motto}, visually {mood}, voice
    {voice}" as context. Makes the sim cohere around the kid's choice.
 
-## Open decisions captured with defaults
-1. Logo count → **3 candidates per run**. Enough variety, bounded
-   cost (~₹3/run on Flux Schnell).
-2. Motto count → **3 candidates per run**, same brief expansion.
-3. Default mood options → playful / serious / bold / dreamy. Kid-
-   resonant, Indian-context safe.
-4. Free-text field limit → **20 chars**. Enough for "tropical" or
-   "school canteen" without opening a vector for PII leaks.
-5. Acceptance attachment → writes to
-   `business.brandAssets = { logoUrl, motto, voice }` AND marks the
-   parent BRAND milestone event `decidedChoice` with the artifact ID.
-   Scoring still runs on the artifact's implied "choice weights" so
-   CEO DNA updates remain consistent with other milestone answers.
+## Locked decisions (see KIDCEO-PHASE-3-DECISIONS.md)
+1. **Logo count — 3 candidates per run**. Enough variety, bounded
+   cost (₹24 on Flux at base — ₹60 at the 2.5× cap).
+2. **Motto count — 3 candidates per run**. Paired visually with logos.
+3. **Mood options — 9 choices**: playful, serious, bold, dreamy,
+   mysterious, warm, clean, retro, energetic. Rendered as a scrollable
+   chip row so no choice-paralysis on small screens.
+4. **Free-text "one word" — 20 chars**, `filterInput` applied before
+   it touches any prompt.
+5. **Acceptance attachment** — writes to
+   `business.brandAssets = { logoUrl, motto, voice, palette }` AND
+   marks the parent BRAND milestone event `decidedChoice: 'agent'`
+   with the artifact ID. Scoring derives from the brief itself (mood
+   → dimension weights) so CEO DNA updates remain consistent with
+   other milestone answers.
 
 ## Requires KB Updates
 - `docs/data-model.md` — formalise `ceoBusiness.brandAssets` shape.
@@ -136,18 +140,53 @@ Flow:
 - Run route: BRAND-specific smoke test (hire Design Agent, run, see 3
   logos + 3 mottos + 1 voice in the artifact).
 
+## Production-ready checklist (inherited by every agent story)
+- **Error handling**: every tool step wrapped in try/catch with typed
+  `WorkflowExecutionError`; partial-trace UX on mid-workflow failure.
+- **Retries**: 1 automatic retry on transient errors (5xx, network
+  timeouts) with 500ms backoff; visible in trace as a separate entry.
+- **Telemetry**: structured console logs with `businessId`, `kidId`,
+  `workflowId`, `runIndex`, `totalCostInr`, `latencyMs`, and any
+  error. Wired into existing logging conventions used elsewhere.
+- **Kid-safe edge cases** covered:
+  - Flux returns an unsafe-looking image → filter reject, retry once,
+    then fall back to Pollinations, then surface a "couldn't make a
+    logo this time — try a different brief" with no penalty charge.
+  - All 3 logos fail → no partial accept, kid isn't charged, friendly
+    error.
+  - `filterOutput` strips a motto entirely → regenerate just that
+    candidate once; if it fails twice, show 2 mottos instead of 3.
+  - Insufficient cash → 402 before execution begins, no partial spend.
+- **Accessibility**: candidate grid has keyboard nav (arrow keys),
+  screen-reader labels on each logo/motto, high-contrast accept
+  button, focus-visible outlines.
+- **Mobile + desktop**: 1-col mobile, 3-col desktop; briefing form
+  stacks naturally; Telegram flow matches (see [BOT] subtask).
+- **i18n-ready**: all kid-facing strings go through the existing i18n
+  helper (even though English-first for ship); prompts include
+  `language: business.language` when set.
+- **Tests**: ≥80% coverage on new code, 100% on `workflowRunCostInr`
+  math, integration test for the happy path end-to-end.
+
 ## Dependencies
 - **KIDCEO-DAILY-RHYTHM** — milestone delivery + dual pending slots.
-- **KIDCEO-AGENT-PRIMITIVE** — executor, artifact store, team tab.
+- **KIDCEO-AGENT-PRIMITIVE** — executor, artifact store, team tab,
+  pricing module.
 
 ## Acceptance criteria
 - Kid with a fresh business + BRAND milestone pending runs the Design
   Agent workflow and sees 3 logos + 3 mottos rendered in the play
-  surface.
+  surface within 15s (p95) including LLM + image generation.
 - Accepting one of each writes `brandAssets` to the business doc and
-  resolves the BRAND milestone.
-- Logo shows on the business dashboard from that moment on.
+  resolves the BRAND milestone atomically.
+- Logo shows on the business dashboard from that moment on, persists
+  across reloads.
 - Future milestone events in the same business have the motto + voice
   in their prompt context (log-verifiable).
-- Workflow trace panel shows all 3 steps with model names + estimated
-  cost.
+- Workflow trace panel shows all 3 steps with model names, per-step
+  cost, and the real prompt per step (tap-to-expand).
+- Telegram mirror: kid can run the same flow via `@GSIKidCeoAssistantBot`,
+  candidate logos arrive as photo messages with inline "Pick this"
+  buttons, mottos as text messages with inline buttons.
+- Cash is deducted exactly once per run; no double-charges on retries.
+- Test coverage meets the production-ready checklist targets.

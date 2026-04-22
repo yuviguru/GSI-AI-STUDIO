@@ -100,7 +100,11 @@ Total: ~8–10 weeks of focused work, shipped as 7 PRs.
 | A3 | Artifact export | **Always on** — kid keeps their logos/posters/schedules forever, including post-sim | Yuvaraj | 2026-04-22 |
 | A4 | Trace visibility | **Collapsed by default**, tap "Show me how this worked" to expand | Yuvaraj | 2026-04-22 |
 | A5 | Team tab unlock | **Once `phase !== 'pre_launch'`** — kid earns it by answering their first milestone | Yuvaraj | 2026-04-22 |
-| B1–B5 | BRAND agent calls | _tbd — Batch 3_ | | |
+| B1 | First agent + quality bar | **BRAND ships first** as a **production-ready** agent (not POC). Same quality bar applies to Marketing, Ops, Finance — all built one-by-one in sequence this session. | Yuvaraj | 2026-04-22 |
+| B2 | Logo candidates per run | **3** | Yuvaraj | 2026-04-22 |
+| B3 | Motto candidates per run | **3** (pairs 1:1 with logos visually; text is cheap on Claude anyway) | Yuvaraj (default accepted implicitly) | 2026-04-22 |
+| B4 | Brief mood options | **9**: playful, serious, bold, dreamy, mysterious, warm, clean, retro, energetic | Yuvaraj | 2026-04-22 |
+| B5 | Free-text brief field length | **20 chars** (BRAND "one word you love"); Marketing "hook" capped at 25 for its short-caption tradition | Yuvaraj | 2026-04-22 |
 | C1–C2 | Marketing agent calls | _tbd — Batch 4_ | | |
 | E1–E3 | Ops / Finance agent calls | _tbd — Batch 4_ | | |
 | W1–W4 | Workflow builder calls | _tbd — Batch 5_ | | |
