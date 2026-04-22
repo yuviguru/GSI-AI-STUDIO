@@ -16,9 +16,11 @@ import { pickNextMilestone } from '@/lib/ceo/phases';
 const CEO_BUSINESS_COLLECTION = 'ceoBusiness';
 const REGISTRATIONS_PER_DAY_LIMIT = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
-/** Kids can juggle up to 5 simultaneous active (non-completed) businesses.
- *  Beyond that the landing-page UI gets noisy and the LLM-event queue thrashes. */
-const MAX_CONCURRENT_ACTIVE_BUSINESSES = 5;
+/** Kids can juggle up to 3 simultaneous active (non-completed) businesses.
+ *  Beyond that the landing-page UI gets noisy and the LLM-event queue thrashes.
+ *  A completed business frees up a slot, so finishing one lets the kid start
+ *  a fresh one. */
+const MAX_CONCURRENT_ACTIVE_BUSINESSES = 3;
 
 /**
  * POST /api/ceo/register

@@ -28,7 +28,7 @@ const FEATURES = [
   },
 ];
 
-const MAX_CONCURRENT_ACTIVE = 5;
+const MAX_CONCURRENT_ACTIVE = 3;
 
 export default function CeoLandingPage() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -102,15 +102,19 @@ export default function CeoLandingPage() {
           <>
             <ConnectBanner />
 
-            {activeBusinesses.length > 0 && (
+            {(activeBusinesses.length > 0 || canStartNew) && (
               <>
                 <div className="mb-3 flex items-end justify-between gap-2">
                   <h2 className="font-display text-2xl font-bold text-brand-text">
-                    {activeKid.name}&apos;s businesses
+                    {activeBusinesses.length > 0
+                      ? `${activeKid.name}'s businesses`
+                      : 'Ready for your next business?'}
                   </h2>
-                  <span className="text-xs text-brand-text-secondary">
-                    {activeBusinesses.length} of {MAX_CONCURRENT_ACTIVE} active
-                  </span>
+                  {activeBusinesses.length > 0 && (
+                    <span className="text-xs text-brand-text-secondary">
+                      {activeBusinesses.length} of {MAX_CONCURRENT_ACTIVE} active
+                    </span>
+                  )}
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {activeBusinesses.map((b) => (
