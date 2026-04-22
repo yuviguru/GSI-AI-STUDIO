@@ -30,20 +30,23 @@ This story switches to a clean daily rhythm:
 The same model ships to the Telegram bot (`lib/bot/modules/ceo.ts`) in
 parallel so web + bot share the same mental model.
 
-## Open decisions captured with defaults (flag for confirmation before ship)
-1. Milestone delivery time → **default 18:30 IST** (after-school). Env
-   override `CEO_MILESTONE_DELIVERY_HOUR_IST` for ops to tune without a
-   deploy.
-2. Regular cap reset → **default IST midnight** (00:00 Asia/Kolkata).
-   Matches global "day reset" convention; avoids weirdness with
-   user-interpreted "12 pm".
-3. Expired milestone penalty → **0 impact** (skipped days don't punish,
-   they just lose the upside). Revisit if engagement data shows kids
-   skipping deliberately.
-4. Telegram mirror → **same pull model**. `/ceo` command exposes a "Take
-   a small decision" inline button when no pending regular exists AND
-   slots remain for today.
-5. Regular auto-chain → **drop**. Every regular is an intentional tap.
+## Locked decisions (see KIDCEO-PHASE-3-DECISIONS.md for sign-off)
+1. **Milestone delivery time — 18:30 IST** (after-school). Env override
+   `CEO_MILESTONE_DELIVERY_HOUR_IST` for ops tuning without a deploy.
+2. **Regular cap reset — IST midnight** (00:00 Asia/Kolkata).
+3. **Expired milestone penalty — scaling by `MILESTONE_STAKES_MULTIPLIER`**.
+   Rep −1×M, morale −1×M, cash −₹50×M (cash only when the event
+   category is cash-adjacent: pricing, funding, competition, capital,
+   ops-supplier). Floors at 0. Table in the decisions doc.
+4. **Telegram mirror — full parity**. `/ceo` shows a "📋 Take a small
+   decision (N/5 left)" inline button when a pull is available; bot
+   respects the same hybrid auto-chain rule as the web.
+5. **Regular auto-chain — hybrid**:
+   - After a milestone decision → **no auto-regular**. Kid chooses:
+     pull a regular, or walk away until tomorrow.
+   - After a regular decision → **auto-chain the next regular** until
+     the 5/day cap is hit (keeps today's continuous-session feel).
+   - First regular of the day (no prior regular) → **kid pulls**.
 
 ## Requires KB Updates
 - `docs/data-model.md` — `ceoBusiness` gains:
@@ -101,9 +104,14 @@ parallel so web + bot share the same mental model.
   transaction as the event insert.
 - Update `recordEventDecision` to clear the matching pointer atomically
   with the decision write.
-- New: `expireStaleMilestone(businessId): Promise<CeoEvent | null>` —
-  marks the pending milestone as `'expired'`, clears the pointer,
-  returns the expired event doc.
+- New: `expireStaleMilestone(businessId): Promise<{ event: CeoEvent,
+  penalty: { rep, morale, cash } } | null>` — marks the pending
+  milestone as `'expired'`, clears the pointer, applies the locked
+  D3 scaling penalty (rep −1×M, morale −1×M, cash −₹50×M when the
+  event category is cash-adjacent), floors each business metric at 0,
+  and returns both the expired event and the applied deltas so the
+  cron/logs can surface them. Uses a Firestore transaction so the
+  expire + penalty lands atomically.
 - Deprecated (keep, don't remove): `getPendingEventForBusiness` —
   resolves the first non-null of {milestone, regular}; tagged with a
   `@deprecated` JSDoc pointing at the two typed helpers.
@@ -123,17 +131,17 @@ parallel so web + bot share the same mental model.
 - Drop the `minIntervalHoursFor` function outright — pace no longer
   drives cadence.
 
-### [API] Decide route — drop regular auto-chain
+### [API] Decide route — hybrid auto-chain
 **Target**: `app/api/ceo/decide/route.ts`
 **Action**: Update
 **Requirements**:
-- In the post-decision block, drop the
-  `!isMilestoneDecision → generateRegularEvent` block. After any
-  decision, `nextEvent` is always `null`.
-- Keep the reservation counter logic for backwards-compat in the
-  response, but don't reserve on a decide call — only on a pull
-  (`/api/ceo/event`).
-- Update the JSDoc block at top to reflect the new behaviour.
+- Preserve the current auto-chain behaviour on **regular** decisions
+  (generate next regular if under cap) — `nextEvent` stays populated.
+- **Drop** the auto-chain on **milestone** decisions — after a
+  milestone decide, `nextEvent` is always `null`. Kid gets the
+  "take a small decision" CTA in the UI if they want a regular.
+- Update the JSDoc block at top to reflect the hybrid behaviour per
+  D4 in `KIDCEO-PHASE-3-DECISIONS.md`.
 
 ### [API] Pull-regular endpoint (mostly unchanged)
 **Target**: `app/api/ceo/event/route.ts`
@@ -150,12 +158,17 @@ parallel so web + bot share the same mental model.
 **Target**: `lib/bot/modules/ceo.ts`
 **Action**: Update
 **Requirements**:
-- `handleDecide` — drop the auto-chain-regular branch to match the
-  web.
-- `handleCeo` — when the kid has 1 active business, show a
-  "📋 Take a small decision (2 / 5 left today)" button when
-  regular slots remain AND no pending regular exists. Tapping it
-  calls the same logic as the web's `/api/ceo/event`.
+- `handleDecide` — mirror the web's hybrid auto-chain: after a
+  milestone decision send the feedback + "📋 Take a small decision"
+  CTA, do NOT auto-send another event. After a regular decision,
+  auto-chain the next regular (if under cap) by calling `sendEvent`
+  with the freshly-generated event — matches today's behaviour for
+  regular→regular.
+- `handleCeo` — when the kid has 1 active business, show the
+  "📋 Take a small decision (N / 5 left today)" button when regular
+  slots remain AND no pending regular exists. Tapping it calls the
+  same logic as the web's `/api/ceo/event` (server-side slot
+  reservation + mint).
 - New callback prefix `ceo_pull_regular:<businessId>`.
 
 ### [FE] Two-zone play surface
@@ -198,12 +211,19 @@ parallel so web + bot share the same mental model.
 - Kid registers a new business → first milestone event shown
   synchronously. No other events fire until the next IST 18:30 tick.
 - Kid answers the milestone → `pendingMilestoneEventId` cleared; no
-  new event auto-generates; /ceo/play shows the countdown card.
+  new event auto-generates; Small-decisions zone surfaces the
+  "📋 Take a small decision (5 / 5 left)" CTA.
 - Kid taps "Take a small decision" → `pendingRegularEventId` is set to
   the minted regular; cap counter increments.
-- Kid answers the regular → `pendingRegularEventId` cleared; no auto
-  next regular.
+- Kid answers the regular → `pendingRegularEventId` cleared; if cap
+  not hit, next regular auto-chains (same UX as today). If cap hit,
+  "All 5 done — resets at midnight IST" state.
 - Kid doesn't answer today's milestone → next 18:30 IST tick marks
-  the stale one `expired` and mints today's new milestone.
+  the stale one `expired`, applies the D3 scaling penalty, and mints
+  today's new milestone. Expired event visible in history with
+  "Missed — X reputation / Y morale / ₹Z cash" badge.
 - `/ceo/play` never shows a milestone event AND a regular event in the
   same zone — always one in each zone, independently.
+- Telegram parity: same flows on `@GSIKidCeoAssistantBot` including
+  the pull button, hybrid auto-chain, and expired-milestone penalty
+  ping ("yesterday's Big Choice expired — −3 rep, −3 morale").

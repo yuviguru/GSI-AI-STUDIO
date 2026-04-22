@@ -90,15 +90,27 @@ Total: ~8–10 weeks of focused work, shipped as 7 PRs.
 
 | # | Decision | Chosen | Signed off by | Date |
 |---|---|---|---|---|
-| D1 | Milestone delivery time | _tbd_ | | |
-| D2 | Regular cap reset time | _tbd_ | | |
-| D3 | Expired milestone penalty | _tbd_ | | |
-| D4 | Regular auto-chain after decide | _tbd_ | | |
-| D5 | Telegram mirror of pull | _tbd_ | | |
-| A1–A5 | Agent primitive calls | _tbd_ | | |
-| B1–B5 | BRAND agent calls | _tbd_ | | |
-| C1–C2 | Marketing agent calls | _tbd_ | | |
-| E1–E3 | Ops / Finance agent calls | _tbd_ | | |
-| W1–W4 | Workflow builder calls | _tbd_ | | |
-| L1–L5 | AI Lab calls | _tbd_ | | |
-| P1–P3 | Pace options | _tbd_ | | |
+| D1 | Milestone delivery time | **18:30 IST** (6:30 PM, after-school) | Yuvaraj | 2026-04-22 |
+| D2 | Regular cap reset time | **IST midnight** (00:00 Asia/Kolkata) | Yuvaraj | 2026-04-22 |
+| D3 | Expired milestone penalty | **Scaling penalty** tied to `MILESTONE_STAKES_MULTIPLIER`: rep −1×M, morale −1×M, cash −₹50×M (cash only when category is cash-adjacent: pricing / funding / competition / capital). Floors at 0. See table below. | Yuvaraj | 2026-04-22 |
+| D4 | Regular auto-chain after decide | **Hybrid**: after a milestone → no auto-regular (kid chooses: pull or wait). After a regular → auto-chain next regular until 5/day cap hit. First regular of the day → kid pulls. | Yuvaraj | 2026-04-22 |
+| D5 | Telegram mirror of pull | **Yes** — full parity. `/ceo` shows "📋 Take a small decision (N/5 left)" button when appropriate; bot also respects the auto-chain hybrid. | Yuvaraj | 2026-04-22 |
+| A1–A5 | Agent primitive calls | _tbd — Batch 2_ | | |
+| B1–B5 | BRAND agent calls | _tbd — Batch 3_ | | |
+| C1–C2 | Marketing agent calls | _tbd — Batch 4_ | | |
+| E1–E3 | Ops / Finance agent calls | _tbd — Batch 4_ | | |
+| W1–W4 | Workflow builder calls | _tbd — Batch 5_ | | |
+| L1–L5 | AI Lab calls | _tbd — Batch 6_ | | |
+| P1–P3 | Pace options | _tbd — Batch 6_ | | |
+
+### D3 confirmed penalty table
+
+| Milestone tier | Example milestones | Rep delta | Morale delta | Cash delta (cash-adjacent categories only) |
+|---|---|---|---|---|
+| 2× (minor) | EARLY_FEEDBACK, LEGACY | −2 | −2 | −₹100 |
+| 3× (standard) | BRAND, LOCATION, FIRST_CUSTOMERS, OPERATIONS_SETUP, RETENTION, FIRST_HIRE, WORD_OF_MOUTH, TEAM_GROWTH, STRATEGIC_PIVOT | −3 | −3 | −₹150 |
+| 5× (pillar / crisis) | FUNDING_STANCE, PRICING, CAPITAL_STRATEGY, COMPETITION, EXPANSION, EXIT_STRATEGY, SUPPLIER_RELATIONSHIP | −5 | −5 | −₹250 |
+
+Cash-adjacent categories (from `CEO_EVENT_CATEGORIES` in `lib/ceo/constants.ts`): `pricing`, `funding`, `competition`, `capital`, `ops` (when supplier/inventory). Non-cash categories (brand, marketing-reputation, people-morale, customer-service) apply rep + morale penalties only.
+
+All deltas floor at 0 so a skipping streak cannot push cash / rep / morale below 0.
