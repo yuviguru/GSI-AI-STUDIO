@@ -189,6 +189,7 @@ export default function AssignmentReviewPage() {
       {selected && (
         <SubmissionReview
           submission={selected}
+          assignmentId={params.assignmentId}
           onReview={review}
           onPrev={prevId ? () => setSelectedId(prevId) : undefined}
           onNext={nextId ? () => setSelectedId(nextId) : undefined}

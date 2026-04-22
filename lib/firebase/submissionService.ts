@@ -156,6 +156,46 @@ export async function getSubmission(submissionId: string): Promise<SubmissionDoc
   return toSubmissionDoc(doc.data() as SubmissionDocFirestore);
 }
 
+/** Single-submission variant of `listSubmissionsWithContext`. Returns null
+ *  when the submission doesn't exist. Used by AI-assisted feedback and
+ *  other Phase 4 flows that need a full submission context in one call. */
+export async function getSubmissionWithContext(
+  submissionId: string,
+): Promise<SubmissionWithContext | null> {
+  const base = await getSubmission(submissionId);
+  if (!base) return null;
+  const [kidSnap, creationSnap] = await Promise.all([
+    adminDb.collection(KIDS_COLLECTION).doc(base.kidId).get(),
+    adminDb.collection(CREATIONS_COLLECTION).doc(base.creationId).get(),
+  ]);
+  const kid = kidSnap.data() as Record<string, unknown> | undefined;
+  const creation = creationSnap.data() as Record<string, unknown> | undefined;
+  const createdAtField = creation?.createdAt as { toDate?: () => Date } | undefined;
+  return {
+    ...base,
+    kid: {
+      id: base.kidId,
+      name: (kid?.name as string | undefined) ?? 'Student',
+      avatar: kid?.avatar as string | undefined,
+      grade: kid?.grade as string | undefined,
+    },
+    creation: creation
+      ? {
+          id: base.creationId,
+          type: (creation.type as string) ?? 'story',
+          title: (creation.title as string) ?? 'Untitled',
+          thumbnail: creation.thumbnail as string | undefined,
+          content: (creation.content as Record<string, unknown>) ?? {},
+          aiConceptsTaught: (creation.aiConceptsTaught as string[]) ?? [],
+          media: creation.media as
+            | Array<{ url: string; type: string; alt: string }>
+            | undefined,
+          createdAt: createdAtField?.toDate?.() ?? new Date(),
+        }
+      : null,
+  };
+}
+
 export async function listSubmissionsForAssignment(
   assignmentId: string,
 ): Promise<SubmissionDoc[]> {
