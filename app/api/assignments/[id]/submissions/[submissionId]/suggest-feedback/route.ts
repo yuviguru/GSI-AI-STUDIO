@@ -15,6 +15,7 @@ import {
   checkAndIncrementAiRate,
   logTeacherAiUsage,
 } from '@/lib/firebase/teacherAiUsageService';
+import { requireConsent } from '@/lib/dpdp/consentService';
 
 function parseLocale(raw: unknown): Locale {
   if (raw === 'hi') return 'hi';
@@ -48,6 +49,11 @@ export async function POST(
     if (submission.assignmentId !== params.id) {
       throw new AppException('INVALID_INPUT', 'Submission does not belong to this assignment.', 400);
     }
+
+    // DPDP: require parent consent before running any AI generator on a
+    // kid's data. Throws FORBIDDEN_CONSENT (403) when missing so the UI
+    // can prompt the teacher to ask the parent.
+    await requireConsent(submission.kidId, 'ai_generation');
 
     let body: Record<string, unknown> = {};
     try {
