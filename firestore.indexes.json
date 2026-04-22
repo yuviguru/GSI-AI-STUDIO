@@ -210,6 +210,14 @@
       ]
     },
     {
+      "collectionGroup": "ceoBusiness",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "nextMilestoneScheduledAt", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "botSessions",
       "queryScope": "COLLECTION",
       "fields": [

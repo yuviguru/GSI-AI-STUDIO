@@ -41,11 +41,13 @@ import {
   getCeoEvent,
   getCeoProfileByBusiness,
   getOrCreateCeoProfile,
-  getPendingEventForBusiness,
+  getPendingMilestoneForBusiness,
+  getPendingRegularForBusiness,
   getRecentEventsForBusiness,
   listBusinessesForKid,
   markMilestoneDelivered,
   recordEventDecision,
+  releaseRegularEventSlot,
   reserveRegularEventSlot,
   saveCeoEvent,
 } from '@/lib/firebase/ceoService';
@@ -98,12 +100,29 @@ const BUSINESS_TYPES: readonly CeoBusinessType[] = [
 
 const PACES: readonly CeoPace[] = ['15', '30', '45'];
 
+/** Resolve whichever pending event the kid has right now, preferring the
+ *  milestone (headline) when both exist. Phase 3 dual pending slots mean
+ *  a business can have one of each concurrently; the bot always surfaces
+ *  milestone first. */
+async function getAnyPendingForBusiness(businessId: string) {
+  const milestone = await getPendingMilestoneForBusiness(businessId);
+  if (milestone) return milestone;
+  return getPendingRegularForBusiness(businessId);
+}
+
 // ─── Module export ───────────────────────────────────────────
 
 export const ceoModule: BotFeatureModule = {
   id: 'ceo',
   commands: ['/start', '/ceo', '/mybusiness', '/ceoprofile', '/link', '/help'],
-  callbackPrefixes: ['ceo_biz:', 'ceo_choice:', 'ceo_pace:', 'ceo_loc:', 'ceo_resume:'],
+  callbackPrefixes: [
+    'ceo_biz:',
+    'ceo_choice:',
+    'ceo_pace:',
+    'ceo_loc:',
+    'ceo_resume:',
+    'ceo_pull_regular:',
+  ],
 
   async handle(message, send, context) {
     try {
@@ -139,6 +158,9 @@ export const ceoModule: BotFeatureModule = {
         }
         if (data.startsWith('ceo_resume:')) {
           return await handleResumePick(data, message, send, context);
+        }
+        if (data.startsWith('ceo_pull_regular:')) {
+          return await handlePullRegular(data, message, send, context);
         }
       }
     } catch (err) {
@@ -318,7 +340,7 @@ async function resumeSpecificBusiness(params: {
     parseMode: 'markdown',
   });
 
-  const pending = await getPendingEventForBusiness(business.id);
+  const pending = await getAnyPendingForBusiness(business.id);
   if (pending) {
     await sendEvent(params.chatId, pending, params.send);
     return;
@@ -387,7 +409,7 @@ async function handleCeo(
         'Type /mybusiness to see your status, or wait for the next event here.',
       parseMode: 'markdown',
     });
-    const pending = await getPendingEventForBusiness(only.id);
+    const pending = await getAnyPendingForBusiness(only.id);
     if (pending) {
       await sendEvent(message.chatId, pending, send);
     }
@@ -486,7 +508,7 @@ async function handleResumePick(
     parseMode: 'markdown',
   });
 
-  const pending = await getPendingEventForBusiness(business.id);
+  const pending = await getAnyPendingForBusiness(business.id);
   if (pending) {
     await sendEvent(message.chatId, pending, send);
   } else {
@@ -496,6 +518,84 @@ async function handleResumePick(
         'No pending decision right now. Type /mybusiness to see where you are, ' +
         'or wait for the next event to arrive.',
       parseMode: 'markdown',
+    });
+  }
+}
+
+/** Callback — Phase 3 Daily Rhythm D4/D5: kid tapped "Take a small
+ *  decision" on Telegram. Mirrors `/api/ceo/event` — reserves a slot,
+ *  generates a regular event via the event engine, saves it (which
+ *  atomically sets `pendingRegularEventId`), and sends it to the chat. */
+async function handlePullRegular(
+  data: string,
+  message: BotIncomingMessage,
+  send: Send,
+  context: BotContext,
+): Promise<void> {
+  const businessId = data.slice('ceo_pull_regular:'.length);
+  if (!businessId) {
+    await send({ chatId: message.chatId, text: 'Pick a business first.' });
+    return;
+  }
+
+  const linked = await requireLinkedKid(context, send, message.chatId);
+  if (!linked) return;
+
+  const business = await getCeoBusiness(businessId);
+  if (business.kidId !== linked.kidId) {
+    await send({ chatId: message.chatId, text: "That's not one of your businesses." });
+    return;
+  }
+  if (business.status !== 'active') {
+    await send({
+      chatId: message.chatId,
+      text: `*${escapeMd(business.businessName)}* is ${business.status}. Type /ceo to pick another.`,
+      parseMode: 'markdown',
+    });
+    return;
+  }
+
+  // Idempotency: if a regular is already pending, just re-surface it
+  // instead of minting a second one.
+  const existing = await getPendingRegularForBusiness(businessId);
+  if (existing) {
+    await sendEvent(message.chatId, existing, send);
+    return;
+  }
+
+  const reservation = await reserveRegularEventSlot(
+    businessId,
+    REGULAR_EVENTS_PER_DAY_CAP,
+  );
+  if (!reservation.allowed) {
+    await send({
+      chatId: message.chatId,
+      text:
+        `You've handled all *${REGULAR_EVENTS_PER_DAY_CAP}* small decisions for today ` +
+        `(${reservation.countToday}/${REGULAR_EVENTS_PER_DAY_CAP}).\n\n` +
+        '⭐ Your next Big Choice arrives tomorrow at 6:30 PM IST.',
+      parseMode: 'markdown',
+    });
+    return;
+  }
+
+  try {
+    const recent = await getRecentEventsForBusiness(businessId, 5);
+    const recentEventTitles = recent.map((e) => e.title);
+    const generated = await generateRegularEvent({ business, recentEventTitles });
+    const saved = await saveCeoEvent({ ...generated, deliveredVia: 'telegram' });
+    await sendEvent(message.chatId, saved, send);
+  } catch (err) {
+    console.error('[ceo module] pull-regular failed:', err);
+    // Release the slot so a transient error doesn't burn the kid's count.
+    try {
+      await releaseRegularEventSlot(businessId);
+    } catch (relErr) {
+      console.error('[ceo module] slot release after pull failure failed:', relErr);
+    }
+    await send({
+      chatId: message.chatId,
+      text: 'Something went wrong generating your next decision — try again in a moment.',
     });
   }
 }
@@ -949,20 +1049,36 @@ async function handleChoice(
     return;
   }
 
-  // Next-step UX:
-  // - Milestone decision → nudge the kid to come back tomorrow.
-  // - Regular decision, cap not hit → send the next regular event.
+  // Phase 3 Daily Rhythm D4 — hybrid auto-chain:
+  // - Milestone decision → NO auto-regular; nudge + "Take a small decision" button
+  //   when slots remain today.
+  // - Regular decision, cap not hit → send the next regular event (chain).
   // - Regular decision, cap hit → "come back tomorrow" prompt.
   if (nextEvent) {
     await new Promise((resolve) => setTimeout(resolve, 800));
     await sendEvent(message.chatId, nextEvent, send);
   } else if (isMilestoneDecision) {
+    const slotsLeft = Math.max(0, REGULAR_EVENTS_PER_DAY_CAP - regularEventsToday);
+    const buttons =
+      slotsLeft > 0
+        ? [
+            [
+              {
+                text: `📋 Take a small decision (${slotsLeft}/${REGULAR_EVENTS_PER_DAY_CAP} left today)`,
+                callbackData: `ceo_pull_regular:${latestBusiness.id}`,
+              },
+            ],
+          ]
+        : undefined;
     await send({
       chatId: message.chatId,
       text:
-        '⭐ You made *today\'s Big Choice*. Tomorrow morning I\'ll bring the next one.\n\n' +
-        'Meanwhile, type /ceo to handle small everyday decisions (up to 5/day).',
+        '⭐ You made *today\'s Big Choice*. Tomorrow at 6:30 PM IST I\'ll bring the next one.\n\n' +
+        (slotsLeft > 0
+          ? 'Want to handle a small decision now?'
+          : 'All 5 small decisions are done for today. See you tomorrow!'),
       parseMode: 'markdown',
+      buttons,
     });
   } else if (regularCapHit) {
     await send({

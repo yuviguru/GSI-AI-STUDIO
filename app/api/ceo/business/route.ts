@@ -4,18 +4,30 @@ import { requireAuthWithKid } from '@/lib/auth-utils';
 import {
   getCeoBusiness,
   getActiveBusinessForKid,
-  getPendingEventForBusiness,
+  getPendingMilestoneForBusiness,
+  getPendingRegularForBusiness,
   listDecidedEventsForBusiness,
 } from '@/lib/firebase/ceoService';
 import type { CeoBusiness, CeoEvent } from '@/types';
 
 /**
  * GET /api/ceo/business
- * Returns the current business state + pending event + recent decision history
- * for the authenticated user's active kid profile.
+ * Returns business state + pending events (milestone + regular, independent
+ * per Phase 3 Daily Rhythm) + recent decision history for the authenticated
+ * user's active kid profile.
  *
- * If `?businessId` is omitted, returns the most recent ACTIVE business for the
- * kid. 404s if the kid has no active business.
+ * Response shape:
+ *   {
+ *     business: CeoBusiness,
+ *     pendingMilestone: CeoEvent | null,  // the headline "Big Choice"
+ *     pendingRegular:   CeoEvent | null,  // the "Small Choice", if any
+ *     pendingEvent:     CeoEvent | null,  // DEPRECATED — milestone ?? regular
+ *                                         //              for legacy clients
+ *     decisionHistory:  CeoDecisionHistoryEntry[]
+ *   }
+ *
+ * If `?businessId` is omitted, returns the most recent ACTIVE business for
+ * the kid. 404s if the kid has no active business.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -37,7 +49,10 @@ export async function GET(request: NextRequest) {
       business = active;
     }
 
-    const pendingEvent = await getPendingEventForBusiness(business.id);
+    const [pendingMilestone, pendingRegular] = await Promise.all([
+      getPendingMilestoneForBusiness(business.id),
+      getPendingRegularForBusiness(business.id),
+    ]);
 
     // listDecidedEventsForBusiness returns events ordered by decisionTimestamp
     // ASC. Reverse so the response surfaces most-recent-first.
@@ -61,7 +76,15 @@ export async function GET(request: NextRequest) {
       })
       .reverse();
 
-    return apiSuccess({ business, pendingEvent, decisionHistory });
+    return apiSuccess({
+      business,
+      pendingMilestone,
+      pendingRegular,
+      // Legacy single-slot field — milestone wins when both are set. Keeps
+      // pre-Phase-3 clients that still read `pendingEvent` working.
+      pendingEvent: pendingMilestone ?? pendingRegular ?? null,
+      decisionHistory,
+    });
   } catch (error) {
     return handleApiError(error);
   }
