@@ -11,6 +11,7 @@ import { EventFeed } from '@/components/ceo/EventFeed';
 import { MilestoneZone } from '@/components/ceo/MilestoneZone';
 import { PhaseProgress } from '@/components/ceo/PhaseProgress';
 import { SmallDecisionsZone } from '@/components/ceo/SmallDecisionsZone';
+import { TeamTab } from '@/components/ceo/agents/TeamTab';
 import { TelegramConnectButton } from '@/components/ceo/TelegramConnectButton';
 import { Mascot } from '@/components/mascot/Mascot';
 import { useCeoBusiness } from '@/hooks/useCeoBusiness';
@@ -67,6 +68,7 @@ function PlayPageInner() {
     error,
     decide,
     pullRegularEvent,
+    refetch,
   } = useCeoBusiness({
     businessId: businessIdParam,
     autoFetch: true,
@@ -322,6 +324,10 @@ function PlayPageInner() {
           onPull={handlePullRegular}
           decideLoading={deciding}
         />
+
+        {business.phase !== 'pre_launch' && (
+          <TeamTab business={business} onCashChanged={refetch} />
+        )}
 
         {decisionHistory.length > 0 && (
           <EventFeed

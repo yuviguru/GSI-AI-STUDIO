@@ -61,6 +61,195 @@ export type CeoMilestoneStatus = 'pending' | 'resolved';
 
 export type CeoDeliveryChannel = 'web' | 'telegram';
 
+// ─── Agents (Phase 3) ──────────────────────────────────────
+
+/** The six agent archetypes kids hire to handle parts of their business.
+ *  Static catalog lives in `lib/ceo/agents/catalog.ts` — NOT Firestore. */
+export type CeoAgentId =
+  | 'design'
+  | 'marketing'
+  | 'ops'
+  | 'finance'
+  | 'customer_success'
+  | 'product';
+
+export type CeoAgentHireStatus = 'active' | 'paused' | 'dismissed';
+
+export type CeoAgentAggressiveness = 'low' | 'medium' | 'high';
+
+/** Catalog descriptor. Non-persistent — resolved from code at read time. */
+export interface CeoAgentDescriptor {
+  id: CeoAgentId;
+  name: string;
+  emoji: string;
+  /** Short kid-facing tagline shown on the hire card. */
+  tagline: string;
+  /** Phase the kid must reach before this agent becomes hireable. */
+  unlockPhase: CeoPhaseKey;
+  /** Daily salary in in-sim rupees, deducted at the IST midnight tick. */
+  salaryPerDay: number;
+  /** Kid-facing focus options (first is the default). Each focus maps to
+   *  a different system prompt when the agent runs a workflow. */
+  focusOptions: ReadonlyArray<{ id: string; name: string; description: string }>;
+  /** Workflows this agent can run. IDs resolved via WORKFLOW_REGISTRY. */
+  workflows: ReadonlyArray<CeoWorkflowId>;
+}
+
+export interface CeoAgentConfig {
+  focus: string; // must be one of descriptor.focusOptions[].id
+  aggressiveness: CeoAgentAggressiveness;
+}
+
+/** Firestore doc in `ceoAgentHires` — each document is one kid's hire of
+ *  one agent for one business. */
+export interface CeoAgentHire {
+  id: string;
+  userId: string;
+  kidId: string;
+  businessId: string;
+  agentId: CeoAgentId;
+  config: CeoAgentConfig;
+  salary: number;
+  status: CeoAgentHireStatus;
+  hiredAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+/** Workflow IDs (closed union). Each is a dot-namespaced string so the
+ *  registry can lazily resolve the matching `WorkflowSpec`. Specific
+ *  workflows are introduced by per-agent stories. */
+export type CeoWorkflowId =
+  | 'brand.package'
+  | 'marketing.firstCampaign'
+  | 'marketing.dailyPush'
+  | 'ops.setupPackage'
+  | 'ops.scheduleCheck'
+  | 'finance.pricingPackage'
+  | 'finance.cashCheck';
+
+/** Trigger source for an artifact — where the workflow run came from. */
+export type CeoArtifactTrigger =
+  | 'milestone'
+  | 'regular'
+  | 'manual'
+  | 'custom_workflow';
+
+export type CeoArtifactStatus = 'candidate' | 'accepted' | 'rejected' | 'expired';
+
+/** One step of a workflow trace. Populated by the executor as each tool
+ *  call resolves. Kid-visible via the `<WorkflowTrace>` X-ray panel. */
+export interface CeoWorkflowStepTrace {
+  /** Step identifier as declared in the WorkflowSpec (e.g. `logo_candidates`). */
+  stepId: string;
+  /** Tool adapter name (e.g. `flux_schnell`, `claude_haiku`, `break_even`). */
+  tool: string;
+  /** Model identifier as reported by the underlying provider (e.g.
+   *  `black-forest-labs/FLUX.1-schnell`, `claude-haiku-4.5`). Empty for
+   *  deterministic tools. */
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  /** In-sim rupees charged for this step (from
+   *  `lib/ceo/agents/pricing.ts`). */
+  costInr: number;
+  inputSummary: string;
+  outputSummary: string;
+  latencyMs: number;
+  /** When a tool retried once on a transient error, this is the attempt
+   *  count that actually succeeded (2 = first retry succeeded). */
+  attemptCount?: number;
+  /** If set, the step failed. `outputSummary` holds the error message. */
+  failed?: boolean;
+}
+
+/** Polymorphic artifact asset — discriminated union by `type`. */
+export type CeoArtifactAsset =
+  | CeoArtifactImageAsset
+  | CeoArtifactTextAsset
+  | CeoArtifactPaletteAsset
+  | CeoArtifactScheduleAsset
+  | CeoArtifactPricingStrategyAsset;
+
+export interface CeoArtifactImageAsset {
+  type: 'image';
+  /** Kid-facing kind hint used for UI grouping / copy. */
+  kind: 'logo' | 'poster' | 'other';
+  url: string;
+  caption: string;
+  altText: string;
+  widthPx: number;
+  heightPx: number;
+}
+
+export interface CeoArtifactTextAsset {
+  type: 'text';
+  kind: 'motto' | 'voice' | 'post' | 'checklist' | 'rationale' | 'hours_plan' | 'role_card' | 'other';
+  content: string;
+}
+
+export interface CeoArtifactPaletteAsset {
+  type: 'palette';
+  colors: string[]; // hex, e.g. "#FF8800"
+}
+
+export interface CeoArtifactScheduleAsset {
+  type: 'schedule';
+  days: ReadonlyArray<{
+    day: string; // e.g. "Mon"
+    open: string; // "HH:mm"
+    close: string; // "HH:mm"
+    notes: string;
+  }>;
+}
+
+export interface CeoArtifactPricingStrategyAsset {
+  type: 'pricing_strategy';
+  price: number;
+  rationale: string;
+  breakEvenUnits: number;
+}
+
+/** Firestore doc in `ceoArtifacts`. One per workflow run — candidate
+ *  until the kid accepts or rejects. */
+export interface CeoArtifact {
+  id: string;
+  userId: string;
+  kidId: string;
+  businessId: string;
+  agentHireId: string;
+  workflowId: CeoWorkflowId;
+  trigger: CeoArtifactTrigger;
+  trace: CeoWorkflowStepTrace[];
+  assets: CeoArtifactAsset[];
+  status: CeoArtifactStatus;
+  /** Which event this run is resolving (milestone or regular), if any. */
+  decisionEventId?: string | null;
+  /** Where the accepted artifact ultimately landed. Populated on accept. */
+  attachedTo?:
+    | { kind: 'business_field'; field: 'brandAssets' }
+    | { kind: 'event'; eventId: string }
+    | { kind: 'marketing_feed' }
+    | null;
+  /** Estimated total LLM + image-model cost in in-sim ₹. Deducted from
+   *  `business.currentCash` when this artifact was minted. */
+  costInr: number;
+  /** 1-indexed count of attempts in the current session (resets on
+   *  accept/reject). Used by the re-roll escalation multiplier. */
+  runIndex: number;
+  createdAt: Timestamp;
+  acceptedAt?: Timestamp | null;
+}
+
+/** Set on `business.brandAssets` once the BRAND milestone resolves via
+ *  the Design Agent. Referenced in every subsequent event prompt so the
+ *  arc coheres around the kid's brand identity. */
+export interface CeoBrandAssets {
+  logoUrl: string;
+  motto: string;
+  voice: string;
+  palette?: string[];
+}
+
 // ─── Events & Choices ──────────────────────────────────────
 
 export interface CeoChoice {
@@ -126,6 +315,11 @@ export interface CeoBusiness {
    *  The daily-delivery cron checks this to avoid double-firing on the
    *  same IST day. */
   lastMilestoneDeliveredAt?: Timestamp | null;
+
+  /** Phase 3 — accepted artifact from the Design Agent after the BRAND
+   *  milestone resolves. Referenced in every subsequent event prompt so
+   *  the arc stays coherent around the kid's brand identity. */
+  brandAssets?: CeoBrandAssets | null;
 
   // ── Phase 3 Daily Rhythm: dual pending slots + scheduled milestone ────
   /** Current pending MILESTONE event, or null. Set by saveCeoEvent when
