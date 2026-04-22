@@ -127,6 +127,9 @@ function docToCeoBusiness(doc: FirebaseFirestore.DocumentSnapshot): CeoBusiness 
     pendingMilestoneEventId: data.pendingMilestoneEventId ?? null,
     pendingRegularEventId: data.pendingRegularEventId ?? null,
     nextMilestoneScheduledAt: data.nextMilestoneScheduledAt ?? null,
+    brandAssets: data.brandAssets ?? null,
+    marketingDailyPostCount: data.marketingDailyPostCount ?? 0,
+    marketingLastPostDayUtc: data.marketingLastPostDayUtc ?? undefined,
   };
 }
 
