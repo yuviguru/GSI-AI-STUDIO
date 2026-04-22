@@ -76,6 +76,10 @@ export interface GeneratedEvent {
   eventType: CeoEventType;
   namedTitle?: string;
   stakesMultiplier: number;
+  // Phase 3 — when set, the UI renders the agent-driven card instead of
+  // the A/B/C picker. Absent on milestones the legacy flow still owns
+  // and on all regular events.
+  agentWorkflowId?: string;
 }
 
 interface GenerateEventParams {
@@ -245,6 +249,13 @@ function shapeLlmEvent(
   const stakesMultiplier =
     eventType === 'milestone' ? stakesMultiplierFor(milestone) : STAKES_MULTIPLIER.regular;
 
+  // Phase 3 — per-milestone agent routing. When a milestone is handled by
+  // an agent workflow (currently only BRAND), the event doc carries the
+  // workflow id and the web UI routes to the AgentEventCard flow. Kid can
+  // still fall back to the legacy A/B/C choices (kept alongside) if the
+  // agent flow errors out — defence in depth for the first ship.
+  const agentWorkflowId = resolveAgentWorkflowId(eventType, milestone);
+
   return {
     businessId: business.id,
     userId: business.userId,
@@ -258,7 +269,22 @@ function shapeLlmEvent(
     eventType,
     namedTitle,
     stakesMultiplier,
+    agentWorkflowId,
   };
+}
+
+/** Map a milestone name to the agent workflow that handles it, or null
+ *  for milestones still on the legacy A/B/C path. Per-agent stories
+ *  grow this mapping. */
+function resolveAgentWorkflowId(
+  eventType: CeoEventType,
+  milestone: string | null,
+): string | undefined {
+  if (eventType !== 'milestone' || !milestone) return undefined;
+  const MILESTONE_TO_WORKFLOW: Record<string, string | undefined> = {
+    BRAND: 'brand.package',
+  };
+  return MILESTONE_TO_WORKFLOW[milestone];
 }
 
 /** Fallback named_title when the LLM omits one. Kid-facing — used only when
@@ -374,5 +400,6 @@ export function buildFallbackEvent(business: CeoBusiness, milestone: string | nu
       eventType === 'milestone'
         ? stakesMultiplierFor(milestone)
         : STAKES_MULTIPLIER.regular,
+    agentWorkflowId: resolveAgentWorkflowId(eventType, milestone),
   };
 }

@@ -312,7 +312,9 @@ function PlayPageInner() {
 
         <MilestoneZone
           pendingMilestone={pendingMilestone}
+          business={business}
           onChoose={handleMilestoneChoose}
+          onAgentResolved={refetch}
           loading={deciding}
         />
 
