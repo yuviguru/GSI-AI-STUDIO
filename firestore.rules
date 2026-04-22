@@ -58,15 +58,38 @@ service cloud.firestore {
     }
 
     // ─── Schools (Phase 3) ──────────────────────────────────
+    // All reads/writes flow through authenticated server routes. Clients
+    // must NEVER read schools or classes directly — class docs contain
+    // inviteCode, which is the trust anchor for student enrolment. A
+    // generic "authenticated user" read grant would let any signed-in
+    // parent scrape every invite code across every school and enrol
+    // their kid into arbitrary classes.
     match /schools/{schoolId} {
-      allow read: if request.auth != null;
-      allow write: if false; // Server-side only
+      allow read, write: if false; // Server-side only via Admin SDK
 
-      // Classes within a school
       match /classes/{classId} {
-        allow read: if request.auth != null;
-        allow write: if false; // Server-side only
+        allow read, write: if false; // Server-side only
       }
+    }
+
+    // ─── Assignments (Phase 3) ──────────────────────────────
+    // Top-level collection. Access control is enforced server-side via
+    // requireRole + ownership checks; clients never read this directly.
+    match /assignments/{assignmentId} {
+      allow read, write: if false; // Server-side only
+    }
+
+    // ─── Submissions (Phase 3) ──────────────────────────────
+    // Creations submitted to assignments.
+    match /submissions/{submissionId} {
+      allow read, write: if false; // Server-side only
+    }
+
+    // ─── School Analytics (Phase 3) ─────────────────────────
+    // Cached aggregate metrics per school. Refreshed daily by scheduled
+    // Netlify function; never written by clients.
+    match /schoolAnalytics/{schoolId} {
+      allow read, write: if false; // Server-side only
     }
 
     // ─── Cerebro Competitions (Phase 2+) ─────────────────────

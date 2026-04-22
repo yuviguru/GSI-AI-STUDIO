@@ -1,8 +1,10 @@
 /** User types matching Firestore schema */
 
+import type { CreationType } from './creation.types';
+
 // ─── Roles & Plans ─────────────────────────────────────────────────────────
 
-export type UserRole = 'parent' | 'teacher';
+export type UserRole = 'parent' | 'teacher' | 'schoolAdmin';
 export type UserPlan = 'free' | 'creator' | 'family';
 
 // ─── Users (parents & teachers) ────────────────────────────────────────────
@@ -100,6 +102,106 @@ export interface AuthContext {
 export type HybridAuthResult =
   | { type: 'anonymous'; sessionId: string }
   | { type: 'authenticated'; auth: AuthContext };
+
+// ─── Schools, Classes, Assignments, Submissions (Phase 3) ──────────────────
+
+export type Board = 'cbse' | 'icse' | 'state';
+
+export interface SchoolDoc {
+  id: string;
+  name: string;
+  city: string;
+  state: string;
+  board: Board;
+  /** Short human-readable code used during teacher registration */
+  schoolCode: string;
+  /** Primary admin (teacher/principal) user ID */
+  adminUid: string;
+  teacherIds: string[];
+  studentCount: number;
+  plan: 'trial' | 'basic' | 'premium';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ClassDoc {
+  id: string;
+  schoolId: string;
+  name: string;
+  grade: string;
+  section?: string;
+  teacherUid: string;
+  studentKidIds: string[];
+  /** 6-char alphanumeric invite code (unique per class) */
+  inviteCode: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type AssignmentStatus = 'active' | 'closed';
+
+export interface AssignmentDoc {
+  id: string;
+  schoolId: string;
+  classId: string;
+  teacherUid: string;
+  title: string;
+  description: string;
+  creationType: CreationType;
+  dueDate: Date;
+  curriculumTags: string[];
+  templateId?: string;
+  status: AssignmentStatus;
+  submissions: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type SubmissionStatus = 'pending' | 'approved' | 'revision_requested';
+
+export interface SubmissionDoc {
+  id: string;
+  assignmentId: string;
+  classId: string;
+  schoolId: string;
+  kidId: string;
+  creationId: string;
+  status: SubmissionStatus;
+  feedback?: string;
+  starred?: boolean;
+  reviewedBy?: string;
+  reviewedAt?: Date;
+  submittedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ─── School analytics (cached aggregate — Phase 3) ────────────────────────
+
+export interface SchoolAnalyticsDoc {
+  schoolId: string;
+  totalStudents: number;
+  activeStudentsThisWeek: number;
+  totalCreations: number;
+  creationsThisWeek: number;
+  creationsByType: Record<CreationType, number>;
+  curriculumCoverage: Array<{
+    conceptId: string;
+    conceptName: string;
+    studentsExposed: number;
+    percentage: number;
+  }>;
+  teacherActivity: Array<{
+    teacherUid: string;
+    teacherName: string;
+    classes: number;
+    assignmentsCreated: number;
+    avgCompletionRate: number;
+    lastActiveAt?: Date;
+  }>;
+  weeklyTrend: Array<{ week: string; creations: number; students: number }>;
+  updatedAt: Date;
+}
 
 // ─── Session (Phase 1 anonymous) ───────────────────────────────────────────
 

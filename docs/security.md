@@ -555,6 +555,41 @@ NEXT_PUBLIC_FIREBASE_CONFIG=<json>  # This one is public (client-side)
 
 ---
 
+## Role Enforcement (Phase 3+)
+
+School-side features (`/teacher/*`, `/school/*`) and their API routes (`/api/schools/*`, `/api/classes/*`, `/api/assignments/*`, `/api/admin/*`) must verify the caller's role before allowing access. Roles live on the Firestore user document (`users/{uid}.role`), not in Firebase custom claims — this avoids token-refresh coordination when a role changes.
+
+### Canonical server pattern
+
+```typescript
+import { NextRequest } from 'next/server';
+import { requireRole } from '@/lib/auth-utils';
+import { apiSuccess, handleApiError } from '@/lib/api-utils';
+
+export async function POST(req: NextRequest) {
+  try {
+    // Verifies Bearer token, loads users/{uid}, asserts role.
+    // Returns AuthContext { userId, role, plan, schoolId }.
+    const auth = await requireRole(req, ['teacher', 'schoolAdmin']);
+    // ... handler logic, scoped to auth.schoolId
+    return apiSuccess(result);
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+```
+
+### Rules
+
+- **Never trust `role` from the client** — always re-derive it inside `requireRole`.
+- **School admins can do everything teachers can** — treat the allow-list `['teacher', 'schoolAdmin']` as the default for teacher-flavoured endpoints.
+- **Analytics endpoints are `schoolAdmin`-only** — heatmap, inter-school leaderboard, compliance export.
+- **Never expose another school's data** — every query must filter by `auth.schoolId` derived from the user doc, never from request params.
+- **Role upgrade happens only in `POST /api/auth/teacher/register`** — it's the single source of truth that writes `role: 'teacher'` and `schoolId` to the user doc. All other endpoints read role, never write it.
+- **Firestore rules stay locked to `allow write: if false`** for `schools`, `classes`, `assignments`, `submissions`, and `schoolAnalytics`. All writes flow through the Admin SDK in server routes.
+
+---
+
 ## Incident Response
 
 ### If AI generates inappropriate content:

@@ -17,6 +17,7 @@ import {
   LeaderboardPanel,
   ContinueCreatingCard,
 } from '@/components/dashboard';
+import { AssignmentView } from '@/components/student/AssignmentView';
 
 export default function HomePage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -46,6 +47,11 @@ export default function HomePage() {
 
         {/* Continue Creating (only if in-progress session) */}
         <ContinueCreatingCard />
+
+        {/* Pending assignments from teachers (Phase 3) */}
+        <div className="mb-4">
+          <AssignmentView />
+        </div>
 
         {/* ── ROW 1 — Stats + Badges: 4 equal cards ────────────────────── */}
         <DashboardStatsRow />

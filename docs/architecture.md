@@ -405,6 +405,30 @@ Git Push → Netlify Build → Deploy Preview (PRs) / Production (main)
 - **PWA Caching**: Cache static assets aggressively. Use stale-while-revalidate for creation feeds. Service worker for offline landing page.
 - **Phase 3 Multi-tenancy**: Schools get isolated Firestore sub-collections under a school document. Teacher roles scoped to their school.
 
+### School Side (Phase 3)
+
+Teacher portal, assignments, and school analytics form a distinct module layered on top of the Phase 2 auth + kid profile foundation.
+
+**Route layout**:
+- `app/(auth)/teacher/page.tsx` — teacher dashboard (classes, recent activity, quick actions)
+- `app/(auth)/teacher/classes/[classId]/page.tsx` — class detail + submission grid
+- `app/(auth)/school/page.tsx` — school admin dashboard (metrics, heatmap, leaderboards)
+
+**API surface** (all under `app/api/`):
+- `auth/teacher/*` — upgrade user to `teacher` role + attach to a school
+- `schools/*`, `schools/[id]/classes/*` — school/class CRUD
+- `classes/join` — kid joins a class via invite code
+- `assignments/*`, `assignments/[id]/submissions/*` — assignment + submission lifecycle
+- `admin/analytics/*`, `admin/competitions/*` — `schoolAdmin`-only analytics and inter-school leaderboards
+
+**Service layer**: `lib/firebase/schoolService.ts` wraps all Firestore reads/writes for schools, classes, invite codes, and join flows. Mirrors `userService.ts` / `kidService.ts` patterns.
+
+**Curriculum**: `lib/curriculum/curriculumMap.ts` is a hand-curated CBSE AI & CT concept catalog consumed by the assignment creator (tag picker), the compliance PDF exporter, and the dashboard heatmap. LEARN-002 will extend the same module with a full skill-tree UI without changing the shape.
+
+**Analytics**: `schoolAnalytics/{schoolId}` caches per-school aggregates refreshed daily by a scheduled Netlify function and on-demand from the admin dashboard. Clients never write to this collection.
+
+**Compliance export**: `lib/export/complianceReport.ts` uses `jspdf` (already in deps) to generate printable audit-ready PDFs covering curriculum alignment, student participation, and teacher activity over a date range.
+
 ## Infrastructure Patterns
 
 ### Idempotent Session Creation

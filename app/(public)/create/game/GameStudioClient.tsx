@@ -11,6 +11,7 @@ import { useAiPoints } from '@/contexts/AiPointsContext';
 import { GamePromptForm } from '@/components/studios/game/GamePromptForm';
 import { GameProgress } from '@/components/studios/game/GameProgress';
 import { GamePlayer } from '@/components/studios/game/GamePlayer';
+import { AssignmentBanner } from '@/components/student/AssignmentBanner';
 import type { GameContent, AiXrayData } from '@/types';
 import type { GameInput } from '@/lib/validators';
 
@@ -73,6 +74,9 @@ export function GameStudioClient() {
             </div>
           </div>
         )}
+
+        {/* Assignment context banner (auto-submits on publish) */}
+        <AssignmentBanner creationType="game" creationId={creationId} />
 
         {/* Error banner */}
         {error && step === 'inspire' && (

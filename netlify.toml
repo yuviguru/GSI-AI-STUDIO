@@ -15,3 +15,8 @@
 # every linked @GSIPersonalAssistantBot chat that had activity this week.
 [functions."homework-weekly-digest"]
   schedule = "30 13 * * 0"
+
+# Daily at 02:00 UTC (~07:30 IST). Re-aggregates per-school analytics into
+# the `schoolAnalytics/{schoolId}` cache read by the school admin dashboard.
+[functions."school-analytics-refresh"]
+  schedule = "0 2 * * *"

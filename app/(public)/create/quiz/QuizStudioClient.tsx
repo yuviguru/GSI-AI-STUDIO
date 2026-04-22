@@ -11,6 +11,7 @@ import { useAiPoints } from '@/contexts/AiPointsContext';
 import { QuizPromptForm } from '@/components/studios/quiz/QuizPromptForm';
 import { QuizProgress } from '@/components/studios/quiz/QuizProgress';
 import { QuizPlayer } from '@/components/studios/quiz/QuizPlayer';
+import { AssignmentBanner } from '@/components/student/AssignmentBanner';
 import type { QuizContent, AiXrayData } from '@/types';
 import type { QuizInput } from '@/lib/validators';
 
@@ -73,6 +74,9 @@ export function QuizStudioClient() {
             </div>
           </div>
         )}
+
+        {/* Assignment context banner (auto-submits on publish) */}
+        <AssignmentBanner creationType="quiz" creationId={creationId} />
 
         {/* Error banner */}
         {error && step === 'inspire' && (
