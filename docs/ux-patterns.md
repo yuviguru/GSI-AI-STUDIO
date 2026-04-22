@@ -1056,6 +1056,103 @@ Remix button on shared/public creations:
 - Split-pane creation studio (prompt left, preview right)
 - Keyboard shortcuts for power users
 
+## Kid CEO — Phase 3 Surfaces
+
+### Two-zone play surface
+
+The `/ceo/play` page stacks two independent zones above the decision history. Each zone holds one track of the Daily Rhythm model — they never conflict.
+
+```
+┌─ TODAY'S BIG CHOICE ──────────────────────┐
+│   milestone event card (when pending)     │
+│     OR                                    │
+│   "Next Big Choice arrives at 6:30 PM IST"│
+│   countdown timer (when empty)            │
+└───────────────────────────────────────────┘
+┌─ Small decisions ───────── 2 / 5 left ────┐
+│   pending regular event card              │
+│     OR                                    │
+│   [ Take a small decision ] button + hint │
+│     OR                                    │
+│   "All 5 done — resets at midnight IST"   │
+└───────────────────────────────────────────┘
+┌─ Decision history (collapsed rows) ───────┐
+└───────────────────────────────────────────┘
+```
+
+**Why stacked, not tabs**: tabs hide one track behind the other; for a kid, "what can I do right now?" should be one glance. Milestone always on top because it's the moment that drives the arc forward.
+
+**Countdown card copy**: always says IST explicitly. Kids outside India will learn the timezone by seeing it; the platform is India-first for now.
+
+### Agent-driven event card
+
+Milestone events with an `agentWorkflowId` render through `<AgentEventCard>` instead of the legacy A/B/C picker. Three states:
+
+1. **Briefing** — short intro ("Your Design Agent is ready to handle BRAND"), followed by `<BriefingForm>` (2 multiple-choice + 1 free-text, ≤20 chars) + "Run" button.
+2. **Running** — the `<WorkflowRunner>` progress view: each step of the workflow appears with a spinner → checkmark as it completes. Kids see the tool chain live (teaching moment).
+3. **Review** — candidates rendered in a 3-column grid (1 column on mobile). Kid picks one of each asset type; Accept enables when minimum selections are made. Re-roll button (free first, then in-sim ₹cost) sits next to Accept.
+
+The `<WorkflowTrace>` panel at the bottom is collapsed by default ("See how this worked") — tapping it exposes the real system prompt, model name, token count, cost. Every model name links to the matching Learn Foundation card.
+
+### Agent dashboard tab (Marketing / Ops / Finance / …)
+
+Each agent that ships ongoing artifacts (not just a one-shot milestone asset) gets its own tab on `/ceo/play` sibling to the main "Today" view. Same layout across agents:
+
+```
+┌─ <Agent name> Agent — status pill ────────┐
+│   Focus: <dial>    Aggressiveness: <dial> │
+│   Today: [ Give task ] (1/N free today)   │
+└───────────────────────────────────────────┘
+┌─ Recent artifacts (grid) ─────────────────┐
+│   card per accepted artifact              │
+│   - poster/motto/schedule preview         │
+│   - "Post this" / "Use this" CTA          │
+│   - "Show me how this worked" trace link  │
+└───────────────────────────────────────────┘
+┌─ Not yet hired? ──────────────────────────┐
+│   "Hire the Marketing Agent — ₹50/day"    │
+│   one-tap hire CTA                         │
+└───────────────────────────────────────────┘
+```
+
+Hidden until the agent's `unlockPhase` is reached. Empty state ("your Marketing Agent unlocks at Launch!") is still informative — teaches the progression.
+
+### Workflow Trace panel
+
+Shared across every artifact. Accordion rows, one per step:
+
+```
+[1] brief_expansion    Claude Haiku    3¢    520ms  ↓
+[2] logo_candidates    Flux Schnell    ₹3.2  2.1s   ↓
+[3] motto_and_voice    Claude Sonnet   8¢    880ms  ↓
+                                                TOTAL ₹3.3
+```
+
+Expanding a row shows: input summary (kid-readable), output summary, "See the real prompt" toggle. Every model name is a Learn deep-link.
+
+### AI Lab — Foundation card
+
+Each Foundation card is a single MDX file rendered as:
+
+```
+┌───────────────────────────────────────────┐
+│   [← Back to Foundations]    CBSE tags   │
+│                                           │
+│   # What is a prompt?                     │
+│                                           │
+│   3-4 paragraphs, kid-readable.          │
+│                                           │
+│   ┌─ Try it ─────────────────────────┐   │
+│   │  interactive demo inline         │   │
+│   │  (React component)               │   │
+│   └──────────────────────────────────┘   │
+│                                           │
+│   [Mark as done] →   [Related: …]        │
+└───────────────────────────────────────────┘
+```
+
+Interactive demos run client-side when possible (Transformers.js for small models) so zero server cost. Progress (`learnProgress/{kidId}`) updates on "Mark as done". CBSE tag pills link to curriculum coverage dashboard.
+
 ## Performance Targets
 
 - **First Contentful Paint**: < 1.5s (critical for Indian mobile networks)

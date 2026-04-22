@@ -47,6 +47,14 @@ firestore/
 │   └── {eventId}
 ├── ceoProfiles/            # Kid CEO: 6-dimension DNA Card profiles
 │   └── {profileId}
+├── ceoAgentHires/          # Phase 3: Kid CEO agent hires (Design, Marketing, Ops, …)
+│   └── {hireId}
+├── ceoArtifacts/           # Phase 3: agent-produced artifacts (logos, posters, schedules, …)
+│   └── {artifactId}
+├── ceoCustomWorkflows/     # Phase 3: kid-authored workflows (Scratch-style builder)
+│   └── {workflowId}
+├── learnProgress/          # Phase 3: per-kid AI Lab progress
+│   └── {kidId}
 ├── botSessions/            # Telegram chat <-> GSI session binding
 │   └── {chatId}
 ├── botLinkCodes/           # Short-lived bot auth-binding tokens
@@ -583,7 +591,14 @@ Kid CEO — kid's registered business. Each business is a long-running simulatio
 | totalDecisions | number | yes | Total decisions taken across all events (default 0) |
 | status | string | yes | `active` \| `completed` \| `paused` |
 | pace | string | yes | `30` \| `60` \| `90` — simulation length in days |
-| nextEventAt | timestamp | no | When the next event should be delivered (driven by `pace`) |
+| nextEventAt | timestamp | no | **Deprecated (Phase 3)** — legacy single-slot cursor. Superseded by the dual pending pointers below. Readable for backfill; no longer written. |
+| pendingMilestoneEventId | string \| null | yes (P3) | Current pending milestone event, or null. Cleared on decide/expire. |
+| pendingRegularEventId | string \| null | yes (P3) | Current pending regular event, or null. Cleared on decide. |
+| nextMilestoneScheduledAt | timestamp \| null | yes (P3) | When the fixed-hour delivery cron should next mint a milestone for this business (default: today's IST 18:30 if not yet hit). |
+| lastMilestoneDeliveredAt | timestamp \| null | yes (P3) | Set whenever a milestone event is minted (cron or register). Used by the daily-rhythm cron to detect "already delivered today". |
+| dailyRegularEventCount | number | yes (P3) | Regulars minted today (IST day). Resets at IST midnight. |
+| lastRegularEventDayUtc | string | yes (P3) | `YYYY-MM-DD` key of the last regular mint (for the reset). Kept in UTC for backwards compat; IST conversion happens in app code. |
+| brandAssets | map \| null | no (P3) | Set by the Design Agent after BRAND milestone. `{ logoUrl: string, motto: string, voice: string, palette?: string[] }`. Referenced in every future event prompt so the arc coheres around the kid's brand. |
 | createdAt | timestamp | yes | Business creation timestamp |
 | updatedAt | timestamp | yes | Last update timestamp |
 | completedAt | timestamp | no | Completion timestamp (when `status == 'completed'`) |
@@ -591,7 +606,8 @@ Kid CEO — kid's registered business. Each business is a long-running simulatio
 **Indexes**:
 - `sessionId` + `createdAt` (desc) — session's businesses
 - `userId` + `status` — user's active/completed businesses (Phase 2+)
-- `nextEventAt` (asc) — scheduled event delivery scanner
+- `nextEventAt` (asc) — scheduled event delivery scanner (legacy; still present for backfill)
+- `status` + `nextMilestoneScheduledAt` (asc) — daily-rhythm milestone cron page (Phase 3)
 
 ---
 
@@ -610,7 +626,9 @@ Kid CEO — LLM-generated business events. Each event presents the kid with a si
 | phase | string | yes | Business phase at time of event (`pre_launch` \| `launch` \| ...) |
 | milestone | string | no | Milestone key this event resolves (e.g., `BRAND`, `LOCATION`) |
 | choices | array\<map\> | yes | 2-3 decision options (see structure below) |
-| status | string | yes | `pending` \| `decided` \| `expired` |
+| status | string | yes | `pending` \| `decided` \| `expired` (Phase 3: `expired` now also covers milestones that went stale overnight because the kid didn't answer before the next daily tick) |
+| eventType | string | yes (P3) | `milestone` \| `regular` — first-class on the event doc (previously derived). Drives dual-pending-slot routing and phase-advance gating. |
+| agentWorkflowId | string | no (P3) | When set (e.g. `brand.package`), the event is rendered through the agent-driven event card with a briefing + candidate review UX rather than the legacy A/B/C picker. |
 | decidedChoice | string | no | `A` \| `B` \| `C` — chosen option (null until decided) |
 | decisionTimestamp | timestamp | no | When kid made the decision |
 | responseTimeSeconds | number | no | Seconds between delivery and decision |
@@ -691,6 +709,132 @@ Kid CEO — 6-dimension CEO profile ("DNA Card"). One profile per business; aggr
 - `shareUrl` — unique lookup by share slug
 
 Unlike other collections, `ceoProfiles` allow public read when `isPublic == true` (matches the `creations` pattern for shareable content).
+
+---
+
+### ceoAgentHires (Phase 3)
+
+Kid CEO — each document is a single kid's "hire" of an agent for a specific business. Agent catalog itself (Design / Marketing / Ops / Finance / Customer Success / Product) lives in code (`lib/ceo/agents/catalog.ts`), not Firestore.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | auto | Hire ID (auto-generated) |
+| userId | string | yes | Firebase Auth UID |
+| kidId | string | yes | Kid profile ID (must match business.kidId) |
+| businessId | string | yes | Parent business |
+| agentId | string | yes | `design` \| `marketing` \| `ops` \| `finance` \| `customer_success` \| `product` |
+| config | map | yes | Agent-specific config: `{ focus: string, aggressiveness: 'low'\|'medium'\|'high' }`. Different agents expose different focus options. |
+| salary | number | yes | Daily salary in rupees (deducted from `business.currentCash` each IST midnight tick) |
+| status | string | yes | `active` \| `paused` \| `dismissed` |
+| hiredAt | timestamp | yes | Hire timestamp |
+| updatedAt | timestamp | yes | Last config change |
+
+**Indexes**:
+- `businessId` + `status` — active hires for a business
+- `kidId` + `businessId` — ownership lookup
+
+Rule: server-write only; kid reads scoped to `kidId == auth.uid → activeKid`.
+
+---
+
+### ceoArtifacts (Phase 3)
+
+Kid CEO — real artifacts produced by agent workflows (logos, mottos, posters, schedules, pricing strategies, etc.). Each artifact captures the full workflow trace for the "X-ray" view that makes the agent transparent.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | auto | Artifact ID |
+| userId | string | yes | Firebase Auth UID |
+| kidId | string | yes | Kid ID |
+| businessId | string | yes | Parent business |
+| agentHireId | string | yes | Originating hire |
+| workflowId | string | yes | e.g. `brand.package`, `marketing.firstCampaign` |
+| trigger | string | yes | `milestone`, `regular`, `manual`, `custom_workflow` |
+| trace | array\<map\> | yes | Per-step trace — see structure below |
+| assets | array\<map\> | yes | Output assets — polymorphic shape per asset type |
+| status | string | yes | `candidate` \| `accepted` \| `rejected` \| `expired` |
+| attachedTo | map | no | Where the accepted artifact landed: `{ kind: 'business_field', field: 'brandAssets' }` \| `{ kind: 'event', eventId: string }` \| `{ kind: 'marketing_feed' }` |
+| decisionEventId | string | no | Event this artifact resolved (if any) |
+| costInr | number | yes | Estimated total LLM + image-model cost across the trace |
+| createdAt | timestamp | yes | Creation timestamp |
+| acceptedAt | timestamp | no | When kid accepted (null for rejected/expired) |
+
+**Trace step structure** (inside `trace` array):
+```json
+{
+  "stepId": "logo_candidates",
+  "tool": "flux_schnell",
+  "model": "black-forest-labs/FLUX.1-schnell",
+  "promptTokens": 0,
+  "completionTokens": 0,
+  "costInr": 3.2,
+  "inputSummary": "tropical lemonade stand, playful, for kids my age",
+  "outputSummary": "3 images generated (512x512)",
+  "latencyMs": 2140
+}
+```
+
+**Asset shapes** (inside `assets` array — discriminated by `type`):
+```
+{ type: 'image',     kind: 'logo'|'poster',  url, caption, altText, widthPx, heightPx }
+{ type: 'text',      kind: 'motto'|'voice'|'post'|'checklist'|'rationale', content }
+{ type: 'palette',   colors: ['#HEX', ...] }
+{ type: 'schedule',  days: [{ day, open, close, notes }] }
+{ type: 'pricing_strategy', price, rationale, breakEvenUnits }
+```
+
+**Indexes**:
+- `businessId` + `createdAt` (desc) — artifact feed for a business
+- `kidId` + `status` + `createdAt` (desc) — "all my accepted artifacts" view
+- `agentHireId` + `createdAt` (desc) — per-agent history
+
+---
+
+### ceoCustomWorkflows (Phase 3 — Workflow Builder)
+
+Kid CEO — custom agentic workflows kids author visually in the Scale-phase workflow builder. Serialised `WorkflowSpec` JSON is the single source of truth.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | auto | Workflow ID |
+| userId | string | yes | Firebase Auth UID |
+| kidId | string | yes | Kid ID |
+| businessId | string | yes | Parent business |
+| name | string | yes | Kid-chosen name |
+| trigger | string | yes | Registered trigger ID (e.g. `customer_feedback_negative`) |
+| spec | map | yes | Serialised `WorkflowSpec`: steps, tool IDs, prompts, output schema |
+| status | string | yes | `active` \| `disabled` |
+| runCount | number | yes | Lifetime fires |
+| lastRunAt | timestamp \| null | no | Most recent fire |
+| createdAt | timestamp | yes | Created |
+| updatedAt | timestamp | yes | Last edited |
+
+**Indexes**:
+- `businessId` + `status` — active workflows for a business
+- `kidId` + `updatedAt` (desc) — kid's recent workflows
+
+Custom-workflow prompts pass through `filterInput` on save and `filterOutput` on every run. The trigger / tool vocabulary is closed — saved specs referencing unknown IDs are rejected at save time.
+
+---
+
+### learnProgress (Phase 3 — AI Lab)
+
+Per-kid progress through the AI Lab's Foundation cards and Workshops. Drives the Learn index dashboard and unlocks gated content.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | yes | `{kidId}` — doc ID |
+| userId | string | yes | Firebase Auth UID |
+| kidId | string | yes | Kid ID |
+| foundationsCompleted | array\<string\> | yes | IDs of completed Foundation cards |
+| workshopsCompleted | array\<map\> | yes | `{ workshopId, completedAt, artifactId? }` |
+| embedsTried | array\<string\> | yes | IDs of tried Hugging Face Space embeds |
+| cbseTagsCovered | array\<string\> | yes | Unique CBSE tags from completed content — powers the curriculum-coverage dashboard |
+| createdAt | timestamp | yes | First interaction |
+| updatedAt | timestamp | yes | Last interaction |
+
+**Indexes**:
+- `kidId` — unique lookup by kid (doc ID)
 
 ---
 
