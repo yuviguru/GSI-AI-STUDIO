@@ -89,7 +89,12 @@ export default function AssignmentReviewPage() {
   const review = useCallback(
     async (
       submissionId: string,
-      input: { status?: SubmissionStatus; feedback?: string | null; starred?: boolean },
+      input: {
+        status?: SubmissionStatus;
+        feedback?: string | null;
+        starred?: boolean;
+        sharedToClassFeed?: boolean;
+      },
     ) => {
       const token = await getIdToken();
       if (!token) return;
@@ -189,6 +194,7 @@ export default function AssignmentReviewPage() {
       {selected && (
         <SubmissionReview
           submission={selected}
+          assignmentId={params.assignmentId}
           onReview={review}
           onPrev={prevId ? () => setSelectedId(prevId) : undefined}
           onNext={nextId ? () => setSelectedId(nextId) : undefined}

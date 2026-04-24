@@ -1,0 +1,28 @@
+{
+  "domains": {
+    "cognitive": "cognitive",
+    "affective": "affective",
+    "psychomotor": "psychomotor"
+  },
+  "blooms": {
+    "remember": "remember",
+    "understand": "understand",
+    "apply": "apply",
+    "analyze": "analyze",
+    "evaluate": "evaluate",
+    "create": "create"
+  },
+  "pedagogy": {
+    "holistic": "holistic",
+    "competency": "competency",
+    "rubric": "rubric",
+    "blueprint": "blueprint",
+    "learning outcome": "learning outcome",
+    "assessment": "assessment",
+    "differentiation": "differentiation"
+  },
+  "tone": [
+    "Use plain English; assume parents are not subject experts.",
+    "Avoid jargon unless paired with a one-line explanation."
+  ]
+}

@@ -3,6 +3,8 @@ import { adminDb } from './admin';
 import { AppException } from '@/lib/api-utils';
 import type {
   SchoolDoc,
+  SchoolBranding,
+  SchoolPlan,
   ClassDoc,
   AssignmentDoc,
   Board,
@@ -34,7 +36,8 @@ interface SchoolDocFirestore {
   adminUid: string;
   teacherIds: string[];
   studentCount: number;
-  plan: 'trial' | 'basic' | 'premium';
+  plan: SchoolPlan;
+  branding?: SchoolBranding;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -106,6 +109,7 @@ async function reserveInviteCodeInTx(
 function toSchoolDoc(doc: SchoolDocFirestore): SchoolDoc {
   return {
     ...doc,
+    branding: doc.branding,
     createdAt: doc.createdAt.toDate(),
     updatedAt: doc.updatedAt.toDate(),
   };
@@ -195,6 +199,262 @@ export async function attachTeacherToSchool(
   });
   const updated = await ref.get();
   return toSchoolDoc(updated.data() as SchoolDocFirestore);
+}
+
+// ─── Phase 4 (ADMIN-009): Settings + branding ──────────────────────────────
+
+export interface UpdateSchoolInput {
+  name?: string;
+  city?: string;
+  state?: string;
+  board?: Board;
+}
+
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
+function assertSchoolAdmin(
+  schoolDoc: SchoolDocFirestore | undefined,
+  actingUid: string,
+): asserts schoolDoc is SchoolDocFirestore {
+  if (!schoolDoc) {
+    throw new AppException('NOT_FOUND', 'School not found.', 404);
+  }
+  if (schoolDoc.adminUid !== actingUid) {
+    throw new AppException(
+      'FORBIDDEN',
+      'Only the school admin can change these settings.',
+      403,
+    );
+  }
+}
+
+/**
+ * Update school metadata (name, city, state, board). Admin-only.
+ * Returns the updated doc.
+ */
+export async function updateSchool(
+  schoolId: string,
+  updates: UpdateSchoolInput,
+  actingUid: string,
+): Promise<SchoolDoc> {
+  const ref = adminDb.collection(SCHOOLS_COLLECTION).doc(schoolId);
+  const snap = await ref.get();
+  assertSchoolAdmin(snap.data() as SchoolDocFirestore | undefined, actingUid);
+
+  const patch: Record<string, unknown> = { updatedAt: Timestamp.now() };
+  if (updates.name !== undefined) {
+    const v = updates.name.trim();
+    if (v.length < 2 || v.length > 120) {
+      throw new AppException('INVALID_INPUT', 'Name must be 2-120 chars.', 400);
+    }
+    patch.name = v;
+  }
+  if (updates.city !== undefined) {
+    const v = updates.city.trim();
+    if (v.length < 2 || v.length > 80) {
+      throw new AppException('INVALID_INPUT', 'City must be 2-80 chars.', 400);
+    }
+    patch.city = v;
+  }
+  if (updates.state !== undefined) {
+    const v = updates.state.trim();
+    if (v.length < 2 || v.length > 80) {
+      throw new AppException('INVALID_INPUT', 'State must be 2-80 chars.', 400);
+    }
+    patch.state = v;
+  }
+  if (updates.board !== undefined) {
+    if (!['cbse', 'icse', 'state'].includes(updates.board)) {
+      throw new AppException('INVALID_INPUT', 'Board must be cbse, icse, or state.', 400);
+    }
+    patch.board = updates.board;
+  }
+
+  await ref.update(patch);
+  const updated = await ref.get();
+  return toSchoolDoc(updated.data() as SchoolDocFirestore);
+}
+
+/**
+ * Update branding colors. Admin-only. Logo / letterhead URLs are written by
+ * the asset upload path (see `lib/storage/schoolAssets.ts`), not here.
+ */
+export async function updateSchoolBranding(
+  schoolId: string,
+  branding: Pick<SchoolBranding, 'primaryColor' | 'secondaryColor'>,
+  actingUid: string,
+): Promise<SchoolDoc> {
+  const ref = adminDb.collection(SCHOOLS_COLLECTION).doc(schoolId);
+  const snap = await ref.get();
+  assertSchoolAdmin(snap.data() as SchoolDocFirestore | undefined, actingUid);
+
+  const patch: Record<string, unknown> = { updatedAt: Timestamp.now() };
+  if (branding.primaryColor !== undefined) {
+    if (!HEX_COLOR.test(branding.primaryColor)) {
+      throw new AppException('INVALID_INPUT', 'primaryColor must be #RRGGBB.', 400);
+    }
+    patch['branding.primaryColor'] = branding.primaryColor;
+  }
+  if (branding.secondaryColor !== undefined) {
+    if (!HEX_COLOR.test(branding.secondaryColor)) {
+      throw new AppException('INVALID_INPUT', 'secondaryColor must be #RRGGBB.', 400);
+    }
+    patch['branding.secondaryColor'] = branding.secondaryColor;
+  }
+
+  await ref.update(patch);
+  const updated = await ref.get();
+  return toSchoolDoc(updated.data() as SchoolDocFirestore);
+}
+
+/**
+ * Writes a branding asset URL (logo / letterhead) onto the school doc.
+ * Called by the storage layer after upload; admin-only enforcement lives at
+ * the API route boundary.
+ */
+export async function setSchoolBrandingAssetUrl(
+  schoolId: string,
+  kind: 'logo' | 'letterhead',
+  url: string | null,
+): Promise<void> {
+  const ref = adminDb.collection(SCHOOLS_COLLECTION).doc(schoolId);
+  const field = kind === 'logo' ? 'branding.logoUrl' : 'branding.letterheadUrl';
+  await ref.update({
+    [field]: url ?? FieldValue.delete(),
+    updatedAt: Timestamp.now(),
+  });
+}
+
+/** Update the plan tier. Admin-only. */
+export async function setSchoolPlan(
+  schoolId: string,
+  plan: SchoolPlan,
+  actingUid: string,
+): Promise<SchoolDoc> {
+  if (!['trial', 'basic', 'premium'].includes(plan)) {
+    throw new AppException('INVALID_INPUT', 'Plan must be trial, basic, or premium.', 400);
+  }
+  const ref = adminDb.collection(SCHOOLS_COLLECTION).doc(schoolId);
+  const snap = await ref.get();
+  assertSchoolAdmin(snap.data() as SchoolDocFirestore | undefined, actingUid);
+  await ref.update({ plan, updatedAt: Timestamp.now() });
+  const updated = await ref.get();
+  return toSchoolDoc(updated.data() as SchoolDocFirestore);
+}
+
+// ─── Phase 4 (ADMIN-004): HPC narratives ──────────────────────────────────
+
+export type HpcStatus = 'draft' | 'published';
+
+export interface HpcNarrativeDoc {
+  id: string;
+  kidId: string;
+  schoolId: string;
+  term: string;
+  locale: 'en' | 'hi';
+  cognitive: string;
+  affective: string;
+  psychomotor: string;
+  nextTermFocus?: string;
+  teacherTags: string[];
+  status: HpcStatus;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface HpcNarrativeDocFirestore extends Omit<HpcNarrativeDoc, 'createdAt' | 'updatedAt'> {
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+function toHpc(raw: HpcNarrativeDocFirestore): HpcNarrativeDoc {
+  return {
+    ...raw,
+    createdAt: raw.createdAt.toDate(),
+    updatedAt: raw.updatedAt.toDate(),
+  };
+}
+
+function hpcRef(schoolId: string, kidId: string, term: string) {
+  return adminDb
+    .collection(SCHOOLS_COLLECTION)
+    .doc(schoolId)
+    .collection('students')
+    .doc(kidId)
+    .collection('hpcNarratives')
+    .doc(term);
+}
+
+export interface SaveHpcInput {
+  schoolId: string;
+  kidId: string;
+  term: string;
+  locale: 'en' | 'hi';
+  cognitive: string;
+  affective: string;
+  psychomotor: string;
+  nextTermFocus?: string;
+  teacherTags: string[];
+  status: HpcStatus;
+  actingUid: string;
+}
+
+export async function saveHpcNarrative(input: SaveHpcInput): Promise<HpcNarrativeDoc> {
+  const ref = hpcRef(input.schoolId, input.kidId, input.term);
+  const existing = await ref.get();
+  const now = Timestamp.now();
+  const doc: HpcNarrativeDocFirestore = {
+    id: input.term,
+    kidId: input.kidId,
+    schoolId: input.schoolId,
+    term: input.term,
+    locale: input.locale,
+    cognitive: input.cognitive,
+    affective: input.affective,
+    psychomotor: input.psychomotor,
+    nextTermFocus: input.nextTermFocus,
+    teacherTags: input.teacherTags,
+    status: input.status,
+    createdBy: input.actingUid,
+    createdAt: existing.exists
+      ? (existing.data() as HpcNarrativeDocFirestore).createdAt
+      : now,
+    updatedAt: now,
+  };
+  await ref.set(doc);
+  return toHpc(doc);
+}
+
+export async function getHpcNarrative(
+  schoolId: string,
+  kidId: string,
+  term: string,
+): Promise<HpcNarrativeDoc | null> {
+  const snap = await hpcRef(schoolId, kidId, term).get();
+  if (!snap.exists) return null;
+  return toHpc(snap.data() as HpcNarrativeDocFirestore);
+}
+
+export async function listHpcNarrativesForClass(
+  schoolId: string,
+  classId: string,
+  term: string,
+): Promise<HpcNarrativeDoc[]> {
+  const classDoc = await adminDb
+    .collection(SCHOOLS_COLLECTION)
+    .doc(schoolId)
+    .collection(CLASSES_SUBCOLLECTION)
+    .doc(classId)
+    .get();
+  if (!classDoc.exists) return [];
+  const kidIds = ((classDoc.data() as ClassDocFirestore).studentKidIds ?? []) as string[];
+  const results: HpcNarrativeDoc[] = [];
+  for (const kidId of kidIds) {
+    const snap = await hpcRef(schoolId, kidId, term).get();
+    if (snap.exists) results.push(toHpc(snap.data() as HpcNarrativeDocFirestore));
+  }
+  return results;
 }
 
 // ─── Classes ────────────────────────────────────────────────────────────────

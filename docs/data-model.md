@@ -1124,3 +1124,206 @@ Firestore is schemaless, so "migrations" are handled differently:
 - **Data backfills**: Cloud Functions triggered manually or on schedule
 - **Phase transitions**: Phase 1 anonymous creations get `userId` field added when user claims them in Phase 2
 - **Backup**: Firestore scheduled exports to Cloud Storage (weekly)
+
+---
+
+## Phase 4: School Productivity Suite Collections
+
+The Phase 4 roadmap (`stories/phase-4/`) adds collections for HPC narratives, question papers, lesson plans, parent messaging, DPDP consent & erasure, teacher timetables, ERP integration config, notifications, and eval/compliance caches. All writes flow through Admin SDK in server routes (client writes blocked at `firestore.rules`).
+
+### hpcNarratives (subcollection under students)
+
+Path: `schools/{schoolId}/students/{kidId}/hpcNarratives/{term}`
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | string | yes | Term ID, e.g. `2026-T2` |
+| kidId | string | yes | Student reference |
+| schoolId | string | yes | Scope |
+| term | string | yes | Academic term identifier |
+| locale | string | yes | `'en'` or `'hi'` |
+| cognitive | string | yes | Paragraph |
+| affective | string | yes | Paragraph |
+| psychomotor | string | yes | Paragraph |
+| nextTermFocus | string | no | Teacher guidance paragraph |
+| teacherTags | array\<string\> | yes | Teacher quick-tags feeding the draft |
+| status | string | yes | `'draft' \| 'published'` |
+| aiUsageRecordId | string | yes | Back-reference to teacherAiUsage |
+| createdAt | timestamp | yes | First draft time |
+| updatedAt | timestamp | yes | Last edit |
+
+### questionPapers (top-level, teacher-scoped)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | string | yes | Auto ID |
+| teacherUid | string | yes | Owner |
+| schoolId | string | yes | Scope |
+| subject | string | yes | e.g. `'Mathematics'` |
+| classGrade | string | yes | `'6' \| '7' \| ... \| '12'` |
+| chapters | array\<string\> | yes | NCERT chapter IDs |
+| blueprint | map | yes | `{ bloomsDistribution, difficultyMix, questionTypes }` |
+| totalMarks | number | yes | |
+| durationMinutes | number | yes | |
+| sections | array\<map\> | yes | `[{ title, questions: [{ id, type, text, marks, answerKey, bloom }] }]` |
+| locale | string | yes | |
+| status | string | yes | `'draft' \| 'finalized'` |
+| createdAt / updatedAt | timestamp | yes | |
+
+### lessonPlans (top-level, teacher-scoped)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | string | yes | Auto ID |
+| teacherUid | string | yes | Owner |
+| subject, classGrade, chapterId | string | yes | Source |
+| durationMinutes | number | yes | |
+| learningOutcomes | array\<string\> | yes | NCERT-tagged |
+| hookActivity, closure | string | yes | |
+| mainActivity | map | yes | `{ title, description, linkedStudio? }` |
+| assessment | map | yes | `{ type, sample }` |
+| differentiation | map | yes | `{ lower, higher }` |
+| materials | array\<string\> | no | |
+| locale | string | yes | |
+| linkedAssignmentId | string | no | Set when assignment created from lesson |
+| createdAt / updatedAt | timestamp | yes | |
+
+### parentDigests (top-level)
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| id | string | yes | |
+| kidId, schoolId, teacherUid | string | yes | |
+| weekStart | timestamp | yes | Monday of the digest week |
+| content | map | yes | `{ creations, concepts, teacherNote, upcoming, summary }` |
+| locale | string | yes | |
+| status | string | yes | `'draft' \| 'approved' \| 'sent' \| 'failed'` |
+| commsLogIds | array\<string\> | no | Delivery log refs (one per send attempt) |
+| createdAt / updatedAt | timestamp | yes | |
+
+### commsLog (top-level, audit log)
+
+| Field | Type | Description |
+|---|---|---|
+| id | string | |
+| recipientUid | string | Parent uid |
+| kidId | string | Subject child |
+| channel | string | `'telegram' \| 'whatsapp' \| 'sms' \| 'email' \| 'in_app'` |
+| templateId | string | Registered message template |
+| messageId | string | Provider message ID |
+| status | string | `'queued' \| 'sent' \| 'delivered' \| 'read' \| 'failed'` |
+| error | string | If failed |
+| sentAt, deliveredAt, readAt | timestamp | |
+
+### parentChannelPrefs (subcollection under users)
+
+Path: `users/{parentUid}/channelPrefs/{channel}` — one per channel opt-in.
+
+| Field | Type | Description |
+|---|---|---|
+| channel | string | |
+| handle | string | Phone for WhatsApp / SMS, chat ID for Telegram, email addr for email |
+| consentStatus | string | `'granted' \| 'revoked'` |
+| consentedAt, revokedAt | timestamp | |
+| locale | string | Parent's preferred language |
+
+### consentLog (top-level, DPDP audit)
+
+| Field | Type | Description |
+|---|---|---|
+| id | string | |
+| parentUid, kidId | string | |
+| scope | string | `'ai_generation' \| 'data_storage' \| 'parent_messaging' \| 'peer_sharing' \| 'analytics'` |
+| granted | bool | |
+| method | string | `'otp_affirmation' \| 'digilocker' \| 'revocation'` |
+| ip, userAgent | string | Evidence |
+| timestamp | timestamp | |
+
+### erasureRequests (top-level)
+
+| Field | Type | Description |
+|---|---|---|
+| id | string | |
+| parentUid, kidId | string | |
+| reason | string | Optional |
+| status | string | `'pending' \| 'in_progress' \| 'completed' \| 'failed'` |
+| cascadeSummary | map | Per-collection delete counts |
+| receiptUrl | string | Signed receipt location |
+| createdAt, completedAt | timestamp | Must complete within 30 days |
+
+### teacherTimetable
+
+Path: `teacherTimetable/{schoolId}/teachers/{teacherUid}`
+
+| Field | Type | Description |
+|---|---|---|
+| periods | map | `{ monday: [{periodIdx, subject, classId}], tuesday: [...], ... }` |
+| subjects | array\<string\> | Teacher's subject specializations |
+| seniority | number | Years of experience (for sub ranking) |
+| updatedAt | timestamp | |
+
+### erpIntegrations (top-level, one per school)
+
+| Field | Type | Description |
+|---|---|---|
+| schoolId | string | Document ID |
+| provider | string | `'local' \| 'fedena' \| 'mastersoft' \| 'schoollog' \| 'neverskip'` |
+| credentialsRef | string | KMS-encrypted reference |
+| lastSyncAt | timestamp | |
+| lastSyncStatus | string | `'success' \| 'failure'` |
+| lastError | string | |
+| enabled | bool | |
+
+### notifications (subcollection under users)
+
+Path: `users/{uid}/notifications/{id}`
+
+| Field | Type | Description |
+|---|---|---|
+| id | string | |
+| type | string | `'assignment_new' \| 'assignment_due_soon' \| 'submission_reviewed' \| 'badge_earned' \| 'teacher_feedback' \| 'sub_assigned'` |
+| payload | map | Type-specific context |
+| channels | array\<string\> | Channels attempted |
+| readAt | timestamp | Null = unread |
+| createdAt | timestamp | |
+
+### userNotificationPrefs (map on user doc)
+
+Stored directly on `users/{uid}.notificationPrefs` — `{ [type]: { in_app: bool, email: bool, telegram: bool, whatsapp: bool } }`.
+
+### teacherAiUsage (top-level, analytics + compliance)
+
+| Field | Type | Description |
+|---|---|---|
+| id | string | |
+| teacherUid, schoolId | string | |
+| generator | string | `'hpc' \| 'questionPaper' \| 'feedback' \| 'lessonPlan' \| 'ptm' \| 'digest' \| 'adhoc' \| 'subInstructions'` |
+| timestamp | timestamp | |
+| kidId | string | If scoped to a student |
+| tokensIn, tokensOut | number | For cost visibility |
+| locale | string | |
+
+### complianceCache (per school)
+
+| Field | Type | Description |
+|---|---|---|
+| schoolId | string | Document ID |
+| version | string | `'v1' \| 'v2'` |
+| dateRange | map | `{ from, to }` |
+| generatedAt | timestamp | |
+| ttlExpires | timestamp | 1 day later |
+| pdfUrl | string | Signed URL to cached PDF in Storage |
+| dataRegisterSnapshot | map | DPDP register at generation time |
+
+### Phase 4 Firestore Rules (extensions)
+
+```
+- schools/{schoolId}/students/{kidId}/hpcNarratives/{term}: server-only write; read for school teachers + schoolAdmin + kid's parent
+- questionPapers, lessonPlans: server-only write; read for teacher owner + schoolAdmin of same school
+- parentDigests, commsLog: server-only write; read for teacher + schoolAdmin
+- consentLog, erasureRequests: server-only write; read for parent + schoolAdmin (DPO view)
+- teacherTimetable: server-only write; read for schoolAdmin + teacher self
+- erpIntegrations: server-only write; read for schoolAdmin only
+- users/{uid}/notifications: server-only write; read/update for owner only
+- teacherAiUsage, complianceCache: server-only write; read for schoolAdmin only
+```

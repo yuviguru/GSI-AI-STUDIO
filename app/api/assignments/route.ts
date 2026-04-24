@@ -9,7 +9,49 @@ import {
   listAssignmentsForKid,
 } from '@/lib/firebase/schoolService';
 import { getConcept } from '@/lib/curriculum/curriculumMap';
+import { enqueueNotificationBatch } from '@/lib/notifications/notificationService';
 import type { CreationType } from '@/types/creation.types';
+
+async function notifyParentsOfNewAssignment(
+  classStudentKidIds: string[],
+  assignment: {
+    id: string;
+    classId: string;
+    title: string;
+    creationType: CreationType;
+    dueDate: Date;
+  },
+): Promise<void> {
+  if (classStudentKidIds.length === 0) return;
+  const kidSnaps = await Promise.all(
+    classStudentKidIds.map((kidId) => adminDb.collection('kids').doc(kidId).get()),
+  );
+  const parentUids = new Set<string>();
+  for (const snap of kidSnaps) {
+    const parentId = snap.data()?.parentId as string | null | undefined;
+    if (parentId) parentUids.add(parentId);
+  }
+  if (parentUids.size === 0) return;
+
+  const dueLabel = assignment.dueDate.toLocaleDateString();
+  await enqueueNotificationBatch(
+    Array.from(parentUids).map((uid) => ({
+      recipientUid: uid,
+      type: 'assignment_new' as const,
+      channels: ['in_app' as const],
+      payload: {
+        title: `New ${assignment.creationType} assignment`,
+        body: `"${assignment.title}" — due ${dueLabel}`,
+        href: `/parent?assignment=${assignment.id}`,
+        context: {
+          assignmentId: assignment.id,
+          classId: assignment.classId,
+          creationType: assignment.creationType,
+        },
+      },
+    })),
+  );
+}
 
 const VALID_CREATION_TYPES: CreationType[] = [
   'story',
@@ -108,6 +150,21 @@ export async function POST(request: NextRequest) {
       curriculumTags: validTags,
       templateId: typeof templateId === 'string' ? templateId : undefined,
     });
+
+    // Best-effort: notify parents of students in the class. A failure here
+    // must not roll back the created assignment.
+    try {
+      await notifyParentsOfNewAssignment(cls.studentKidIds, {
+        id: assignment.id,
+        classId: assignment.classId,
+        title: assignment.title,
+        creationType: assignment.creationType,
+        dueDate: assignment.dueDate,
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to enqueue assignment notifications:', err);
+    }
 
     return apiSuccess(assignment, 201);
   } catch (error) {

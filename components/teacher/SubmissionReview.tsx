@@ -2,34 +2,120 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, ExternalLink, Star } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ExternalLink, Star, Sparkles, Undo2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getConcept } from '@/lib/curriculum/curriculumMap';
+import { useAuth } from '@/hooks/useAuth';
 import type { SubmissionStatus } from '@/types/user.types';
 import type { SubmissionRow } from './SubmissionGrid';
 
 interface Props {
   submission: SubmissionRow;
+  assignmentId: string;
   onReview: (
     submissionId: string,
-    input: { status?: SubmissionStatus; feedback?: string | null; starred?: boolean },
+    input: {
+      status?: SubmissionStatus;
+      feedback?: string | null;
+      starred?: boolean;
+      sharedToClassFeed?: boolean;
+    },
   ) => Promise<void>;
   onPrev?: () => void;
   onNext?: () => void;
 }
 
-export function SubmissionReview({ submission, onReview, onPrev, onNext }: Props) {
+export function SubmissionReview({ submission, assignmentId, onReview, onPrev, onNext }: Props) {
+  const { getIdToken } = useAuth();
   const [feedback, setFeedback] = useState(submission.feedback ?? '');
   const [starred, setStarred] = useState(!!submission.starred);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState<'approved' | 'revision_requested' | null>(null);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+  const [previousFeedback, setPreviousFeedback] = useState<string | null>(null);
+  const [locale, setLocale] = useState<'en' | 'hi'>('en');
+  const [sharedToClassFeed, setSharedToClassFeed] = useState(
+    !!submission.sharedToClassFeed,
+  );
+  const [shareSaving, setShareSaving] = useState(false);
 
   // Reset local state when the submission changes
   useEffect(() => {
     setFeedback(submission.feedback ?? '');
     setStarred(!!submission.starred);
     setSaved(null);
-  }, [submission.id, submission.feedback, submission.starred]);
+    setSuggestError(null);
+    setPreviousFeedback(null);
+    setSharedToClassFeed(!!submission.sharedToClassFeed);
+  }, [
+    submission.id,
+    submission.feedback,
+    submission.starred,
+    submission.sharedToClassFeed,
+  ]);
+
+  async function toggleShareToFeed() {
+    const next = !sharedToClassFeed;
+    setSharedToClassFeed(next);
+    setShareSaving(true);
+    try {
+      await onReview(submission.id, { sharedToClassFeed: next });
+    } finally {
+      setShareSaving(false);
+    }
+  }
+
+  async function handleSuggestFeedback() {
+    setSuggesting(true);
+    setSuggestError(null);
+    try {
+      const token = await getIdToken();
+      const res = await fetch(
+        `/api/assignments/${assignmentId}/submissions/${submission.id}/suggest-feedback`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ locale }),
+        },
+      );
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json?.error?.message ?? 'Could not generate feedback draft.');
+      }
+      const data = json.data as {
+        positive: string;
+        growthArea: string;
+        followUpPrompts: string[];
+      };
+      const assembled = [
+        data.positive,
+        data.growthArea,
+        data.followUpPrompts.length > 0
+          ? `Follow-up questions:\n${data.followUpPrompts.map((p) => `• ${p}`).join('\n')}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join('\n\n');
+      setPreviousFeedback(feedback);
+      setFeedback(assembled);
+    } catch (err) {
+      setSuggestError(
+        err instanceof Error ? err.message : 'Could not generate feedback draft.',
+      );
+    } finally {
+      setSuggesting(false);
+    }
+  }
+
+  function handleRevertSuggestion() {
+    if (previousFeedback === null) return;
+    setFeedback(previousFeedback);
+    setPreviousFeedback(null);
+  }
 
   async function act(status: SubmissionStatus) {
     setBusy(true);
@@ -160,16 +246,94 @@ export function SubmissionReview({ submission, onReview, onPrev, onNext }: Props
       </div>
 
       {/* Feedback */}
-      <label className="block text-sm font-medium text-gray-700">
-        Feedback (optional)
+      <div>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <label
+            htmlFor={`feedback-${submission.id}`}
+            className="text-sm font-medium text-gray-700"
+          >
+            Feedback (optional)
+          </label>
+          <div className="flex items-center gap-1.5">
+            <select
+              value={locale}
+              onChange={(e) => setLocale(e.target.value as 'en' | 'hi')}
+              disabled={suggesting}
+              className="rounded-md border border-gray-200 bg-white px-1.5 py-1 text-xs"
+              aria-label="Suggestion language"
+            >
+              <option value="en">English</option>
+              <option value="hi">हिंदी</option>
+            </select>
+            {previousFeedback !== null && (
+              <button
+                type="button"
+                onClick={handleRevertSuggestion}
+                className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                title="Revert to what you had"
+              >
+                <Undo2 className="h-3 w-3" />
+                Revert
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleSuggestFeedback}
+              disabled={suggesting}
+              className={cn(
+                'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium',
+                suggesting
+                  ? 'border-gray-200 bg-gray-50 text-gray-400'
+                  : 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100',
+              )}
+              title="Draft encouraging feedback with AI — you review and edit before saving"
+            >
+              <Sparkles className="h-3 w-3" />
+              {suggesting ? 'Drafting…' : 'Suggest feedback'}
+            </button>
+          </div>
+        </div>
         <textarea
+          id={`feedback-${submission.id}`}
           value={feedback}
           onChange={(e) => setFeedback(e.target.value.slice(0, 2000))}
-          rows={3}
+          rows={5}
           placeholder="What did you love? What could be stronger next time?"
-          className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+          className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
         />
-      </label>
+        {suggestError && (
+          <p className="mt-1 text-xs text-red-600">{suggestError}</p>
+        )}
+        {previousFeedback !== null && !suggestError && (
+          <p className="mt-1 text-xs text-gray-500">
+            AI draft inserted — edit freely before saving.
+          </p>
+        )}
+      </div>
+
+      {submission.status === 'approved' && (
+        <label
+          className={cn(
+            'flex items-center justify-between rounded-xl border px-3 py-2 text-sm',
+            sharedToClassFeed
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : 'border-gray-200 bg-gray-50 text-gray-700',
+          )}
+        >
+          <span>
+            <strong>Share to class feed</strong> — let classmates see this and
+            react with positive emojis.
+          </span>
+          <input
+            type="checkbox"
+            checked={sharedToClassFeed}
+            onChange={toggleShareToFeed}
+            disabled={shareSaving}
+            className="h-4 w-4 accent-emerald-600"
+            aria-label="Share to class feed"
+          />
+        </label>
+      )}
 
       <div className="flex flex-wrap items-center justify-end gap-2">
         <button

@@ -12,6 +12,7 @@
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
+    "test:ai-eval": "vitest run lib/ai/eval",
     "firebase:emulators": "firebase emulators:start",
     "firebase:deploy:rules": "firebase deploy --only firestore:rules",
     "firebase:deploy:functions": "firebase deploy --only functions",

@@ -440,6 +440,81 @@ Teacher portal, assignments, and school analytics form a distinct module layered
 ### Error Boundary
 `components/layout/ErrorBoundary.tsx` wraps the provider tree in `app/(public)/layout.tsx`. Catches render errors from context providers (AiPointsContext, AuthProvider, etc.) and shows a kid-friendly retry UI instead of crashing the entire app.
 
+---
+
+## Phase 4: School Productivity Suite
+
+Phase 4 extends the school side with AI-powered teacher productivity (HPC narratives, question papers, lesson plans, AI-assisted feedback), multi-channel parent comms, DPDP consent infrastructure, and an ERP integration layer. Tickets: `stories/phase-4/`. All features gate on role (teacher / schoolAdmin) and on parent consent where applicable.
+
+### Messaging Service (COMMS-001, COMMS-002)
+
+Provider-agnostic outbound messaging. `lib/comms/messagingService.ts` defines:
+
+- `interface MessagingProvider { channel: 'telegram' | 'whatsapp' | 'sms' | 'email'; send(recipient, message): Promise<DeliveryReceipt>; ... }`
+- Two adapters at launch: `lib/comms/providers/telegramProvider.ts` (reuses the existing bot from commit b9d47ed) and `lib/comms/providers/whatsappProvider.ts` (Cloud API, gated on Meta BSP approval).
+- `sendMessage(recipientUid, templateId, params, locale)` resolves the parent's preferred channel from `parentChannelPrefs`, verifies consent (`COMPLIANCE-002`), routes to the matching provider, and logs every attempt to `commsLog`.
+- Webhooks at `/api/comms/webhooks/*` capture delivery + read receipts and update `commsLog`.
+- New providers (SMS, email) drop in behind the same interface with no consumer changes.
+
+### School Data Provider (INTEGRATION-001)
+
+Phase 4 does not require schools to re-enter data. `lib/integrations/schoolDataProvider.ts` defines a `SchoolDataProvider` interface with methods for `fetchRoster`, `fetchAttendance`, `fetchTimetable`, `healthCheck`. `LocalProvider` (reads GSI's own Firestore) is the default; `FedenaProvider` is the first third-party reference adapter. `resolveProvider(schoolId)` reads `erpIntegrations/{schoolId}` — missing config falls back to Local.
+
+Credentials are stored encrypted (KMS-backed) — server never returns raw credentials to the client. Adapters are read-only in v1.
+
+### AI Services Layer (Track A + Track B)
+
+Each AI generator is a small module in `lib/ai/`:
+
+| Module | Purpose | Consumers |
+|---|---|---|
+| `hpcGenerator.ts` | NEP HPC narrative draft | ADMIN-004 endpoints |
+| `questionPaperGenerator.ts` | CBSE blueprint-aware paper | ADMIN-005 |
+| `lessonPlanGenerator.ts` | CBSE-mapped plans | ADMIN-007 |
+| `feedbackSuggester.ts` | Submission review drafts | ADMIN-006 |
+| `parentDigestGenerator.ts` | Weekly parent summary | COMMS-001 |
+| `ptmNoteGenerator.ts` | PTM talking points | COMMS-002 |
+| `adhocMessageDrafter.ts` | Ad-hoc parent message drafts | COMMS-002 |
+| `subInstructionsGenerator.ts` | Substitute-teacher instructions | ADMIN-008 |
+
+All generators share:
+- `lib/ai/localePrompts.ts` — locale-aware system prompt builder (English, Hindi; pluggable for more locales via `lib/i18n/locales.ts`).
+- Prompt caching on system prompts and per-locale glossaries to keep cost down.
+- `teacherAiUsage` logging on every invocation (fed into compliance v2).
+- Golden-set evals under `lib/ai/eval/` (QA-001) — run nightly and on PRs touching `lib/ai/**`.
+
+### School Branding Pipeline (ADMIN-009)
+
+All PDF exports (HPC, question papers, compliance v2, progress reports) route through `lib/pdf/schoolBranding.ts`:
+
+- `getSchoolBranding(schoolId)` — cached read from `schools/{schoolId}`.
+- `renderBrandedHeader(doc, branding)` — inserts logo + school name + letterhead.
+- Uploads handled by `lib/storage/schoolAssets.ts` (Firebase Storage; strips EXIF, generates optimized variants).
+
+### DPDP Infrastructure (COMPLIANCE-002)
+
+`lib/dpdp/consentService.ts` records per-scope consent (`ai_generation`, `data_storage`, `parent_messaging`, `peer_sharing`, `analytics`) with a tamper-evident audit log (`consentLog`). `lib/dpdp/dataErasure.ts` orchestrates cascade deletes across all kid-referencing collections and returns a signed receipt. `lib/dpdp/dataExport.ts` produces subject-access JSON + PDF. Every AI generator checks consent before running.
+
+Target: consent revocation stops all affected flows within 1 minute; erasure completes within the DPDP-mandated 30 days.
+
+### Notifications (NOTIF-001)
+
+`lib/notifications/notificationService.ts` enqueues notifications into per-user subcollections and routes to channels per `userNotificationPrefs`. Email provider is pluggable (SendGrid / SES / Resend — pick one). Cron runs (`netlify/functions/dueReminderCron.ts`) handle daily due-date reminders with dedup. Push channels (Telegram/WhatsApp) reuse `MessagingService`.
+
+### Routes + APIs Added
+
+- Teacher pages: `app/(auth)/teacher/hpc/`, `/papers/`, `/lessons/`, `/parent-comms/`.
+- School admin pages: `app/(auth)/school/settings/`, `/compliance/`, `/substitutes/`, `/integrations/`.
+- Parent pages: `/parent/settings/data-rights/`, consent register surface.
+- Student pages: class feed `app/(auth)/kid/class/[classId]/feed/`.
+- API trees: `/api/hpc/*`, `/api/papers/*`, `/api/lessons/*`, `/api/comms/*`, `/api/dpdp/*`, `/api/substitutes/*`, `/api/integrations/erp/*`, `/api/notifications/*`, `/api/reports/*`, `/api/classes/[classId]/feed`.
+
+### Rollout & Sequencing
+
+Phase 4 ships over five 2-week sprints (see root plan file). The messaging layer ships Telegram-first in Sprint 3-4 and adds WhatsApp in Sprint 7-8 once Meta BSP approval lands. ERP layer ships with the interface + LocalProvider in Sprint 1-2; Fedena reference adapter in Sprint 7-8. Multilingual is English + Hindi in Phase 4; regional locales plug in later via `lib/i18n/locales.ts`.
+
+---
+
 ## Kid CEO — Daily Rhythm (Phase 3)
 
 See [KIDCEO-DAILY-RHYTHM](../stories/phase-3/KIDCEO-DAILY-RHYTHM.md).

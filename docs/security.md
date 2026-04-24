@@ -636,3 +636,85 @@ If a Workshop produces an artifact (e.g. a trained classifier), it lands in `ceo
 3. Assess scope via Firebase audit logs
 4. Notify affected users within 72 hours (DPDPA requirement)
 5. Report to Data Protection Board if personal data compromised
+
+---
+
+## Phase 4: DPDP Act 2023 Compliance
+
+India's Digital Personal Data Protection Act 2023 + Rules 2025 classify every user under 18 as a **Child** and require verifiable parental consent for all processing of children's data. Penalties reach Rs 200 crore. Enforcement window closes Nov 2026 (18 months after Rules notification). Phase 4 (`stories/phase-4/COMPLIANCE-002-dpdp-consent-erasure.md`) implements the full compliance stack.
+
+### Consent Scopes
+
+Consent is captured per scope, not as a blanket opt-in:
+
+| Scope | What it gates |
+|---|---|
+| `ai_generation` | Running any AI generator on the kid's data (HPC, feedback, digest, etc.) |
+| `data_storage` | Persisting creations, submissions, concepts learned |
+| `parent_messaging` | Sending messages to parent via Telegram/WhatsApp/SMS/email |
+| `peer_sharing` | Showing kid's creations in class feed / explore / remix |
+| `analytics` | Including kid in anonymized school-level analytics |
+
+### Consent Capture Flow
+
+1. Parent phone is verified via OTP (AUTH-001 reuse).
+2. Parent sees plain-language explanation per scope (no legalese) — `components/parent/ConsentRegister.tsx`.
+3. Explicit checkbox per scope + "I am the parent or legal guardian" affirmation.
+4. Re-verification OTP on first grant per scope.
+5. `consentLog` record written with `{ parentUid, kidId, scope, granted: true, method: 'otp_affirmation', ip, userAgent, timestamp }` — audit trail is append-only.
+
+### Consent Enforcement
+
+Every AI generator endpoint calls `hasConsent(parentUid, kidId, scope)` before running. Every messaging send checks `parent_messaging`. Revocation (`DELETE /api/dpdp/consent`) writes a new `consentLog` entry with `granted: false` and stops downstream activity within 1 minute (checked at start of each generator call; no long-running jobs).
+
+### Right to Erasure
+
+`POST /api/dpdp/erasure` queues an erasure request. `lib/dpdp/dataErasure.ts` cascades across:
+
+- `creations`, `submissions`, `reactions`, `hpcNarratives`, `lessonPlans` (if linked), `questionPapers` (detokenize references only — papers are teacher-owned), `notifications`, `parentDigests`, `commsLog`, `teacherAiUsage` (anonymize), media files in Firebase Storage.
+
+Must complete within 30 days. A signed tamper-evident receipt is returned to the parent via `receiptUrl`.
+
+### Right to Data Export (Subject Access Request)
+
+`GET /api/dpdp/export?kidId=` returns both a JSON dump and a human-readable PDF covering all collections referencing the child. Rate-limited to 1 request per 7 days per kid.
+
+### DPDP Register
+
+The `complianceReport.ts` v2 PDF (COMPLIANCE-001) enumerates, per school:
+
+- What personal data is held for each kid (name, age, grade, creation content, AI prompts, submissions, parent phone)
+- Purpose and legal basis per category
+- Retention period (90 days for AI prompts; term-end for submissions; permanent for HPC narratives unless erased)
+- Consent status snapshot
+- Data-deletion request log
+
+This PDF is both a **CBSE AI-curriculum compliance artifact** AND a **DPDP data-processing register** — one download, two purposes.
+
+### No Behavioral Tracking of Minors
+
+Per DPDP Rules 2025 and NEP 2020 guidance:
+
+- No third-party analytics on kid sessions (no GA4, Mixpanel, etc. on authenticated kid routes).
+- No targeted advertising, ever.
+- No GPS, real names beyond first-name display, no photos of kids.
+- No cross-device identity stitching for kids.
+
+### Role Extensions for DPO View
+
+`schoolAdmin` role doubles as the school's Data Protection Officer surface:
+
+- Can view consent log for all kids in their school (`/api/dpdp/consent/audit?kidId=...` scoped to school)
+- Can view erasure queue and mark processing
+- Can generate per-student data-export on behalf of a parent (requires parent identity verification first)
+- Cannot modify or delete consent records — only parent action can revoke consent
+
+### Incident Response — DPDP Child-Data Incident
+
+In addition to the general breach response above:
+
+1. Notify the Data Protection Board within 72 hours (mandatory)
+2. Notify each affected parent via the channel they consented to for messaging, plus email
+3. Offer immediate erasure of the kid's data without the usual process
+4. Log the incident in a dedicated register retained for 3 years
+5. Post-incident: review AI safety filters and consent enforcement paths

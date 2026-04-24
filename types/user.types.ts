@@ -107,6 +107,16 @@ export type HybridAuthResult =
 
 export type Board = 'cbse' | 'icse' | 'state';
 
+/** Phase 4 (ADMIN-009): white-label branding applied to all exported PDFs. */
+export interface SchoolBranding {
+  logoUrl?: string;
+  letterheadUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+}
+
+export type SchoolPlan = 'trial' | 'basic' | 'premium';
+
 export interface SchoolDoc {
   id: string;
   name: string;
@@ -119,7 +129,9 @@ export interface SchoolDoc {
   adminUid: string;
   teacherIds: string[];
   studentCount: number;
-  plan: 'trial' | 'basic' | 'premium';
+  plan: SchoolPlan;
+  /** Phase 4 (ADMIN-009): optional branding for PDF exports. */
+  branding?: SchoolBranding;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -169,6 +181,9 @@ export interface SubmissionDoc {
   status: SubmissionStatus;
   feedback?: string;
   starred?: boolean;
+  /** Phase 4 (ENGAGE-008): teacher opt-in to surface this approved
+   *  creation in the class feed. Default false. */
+  sharedToClassFeed?: boolean;
   reviewedBy?: string;
   reviewedAt?: Date;
   submittedAt: Date;
