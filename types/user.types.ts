@@ -181,6 +181,9 @@ export interface SubmissionDoc {
   status: SubmissionStatus;
   feedback?: string;
   starred?: boolean;
+  /** Phase 4 (ENGAGE-008): teacher opt-in to surface this approved
+   *  creation in the class feed. Default false. */
+  sharedToClassFeed?: boolean;
   reviewedBy?: string;
   reviewedAt?: Date;
   submittedAt: Date;

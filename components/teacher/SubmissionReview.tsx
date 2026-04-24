@@ -14,7 +14,12 @@ interface Props {
   assignmentId: string;
   onReview: (
     submissionId: string,
-    input: { status?: SubmissionStatus; feedback?: string | null; starred?: boolean },
+    input: {
+      status?: SubmissionStatus;
+      feedback?: string | null;
+      starred?: boolean;
+      sharedToClassFeed?: boolean;
+    },
   ) => Promise<void>;
   onPrev?: () => void;
   onNext?: () => void;
@@ -30,6 +35,10 @@ export function SubmissionReview({ submission, assignmentId, onReview, onPrev, o
   const [suggestError, setSuggestError] = useState<string | null>(null);
   const [previousFeedback, setPreviousFeedback] = useState<string | null>(null);
   const [locale, setLocale] = useState<'en' | 'hi'>('en');
+  const [sharedToClassFeed, setSharedToClassFeed] = useState(
+    !!submission.sharedToClassFeed,
+  );
+  const [shareSaving, setShareSaving] = useState(false);
 
   // Reset local state when the submission changes
   useEffect(() => {
@@ -38,7 +47,24 @@ export function SubmissionReview({ submission, assignmentId, onReview, onPrev, o
     setSaved(null);
     setSuggestError(null);
     setPreviousFeedback(null);
-  }, [submission.id, submission.feedback, submission.starred]);
+    setSharedToClassFeed(!!submission.sharedToClassFeed);
+  }, [
+    submission.id,
+    submission.feedback,
+    submission.starred,
+    submission.sharedToClassFeed,
+  ]);
+
+  async function toggleShareToFeed() {
+    const next = !sharedToClassFeed;
+    setSharedToClassFeed(next);
+    setShareSaving(true);
+    try {
+      await onReview(submission.id, { sharedToClassFeed: next });
+    } finally {
+      setShareSaving(false);
+    }
+  }
 
   async function handleSuggestFeedback() {
     setSuggesting(true);
@@ -284,6 +310,30 @@ export function SubmissionReview({ submission, assignmentId, onReview, onPrev, o
           </p>
         )}
       </div>
+
+      {submission.status === 'approved' && (
+        <label
+          className={cn(
+            'flex items-center justify-between rounded-xl border px-3 py-2 text-sm',
+            sharedToClassFeed
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : 'border-gray-200 bg-gray-50 text-gray-700',
+          )}
+        >
+          <span>
+            <strong>Share to class feed</strong> — let classmates see this and
+            react with positive emojis.
+          </span>
+          <input
+            type="checkbox"
+            checked={sharedToClassFeed}
+            onChange={toggleShareToFeed}
+            disabled={shareSaving}
+            className="h-4 w-4 accent-emerald-600"
+            aria-label="Share to class feed"
+          />
+        </label>
+      )}
 
       <div className="flex flex-wrap items-center justify-end gap-2">
         <button

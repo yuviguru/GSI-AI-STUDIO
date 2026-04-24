@@ -305,6 +305,8 @@ export interface ReviewSubmissionInput {
   status?: SubmissionStatus;
   feedback?: string | null;
   starred?: boolean;
+  /** Phase 4 (ENGAGE-008): toggle visibility in the class feed. */
+  sharedToClassFeed?: boolean;
 }
 
 export async function reviewSubmission(
@@ -334,6 +336,9 @@ export async function reviewSubmission(
     updates.feedback = input.feedback === null ? FieldValue.delete() : input.feedback;
   }
   if (input.starred !== undefined) updates.starred = input.starred;
+  if (input.sharedToClassFeed !== undefined) {
+    updates.sharedToClassFeed = input.sharedToClassFeed;
+  }
 
   await ref.update(updates);
   const updated = await ref.get();

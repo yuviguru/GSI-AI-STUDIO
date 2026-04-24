@@ -33,6 +33,7 @@ export async function PATCH(
       status?: SubmissionStatus;
       feedback?: string | null;
       starred?: boolean;
+      sharedToClassFeed?: boolean;
     } = {};
 
     if (body.status !== undefined) {
@@ -58,6 +59,16 @@ export async function PATCH(
         throw new AppException('INVALID_INPUT', 'starred must be a boolean.', 400);
       }
       updates.starred = body.starred;
+    }
+    if (body.sharedToClassFeed !== undefined) {
+      if (typeof body.sharedToClassFeed !== 'boolean') {
+        throw new AppException(
+          'INVALID_INPUT',
+          'sharedToClassFeed must be a boolean.',
+          400,
+        );
+      }
+      updates.sharedToClassFeed = body.sharedToClassFeed;
     }
 
     const updated = await reviewSubmission(

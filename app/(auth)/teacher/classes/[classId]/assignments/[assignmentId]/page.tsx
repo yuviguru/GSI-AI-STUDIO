@@ -89,7 +89,12 @@ export default function AssignmentReviewPage() {
   const review = useCallback(
     async (
       submissionId: string,
-      input: { status?: SubmissionStatus; feedback?: string | null; starred?: boolean },
+      input: {
+        status?: SubmissionStatus;
+        feedback?: string | null;
+        starred?: boolean;
+        sharedToClassFeed?: boolean;
+      },
     ) => {
       const token = await getIdToken();
       if (!token) return;
