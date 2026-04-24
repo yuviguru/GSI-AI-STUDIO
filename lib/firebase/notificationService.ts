@@ -117,6 +117,12 @@ export async function markNotificationRead(
   });
 }
 
+// Firestore batched writes are capped at 500 ops. Users with large
+// unread backlogs (e.g. a parent returning after a long absence with
+// hundreds of queued digests + reviews) would 500-error here without
+// chunking. Keep a safety margin below the limit.
+const FIRESTORE_BATCH_CAP = 450;
+
 export async function markAllNotificationsRead(uid: string): Promise<number> {
   const userRef = adminDb.collection(USERS_COLLECTION).doc(uid);
   const pending = await userRef
@@ -128,9 +134,16 @@ export async function markAllNotificationsRead(uid: string): Promise<number> {
     return 0;
   }
   const now = Timestamp.now();
-  const batch = adminDb.batch();
-  for (const doc of pending.docs) batch.update(doc.ref, { readAt: now });
-  batch.set(userRef, { unreadNotificationCount: 0 }, { merge: true });
-  await batch.commit();
+  const docs = pending.docs;
+  for (let start = 0; start < docs.length; start += FIRESTORE_BATCH_CAP) {
+    const chunk = docs.slice(start, start + FIRESTORE_BATCH_CAP);
+    const batch = adminDb.batch();
+    for (const d of chunk) batch.update(d.ref, { readAt: now });
+    await batch.commit();
+  }
+  // Reset the cached unread counter once all notification writes have
+  // committed. If chunked writes partially fail, the counter will be
+  // resynced on the next getUnreadCount read.
+  await userRef.set({ unreadNotificationCount: 0 }, { merge: true });
   return pending.size;
 }

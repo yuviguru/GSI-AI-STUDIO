@@ -39,9 +39,17 @@ export async function GET(request: NextRequest) {
     if (!kidSnap.exists) {
       throw new AppException('NOT_FOUND', 'Kid not found.', 404);
     }
-    const parentId = kidSnap.data()?.parentId as string | null | undefined;
-    if (parentId !== auth.userId && auth.role !== 'schoolAdmin') {
-      throw new AppException('FORBIDDEN', 'Kid is not linked to you.', 403);
+    const kid = kidSnap.data() ?? {};
+    const parentId = kid.parentId as string | null | undefined;
+    const schoolId = kid.schoolId as string | null | undefined;
+    const isParent = parentId === auth.userId;
+    // DPO view is scoped to the kid's own school — prevents a schoolAdmin
+    // from one tenant reading consent state for a kid in another tenant
+    // if they happen to know the kid ID.
+    const isDpo =
+      auth.role === 'schoolAdmin' && !!schoolId && schoolId === auth.schoolId;
+    if (!isParent && !isDpo) {
+      throw new AppException('FORBIDDEN', 'Not authorised to view this kid.', 403);
     }
     const state = await getConsentState(kidId);
     return apiSuccess({ kidId, state });
