@@ -80,7 +80,7 @@ export function DataRightsPanel({ kidId, kidName }: Props) {
       <div className="rounded-lg border border-slate-200 p-4">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
           <Download className="h-4 w-4" />
-          Download your child's data
+          Download your child&apos;s data
         </h3>
         <p className="mt-1 text-xs text-slate-600">
           Request a one-time export (JSON + PDF) of everything GSI stores about
@@ -100,7 +100,7 @@ export function DataRightsPanel({ kidId, kidName }: Props) {
       <div className="rounded-lg border border-red-200 bg-red-50 p-4">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-red-900">
           <Trash2 className="h-4 w-4" />
-          Delete your child's account
+          Delete your child&apos;s account
         </h3>
         <p className="mt-1 text-xs text-red-900/80">
           Removes all creations, submissions, AI-generated narratives, badges, and

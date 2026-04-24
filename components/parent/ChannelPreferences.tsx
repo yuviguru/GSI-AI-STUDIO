@@ -87,7 +87,7 @@ export function ChannelPreferences() {
   return (
     <div className="space-y-4">
       <p className="text-xs text-slate-600">
-        Choose how you'd like to receive weekly updates about your child's work.
+        Choose how you&apos;d like to receive weekly updates about your child&apos;s work.
         Telegram is live. WhatsApp arrives once our Meta Business approval lands.
       </p>
 

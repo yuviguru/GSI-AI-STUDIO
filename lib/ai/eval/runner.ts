@@ -206,9 +206,16 @@ export async function runSuite<TInput, TOutput>(
 }
 
 // Heterogeneous array of suites with differing input/output shapes.
-// `any` here is variance-friendly: the runner only needs to invoke
-// `case.run(case.input)` and inspect the output via path-string lookups.
-type AnySuite = EvalSuite<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+// `any` is the variance escape hatch: TS function-argument contravariance
+// means a concrete `EvalSuite<X, Y>` is NOT assignable to
+// `EvalSuite<unknown, unknown>` because `(input: unknown) => ...` cannot
+// accept the concrete X. The runner only inspects outputs via path-string
+// lookups and never relies on the I/O types being correct — this `any`
+// stays internal to this file.
+// eslint-config-next does not enforce `no-explicit-any` so no suppression
+// is needed; referencing that rule by name broke CI when it wasn't
+// registered.
+type AnySuite = EvalSuite<any, any>;
 
 export async function runEvalSuites(suites: AnySuite[]): Promise<EvalReport> {
   const startedAt = new Date();

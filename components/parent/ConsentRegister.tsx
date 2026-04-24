@@ -82,7 +82,7 @@ export function ConsentRegister({ kidId, kidName }: Props) {
           Data & privacy controls{kidName ? ` for ${kidName}` : ''}
         </div>
         <p className="mt-1 text-xs leading-relaxed text-indigo-900/80">
-          Under India's DPDP Act 2023, we only process your child's data for purposes
+          Under India&apos;s DPDP Act 2023, we only process your child&apos;s data for purposes
           you explicitly agree to. You can grant or revoke any permission at any time.
           Revoking stops the affected activity within one minute.
         </p>

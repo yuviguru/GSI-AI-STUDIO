@@ -79,8 +79,8 @@ export default function ParentDataRightsPage() {
       <header>
         <h1 className="text-2xl font-bold text-slate-900">Data & privacy</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Manage what GSI can do with your child's data. These controls comply with
-          India's DPDP Act 2023.
+          Manage what GSI can do with your child&apos;s data. These controls comply with
+          India&apos;s DPDP Act 2023.
         </p>
       </header>
 
