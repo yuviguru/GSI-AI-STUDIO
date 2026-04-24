@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ChannelPreferences } from '@/components/parent/ChannelPreferences';
 import { ConsentRegister } from '@/components/parent/ConsentRegister';
 import { DataRightsPanel } from '@/components/parent/DataRightsPanel';
+import { ProgressReportDownload } from '@/components/parent/ProgressReportDownload';
 
 interface KidOption {
   id: string;
@@ -112,6 +113,13 @@ export default function ParentDataRightsPage() {
           Messaging preferences
         </h2>
         <ChannelPreferences />
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-lg font-semibold text-slate-900">
+          Reports
+        </h2>
+        <ProgressReportDownload kidId={kidId} kidName={activeKid!.name} />
       </section>
 
       <section>
