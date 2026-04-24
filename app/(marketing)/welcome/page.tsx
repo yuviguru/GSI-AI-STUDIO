@@ -2,19 +2,19 @@ import type { Metadata } from 'next';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
 import { Hero } from '@/components/marketing/Hero';
 import { LogoBar } from '@/components/marketing/LogoBar';
-import { HowItWorks } from '@/components/marketing/HowItWorks';
-import { AudienceCards } from '@/components/marketing/AudienceCards';
-import { StudioShowcase } from '@/components/marketing/StudioShowcase';
-import { FlagshipExperiences } from '@/components/marketing/FlagshipExperiences';
+import { WhatYouCanMake } from '@/components/marketing/WhatYouCanMake';
 import { AiXRayShowcase } from '@/components/marketing/AiXRayShowcase';
-import { ForSchoolsDetail } from '@/components/marketing/ForSchoolsDetail';
 import { VsChatGPT } from '@/components/marketing/VsChatGPT';
-import { SafetyTrust } from '@/components/marketing/SafetyTrust';
+import { ForSchoolsDetail } from '@/components/marketing/ForSchoolsDetail';
 import { Pricing } from '@/components/marketing/Pricing';
 import { ParentFAQ } from '@/components/marketing/ParentFAQ';
-import { Testimonials } from '@/components/marketing/Testimonials';
 import { FinalCTA } from '@/components/marketing/FinalCTA';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
+
+// Option B (8 sections) — tight, Stripe-style structure.
+// Retired sections (still on disk for rollback): HowItWorks, AudienceCards,
+// StudioShowcase, FlagshipExperiences (folded into WhatYouCanMake),
+// SafetyTrust (trust badges folded into ParentFAQ header), Testimonials.
 
 export const metadata: Metadata = {
   title: 'GSI AI Studio — From first story to first AI engineer',
@@ -33,19 +33,22 @@ export default function WelcomePage() {
     <>
       <MarketingNav />
       <main>
+        {/* 1 — Hero (includes inline 3-step how-it-works) */}
         <Hero />
+        {/* 2 — LogoBar (authorities + stats) */}
         <LogoBar />
-        <HowItWorks />
-        <AudienceCards />
-        <StudioShowcase />
-        <FlagshipExperiences />
+        {/* 3 — What you can make (Flagship + Studios merged) */}
+        <WhatYouCanMake />
+        {/* 4 — How AI actually works (the X-Ray differentiator) */}
         <AiXRayShowcase />
+        {/* 5 — GSI vs ChatGPT */}
         <VsChatGPT />
-        <SafetyTrust />
-        <Pricing />
+        {/* 6 — For schools (full detail) */}
         <ForSchoolsDetail />
+        {/* 7 — Pricing + Parent FAQ (decision band, rendered back-to-back) */}
+        <Pricing />
         <ParentFAQ />
-        <Testimonials />
+        {/* 8 — Final CTA + Footer */}
         <FinalCTA />
       </main>
       <SiteFooter />

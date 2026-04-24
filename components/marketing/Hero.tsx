@@ -2,8 +2,14 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowRight, Sparkles, Shield } from 'lucide-react';
+import { ArrowRight, Sparkles, Shield, Layers, Share2 } from 'lucide-react';
 import { KokoLottie } from './KokoLottie';
+
+const INLINE_STEPS = [
+  { num: '01', icon: Layers, label: 'Pick a studio' },
+  { num: '02', icon: Sparkles, label: 'Describe an idea' },
+  { num: '03', icon: Share2, label: 'Share + learn' },
+];
 
 const FLOATING_TILES = [
   { emoji: '📖', label: 'Stories', gradient: 'gradient-story', rotate: -8, x: '-14%', y: '8%', delay: 0 },
@@ -99,6 +105,37 @@ export function Hero() {
           <span>No credit card · Free forever tier</span>
           <span className="hidden h-1 w-1 rounded-full bg-brand-border sm:block" />
           <span>10 studios · 12 badges · WhatsApp-ready</span>
+        </motion.div>
+
+        {/* Inline 3-step how-it-works (replaces the full HowItWorks section) */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          className="mx-auto mt-10 flex w-fit max-w-3xl flex-wrap items-center justify-center gap-x-3 gap-y-3 rounded-full border border-brand-border bg-white px-3 py-2 shadow-soft sm:gap-x-5 sm:px-5"
+        >
+          {INLINE_STEPS.map((step, i) => {
+            const Icon = step.icon;
+            return (
+              <div key={step.num} className="flex items-center gap-2.5">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-soft">
+                  <Icon className="h-3.5 w-3.5 text-brand-primary" />
+                </div>
+                <span className="numeric text-[10px] font-bold uppercase tracking-wide text-brand-primary">
+                  {step.num}
+                </span>
+                <span className="font-display text-caption font-bold text-brand-text">
+                  {step.label}
+                </span>
+                {i < INLINE_STEPS.length - 1 && (
+                  <span
+                    aria-hidden
+                    className="hidden h-3 w-px bg-brand-border sm:block"
+                  />
+                )}
+              </div>
+            );
+          })}
         </motion.div>
 
         {/* Floating studio tiles + Koko focal visual */}

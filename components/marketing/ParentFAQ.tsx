@@ -1,9 +1,17 @@
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ShieldCheck } from 'lucide-react';
 
 interface FAQ {
   q: string;
   a: string;
 }
+
+const TRUST_BADGES = [
+  { label: 'DPDPA 2023', sub: 'India compliant' },
+  { label: 'COPPA-aligned', sub: 'US standard' },
+  { label: 'Zero ads', sub: 'Ever' },
+  { label: 'Data in India', sub: 'Firestore asia-south1' },
+  { label: 'No AI training', sub: "Your kid's data stays yours" },
+];
 
 const FAQS: FAQ[] = [
   {
@@ -38,8 +46,9 @@ export function ParentFAQ() {
       <div className="mx-auto max-w-3xl px-5 sm:px-6">
         {/* Header */}
         <div className="text-center">
-          <p className="text-caption font-semibold uppercase tracking-wide text-brand-primary">
-            Parent questions, straight answers
+          <p className="inline-flex items-center gap-1.5 text-caption font-semibold uppercase tracking-wide text-brand-primary">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Safety first — then answers
           </p>
           <h2 className="mt-3 font-display text-[32px] font-extrabold leading-tight tracking-tight text-brand-text text-balance sm:text-[44px]">
             The six things every parent asks.
@@ -50,8 +59,28 @@ export function ParentFAQ() {
           </p>
         </div>
 
+        {/* Trust badges strip (folded in from the old SafetyTrust section) */}
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 rounded-2xl bg-white px-5 py-4 shadow-soft ring-1 ring-brand-border/60">
+          {TRUST_BADGES.map((b, i) => (
+            <div key={b.label} className="flex items-center gap-6">
+              <div className="text-center">
+                <div className="font-display text-sm font-bold text-brand-text">
+                  {b.label}
+                </div>
+                <div className="text-[10px] text-brand-text-muted">{b.sub}</div>
+              </div>
+              {i < TRUST_BADGES.length - 1 && (
+                <span
+                  aria-hidden
+                  className="hidden h-8 w-px bg-brand-border sm:block"
+                />
+              )}
+            </div>
+          ))}
+        </div>
+
         {/* Accordion list */}
-        <div className="mt-12 overflow-hidden rounded-3xl bg-white shadow-soft ring-1 ring-brand-border/60">
+        <div className="mt-8 overflow-hidden rounded-3xl bg-white shadow-soft ring-1 ring-brand-border/60">
           {FAQS.map((faq, i) => (
             <details
               key={faq.q}
