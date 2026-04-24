@@ -132,60 +132,89 @@ function BentoCell({
 function StoryTile() {
   return (
     <div className="flex h-full flex-col">
-      {/* Cover — gradient with scene emojis */}
+      {/* Book-cover style panel */}
       <div
-        className="relative flex-1 overflow-hidden"
+        className="relative flex flex-1 flex-col justify-between overflow-hidden p-3 text-white"
         style={{
-          background: 'linear-gradient(145deg, #8A5CFF 0%, #5B5FFF 60%, #FF9F43 100%)',
+          background:
+            'linear-gradient(155deg, #8A5CFF 0%, #5B5FFF 55%, #FF9F43 110%)',
         }}
       >
+        {/* Ambient blobs */}
         <div
           aria-hidden
-          className="absolute -right-8 -top-10 h-32 w-32 rounded-full bg-white/20 blur-2xl"
+          className="absolute -right-14 -top-14 h-36 w-36 rounded-full bg-white/20 blur-3xl"
         />
         <div
           aria-hidden
-          className="absolute -bottom-6 left-1/3 h-24 w-24 rounded-full bg-brand-accent/40 blur-2xl"
+          className="absolute -bottom-16 -left-10 h-40 w-40 rounded-full bg-brand-accent/40 blur-3xl"
         />
 
-        <div className="absolute inset-0 flex items-end justify-center gap-1.5 pb-5">
-          <motion.span
-            animate={{ y: [0, -4, 0] }}
-            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-            className="text-3xl"
-          >
-            🏙️
-          </motion.span>
-          <motion.span
-            animate={{ y: [0, -6, 0], rotate: [-2, 2, -2] }}
-            transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
-            className="text-4xl drop-shadow-md"
-          >
-            🥞
-          </motion.span>
-          <motion.span
-            animate={{ y: [0, -4, 0] }}
-            transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
-            className="text-3xl"
-          >
-            🤖
-          </motion.span>
+        {/* Subtle star dust */}
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <span className="absolute left-6 top-10 text-[10px] opacity-70">✦</span>
+          <span className="absolute right-5 top-14 text-[8px] opacity-60">✦</span>
+          <span className="absolute left-[60%] top-[40%] text-[9px] opacity-50">✦</span>
+          <span className="absolute right-8 bottom-10 text-[7px] opacity-60">✦</span>
         </div>
 
-        <div className="absolute left-3 top-3 rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand-primary shadow-soft">
-          Story
+        {/* Top row — chip + page count */}
+        <div className="relative flex items-start justify-between">
+          <div className="rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand-primary shadow-soft">
+            Story
+          </div>
+          <div className="flex items-center gap-1 rounded-full bg-black/20 px-2 py-0.5 text-[9px] font-bold text-white/90 backdrop-blur-sm">
+            <span aria-hidden>📄</span>
+            <span className="numeric">6 pages</span>
+          </div>
+        </div>
+
+        {/* Centerpiece — title overlay with hero emoji as seal */}
+        <div className="relative flex flex-col items-start">
+          {/* Hero-stamp emoji with glow */}
+          <div className="relative mb-2">
+            <div
+              aria-hidden
+              className="absolute inset-0 rounded-full bg-white/40 blur-xl"
+            />
+            <motion.span
+              animate={{ rotate: [-3, 3, -3], y: [0, -3, 0] }}
+              transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
+              className="relative block text-4xl drop-shadow-lg"
+            >
+              🥞
+            </motion.span>
+          </div>
+
+          {/* Title */}
+          <h4 className="font-display text-[15px] font-extrabold leading-[1.1] text-white drop-shadow-md">
+            A Brave Dosa<br />Saves Chennai
+          </h4>
+        </div>
+
+        {/* Bottom — byline + rating */}
+        <div className="relative flex items-center justify-between text-[10px]">
+          <span className="font-semibold text-white/90">By Aarav · Class 5</span>
+          <span className="flex items-center gap-0.5 rounded-full bg-white/20 px-2 py-0.5 font-bold text-white backdrop-blur-sm">
+            <span aria-hidden>❤️</span>
+            <span className="numeric">28</span>
+          </span>
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="bg-white px-3 py-2.5">
-        <div className="truncate font-display text-[13px] font-bold text-brand-text">
-          A Brave Dosa Saves Chennai
+      {/* Clean footer strip */}
+      <div className="flex items-center justify-between bg-white px-3 py-2">
+        <div className="flex items-center gap-1.5">
+          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-brand-ai to-brand-primary text-[10px] font-bold text-white">
+            A
+          </div>
+          <span className="text-[10px] font-semibold text-brand-text">
+            Story Studio
+          </span>
         </div>
-        <div className="mt-0.5 flex items-center justify-between text-[10px] text-brand-text-muted">
-          <span>By Aarav · Class 5</span>
-          <span className="numeric">6 pages</span>
-        </div>
+        <span className="flex items-center gap-0.5 text-[10px] font-bold text-brand-secondary">
+          <span>Made in 11s</span>
+        </span>
       </div>
     </div>
   );
