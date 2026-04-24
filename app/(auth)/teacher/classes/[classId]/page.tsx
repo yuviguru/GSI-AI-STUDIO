@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ClassManagement } from '@/components/teacher/ClassManagement';
 import { AssignmentCreator } from '@/components/teacher/AssignmentCreator';
 import { HPCAssistant } from '@/components/teacher/HPCAssistant';
+import { ParentCommsModal } from '@/components/teacher/ParentCommsModal';
 import type { AssignmentDoc, ClassDoc } from '@/types/user.types';
 
 interface Student {
@@ -33,6 +34,7 @@ export default function ClassDetailPage() {
   const [loadingData, setLoadingData] = useState(true);
   const [showAssignmentCreator, setShowAssignmentCreator] = useState(false);
   const [hpcStudent, setHpcStudent] = useState<Student | null>(null);
+  const [commsStudent, setCommsStudent] = useState<Student | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -124,6 +126,7 @@ export default function ClassDetailPage() {
         students={students}
         onOpenAssignmentCreator={() => setShowAssignmentCreator(true)}
         onOpenHpc={(s) => setHpcStudent(s)}
+        onOpenComms={(s) => setCommsStudent(s)}
       />
 
       <section>
@@ -178,6 +181,15 @@ export default function ClassDetailPage() {
           kidName={hpcStudent.name}
           grade={hpcStudent.grade}
           onClose={() => setHpcStudent(null)}
+        />
+      )}
+
+      {commsStudent && (
+        <ParentCommsModal
+          kidId={commsStudent.id}
+          kidName={commsStudent.name}
+          grade={commsStudent.grade}
+          onClose={() => setCommsStudent(null)}
         />
       )}
     </div>
