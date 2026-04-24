@@ -11,10 +11,12 @@
  */
 
 import { generateJsonWithClaude } from './claudeClient';
+import { buildLocaleSystemPrompt } from './localePrompts';
 import { adminDb } from '@/lib/firebase/admin';
 import { AppException } from '@/lib/api-utils';
+import { isSupportedLocale, type Locale } from '@/lib/i18n/locales';
 
-export type Locale = 'en' | 'hi';
+export type { Locale };
 
 export interface HpcNarrativeDraft {
   cognitive: string;
@@ -182,9 +184,10 @@ export interface GenerateHpcInput {
 export async function generateHpcNarrative(
   input: GenerateHpcInput,
 ): Promise<HpcNarrativeDraft & { contextSignals: { submissionCount: number; conceptsCovered: number } }> {
-  if (input.locale !== 'en' && input.locale !== 'hi') {
+  if (!isSupportedLocale(input.locale)) {
     throw new AppException('INVALID_INPUT', 'locale must be "en" or "hi".', 400);
   }
+  const locale: Locale = input.locale;
   const termStart = new Date(input.termStart);
   if (Number.isNaN(termStart.getTime())) {
     throw new AppException('INVALID_INPUT', 'termStart must be an ISO date.', 400);
@@ -195,14 +198,14 @@ export async function generateHpcNarrative(
     name: context.name,
     grade: context.grade,
     term: input.term,
-    locale: input.locale,
+    locale,
     teacherTags: input.teacherTags,
     submissions: context.submissions,
     conceptCounts: context.conceptCounts,
   });
 
   const draft = await generateJsonWithClaude<HpcNarrativeDraft>({
-    systemPrompt: SYSTEM_PROMPT,
+    systemPrompt: buildLocaleSystemPrompt({ basePrompt: SYSTEM_PROMPT, locale }),
     userMessage,
     maxTokens: 900,
     temperature: 0.55,

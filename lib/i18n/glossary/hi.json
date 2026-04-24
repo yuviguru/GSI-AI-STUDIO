@@ -1,0 +1,28 @@
+{
+  "domains": {
+    "cognitive": "संज्ञानात्मक",
+    "affective": "भावात्मक",
+    "psychomotor": "मनोपेशीय"
+  },
+  "blooms": {
+    "remember": "स्मरण",
+    "understand": "समझ",
+    "apply": "अनुप्रयोग",
+    "analyze": "विश्लेषण",
+    "evaluate": "मूल्यांकन",
+    "create": "सृजन"
+  },
+  "pedagogy": {
+    "holistic": "समग्र",
+    "competency": "योग्यता",
+    "rubric": "मानदंड",
+    "blueprint": "प्रारूप",
+    "learning outcome": "अधिगम परिणाम",
+    "assessment": "मूल्यांकन",
+    "differentiation": "भिन्न-शिक्षण"
+  },
+  "tone": [
+    "देवनागरी में लिखें; CBSE/NEP शब्दावली बनाए रखें।",
+    "वाक्य संक्षिप्त और स्पष्ट रखें ताकि अभिभावक भी समझ सकें।"
+  ]
+}

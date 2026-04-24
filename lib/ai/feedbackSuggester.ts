@@ -8,11 +8,13 @@
  */
 
 import { generateJsonWithClaude } from './claudeClient';
+import { buildLocaleSystemPrompt } from './localePrompts';
 import { adminDb } from '@/lib/firebase/admin';
 import { AppException } from '@/lib/api-utils';
+import { isSupportedLocale, type Locale } from '@/lib/i18n/locales';
 import type { SubmissionWithContext } from '@/lib/firebase/submissionService';
 
-export type Locale = 'en' | 'hi';
+export type { Locale };
 
 export interface FeedbackDraft {
   positive: string;
@@ -133,10 +135,7 @@ export interface SuggestFeedbackInput {
 export async function suggestFeedback(
   input: SuggestFeedbackInput,
 ): Promise<FeedbackDraft> {
-  const locale = input.locale ?? 'en';
-  if (locale !== 'en' && locale !== 'hi') {
-    throw new AppException('INVALID_INPUT', 'locale must be "en" or "hi".', 400);
-  }
+  const locale: Locale = isSupportedLocale(input.locale) ? input.locale : 'en';
 
   const priorApprovals = await loadPriorApprovals(
     input.submission.kidId,
@@ -154,7 +153,7 @@ export async function suggestFeedback(
     growthArea: string;
     followUpPrompts: string[];
   }>({
-    systemPrompt: SYSTEM_PROMPT,
+    systemPrompt: buildLocaleSystemPrompt({ basePrompt: SYSTEM_PROMPT, locale }),
     userMessage,
     maxTokens: 400,
     temperature: 0.6,
