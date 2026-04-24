@@ -1,1975 +1,2193 @@
-# Graph Report - .  (2026-04-20)
+# Graph Report - .  (2026-04-25)
 
 ## Corpus Check
-- Large corpus: 401 files · ~275,446 words. Semantic extraction will be expensive (many Claude tokens). Consider running on a subfolder, or use --no-semantic to run AST-only.
+- Large corpus: 677 files · ~479,405 words. Semantic extraction will be expensive (many Claude tokens). Consider running on a subfolder, or use --no-semantic to run AST-only.
 
 ## Summary
-- 1367 nodes · 1616 edges · 289 communities detected
-- Extraction: 81% EXTRACTED · 19% INFERRED · 0% AMBIGUOUS · INFERRED: 311 edges (avg confidence: 0.8)
+- 2273 nodes · 3198 edges · 325 communities detected
+- Extraction: 76% EXTRACTED · 24% INFERRED · 0% AMBIGUOUS · INFERRED: 772 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
-- [[_COMMUNITY_AI Judge & API Utilities|AI Judge & API Utilities]]
-- [[_COMMUNITY_Engagement Stories & Features|Engagement Stories & Features]]
-- [[_COMMUNITY_Shared Components & Export|Shared Components & Export]]
-- [[_COMMUNITY_Admin & School Dashboard|Admin & School Dashboard]]
-- [[_COMMUNITY_Platform Architecture & Agents|Platform Architecture & Agents]]
-- [[_COMMUNITY_Bot & CEO Integration|Bot & CEO Integration]]
-- [[_COMMUNITY_Tests & Auth Flow|Tests & Auth Flow]]
-- [[_COMMUNITY_AI Opponent & API Context|AI Opponent & API Context]]
-- [[_COMMUNITY_Studio Client Pages|Studio Client Pages]]
-- [[_COMMUNITY_AI Points & Gamification|AI Points & Gamification]]
-- [[_COMMUNITY_Beat the AI Visuals|Beat the AI Visuals]]
-- [[_COMMUNITY_API Contracts & Studios|API Contracts & Studios]]
-- [[_COMMUNITY_Bot Link Auth Binding|Bot Link Auth Binding]]
-- [[_COMMUNITY_CEO Scoring Engine|CEO Scoring Engine]]
-- [[_COMMUNITY_Image Provider Pipeline|Image Provider Pipeline]]
-- [[_COMMUNITY_Sound Effects System|Sound Effects System]]
-- [[_COMMUNITY_Music Generation Client|Music Generation Client]]
-- [[_COMMUNITY_CEO Event Engine|CEO Event Engine]]
-- [[_COMMUNITY_Skill Arena Question Bank|Skill Arena Question Bank]]
-- [[_COMMUNITY_Brand Identity Assets|Brand Identity Assets]]
-- [[_COMMUNITY_Comic Studio Feature|Comic Studio Feature]]
-- [[_COMMUNITY_Music Player Component|Music Player Component]]
-- [[_COMMUNITY_Design System Tokens|Design System Tokens]]
-- [[_COMMUNITY_Error Boundary|Error Boundary]]
-- [[_COMMUNITY_Music Prompt Form|Music Prompt Form]]
-- [[_COMMUNITY_Module 25|Module 25]]
-- [[_COMMUNITY_Module 26|Module 26]]
-- [[_COMMUNITY_Module 27|Module 27]]
-- [[_COMMUNITY_Module 28|Module 28]]
-- [[_COMMUNITY_Module 29|Module 29]]
-- [[_COMMUNITY_Module 30|Module 30]]
-- [[_COMMUNITY_Module 31|Module 31]]
-- [[_COMMUNITY_Module 32|Module 32]]
-- [[_COMMUNITY_Module 33|Module 33]]
-- [[_COMMUNITY_Module 34|Module 34]]
-- [[_COMMUNITY_Module 35|Module 35]]
-- [[_COMMUNITY_Module 36|Module 36]]
-- [[_COMMUNITY_Module 37|Module 37]]
-- [[_COMMUNITY_Module 38|Module 38]]
-- [[_COMMUNITY_Module 39|Module 39]]
-- [[_COMMUNITY_Module 40|Module 40]]
-- [[_COMMUNITY_Module 41|Module 41]]
-- [[_COMMUNITY_Module 42|Module 42]]
-- [[_COMMUNITY_Module 43|Module 43]]
-- [[_COMMUNITY_Module 44|Module 44]]
-- [[_COMMUNITY_Module 45|Module 45]]
-- [[_COMMUNITY_Module 46|Module 46]]
-- [[_COMMUNITY_Module 47|Module 47]]
-- [[_COMMUNITY_Module 48|Module 48]]
-- [[_COMMUNITY_Module 49|Module 49]]
-- [[_COMMUNITY_Module 50|Module 50]]
-- [[_COMMUNITY_Module 51|Module 51]]
-- [[_COMMUNITY_Module 52|Module 52]]
-- [[_COMMUNITY_Module 53|Module 53]]
-- [[_COMMUNITY_Module 54|Module 54]]
-- [[_COMMUNITY_Module 55|Module 55]]
-- [[_COMMUNITY_Module 56|Module 56]]
-- [[_COMMUNITY_Module 57|Module 57]]
-- [[_COMMUNITY_Module 58|Module 58]]
-- [[_COMMUNITY_Module 59|Module 59]]
-- [[_COMMUNITY_Module 60|Module 60]]
-- [[_COMMUNITY_Module 61|Module 61]]
-- [[_COMMUNITY_Module 62|Module 62]]
-- [[_COMMUNITY_Module 63|Module 63]]
-- [[_COMMUNITY_Module 64|Module 64]]
-- [[_COMMUNITY_Module 65|Module 65]]
-- [[_COMMUNITY_Module 66|Module 66]]
-- [[_COMMUNITY_Module 67|Module 67]]
-- [[_COMMUNITY_Module 68|Module 68]]
-- [[_COMMUNITY_Module 69|Module 69]]
-- [[_COMMUNITY_Module 70|Module 70]]
-- [[_COMMUNITY_Module 71|Module 71]]
-- [[_COMMUNITY_Module 72|Module 72]]
-- [[_COMMUNITY_Module 73|Module 73]]
-- [[_COMMUNITY_Module 74|Module 74]]
-- [[_COMMUNITY_Module 75|Module 75]]
-- [[_COMMUNITY_Module 76|Module 76]]
-- [[_COMMUNITY_Module 77|Module 77]]
-- [[_COMMUNITY_Module 78|Module 78]]
-- [[_COMMUNITY_Module 79|Module 79]]
-- [[_COMMUNITY_Module 80|Module 80]]
-- [[_COMMUNITY_Module 81|Module 81]]
-- [[_COMMUNITY_Module 82|Module 82]]
-- [[_COMMUNITY_Module 83|Module 83]]
-- [[_COMMUNITY_Module 84|Module 84]]
-- [[_COMMUNITY_Module 85|Module 85]]
-- [[_COMMUNITY_Module 86|Module 86]]
-- [[_COMMUNITY_Module 87|Module 87]]
-- [[_COMMUNITY_Module 88|Module 88]]
-- [[_COMMUNITY_Module 89|Module 89]]
-- [[_COMMUNITY_Module 90|Module 90]]
-- [[_COMMUNITY_Module 91|Module 91]]
-- [[_COMMUNITY_Module 92|Module 92]]
-- [[_COMMUNITY_Module 93|Module 93]]
-- [[_COMMUNITY_Module 94|Module 94]]
-- [[_COMMUNITY_Module 95|Module 95]]
-- [[_COMMUNITY_Module 96|Module 96]]
-- [[_COMMUNITY_Module 97|Module 97]]
-- [[_COMMUNITY_Module 98|Module 98]]
-- [[_COMMUNITY_Module 99|Module 99]]
-- [[_COMMUNITY_Module 100|Module 100]]
-- [[_COMMUNITY_Module 101|Module 101]]
-- [[_COMMUNITY_Module 102|Module 102]]
-- [[_COMMUNITY_Module 103|Module 103]]
-- [[_COMMUNITY_Module 104|Module 104]]
-- [[_COMMUNITY_Module 105|Module 105]]
-- [[_COMMUNITY_Module 106|Module 106]]
-- [[_COMMUNITY_Module 107|Module 107]]
-- [[_COMMUNITY_Module 108|Module 108]]
-- [[_COMMUNITY_Module 109|Module 109]]
-- [[_COMMUNITY_Module 110|Module 110]]
-- [[_COMMUNITY_Module 111|Module 111]]
-- [[_COMMUNITY_Module 112|Module 112]]
-- [[_COMMUNITY_Module 113|Module 113]]
-- [[_COMMUNITY_Module 114|Module 114]]
-- [[_COMMUNITY_Module 115|Module 115]]
-- [[_COMMUNITY_Module 116|Module 116]]
-- [[_COMMUNITY_Module 117|Module 117]]
-- [[_COMMUNITY_Module 118|Module 118]]
-- [[_COMMUNITY_Module 119|Module 119]]
-- [[_COMMUNITY_Module 120|Module 120]]
-- [[_COMMUNITY_Module 121|Module 121]]
-- [[_COMMUNITY_Module 122|Module 122]]
-- [[_COMMUNITY_Module 123|Module 123]]
-- [[_COMMUNITY_Module 124|Module 124]]
-- [[_COMMUNITY_Module 125|Module 125]]
-- [[_COMMUNITY_Module 126|Module 126]]
-- [[_COMMUNITY_Module 127|Module 127]]
-- [[_COMMUNITY_Module 128|Module 128]]
-- [[_COMMUNITY_Module 129|Module 129]]
-- [[_COMMUNITY_Module 130|Module 130]]
-- [[_COMMUNITY_Module 131|Module 131]]
-- [[_COMMUNITY_Module 132|Module 132]]
-- [[_COMMUNITY_Module 133|Module 133]]
-- [[_COMMUNITY_Module 134|Module 134]]
-- [[_COMMUNITY_Module 135|Module 135]]
-- [[_COMMUNITY_Module 136|Module 136]]
-- [[_COMMUNITY_Module 137|Module 137]]
-- [[_COMMUNITY_Module 138|Module 138]]
-- [[_COMMUNITY_Module 139|Module 139]]
-- [[_COMMUNITY_Module 140|Module 140]]
-- [[_COMMUNITY_Module 141|Module 141]]
-- [[_COMMUNITY_Module 142|Module 142]]
-- [[_COMMUNITY_Module 143|Module 143]]
-- [[_COMMUNITY_Module 144|Module 144]]
-- [[_COMMUNITY_Module 145|Module 145]]
-- [[_COMMUNITY_Module 146|Module 146]]
-- [[_COMMUNITY_Module 147|Module 147]]
-- [[_COMMUNITY_Module 148|Module 148]]
-- [[_COMMUNITY_Module 149|Module 149]]
-- [[_COMMUNITY_Module 150|Module 150]]
-- [[_COMMUNITY_Module 151|Module 151]]
-- [[_COMMUNITY_Module 152|Module 152]]
-- [[_COMMUNITY_Module 153|Module 153]]
-- [[_COMMUNITY_Module 154|Module 154]]
-- [[_COMMUNITY_Module 155|Module 155]]
-- [[_COMMUNITY_Module 156|Module 156]]
-- [[_COMMUNITY_Module 157|Module 157]]
-- [[_COMMUNITY_Module 158|Module 158]]
-- [[_COMMUNITY_Module 159|Module 159]]
-- [[_COMMUNITY_Module 160|Module 160]]
-- [[_COMMUNITY_Module 161|Module 161]]
-- [[_COMMUNITY_Module 162|Module 162]]
-- [[_COMMUNITY_Module 163|Module 163]]
-- [[_COMMUNITY_Module 164|Module 164]]
-- [[_COMMUNITY_Module 165|Module 165]]
-- [[_COMMUNITY_Module 166|Module 166]]
-- [[_COMMUNITY_Module 167|Module 167]]
-- [[_COMMUNITY_Module 168|Module 168]]
-- [[_COMMUNITY_Module 169|Module 169]]
-- [[_COMMUNITY_Module 170|Module 170]]
-- [[_COMMUNITY_Module 171|Module 171]]
-- [[_COMMUNITY_Module 172|Module 172]]
-- [[_COMMUNITY_Module 173|Module 173]]
-- [[_COMMUNITY_Module 174|Module 174]]
-- [[_COMMUNITY_Module 175|Module 175]]
-- [[_COMMUNITY_Module 176|Module 176]]
-- [[_COMMUNITY_Module 177|Module 177]]
-- [[_COMMUNITY_Module 178|Module 178]]
-- [[_COMMUNITY_Module 179|Module 179]]
-- [[_COMMUNITY_Module 180|Module 180]]
-- [[_COMMUNITY_Module 181|Module 181]]
-- [[_COMMUNITY_Module 182|Module 182]]
-- [[_COMMUNITY_Module 183|Module 183]]
-- [[_COMMUNITY_Module 184|Module 184]]
-- [[_COMMUNITY_Module 185|Module 185]]
-- [[_COMMUNITY_Module 186|Module 186]]
-- [[_COMMUNITY_Module 187|Module 187]]
-- [[_COMMUNITY_Module 188|Module 188]]
-- [[_COMMUNITY_Module 189|Module 189]]
-- [[_COMMUNITY_Module 190|Module 190]]
-- [[_COMMUNITY_Module 191|Module 191]]
-- [[_COMMUNITY_Module 192|Module 192]]
-- [[_COMMUNITY_Module 193|Module 193]]
-- [[_COMMUNITY_Module 194|Module 194]]
-- [[_COMMUNITY_Module 195|Module 195]]
-- [[_COMMUNITY_Module 196|Module 196]]
-- [[_COMMUNITY_Module 197|Module 197]]
-- [[_COMMUNITY_Module 198|Module 198]]
-- [[_COMMUNITY_Module 199|Module 199]]
-- [[_COMMUNITY_Module 200|Module 200]]
-- [[_COMMUNITY_Module 201|Module 201]]
-- [[_COMMUNITY_Module 202|Module 202]]
-- [[_COMMUNITY_Module 203|Module 203]]
-- [[_COMMUNITY_Module 204|Module 204]]
-- [[_COMMUNITY_Module 205|Module 205]]
-- [[_COMMUNITY_Module 206|Module 206]]
-- [[_COMMUNITY_Module 207|Module 207]]
-- [[_COMMUNITY_Module 208|Module 208]]
-- [[_COMMUNITY_Module 209|Module 209]]
-- [[_COMMUNITY_Module 210|Module 210]]
-- [[_COMMUNITY_Module 211|Module 211]]
-- [[_COMMUNITY_Module 212|Module 212]]
-- [[_COMMUNITY_Module 213|Module 213]]
-- [[_COMMUNITY_Module 214|Module 214]]
-- [[_COMMUNITY_Module 215|Module 215]]
-- [[_COMMUNITY_Module 216|Module 216]]
-- [[_COMMUNITY_Module 217|Module 217]]
-- [[_COMMUNITY_Module 218|Module 218]]
-- [[_COMMUNITY_Module 219|Module 219]]
-- [[_COMMUNITY_Module 220|Module 220]]
-- [[_COMMUNITY_Module 221|Module 221]]
-- [[_COMMUNITY_Module 222|Module 222]]
-- [[_COMMUNITY_Module 223|Module 223]]
-- [[_COMMUNITY_Module 224|Module 224]]
-- [[_COMMUNITY_Module 225|Module 225]]
-- [[_COMMUNITY_Module 226|Module 226]]
-- [[_COMMUNITY_Module 227|Module 227]]
-- [[_COMMUNITY_Module 228|Module 228]]
-- [[_COMMUNITY_Module 229|Module 229]]
-- [[_COMMUNITY_Module 230|Module 230]]
-- [[_COMMUNITY_Module 231|Module 231]]
-- [[_COMMUNITY_Module 232|Module 232]]
-- [[_COMMUNITY_Module 233|Module 233]]
-- [[_COMMUNITY_Module 234|Module 234]]
-- [[_COMMUNITY_Module 235|Module 235]]
-- [[_COMMUNITY_Module 236|Module 236]]
-- [[_COMMUNITY_Module 237|Module 237]]
-- [[_COMMUNITY_Module 238|Module 238]]
-- [[_COMMUNITY_Module 239|Module 239]]
-- [[_COMMUNITY_Module 240|Module 240]]
-- [[_COMMUNITY_Module 241|Module 241]]
-- [[_COMMUNITY_Module 242|Module 242]]
-- [[_COMMUNITY_Module 243|Module 243]]
-- [[_COMMUNITY_Module 244|Module 244]]
-- [[_COMMUNITY_Module 245|Module 245]]
-- [[_COMMUNITY_Module 246|Module 246]]
-- [[_COMMUNITY_Module 247|Module 247]]
-- [[_COMMUNITY_Module 248|Module 248]]
-- [[_COMMUNITY_Module 249|Module 249]]
-- [[_COMMUNITY_Module 250|Module 250]]
-- [[_COMMUNITY_Module 251|Module 251]]
-- [[_COMMUNITY_Module 252|Module 252]]
-- [[_COMMUNITY_Module 253|Module 253]]
-- [[_COMMUNITY_Module 254|Module 254]]
-- [[_COMMUNITY_Module 255|Module 255]]
-- [[_COMMUNITY_Module 256|Module 256]]
-- [[_COMMUNITY_Module 257|Module 257]]
-- [[_COMMUNITY_Module 258|Module 258]]
-- [[_COMMUNITY_Module 259|Module 259]]
-- [[_COMMUNITY_Module 260|Module 260]]
-- [[_COMMUNITY_Module 261|Module 261]]
-- [[_COMMUNITY_Module 262|Module 262]]
-- [[_COMMUNITY_Module 263|Module 263]]
-- [[_COMMUNITY_Module 264|Module 264]]
-- [[_COMMUNITY_Module 265|Module 265]]
-- [[_COMMUNITY_Module 266|Module 266]]
-- [[_COMMUNITY_Module 267|Module 267]]
-- [[_COMMUNITY_Module 268|Module 268]]
-- [[_COMMUNITY_Module 269|Module 269]]
-- [[_COMMUNITY_Module 270|Module 270]]
-- [[_COMMUNITY_Module 271|Module 271]]
-- [[_COMMUNITY_Module 272|Module 272]]
-- [[_COMMUNITY_Module 273|Module 273]]
-- [[_COMMUNITY_Module 274|Module 274]]
-- [[_COMMUNITY_Module 275|Module 275]]
-- [[_COMMUNITY_Module 276|Module 276]]
-- [[_COMMUNITY_Module 277|Module 277]]
-- [[_COMMUNITY_Module 278|Module 278]]
-- [[_COMMUNITY_Module 279|Module 279]]
-- [[_COMMUNITY_Module 280|Module 280]]
-- [[_COMMUNITY_Module 281|Module 281]]
-- [[_COMMUNITY_Module 282|Module 282]]
-- [[_COMMUNITY_Module 283|Module 283]]
-- [[_COMMUNITY_Module 284|Module 284]]
-- [[_COMMUNITY_Module 285|Module 285]]
-- [[_COMMUNITY_Module 286|Module 286]]
-- [[_COMMUNITY_Module 287|Module 287]]
-- [[_COMMUNITY_Module 288|Module 288]]
+- [[_COMMUNITY_GET()|GET()]]
+- [[_COMMUNITY_API Contracts Specification|API Contracts Specification]]
+- [[_COMMUNITY_POST()|POST()]]
+- [[_COMMUNITY_json()|json()]]
+- [[_COMMUNITY_.send()|.send()]]
+- [[_COMMUNITY_ENGAGE-005 MindX (IELTS-style Assessm...|ENGAGE-005 MindX (IELTS-style Assessm...]]
+- [[_COMMUNITY_STUDIO-005 Comic Studio|STUDIO-005: Comic Studio]]
+- [[_COMMUNITY_ADMIN-001 Teacher Admin Portal|ADMIN-001: Teacher Admin Portal]]
+- [[_COMMUNITY_homework|homework]]
+- [[_COMMUNITY_endingReport|endingReport]]
+- [[_COMMUNITY_useAuth()|useAuth()]]
+- [[_COMMUNITY_find()|find()]]
+- [[_COMMUNITY_ENGAGE-006 Cerebro Competitive Exam|ENGAGE-006: Cerebro Competitive Exam]]
+- [[_COMMUNITY_KIDCEO-AGENT-PRIMITIVE Agent + Workf...|KIDCEO-AGENT-PRIMITIVE: Agent + Workf...]]
+- [[_COMMUNITY_isSupportedLocale()|isSupportedLocale()]]
+- [[_COMMUNITY_sessionService|sessionService]]
+- [[_COMMUNITY_TelegramAdapter|TelegramAdapter]]
+- [[_COMMUNITY_NOTIF-001 Assignment & Activity Noti...|NOTIF-001: Assignment & Activity Noti...]]
+- [[_COMMUNITY_buildComplianceReport()|buildComplianceReport()]]
+- [[_COMMUNITY_HOMEWORK-001 Interactive Homework He...|HOMEWORK-001: Interactive Homework He...]]
+- [[_COMMUNITY_REPORT-001 Parent Progress Report PDF|REPORT-001: Parent Progress Report PDF]]
+- [[_COMMUNITY_consentService|consentService]]
+- [[_COMMUNITY_ceoArtifactService|ceoArtifactService]]
+- [[_COMMUNITY_Beat the AI Game Mode (concept)|Beat the AI Game Mode (concept)]]
+- [[_COMMUNITY_UI-001 My Creations Gallery|UI-001: My Creations Gallery]]
+- [[_COMMUNITY_Hero Story Page 4 - Celebration on Be...|Hero Story Page 4 - Celebration on Be...]]
+- [[_COMMUNITY_sounds|sounds]]
+- [[_COMMUNITY_fetchWithKidAuth()|fetchWithKidAuth()]]
+- [[_COMMUNITY_getAiGenerator()|getAiGenerator()]]
+- [[_COMMUNITY_musicClient|musicClient]]
+- [[_COMMUNITY_runner|runner]]
+- [[_COMMUNITY_FedenaProvider|FedenaProvider]]
+- [[_COMMUNITY_runWeeklyDigest()|runWeeklyDigest()]]
+- [[_COMMUNITY_Linear â†’ Claude Code â†’ PR Pipeline|Linear â†’ Claude Code â†’ PR Pipeline]]
+- [[_COMMUNITY_UI-003 Creation Templates|UI-003: Creation Templates]]
+- [[_COMMUNITY_MusicPlayer|MusicPlayer]]
+- [[_COMMUNITY_useLearnProgress|useLearnProgress]]
+- [[_COMMUNITY_ErrorBoundary|ErrorBoundary]]
+- [[_COMMUNITY_DownloadButton|DownloadButton]]
+- [[_COMMUNITY_NotificationBell|NotificationBell]]
+- [[_COMMUNITY_MusicPromptForm|MusicPromptForm]]
+- [[_COMMUNITY_StoryPromptForm|StoryPromptForm]]
+- [[_COMMUNITY_utils|utils]]
+- [[_COMMUNITY_TelegramProvider|TelegramProvider]]
+- [[_COMMUNITY_pdfGenerator|pdfGenerator]]
+- [[_COMMUNITY_StoryViewer|StoryViewer]]
+- [[_COMMUNITY_TeacherActivityTable|TeacherActivityTable]]
+- [[_COMMUNITY_LoginPrompt|LoginPrompt]]
+- [[_COMMUNITY_CreationCard|CreationCard]]
+- [[_COMMUNITY_ComicPromptForm|ComicPromptForm]]
+- [[_COMMUNITY_GamePromptForm|GamePromptForm]]
+- [[_COMMUNITY_QuizPromptForm|QuizPromptForm]]
+- [[_COMMUNITY_badges|badges]]
+- [[_COMMUNITY_generateWithGroq()|generateWithGroq()]]
+- [[_COMMUNITY_getApp()|getApp()]]
+- [[_COMMUNITY_sessionService.spec|sessionService.spec]]
+- [[_COMMUNITY_evaluator.test|evaluator.test]]
+- [[_COMMUNITY_index|index]]
+- [[_COMMUNITY_ENGAGE-007 Collaborative Creation|ENGAGE-007 Collaborative Creation]]
+- [[_COMMUNITY_INFRA-010 Supabase Evaluation|INFRA-010 Supabase Evaluation]]
+- [[_COMMUNITY_STUDIO-006 Character Creator|STUDIO-006 Character Creator]]
+- [[_COMMUNITY_GSI Get Set Innovate Brand|GSI Get Set Innovate Brand]]
+- [[_COMMUNITY_BusinessRegistration|BusinessRegistration]]
+- [[_COMMUNITY_CeoProfileCard|CeoProfileCard]]
+- [[_COMMUNITY_AgentCard|AgentCard]]
+- [[_COMMUNITY_BrandCandidateReview|BrandCandidateReview]]
+- [[_COMMUNITY_CampaignCandidateReview|CampaignCandidateReview]]
+- [[_COMMUNITY_SimpleBriefingForm|SimpleBriefingForm]]
+- [[_COMMUNITY_TextArtifactReview|TextArtifactReview]]
+- [[_COMMUNITY_LeaderboardPanel|LeaderboardPanel]]
+- [[_COMMUNITY_MyCreationsMiniGallery|MyCreationsMiniGallery]]
+- [[_COMMUNITY_WhatYouCanMake|WhatYouCanMake]]
+- [[_COMMUNITY_ProfilePicker|ProfilePicker]]
+- [[_COMMUNITY_ListeningPlayer|ListeningPlayer]]
+- [[_COMMUNITY_handleCopyCode()|handleCopyCode()]]
+- [[_COMMUNITY_useAiGeneration.spec|useAiGeneration.spec]]
+- [[_COMMUNITY_useVoiceInput|useVoiceInput]]
+- [[_COMMUNITY_replicateClient|replicateClient]]
+- [[_COMMUNITY_feedbackPrompt.suite|feedbackPrompt.suite]]
+- [[_COMMUNITY_makeRegistry()|makeRegistry()]]
+- [[_COMMUNITY_clamp()|clamp()]]
+- [[_COMMUNITY_groq|groq]]
+- [[_COMMUNITY_registry()|registry()]]
+- [[_COMMUNITY_creationService.spec|creationService.spec]]
+- [[_COMMUNITY_dateHash()|dateHash()]]
+- [[_COMMUNITY_not-found|not-found]]
+- [[_COMMUNITY_layout|layout]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_layout|layout]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_layout|layout]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_layout|layout]]
+- [[_COMMUNITY_CurriculumHeatmap|CurriculumHeatmap]]
+- [[_COMMUNITY_WeeklyTrendChart|WeeklyTrendChart]]
+- [[_COMMUNITY_usesSingleLineInput()|usesSingleLineInput()]]
+- [[_COMMUNITY_SkillRadarChart|SkillRadarChart]]
+- [[_COMMUNITY_ConfettiCelebration|ConfettiCelebration]]
+- [[_COMMUNITY_DimensionRadar|DimensionRadar]]
+- [[_COMMUNITY_EventFeed|EventFeed]]
+- [[_COMMUNITY_handleSubmit()|handleSubmit()]]
+- [[_COMMUNITY_handleSubmit()|handleSubmit()]]
+- [[_COMMUNITY_TeamTab|TeamTab]]
+- [[_COMMUNITY_BeatAiChallengeBanner()|BeatAiChallengeBanner()]]
+- [[_COMMUNITY_ContinueCreatingCard|ContinueCreatingCard]]
+- [[_COMMUNITY_CreativeJourneySection|CreativeJourneySection]]
+- [[_COMMUNITY_CreativeStreakChart|CreativeStreakChart]]
+- [[_COMMUNITY_DailyMissionCard|DailyMissionCard]]
+- [[_COMMUNITY_FeaturedStudioCard|FeaturedStudioCard]]
+- [[_COMMUNITY_MindXWidget|MindXWidget]]
+- [[_COMMUNITY_ProgressPanel|ProgressPanel]]
+- [[_COMMUNITY_ShowAllAppsWidget|ShowAllAppsWidget]]
+- [[_COMMUNITY_StreakCard|StreakCard]]
+- [[_COMMUNITY_StudioCardCompact|StudioCardCompact]]
+- [[_COMMUNITY_StudioCardsColumn|StudioCardsColumn]]
+- [[_COMMUNITY_StudioSelectorPanel|StudioSelectorPanel]]
+- [[_COMMUNITY_XpProgressCard|XpProgressCard]]
+- [[_COMMUNITY_AnimationDemo()|AnimationDemo()]]
+- [[_COMMUNITY_cn()|cn()]]
+- [[_COMMUNITY_CopyButton|CopyButton]]
+- [[_COMMUNITY_DesignSystemSidebar|DesignSystemSidebar]]
+- [[_COMMUNITY_FeaturedSection|FeaturedSection]]
+- [[_COMMUNITY_BottomNav()|BottomNav()]]
+- [[_COMMUNITY_MuteToggle|MuteToggle]]
+- [[_COMMUNITY_SentimentDemo|SentimentDemo]]
+- [[_COMMUNITY_animate()|animate()]]
+- [[_COMMUNITY_getConceptIcon()|getConceptIcon()]]
+- [[_COMMUNITY_CurriculumTag|CurriculumTag]]
+- [[_COMMUNITY_AudienceCards()|AudienceCards()]]
+- [[_COMMUNITY_FinalCTA|FinalCTA]]
+- [[_COMMUNITY_FlagshipExperiences|FlagshipExperiences]]
+- [[_COMMUNITY_HowItWorks|HowItWorks]]
+- [[_COMMUNITY_LogoBar|LogoBar]]
+- [[_COMMUNITY_SiteFooter|SiteFooter]]
+- [[_COMMUNITY_VsChatGPT|VsChatGPT]]
+- [[_COMMUNITY_MascotSpeechBubble|MascotSpeechBubble]]
+- [[_COMMUNITY_OnboardingSlide|OnboardingSlide]]
+- [[_COMMUNITY_RemixButton|RemixButton]]
+- [[_COMMUNITY_SurpriseButton|SurpriseButton]]
+- [[_COMMUNITY_McqOptions|McqOptions]]
+- [[_COMMUNITY_SpeakingInput|SpeakingInput]]
+- [[_COMMUNITY_handleError()|handleError()]]
+- [[_COMMUNITY_ComicSampleCards()|ComicSampleCards()]]
+- [[_COMMUNITY_handleDragEnd()|handleDragEnd()]]
+- [[_COMMUNITY_GameSampleCards|GameSampleCards]]
+- [[_COMMUNITY_QuizPlayer|QuizPlayer]]
+- [[_COMMUNITY_QuizSampleCards|QuizSampleCards]]
+- [[_COMMUNITY_StoryPageView|StoryPageView]]
+- [[_COMMUNITY_SubmissionGrid|SubmissionGrid]]
+- [[_COMMUNITY_useAiGeneration|useAiGeneration]]
+- [[_COMMUNITY_useCreations|useCreations]]
+- [[_COMMUNITY_useExplore|useExplore]]
+- [[_COMMUNITY_useSkillArenaProgress|useSkillArenaProgress]]
+- [[_COMMUNITY_skillEngine.test|skillEngine.test]]
+- [[_COMMUNITY_telegram.spec|telegram.spec]]
+- [[_COMMUNITY_weeklyHomeworkDigest.spec|weeklyHomeworkDigest.spec]]
+- [[_COMMUNITY_makeSession()|makeSession()]]
+- [[_COMMUNITY_mkBusiness()|mkBusiness()]]
+- [[_COMMUNITY_scoringEngine.spec|scoringEngine.spec]]
+- [[_COMMUNITY_toolRegistry|toolRegistry]]
+- [[_COMMUNITY_summarise()|summarise()]]
+- [[_COMMUNITY_matchesBlocklist()|matchesBlocklist()]]
+- [[_COMMUNITY_getDailyTheme()|getDailyTheme()]]
+- [[_COMMUNITY_Community Hubs (289 detected)|Community Hubs (289 detected)]]
+- [[_COMMUNITY_Quiz Maker page|Quiz Maker page]]
+- [[_COMMUNITY_next-env.d|next-env.d]]
+- [[_COMMUNITY_next.config|next.config]]
+- [[_COMMUNITY_playwright.config|playwright.config]]
+- [[_COMMUNITY_postcss.config|postcss.config]]
+- [[_COMMUNITY_tailwind.config|tailwind.config]]
+- [[_COMMUNITY_vitest.config|vitest.config]]
+- [[_COMMUNITY_vitest.setup|vitest.setup]]
+- [[_COMMUNITY_layout|layout]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_BeatTheAiClient|BeatTheAiClient]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_MyCreationsClient|MyCreationsClient]]
+- [[_COMMUNITY_ExploreClient|ExploreClient]]
+- [[_COMMUNITY_page|page]]
+- [[_COMMUNITY_SkillArenaClient|SkillArenaClient]]
+- [[_COMMUNITY_ViewerClient|ViewerClient]]
+- [[_COMMUNITY_route|route]]
+- [[_COMMUNITY_CategoryPicker|CategoryPicker]]
+- [[_COMMUNITY_ResultsScreen|ResultsScreen]]
+- [[_COMMUNITY_SideBySideReveal|SideBySideReveal]]
+- [[_COMMUNITY_SkillProgressCard|SkillProgressCard]]
+- [[_COMMUNITY_StatsBoard|StatsBoard]]
+- [[_COMMUNITY_BusinessDashboard|BusinessDashboard]]
+- [[_COMMUNITY_DecisionFeedback|DecisionFeedback]]
+- [[_COMMUNITY_MilestoneZone|MilestoneZone]]
+- [[_COMMUNITY_PhaseProgress|PhaseProgress]]
+- [[_COMMUNITY_SmallDecisionsZone|SmallDecisionsZone]]
+- [[_COMMUNITY_WorkflowBuilderTab|WorkflowBuilderTab]]
+- [[_COMMUNITY_WorkflowTrace|WorkflowTrace]]
+- [[_COMMUNITY_CreationFilters|CreationFilters]]
+- [[_COMMUNITY_CreationGrid|CreationGrid]]
+- [[_COMMUNITY_BadgeShelf|BadgeShelf]]
+- [[_COMMUNITY_BeatAiInfoCard|BeatAiInfoCard]]
+- [[_COMMUNITY_BeatAiWidget|BeatAiWidget]]
+- [[_COMMUNITY_CategoryFilterTabs|CategoryFilterTabs]]
+- [[_COMMUNITY_ChallengesWidget|ChallengesWidget]]
+- [[_COMMUNITY_CommunityPicksWidget|CommunityPicksWidget]]
+- [[_COMMUNITY_DashboardStatsRow|DashboardStatsRow]]
+- [[_COMMUNITY_index|index]]
+- [[_COMMUNITY_LearningProgressCarousel|LearningProgressCarousel]]
+- [[_COMMUNITY_PopularStudiosRow|PopularStudiosRow]]
+- [[_COMMUNITY_UserStatsBar|UserStatsBar]]
+- [[_COMMUNITY_BorderRadiusSection|BorderRadiusSection]]
+- [[_COMMUNITY_ButtonSection|ButtonSection]]
+- [[_COMMUNITY_ColorSection|ColorSection]]
+- [[_COMMUNITY_GamificationSection|GamificationSection]]
+- [[_COMMUNITY_GradientSection|GradientSection]]
+- [[_COMMUNITY_ShadowSection|ShadowSection]]
+- [[_COMMUNITY_SpacingSection|SpacingSection]]
+- [[_COMMUNITY_TypographySection|TypographySection]]
+- [[_COMMUNITY_Header|Header]]
+- [[_COMMUNITY_SidebarNav|SidebarNav]]
+- [[_COMMUNITY_BadgeGallery|BadgeGallery]]
+- [[_COMMUNITY_CelebrationModal|CelebrationModal]]
+- [[_COMMUNITY_AiXRayShowcase|AiXRayShowcase]]
+- [[_COMMUNITY_ForSchoolsDetail|ForSchoolsDetail]]
+- [[_COMMUNITY_Hero|Hero]]
+- [[_COMMUNITY_HeroBento|HeroBento]]
+- [[_COMMUNITY_KokoLottie|KokoLottie]]
+- [[_COMMUNITY_MarketingNav|MarketingNav]]
+- [[_COMMUNITY_ParentFAQ|ParentFAQ]]
+- [[_COMMUNITY_Pricing|Pricing]]
+- [[_COMMUNITY_SafetyTrust|SafetyTrust]]
+- [[_COMMUNITY_StudioShowcase|StudioShowcase]]
+- [[_COMMUNITY_Testimonials|Testimonials]]
+- [[_COMMUNITY_Mascot|Mascot]]
+- [[_COMMUNITY_OnboardingCarousel|OnboardingCarousel]]
+- [[_COMMUNITY_OnboardingIllustrations|OnboardingIllustrations]]
+- [[_COMMUNITY_AvatarPicker|AvatarPicker]]
+- [[_COMMUNITY_ProfileSelector|ProfileSelector]]
+- [[_COMMUNITY_ShareButton|ShareButton]]
+- [[_COMMUNITY_ShareSheet|ShareSheet]]
+- [[_COMMUNITY_TemplateCarousel|TemplateCarousel]]
+- [[_COMMUNITY_AssessmentArena|AssessmentArena]]
+- [[_COMMUNITY_BandProgressCard|BandProgressCard]]
+- [[_COMMUNITY_MentorResults|MentorResults]]
+- [[_COMMUNITY_ModulePicker|ModulePicker]]
+- [[_COMMUNITY_ProgressDashboard|ProgressDashboard]]
+- [[_COMMUNITY_TextAnswer|TextAnswer]]
+- [[_COMMUNITY_AssignmentBanner|AssignmentBanner]]
+- [[_COMMUNITY_AssignmentView|AssignmentView]]
+- [[_COMMUNITY_ComicProgress|ComicProgress]]
+- [[_COMMUNITY_GamePlayer|GamePlayer]]
+- [[_COMMUNITY_GameProgress|GameProgress]]
+- [[_COMMUNITY_MusicProgress|MusicProgress]]
+- [[_COMMUNITY_MusicSampleCards|MusicSampleCards]]
+- [[_COMMUNITY_QuizProgress|QuizProgress]]
+- [[_COMMUNITY_SamplePromptCards|SamplePromptCards]]
+- [[_COMMUNITY_StoryProgress|StoryProgress]]
+- [[_COMMUNITY_ChapterPicker|ChapterPicker]]
+- [[_COMMUNITY_landing.spec|landing.spec]]
+- [[_COMMUNITY_session.spec|session.spec]]
+- [[_COMMUNITY_index|index]]
+- [[_COMMUNITY_useAiPoints|useAiPoints]]
+- [[_COMMUNITY_api-utils.spec|api-utils.spec]]
+- [[_COMMUNITY_utils.spec|utils.spec]]
+- [[_COMMUNITY_validators.spec|validators.spec]]
+- [[_COMMUNITY_validators|validators]]
+- [[_COMMUNITY_runner.spec|runner.spec]]
+- [[_COMMUNITY_types|types]]
+- [[_COMMUNITY_runner.smoke.suite|runner.smoke.suite]]
+- [[_COMMUNITY_index|index]]
+- [[_COMMUNITY_storyPrompt.spec|storyPrompt.spec]]
+- [[_COMMUNITY_prompts.test|prompts.test]]
+- [[_COMMUNITY_types|types]]
+- [[_COMMUNITY_languageDetect.spec|languageDetect.spec]]
+- [[_COMMUNITY_recitationScorer.spec|recitationScorer.spec]]
+- [[_COMMUNITY_phases.spec|phases.spec]]
+- [[_COMMUNITY_profileEngine.spec|profileEngine.spec]]
+- [[_COMMUNITY_pricing.spec|pricing.spec]]
+- [[_COMMUNITY_breakEven.spec|breakEven.spec]]
+- [[_COMMUNITY_types|types]]
+- [[_COMMUNITY_index|index]]
+- [[_COMMUNITY_types|types]]
+- [[_COMMUNITY_sessionService.streak.spec|sessionService.streak.spec]]
+- [[_COMMUNITY_index|index]]
+- [[_COMMUNITY_blocklist|blocklist]]
+- [[_COMMUNITY_imageFilter.spec|imageFilter.spec]]
+- [[_COMMUNITY_inputFilter.spec|inputFilter.spec]]
+- [[_COMMUNITY_outputFilter.spec|outputFilter.spec]]
+- [[_COMMUNITY_questionBank.test|questionBank.test]]
+- [[_COMMUNITY_scoring.test|scoring.test]]
+- [[_COMMUNITY_comicTemplates|comicTemplates]]
+- [[_COMMUNITY_gameTemplates|gameTemplates]]
+- [[_COMMUNITY_musicTemplates|musicTemplates]]
+- [[_COMMUNITY_quizTemplates|quizTemplates]]
+- [[_COMMUNITY_storyTemplates|storyTemplates]]
+- [[_COMMUNITY_types|types]]
+- [[_COMMUNITY_timestamps.spec|timestamps.spec]]
+- [[_COMMUNITY_api.types|api.types]]
+- [[_COMMUNITY_bot.types|bot.types]]
+- [[_COMMUNITY_ceo.types|ceo.types]]
+- [[_COMMUNITY_cerebro.types|cerebro.types]]
+- [[_COMMUNITY_creation.types|creation.types]]
+- [[_COMMUNITY_dpdp.types|dpdp.types]]
+- [[_COMMUNITY_growthMap.types|growthMap.types]]
+- [[_COMMUNITY_index|index]]
+- [[_COMMUNITY_mindx.types|mindx.types]]
+- [[_COMMUNITY_notification.types|notification.types]]
+- [[_COMMUNITY_user.types|user.types]]
+- [[_COMMUNITY_Skills Directory|Skills Directory]]
+- [[_COMMUNITY_Project Directory Structure|Project Directory Structure]]
+- [[_COMMUNITY_4-Phase Workflow|4-Phase Workflow]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `GET()` - 81 edges
-2. `POST()` - 79 edges
-3. `json()` - 23 edges
-4. `a` - 18 edges
-5. `handleChoice()` - 17 edges
-6. `v` - 15 edges
-7. `z()` - 15 edges
-8. `ENGAGE-005: MindX â€” AI Skill Assessment (CLA-36, IELTS-style)` - 14 edges
-9. `TelegramAdapter` - 13 edges
-10. `GSI AI Studio Platform` - 13 edges
+1. `GET()` - 221 edges
+2. `POST()` - 183 edges
+3. `json()` - 48 edges
+4. `PATCH()` - 37 edges
+5. `DELETE()` - 28 edges
+6. `handleChoice()` - 21 edges
+7. `API Contracts Specification` - 21 edges
+8. `Architecture Document` - 21 edges
+9. `ENGAGE-006: Cerebro Competitive Exam` - 20 edges
+10. `find()` - 19 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `POST()` --calls--> `createBotLinkCode()`  [INFERRED]
-  app\api\users\kids\route.ts → lib\firebase\botLinkService.ts
-- `updateModuleState()` --calls--> `GET()`  [INFERRED]
-  lib\bot\services\sessionStore.ts → app\api\users\kids\[kidId]\route.ts
-- `WCAG AA Accessibility Compliance` --semantically_similar_to--> `Mobile-First Design (48px touch targets)`  [INFERRED] [semantically similar]
-  docs/design-system.md → CONTEXT.md
-- `useAiGeneration Hook` --semantically_similar_to--> `useAiPoints() Hook`  [INFERRED] [semantically similar]
-  components/studios/CONTEXT.md → hooks/CONTEXT.md
-- `handleSubmit()` --calls--> `trackCreation()`  [INFERRED]
-  app\(public)\create\comic\ComicStudioClient.tsx → lib\firebase\sessionService.ts
+- `listHiresForBusiness()` --calls--> `GET()`  [INFERRED]
+  lib\firebase\ceoAgentHireService.ts → app\api\users\kids\[kidId]\route.ts
+- `listArtifactsForBusiness()` --calls--> `GET()`  [INFERRED]
+  lib\firebase\ceoArtifactService.ts → app\api\users\kids\[kidId]\route.ts
+- `listDecidedEventsForBusiness()` --calls--> `GET()`  [INFERRED]
+  lib\firebase\ceoService.ts → app\api\users\kids\[kidId]\route.ts
+- `getConsentState()` --calls--> `GET()`  [INFERRED]
+  lib\dpdp\consentService.ts → app\api\users\kids\[kidId]\route.ts
+- `getConsentAudit()` --calls--> `GET()`  [INFERRED]
+  lib\dpdp\consentService.ts → app\api\users\kids\[kidId]\route.ts
 
 ## Hyperedges (group relationships)
-- **AI Safety Pipeline: input filter + output filter + image filter all protect child content** — lib_safety_input_filter, lib_safety_output_filter, lib_safety_image_filter, context_child_safety_first [EXTRACTED 1.00]
-- **Two Telegram bots share one lib/bot/ codebase with separate module sets registered per webhook** — arch_two_telegram_bots, arch_lib_bot_shared, bot_arch_ceo_module, bot_arch_homework_module, bot_arch_bot_router [EXTRACTED 1.00]
-- **Kid CEO feature backed by three Firestore collections sharing sessionId as common key** — dm_ceo_business_collection, dm_ceo_events_collection, dm_ceo_profiles_collection, gsi_integration_kid_ceo [EXTRACTED 1.00]
-- **3-Step INSPIREâ†’CREATEâ†’SHARE Pattern (all 4 studios)** — studio001_three_step_flow, studio001_story_creation, studio002_music_creation, studio003_quiz_creation, studio004_game_studio [EXTRACTED 1.00]
-- **CBSE AI Curriculum Alignment across Beat the AI, MindX, AI X-Ray, and Game Studio** — learn001_cbse_curriculum_alignment, engage004_beat_the_ai, engage005_mindx, learn001_ai_xray_popup, studio004_decision_tree_concept [INFERRED 0.90]
-- **India Market Localisation: WhatsApp Sharing, Multilingual, Voice Input (en-IN), India-Themed Prompts** — share001_whatsapp_primary_channel, platform005_multilingual, platform004_speech_to_text_hook, engage004_prompt_bank, engage005_question_bank [INFERRED 0.85]
-- **Parent Trust & Safety Layer â€” auth + controls + dashboard + reporting** — auth001_phone_otp, auth001_age_gate, profile003_parental_controls, profile003_parent_dashboard, engage007_growth_map, platform003_content_moderation [INFERRED 0.85]
-- **CBSE Curriculum Alignment System â€” curriculum map feeds skill tree, assignment tags, compliance reports, and heatmap** — learn002_curriculum_map, learn002_skill_tree, admin001_assignment_creator, admin002_compliance_report, admin003_curriculum_heatmap, engage006_question_bank [INFERRED 0.88]
-- **Kid Engagement & Retention Loop â€” streaks + reactions + challenges + notifications + celebrations** — engage004_streak_counter, engage005_reactions, engage006p2_weekly_challenges, platform002_notifications, ui002_celebration_modal, engage004_level_up_modal [INFERRED 0.82]
+- **AI Generation Request Flow** — api_pattern_validate_pipeline, arch_ai_safety_pipeline, arch_provider_chain, lib_ai_pattern_safe_prompts, collection_creations [INFERRED 0.85]
+- **Five Creation Studios (Story, Music, Quiz, Game, Comic)** — studios_story, studios_music, studios_quiz, studios_game, studios_comic, studios_pattern_3step [EXTRACTED 1.00]
+- **Bot Link Binding (endpoint + collection + security policy)** — endpoint_bot_link, collection_bot_link_codes, security_bot_link_binding, arch_telegram_bots [EXTRACTED 1.00]
+- **Multi-Layer Safety Pipeline (input â†’ AI â†’ output)** — safety_input_filter, safety_blocklist, safety_output_filter, safety_image_filter [EXTRACTED 1.00]
+- **Anonymous Session Infrastructure Stack** — infra_001_session_service, infra_001_session_endpoint, infra_001_use_session, infra_009_session_service, infra_009_fetch_with_session [EXTRACTED 1.00]
+- **Studio 3-Step Flow Pattern (INSPIRE/CREATE/SHARE)** — studio_001_story_flow, studio_002_music_flow, studio_001_3_step_flow, studio_001_story_prompt_form, studio_002_music_prompt_form [EXTRACTED 1.00]
+- **Cerebro Exam Flow Pipeline** — exam_lockdown_component, exam_arena_component, exam_results_component, cerebro_start_exam_api, cerebro_finish_exam_api, anti_malpractice_lib [EXTRACTED 1.00]
+- **Homework Forward Processing Pipeline** — ocr_lib, homework_classifier_lib, homework_parser_lib, homework_session_store_lib, homework_module_lib [EXTRACTED 1.00]
+- **Studio 3-Step Creation Pattern (inspire/create/share)** — studio_003_quiz_creation_flow, studio_004_game_studio, studio_005_comic_studio, story_studio_client_pattern, use_ai_generation_hook [EXTRACTED 1.00]
+- **Kid CEO Agent Ecosystem - Primitive to Agents** — kidceo_agent_primitive, kidceo_agent_brand, kidceo_agent_marketing, kidceo_agent_ops_finance, kidceo_workflow_builder [EXTRACTED 0.95]
+- **Teacher/School Admin Platform (Phase 3+4)** — admin001_teacher_admin_portal, admin002_assignment_submission, admin003_school_dashboard, admin004_hpc_narrative_assistant, admin005_question_paper_generator, admin007_lesson_plan, admin009_school_settings [EXTRACTED 0.95]
+- **DPDP Compliance + Parent Comms Pipeline** — compliance002_dpdp_consent, compliance001_report_v2, comms001_parent_digest, comms002_ptm_adhoc [EXTRACTED 0.90]
+- **Phase 4 Story Bundle** — engage_008_story, integration_001_story, notif_001_story [EXTRACTED 1.00]
+- **Phase 4 AI Quality Stack (multilingual + eval + reports)** — platform_007_story, qa_001_story, report_001_story [INFERRED 0.85]
+- **ERP Provider Adapter Pattern** — integration_001_provider_interface, integration_001_local_provider, integration_001_fedena_provider [EXTRACTED 1.00]
+- **Notification Delivery Pipeline** — notif_001_notification_service, notif_001_email_provider, notif_001_in_app_notifications [EXTRACTED 1.00]
+- **Notification Event Triggers** — notif_001_submission_hooks, notif_001_due_reminder_cron, notif_001_notification_service [EXTRACTED 1.00]
+- **Class Feed Stack (service + API + UI)** — engage_008_class_feed_service, engage_008_class_feed_api, engage_008_class_feed_page [EXTRACTED 1.00]
+- **Locale Layer Architecture** — platform_007_locale_registry, platform_007_cbse_glossary, platform_007_locale_prompts [EXTRACTED 1.00]
+- **AI Eval Harness Components** — qa_001_eval_runner, qa_001_golden_fixtures, qa_001_generator_suites [EXTRACTED 1.00]
+- **Parent Progress Report Stack** — report_001_report_composer, report_001_report_api, report_001_parent_export_button [EXTRACTED 1.00]
+- **Beat the AI Knowledge Games (cognitive domain)** — beat_the_ai_code_cracker, beat_the_ai_math_wizard, beat_the_ai_science_detective [INFERRED 0.85]
+- **Beat the AI Creative Games (performance/language)** — beat_the_ai_rhyme_time, beat_the_ai_story_sprint, beat_the_ai_comeback_king [INFERRED 0.80]
+- **Hero Comic Story Arc (idea -> menace -> fight -> triumph)** — hero_comic_panel_1, hero_comic_panel_3, hero_comic_panel_4 [EXTRACTED 1.00]
+- **GSI Brand Visual Identity** — gsi_logo_png, gsi_logo_svg, concept_gsi_brand [EXTRACTED 1.00]
+- **Hero Story Narrative Arc - AI-Generated Kids Story Sample** — hero_story_page_1, hero_story_page_2, hero_story_page_3, hero_story_page_4 [INFERRED 0.85]
+- **Four-Act Scene Progression: Introduction-Threat-Confrontation-Resolution** — hero_story_scene_introduction, hero_story_scene_threat, hero_story_scene_confrontation, hero_story_scene_victory [INFERRED 0.80]
 
 ## Communities
 
-### Community 0 - "AI Judge & API Utilities"
+### Community 0 - "GET()"
 Cohesion: 0.02
-Nodes (90): judgeResponses(), shouldUseGroq(), validateScores(), apiSuccess(), AppException, handleApiError(), hybridAuth(), requireRole() (+82 more)
+Nodes (162): batchIn(), buildInterSchoolLeaderboard(), getCachedAnalytics(), refreshSchoolAnalytics(), weekKey(), apiSuccess(), AppException, handleApiError() (+154 more)
 
-### Community 1 - "Engagement Stories & Features"
+### Community 1 - "API Contracts Specification"
 Cohesion: 0.02
-Nodes (113): DownloadButton Component (icon/full variants, Storyâ†’PDF, Musicâ†’MP3, Quizâ†’PDF), Download Count Tracking (incrementDownload in creationService), ENGAGE-001: Download & Export Creations, PDF Generator (lib/export/pdfGenerator.ts, jspdf, A4 portrait), printUtils.ts â€” Print Story (hidden print div, @media print), RemixButton Component (compact/full, bounce animation, URL params), ENGAGE-002: Remix/Fork System for Shared Creations, Remix Lineage Fields (remixedFromId, remixCount on Creation type) (+105 more)
+Nodes (142): Hierarchical Context System, GSI AI Studio (Agents Overview), @import Directive Syntax, Reference Documentation Index, API Layer Overview, API Contracts Specification, API Pipeline: validate â†’ rate limit â†’ safety â†’ process, API Response Format { success, data, error } (+134 more)
 
-### Community 2 - "Shared Components & Export"
+### Community 2 - "POST()"
+Cohesion: 0.02
+Nodes (53): applyStateChanges(), clamp(), combinedMoraleDelta(), getAgentDescriptor(), isAgentUnlocked(), docToHire(), getActiveHireForAgent(), getCeoAgentHire() (+45 more)
+
+### Community 3 - "json()"
+Cohesion: 0.02
+Nodes (58): submit(), revoke(), submit(), getRecaptchaVerifier(), sendPhoneOtp(), buildWorkflow(), fallbackDataUri(), generateImageLocal() (+50 more)
+
+### Community 4 - ".send()"
 Cohesion: 0.04
-Nodes (33): trackDownload(), generateQuizPdf(), generateStoryPdf(), loadImageAsDataUrl(), wrapText(), $(), a, b() (+25 more)
+Nodes (87): assertRedeemable(), createBotLinkCode(), redeemBotLinkCode(), redeemBotLinkToken(), isPastTodayButSameIstDay(), isSameIstDay(), istDayKey(), istToUtcMs() (+79 more)
 
-### Community 3 - "Admin & School Dashboard"
-Cohesion: 0.02
-Nodes (96): AssignmentCreator Component (type/due-date/curriculum-tags), B2B Revenue Enabler (teacher portal drives school subscriptions), Class Invite Code (6-char alphanumeric join code), School Service (schoolService.ts â€” school/class/invite CRUD), Teacher Admin Portal (ADMIN-001), Teacher Role Custom Claim (Firebase Auth role: teacher), Assignment Context in Studios (banner + auto-submit on creation), Assignment & Submission System (ADMIN-002) (+88 more)
-
-### Community 4 - "Platform Architecture & Agents"
+### Community 5 - "ENGAGE-005 MindX (IELTS-style Assessm..."
 Cohesion: 0.03
-Nodes (84): Claude API (Anthropic), Hierarchical CONTEXT.md System, Firebase Firestore, GSI AI Studio Platform, Netlify Functions (Serverless), Next.js 14 App Router, Replicate SDXL (Image Gen), shadcn/ui (+76 more)
+Nodes (93): DownloadButton Component, ENGAGE-001 Download & Export, lib/export/pdfGenerator.ts (jspdf), printStory Utility, RemixButton Component, ENGAGE-002 Remix/Fork System, Remix Lineage (remixedFromId / remixCount), ENGAGE-003 Explore & Leaderboard (+85 more)
 
-### Community 5 - "Bot & CEO Integration"
-Cohesion: 0.05
-Nodes (44): handler(), createBotLinkCode(), redeemBotLinkCode(), redeemBotLinkToken(), buildFeedbackMessage(), escapeMd(), fmtDelta(), handleBizPick() (+36 more)
+### Community 6 - "STUDIO-005: Comic Studio"
+Cohesion: 0.03
+Nodes (92): AUTH-001: Phone OTP Authentication, AvatarPicker, BottomNav component, canvas-confetti library, CelebrationModal component, ChallengeCard component, challengeService.ts, challenges API endpoints (+84 more)
 
-### Community 6 - "Tests & Auth Flow"
+### Community 7 - "ADMIN-001: Teacher Admin Portal"
 Cohesion: 0.04
-Nodes (38): getRecaptchaVerifier(), sendPhoneOtp(), buildWorkflow(), fallbackDataUri(), generateImageLocal(), pollForCompletion(), sleep(), fetchWithSession() (+30 more)
+Nodes (74): AssignmentCreator Component, Assignments API, ClassManagement Component, School Service (lib/firebase/schoolService.ts), StudentAssignmentView Component, ADMIN-001: Teacher Admin Portal, Teacher Auth API (app/api/auth/teacher/route.ts), Teacher Dashboard Page (+66 more)
 
-### Community 7 - "AI Opponent & API Context"
-Cohesion: 0.08
-Nodes (31): generateAiResponse(), shouldUseGroq(), API Layer (Netlify/Next.js API Routes), handleApiError() Utility, API Route Pattern: validateâ†’rate limitâ†’safetyâ†’processâ†’respond, API Response Format {success, data, error}, AI Safety Pipeline, Child Safety First Principle (+23 more)
+### Community 8 - "homework"
+Cohesion: 0.06
+Nodes (58): clearPendingConfirm(), controlButtons(), deriveSourceChannelId(), escapeMarkdown(), explainCurrent(), extractTextFromForward(), finaliseAnswer(), getChatState() (+50 more)
 
-### Community 8 - "Studio Client Pages"
+### Community 9 - "endingReport"
+Cohesion: 0.05
+Nodes (45): judgeResponses(), shouldUseGroq(), validateScores(), buildMottoAssets(), validateBrief(), baseHandler(), stakesMultiplierFor(), generateFreshThemes() (+37 more)
+
+### Community 10 - "useAuth()"
+Cohesion: 0.04
+Nodes (30): AiPointsProvider(), getShownMilestones(), markMilestoneShown(), useAiPoints(), BadgesWidget(), ComplianceExport(), DashboardGreeting(), getKokoMessage() (+22 more)
+
+### Community 11 - "find()"
+Cohesion: 0.06
+Nodes (44): cardIsUnlocked(), getCard(), businessEmojiFor(), approxTokens(), runClaude(), summarise(), generateJsonWithClaude(), generateWithClaude() (+36 more)
+
+### Community 12 - "ENGAGE-006: Cerebro Competitive Exam"
+Cohesion: 0.05
+Nodes (52): ActivityPulse component, antiMalpractice.ts, CBSE AI & CT Curriculum, cerebro/competitions API, cerebro/finish-exam API, cerebro/leaderboard API, CerebroPage, cerebro/proctor-event API (+44 more)
+
+### Community 13 - "KIDCEO-AGENT-PRIMITIVE: Agent + Workf..."
+Cohesion: 0.06
+Nodes (47): KIDCEO-AGENT-001-BRAND: Design Agent, Agent Catalog (lib/ceo/agents/catalog.ts), AgentEventCard Component, KIDCEO-AGENT-002-MARKETING: Marketing Agent, KIDCEO-AGENT-003-OPS-FINANCE, KIDCEO-AGENT-PRIMITIVE: Agent + Workflow Primitive, CEO Artifact Store (ceoArtifactService), brand.package Workflow (+39 more)
+
+### Community 14 - "isSupportedLocale()"
 Cohesion: 0.07
-Nodes (14): handleSubmit(), handleSubmit(), handleSubmit(), handleSubmit(), buildSessionResult(), checkRateLimit(), dayKeyUtc(), enforceIpRateLimit() (+6 more)
+Nodes (31): draftAdhocMessage(), isTone(), buildUserMessage(), loadPriorApprovals(), suggestFeedback(), buildUserMessage(), generateHpcNarrative(), loadStudentTermContext() (+23 more)
 
-### Community 9 - "AI Points & Gamification"
+### Community 15 - "sessionService"
+Cohesion: 0.07
+Nodes (20): generateAiResponse(), shouldUseGroq(), handleSubmit(), handleSubmit(), handleSubmit(), generate(), handleSubmit(), applyAction() (+12 more)
+
+### Community 16 - "TelegramAdapter"
+Cohesion: 0.09
+Nodes (14): handler(), handler(), triggerGitHubAction(), verifySignature(), BotRouter, extractForwardOriginName(), isRecord(), mapButtons() (+6 more)
+
+### Community 17 - "NOTIF-001: Assignment & Activity Noti..."
 Cohesion: 0.08
-Nodes (15): AiPointsProvider(), getShownMilestones(), markMilestoneShown(), useAiPoints(), BadgesWidget(), DashboardGreeting(), getKokoMessage(), AppGate() (+7 more)
+Nodes (36): ADMIN-001: Teacher Admin Portal (referenced), ADMIN-002: Assignment System (referenced), ADMIN-004: HPC Generator (referenced), ADMIN-008: Substitute Finder (referenced), COMMS-001: WhatsApp/Telegram Digest (referenced), PLATFORM-002: Notifications Groundwork (referenced), PROFILE-001: Parent-Kid Profiles (referenced), Class Feed API Endpoints (+28 more)
 
-### Community 10 - "Beat the AI Visuals"
+### Community 18 - "buildComplianceReport()"
+Cohesion: 0.09
+Nodes (23): buildComplianceReport(), computeConceptExposure(), downloadComplianceReport(), ensureSpace(), kv(), paragraph(), sectionHeader(), truncate() (+15 more)
+
+### Community 19 - "HOMEWORK-001: Interactive Homework He..."
 Cohesion: 0.11
-Nodes (19): Beat the AI Feature, Code Cracker Challenge Image, Comeback King Challenge Image, Debate Champ Challenge Image, Explain It Challenge Image, Fact Bluff Challenge Image, Math Wizard Challenge Image, Rhyme Time Challenge Image (+11 more)
+Nodes (26): lib/badges.ts, ENGAGE-008: Weekly Summary Telegram, Google Cloud Vision, @GSIKidCeoAssistantBot, @GSIPersonalAssistantBot, HOMEWORK-001: Interactive Homework Helper, homeworkClassifier.ts, homework/history API (+18 more)
 
-### Community 11 - "API Contracts & Studios"
+### Community 20 - "REPORT-001: Parent Progress Report PDF"
 Cohesion: 0.13
-Nodes (15): POST /api/ai/comic, POST /api/ai/game, POST /api/ai/music, POST /api/ai/quiz, POST /api/ai/story, F1: Story Studio (P0, Implemented), F2: Music Lab (P0, Implemented), F3: Quiz & Game Maker (P0, Implemented) (+7 more)
+Nodes (23): ADMIN-009: School Settings + Branding (referenced), CBSE / NEP Curriculum Framework, Claude Native Multilingual Capability, PROFILE-003: Parent Dashboard (referenced), CBSE/NEP Per-Locale Glossary, AI Generator Locale Retrofit, Locale-Aware Prompt Helpers, Locale Registry (en + hi) (+15 more)
 
-### Community 12 - "Bot Link Auth Binding"
+### Community 21 - "consentService"
+Cohesion: 0.16
+Nodes (17): assertKidBelongsToParent(), getConsentAudit(), getConsentState(), hasConsent(), isScope(), recordConsent(), requireConsent(), revokeConsent() (+9 more)
+
+### Community 22 - "ceoArtifactService"
+Cohesion: 0.17
+Nodes (10): handleBrandAccept(), handleCampaignAccept(), handleTextPackageAccept(), acceptArtifact(), countRecentCandidatesForWorkflow(), deriveBrandAssetsFromArtifact(), docToArtifact(), getArtifact() (+2 more)
+
+### Community 23 - "Beat the AI Game Mode (concept)"
+Cohesion: 0.2
+Nodes (15): Beat the AI: Code Cracker (girl with robot puzzle cubes), Beat the AI: Comeback King (boy with crown + mic vs robot), Beat the AI: Debate Champ (girl debating robot), Beat the AI: Explain It (boy with lightbulbs vs robot), Beat the AI: Fact or Bluff (detective boy with magnifier), Beat the AI: Math Wizard (boy wizard with robot + numbers), Beat the AI: Rhyme Time (girl dancing with robot, music notes), Beat the AI: Science Detective (girl scientist with test tube + robot) (+7 more)
+
+### Community 24 - "UI-001: My Creations Gallery"
+Cohesion: 0.17
+Nodes (13): CreationCard component, CreationFilters component, CreationGrid component, ListCreationsResult, app/api/creations/[id]/route.ts DELETE, /creations page, creators/[id] API, og/creator/[id] API (+5 more)
+
+### Community 25 - "Hero Story Page 4 - Celebration on Be..."
+Cohesion: 0.24
+Nodes (13): Caped Bread Hero Character, Children Celebrating, Giant Purple Robot Antagonist, Small Yellow Robot (Friendly), Blonde Caped Superhero, Hero Story Page 1 - Superhero Bread Character on Beach, Hero Story Page 2 - Giant Purple Robot Threatens Beach, Hero Story Page 3 - Superhero Confronts Robot in City (+5 more)
+
+### Community 26 - "sounds"
+Cohesion: 0.2
+Nodes (4): handleChoose(), getContext(), isMuted(), playSound()
+
+### Community 27 - "fetchWithKidAuth()"
 Cohesion: 0.18
-Nodes (14): POST /api/bot/link/create, Bot Link Binding Flow (webâ†”Telegram), Deep Link Auth Binding (t.me?start=link_<token>), 6-Digit Code Fallback (/link <code>), Firestore: botLinkCodes collection (single-use 10-min TTL), Firestore: botSessions collection, Firestore: creations collection, Server-Write-Only Firestore Pattern (Admin SDK) (+6 more)
+Nodes (5): react(), fetchWithKidAuth(), KidAuthMissingError, handlePost(), handleMint()
 
-### Community 13 - "CEO Scoring Engine"
-Cohesion: 0.27
-Nodes (11): callScoringLLM(), clampCashDelta(), clampSmall(), enrichScores(), fallbackScoring(), finalize(), normalizeStateChanges(), responseTimeAdjustments() (+3 more)
-
-### Community 14 - "Image Provider Pipeline"
+### Community 28 - "getAiGenerator()"
 Cohesion: 0.31
 Nodes (9): buildHybridFunction(), getAiGenerator(), getImageMode(), getImageProvider(), shouldUseComfyUI(), shouldUseReplicate(), extractImageFromResponse(), generateWithPixazo() (+1 more)
 
-### Community 15 - "Sound Effects System"
-Cohesion: 0.24
-Nodes (3): getContext(), isMuted(), playSound()
-
-### Community 16 - "Music Generation Client"
+### Community 29 - "musicClient"
 Cohesion: 0.42
 Nodes (9): encodeWav(), extractWaveform(), generateMusic(), generateMusicMock(), generateWithLyria(), generateWithReplicate(), shouldUseLyria(), shouldUseReplicate() (+1 more)
 
-### Community 17 - "CEO Event Engine"
-Cohesion: 0.29
-Nodes (7): buildFallbackEvent(), generateEvent(), shapeLlmEvent(), buildEventPrompt(), buildMilestonePrompt(), milestoneDescription(), milestoneSummary()
+### Community 30 - "runner"
+Cohesion: 0.33
+Nodes (6): evaluate(), getPath(), runCase(), runEvalSuites(), runSuite(), wordCount()
 
-### Community 18 - "Skill Arena Question Bank"
+### Community 31 - "FedenaProvider"
 Cohesion: 0.43
-Nodes (5): filterByDifficulty(), generateId(), getChallengesForModule(), getRecentIds(), trackRecent()
+Nodes (2): FedenaProvider, notImplemented()
 
-### Community 19 - "Brand Identity Assets"
-Cohesion: 0.32
-Nodes (8): Get Set Innovate, Brand Color: Near-Black (#231F20), Brand Color: Teal (#05A3AF), Story Studio Feature, Brand Font: Futura MdCn BT, GSI Brand Logo (PNG), GSI Brand Logo (SVG), Story Placeholder Illustration
+### Community 32 - "runWeeklyDigest()"
+Cohesion: 0.43
+Nodes (5): handler(), buildDigestMessage(), buildStudioAdapter(), computeStats(), runWeeklyDigest()
 
-### Community 20 - "Comic Studio Feature"
+### Community 33 - "Linear â†’ Claude Code â†’ PR Pipeline"
 Cohesion: 0.29
-Nodes (7): BottomNav 3-Tab + Create+ Sheet Redesign, Comic Generation API Route (/api/ai/comic), ComicContent Type, ComicPanel Interface, Comic Studio (STUDIO-005), Comic Art Styles (manga/cartoon/superhero/indie/chibi), ComicViewer Component (Grid + Read modes)
+Nodes (7): Claude Linear GitHub Actions Workflow, Linear â†’ Claude Code â†’ PR Pipeline, Claude PR Review Workflow, Rationale: Run all 4 CI checks before PR, Rationale: Assignment-only trigger (avoid duplicate runs), Story Files (Implementation Spec), Linear Webhook Bridge (Netlify Function)
 
-### Community 21 - "Music Player Component"
+### Community 34 - "UI-003: Creation Templates"
+Cohesion: 0.29
+Nodes (7): dailySpark.ts, musicTemplates.ts, quizTemplates.ts, storyTemplates.ts, SurpriseButton component, TemplateCarousel component, UI-003: Creation Templates
+
+### Community 35 - "MusicPlayer"
 Cohesion: 0.33
 Nodes (0): 
 
-### Community 22 - "Design System Tokens"
+### Community 36 - "useLearnProgress"
 Cohesion: 0.33
-Nodes (6): Color: Electric Indigo #5B5FFF (primary), Color: Teal Mint #20C997 (secondary), Font: Figtree (body/UI), Font: JetBrains Mono (XP/scores/stats), Font: Satoshi (headings/display), Design System (Electric Indigo primary, Teal Mint secondary)
+Nodes (2): LearnLandingPage(), useLearnProgress()
 
-### Community 23 - "Error Boundary"
+### Community 37 - "ErrorBoundary"
 Cohesion: 0.4
 Nodes (1): ErrorBoundary
 
-### Community 24 - "Music Prompt Form"
+### Community 38 - "DownloadButton"
 Cohesion: 0.4
 Nodes (0): 
 
-### Community 25 - "Module 25"
+### Community 39 - "NotificationBell"
 Cohesion: 0.4
 Nodes (0): 
 
-### Community 26 - "Module 26"
+### Community 40 - "MusicPromptForm"
 Cohesion: 0.4
 Nodes (0): 
 
-### Community 27 - "Module 27"
+### Community 41 - "StoryPromptForm"
 Cohesion: 0.4
 Nodes (0): 
 
-### Community 28 - "Module 28"
+### Community 42 - "utils"
+Cohesion: 0.4
+Nodes (0): 
+
+### Community 43 - "TelegramProvider"
+Cohesion: 0.6
+Nodes (1): TelegramProvider
+
+### Community 44 - "pdfGenerator"
+Cohesion: 0.7
+Nodes (4): generateQuizPdf(), generateStoryPdf(), loadImageAsDataUrl(), wrapText()
+
+### Community 45 - "StoryViewer"
 Cohesion: 0.4
 Nodes (2): printStory(), async()
 
-### Community 29 - "Module 29"
-Cohesion: 0.4
-Nodes (5): imageFilter Tests (unsafe image keywords, safety append, negative prompt), inputFilter Tests (blocklist categories: violence, sexual, substances, self-harm, hate, PII), outputFilter Tests (PII redaction: phone, email, Aadhaar number), Indian PII Patterns (Aadhaar, phone, email â€” safety coverage), INFRA-004: Content Safety Test Suite (100% coverage required)
-
-### Community 30 - "Module 30"
-Cohesion: 0.4
-Nodes (5): Creation Templates & Prompt Starters (UI-003), Daily Spark System (date-hash deterministic prompt), SurpriseButton Component (random template picker), TemplateCarousel Component, Template Data (story/music/quiz templates with Indian context)
-
-### Community 31 - "Module 31"
+### Community 46 - "TeacherActivityTable"
 Cohesion: 0.5
 Nodes (0): 
 
-### Community 32 - "Module 32"
+### Community 47 - "LoginPrompt"
 Cohesion: 0.5
 Nodes (0): 
 
-### Community 33 - "Module 33"
+### Community 48 - "CreationCard"
 Cohesion: 0.5
 Nodes (0): 
 
-### Community 34 - "Module 34"
+### Community 49 - "ComicPromptForm"
 Cohesion: 0.5
 Nodes (0): 
 
-### Community 35 - "Module 35"
+### Community 50 - "GamePromptForm"
 Cohesion: 0.5
 Nodes (0): 
 
-### Community 36 - "Module 36"
+### Community 51 - "QuizPromptForm"
 Cohesion: 0.5
 Nodes (0): 
 
-### Community 37 - "Module 37"
-Cohesion: 0.83
-Nodes (3): generateJsonWithClaude(), generateWithClaude(), getClient()
+### Community 52 - "badges"
+Cohesion: 0.5
+Nodes (0): 
 
-### Community 38 - "Module 38"
+### Community 53 - "generateWithGroq()"
 Cohesion: 0.83
 Nodes (3): generateJsonWithGroq(), generateWithGroq(), getClient()
 
-### Community 39 - "Module 39"
+### Community 54 - "getApp()"
 Cohesion: 0.83
 Nodes (3): ensureApp(), getApp(), getServiceAccount()
 
-### Community 40 - "Module 40"
+### Community 55 - "sessionService.spec"
+Cohesion: 0.67
+Nodes (2): makeExpiredSession(), makeSessionDoc()
+
+### Community 56 - "evaluator.test"
 Cohesion: 0.5
 Nodes (0): 
 
-### Community 41 - "Module 41"
+### Community 57 - "index"
 Cohesion: 0.5
 Nodes (0): 
 
-### Community 42 - "Module 42"
+### Community 58 - "ENGAGE-007 Collaborative Creation"
 Cohesion: 0.67
-Nodes (4): Firestore: competitions collection (Cerebro, Phase 2+), Firestore: examSessions collection (Cerebro, Phase 2+), Cerebro Anti-Malpractice (browser lockdown, AI anomaly detection, proctoring), Cerebro Competitive Exam UX (Phase 2+)
+Nodes (4): ENGAGE-007 Collaborative Creation, CollabInvite Component, collabService (Firestore onSnapshot), CollabStudio Component
 
-### Community 43 - "Module 43"
+### Community 59 - "INFRA-010 Supabase Evaluation"
 Cohesion: 0.5
-Nodes (4): Framer Motion Animations, Web Audio API Synthesized Sounds (lib/sounds.ts), CelebrationModal (badge unlock + milestone, Framer Motion), ConfettiCelebration (canvas-confetti, burst/rain/sides)
+Nodes (4): Firebase vs Supabase Cost Comparison, Pre-migration Firebase cost optimizations rationale, INFRA-010 Supabase Evaluation, Migration Trigger Criteria ($200/mo, 1MB, joins, 2026-09)
 
-### Community 44 - "Module 44"
+### Community 60 - "STUDIO-006 Character Creator"
+Cohesion: 0.5
+Nodes (4): app/api/ai/character Endpoint, STUDIO-006 Character Creator, CharacterDesigner Component, CharacterPicker Component
+
+### Community 61 - "GSI Get Set Innovate Brand"
+Cohesion: 0.67
+Nodes (4): GSI Get Set Innovate Brand, GSI Logo (PNG) - Get Set Innovate, GSI Logo (SVG) - Teal + Black Brand, Story Placeholder Illustration
+
+### Community 62 - "BusinessRegistration"
 Cohesion: 0.67
 Nodes (0): 
 
-### Community 45 - "Module 45"
+### Community 63 - "CeoProfileCard"
 Cohesion: 0.67
 Nodes (0): 
 
-### Community 46 - "Module 46"
+### Community 64 - "AgentCard"
 Cohesion: 0.67
 Nodes (0): 
 
-### Community 47 - "Module 47"
+### Community 65 - "BrandCandidateReview"
 Cohesion: 0.67
 Nodes (0): 
 
-### Community 48 - "Module 48"
+### Community 66 - "CampaignCandidateReview"
 Cohesion: 0.67
 Nodes (0): 
 
-### Community 49 - "Module 49"
+### Community 67 - "SimpleBriefingForm"
 Cohesion: 0.67
 Nodes (0): 
 
-### Community 50 - "Module 50"
+### Community 68 - "TextArtifactReview"
 Cohesion: 0.67
 Nodes (0): 
 
-### Community 51 - "Module 51"
+### Community 69 - "LeaderboardPanel"
 Cohesion: 0.67
 Nodes (0): 
 
-### Community 52 - "Module 52"
+### Community 70 - "MyCreationsMiniGallery"
 Cohesion: 0.67
 Nodes (0): 
 
-### Community 53 - "Module 53"
+### Community 71 - "WhatYouCanMake"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 72 - "ProfilePicker"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 73 - "ListeningPlayer"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 74 - "handleCopyCode()"
+Cohesion: 1.0
+Nodes (2): handleCopyCode(), handleShareCode()
+
+### Community 75 - "useAiGeneration.spec"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 76 - "useVoiceInput"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 77 - "replicateClient"
 Cohesion: 1.0
 Nodes (2): generateImage(), getClient()
 
-### Community 54 - "Module 54"
+### Community 78 - "feedbackPrompt.suite"
 Cohesion: 0.67
 Nodes (0): 
 
-### Community 55 - "Module 55"
+### Community 79 - "makeRegistry()"
 Cohesion: 1.0
-Nodes (2): makeExpiredSession(), makeSessionDoc()
+Nodes (2): makeRegistry(), stubTool()
 
-### Community 56 - "Module 56"
+### Community 80 - "clamp()"
+Cohesion: 1.0
+Nodes (2): clamp(), computeBreakEven()
+
+### Community 81 - "groq"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 82 - "registry()"
+Cohesion: 1.0
+Nodes (2): registry(), stub()
+
+### Community 83 - "creationService.spec"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 84 - "dateHash()"
 Cohesion: 1.0
 Nodes (2): dateHash(), getDailySpark()
 
-### Community 57 - "Module 57"
+### Community 85 - "not-found"
 Cohesion: 1.0
-Nodes (2): i(), r()
+Nodes (0): 
+
+### Community 86 - "layout"
+Cohesion: 1.0
+Nodes (0): 
+
+### Community 87 - "page"
+Cohesion: 1.0
+Nodes (0): 
+
+### Community 88 - "page"
+Cohesion: 1.0
+Nodes (0): 
 
-### Community 58 - "Module 58"
-Cohesion: 0.67
-Nodes (3): F4: AI X-Ray Learning Layer (P0, Implemented), AI X-Ray Popup (Learning Layer), AI X-Ray Popup UX Pattern
+### Community 89 - "layout"
+Cohesion: 1.0
+Nodes (0): 
+
+### Community 90 - "page"
+Cohesion: 1.0
+Nodes (0): 
 
-### Community 59 - "Module 59"
-Cohesion: 0.67
-Nodes (3): Firestore: growthMapReports collection (Phase 2+), GrowthMap Parent Data Privacy (parent-only, server aggregation, opt-in peer comparison), GrowthMap Parent Dashboard UX (Phase 2+)
+### Community 91 - "page"
+Cohesion: 1.0
+Nodes (0): 
+
+### Community 92 - "layout"
+Cohesion: 1.0
+Nodes (0): 
 
-### Community 60 - "Module 60"
-Cohesion: 0.67
-Nodes (3): Firestore: schools collection (Phase 3), Persona: Ramesh (School Principal/CS Teacher), Phase 3: GSI for Schools (B2B)
+### Community 93 - "page"
+Cohesion: 1.0
+Nodes (0): 
 
-### Community 61 - "Module 61"
+### Community 94 - "page"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 62 - "Module 62"
+### Community 95 - "page"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 63 - "Module 63"
+### Community 96 - "page"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 64 - "Module 64"
+### Community 97 - "page"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 65 - "Module 65"
+### Community 98 - "page"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 66 - "Module 66"
+### Community 99 - "page"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 67 - "Module 67"
+### Community 100 - "page"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 68 - "Module 68"
+### Community 101 - "page"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 69 - "Module 69"
+### Community 102 - "page"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 70 - "Module 70"
+### Community 103 - "page"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 71 - "Module 71"
+### Community 104 - "layout"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 72 - "Module 72"
+### Community 105 - "CurriculumHeatmap"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 73 - "Module 73"
+### Community 106 - "WeeklyTrendChart"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 74 - "Module 74"
+### Community 107 - "usesSingleLineInput()"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 75 - "Module 75"
+### Community 108 - "SkillRadarChart"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 76 - "Module 76"
+### Community 109 - "ConfettiCelebration"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 77 - "Module 77"
+### Community 110 - "DimensionRadar"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 78 - "Module 78"
+### Community 111 - "EventFeed"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 79 - "Module 79"
+### Community 112 - "handleSubmit()"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 80 - "Module 80"
+### Community 113 - "handleSubmit()"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 81 - "Module 81"
+### Community 114 - "TeamTab"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 82 - "Module 82"
+### Community 115 - "BeatAiChallengeBanner()"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 83 - "Module 83"
+### Community 116 - "ContinueCreatingCard"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 84 - "Module 84"
+### Community 117 - "CreativeJourneySection"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 85 - "Module 85"
+### Community 118 - "CreativeStreakChart"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 86 - "Module 86"
+### Community 119 - "DailyMissionCard"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 87 - "Module 87"
+### Community 120 - "FeaturedStudioCard"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 88 - "Module 88"
+### Community 121 - "MindXWidget"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 89 - "Module 89"
+### Community 122 - "ProgressPanel"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 90 - "Module 90"
+### Community 123 - "ShowAllAppsWidget"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 91 - "Module 91"
+### Community 124 - "StreakCard"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 92 - "Module 92"
+### Community 125 - "StudioCardCompact"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 93 - "Module 93"
+### Community 126 - "StudioCardsColumn"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 94 - "Module 94"
+### Community 127 - "StudioSelectorPanel"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 95 - "Module 95"
+### Community 128 - "XpProgressCard"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 96 - "Module 96"
+### Community 129 - "AnimationDemo()"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 97 - "Module 97"
+### Community 130 - "cn()"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 98 - "Module 98"
+### Community 131 - "CopyButton"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 99 - "Module 99"
+### Community 132 - "DesignSystemSidebar"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 100 - "Module 100"
+### Community 133 - "FeaturedSection"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 101 - "Module 101"
+### Community 134 - "BottomNav()"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 102 - "Module 102"
+### Community 135 - "MuteToggle"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 103 - "Module 103"
+### Community 136 - "SentimentDemo"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 104 - "Module 104"
+### Community 137 - "animate()"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 105 - "Module 105"
+### Community 138 - "getConceptIcon()"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 106 - "Module 106"
+### Community 139 - "CurriculumTag"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 107 - "Module 107"
+### Community 140 - "AudienceCards()"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 108 - "Module 108"
+### Community 141 - "FinalCTA"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 109 - "Module 109"
+### Community 142 - "FlagshipExperiences"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 110 - "Module 110"
+### Community 143 - "HowItWorks"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 111 - "Module 111"
+### Community 144 - "LogoBar"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 112 - "Module 112"
+### Community 145 - "SiteFooter"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 113 - "Module 113"
+### Community 146 - "VsChatGPT"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 114 - "Module 114"
+### Community 147 - "MascotSpeechBubble"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 115 - "Module 115"
+### Community 148 - "OnboardingSlide"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 116 - "Module 116"
+### Community 149 - "RemixButton"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 117 - "Module 117"
+### Community 150 - "SurpriseButton"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 118 - "Module 118"
+### Community 151 - "McqOptions"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 119 - "Module 119"
+### Community 152 - "SpeakingInput"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 120 - "Module 120"
+### Community 153 - "handleError()"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 121 - "Module 121"
+### Community 154 - "ComicSampleCards()"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 122 - "Module 122"
+### Community 155 - "handleDragEnd()"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 123 - "Module 123"
+### Community 156 - "GameSampleCards"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 124 - "Module 124"
+### Community 157 - "QuizPlayer"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 125 - "Module 125"
+### Community 158 - "QuizSampleCards"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 126 - "Module 126"
+### Community 159 - "StoryPageView"
 Cohesion: 1.0
-Nodes (2): Mobile-First Design (48px touch targets), WCAG AA Accessibility Compliance
+Nodes (0): 
 
-### Community 127 - "Module 127"
+### Community 160 - "SubmissionGrid"
 Cohesion: 1.0
-Nodes (2): India DPDPA 2023 Children's Data Compliance, Data Minimization Principle
+Nodes (0): 
 
-### Community 128 - "Module 128"
+### Community 161 - "useAiGeneration"
 Cohesion: 1.0
-Nodes (2): Server-Side AI Calls Only, API Key Protection (Netlify env vars, never client-side)
+Nodes (0): 
 
-### Community 129 - "Module 129"
+### Community 162 - "useCreations"
 Cohesion: 1.0
-Nodes (2): Firebase Auth (Phone OTP), useAuth() Hook
+Nodes (0): 
 
-### Community 130 - "Module 130"
+### Community 163 - "useExplore"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 131 - "Module 131"
+### Community 164 - "useSkillArenaProgress"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 132 - "Module 132"
+### Community 165 - "skillEngine.test"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 133 - "Module 133"
+### Community 166 - "telegram.spec"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 134 - "Module 134"
+### Community 167 - "weeklyHomeworkDigest.spec"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 135 - "Module 135"
+### Community 168 - "makeSession()"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 136 - "Module 136"
+### Community 169 - "mkBusiness()"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 137 - "Module 137"
+### Community 170 - "scoringEngine.spec"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 138 - "Module 138"
+### Community 171 - "toolRegistry"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 139 - "Module 139"
+### Community 172 - "summarise()"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 140 - "Module 140"
+### Community 173 - "matchesBlocklist()"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 141 - "Module 141"
+### Community 174 - "getDailyTheme()"
 Cohesion: 1.0
 Nodes (0): 
+
+### Community 175 - "Community Hubs (289 detected)"
+Cohesion: 1.0
+Nodes (2): Community Hubs (289 detected), Graph Report (Navigation Index)
+
+### Community 176 - "Quiz Maker page"
+Cohesion: 1.0
+Nodes (2): Quiz Maker page, useAiGeneration hook
 
-### Community 142 - "Module 142"
+### Community 177 - "next-env.d"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 143 - "Module 143"
+### Community 178 - "next.config"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 144 - "Module 144"
+### Community 179 - "playwright.config"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 145 - "Module 145"
+### Community 180 - "postcss.config"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 146 - "Module 146"
+### Community 181 - "tailwind.config"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 147 - "Module 147"
+### Community 182 - "vitest.config"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 148 - "Module 148"
+### Community 183 - "vitest.setup"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 149 - "Module 149"
+### Community 184 - "layout"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 150 - "Module 150"
+### Community 185 - "page"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 151 - "Module 151"
+### Community 186 - "page"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 152 - "Module 152"
+### Community 187 - "page"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 153 - "Module 153"
+### Community 188 - "page"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 154 - "Module 154"
+### Community 189 - "page"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 155 - "Module 155"
+### Community 190 - "BeatTheAiClient"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 156 - "Module 156"
+### Community 191 - "page"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 157 - "Module 157"
+### Community 192 - "page"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 158 - "Module 158"
+### Community 193 - "MyCreationsClient"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 159 - "Module 159"
+### Community 194 - "ExploreClient"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 160 - "Module 160"
+### Community 195 - "page"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 161 - "Module 161"
+### Community 196 - "SkillArenaClient"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 162 - "Module 162"
+### Community 197 - "ViewerClient"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 163 - "Module 163"
+### Community 198 - "route"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 164 - "Module 164"
+### Community 199 - "CategoryPicker"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 165 - "Module 165"
+### Community 200 - "ResultsScreen"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 166 - "Module 166"
+### Community 201 - "SideBySideReveal"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 167 - "Module 167"
+### Community 202 - "SkillProgressCard"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 168 - "Module 168"
+### Community 203 - "StatsBoard"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 169 - "Module 169"
+### Community 204 - "BusinessDashboard"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 170 - "Module 170"
+### Community 205 - "DecisionFeedback"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 171 - "Module 171"
+### Community 206 - "MilestoneZone"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 172 - "Module 172"
+### Community 207 - "PhaseProgress"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 173 - "Module 173"
+### Community 208 - "SmallDecisionsZone"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 174 - "Module 174"
+### Community 209 - "WorkflowBuilderTab"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 175 - "Module 175"
+### Community 210 - "WorkflowTrace"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 176 - "Module 176"
+### Community 211 - "CreationFilters"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 177 - "Module 177"
+### Community 212 - "CreationGrid"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 178 - "Module 178"
+### Community 213 - "BadgeShelf"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 179 - "Module 179"
+### Community 214 - "BeatAiInfoCard"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 180 - "Module 180"
+### Community 215 - "BeatAiWidget"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 181 - "Module 181"
+### Community 216 - "CategoryFilterTabs"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 182 - "Module 182"
+### Community 217 - "ChallengesWidget"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 183 - "Module 183"
+### Community 218 - "CommunityPicksWidget"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 184 - "Module 184"
+### Community 219 - "DashboardStatsRow"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 185 - "Module 185"
+### Community 220 - "index"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 186 - "Module 186"
+### Community 221 - "LearningProgressCarousel"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 187 - "Module 187"
+### Community 222 - "PopularStudiosRow"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 188 - "Module 188"
+### Community 223 - "UserStatsBar"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 189 - "Module 189"
+### Community 224 - "BorderRadiusSection"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 190 - "Module 190"
+### Community 225 - "ButtonSection"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 191 - "Module 191"
+### Community 226 - "ColorSection"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 192 - "Module 192"
+### Community 227 - "GamificationSection"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 193 - "Module 193"
+### Community 228 - "GradientSection"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 194 - "Module 194"
+### Community 229 - "ShadowSection"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 195 - "Module 195"
+### Community 230 - "SpacingSection"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 196 - "Module 196"
+### Community 231 - "TypographySection"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 197 - "Module 197"
+### Community 232 - "Header"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 198 - "Module 198"
+### Community 233 - "SidebarNav"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 199 - "Module 199"
+### Community 234 - "BadgeGallery"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 200 - "Module 200"
+### Community 235 - "CelebrationModal"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 201 - "Module 201"
+### Community 236 - "AiXRayShowcase"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 202 - "Module 202"
+### Community 237 - "ForSchoolsDetail"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 203 - "Module 203"
+### Community 238 - "Hero"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 204 - "Module 204"
+### Community 239 - "HeroBento"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 205 - "Module 205"
+### Community 240 - "KokoLottie"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 206 - "Module 206"
+### Community 241 - "MarketingNav"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 207 - "Module 207"
+### Community 242 - "ParentFAQ"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 208 - "Module 208"
+### Community 243 - "Pricing"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 209 - "Module 209"
+### Community 244 - "SafetyTrust"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 210 - "Module 210"
+### Community 245 - "StudioShowcase"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 211 - "Module 211"
+### Community 246 - "Testimonials"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 212 - "Module 212"
+### Community 247 - "Mascot"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 213 - "Module 213"
+### Community 248 - "OnboardingCarousel"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 214 - "Module 214"
+### Community 249 - "OnboardingIllustrations"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 215 - "Module 215"
+### Community 250 - "AvatarPicker"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 216 - "Module 216"
+### Community 251 - "ProfileSelector"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 217 - "Module 217"
+### Community 252 - "ShareButton"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 218 - "Module 218"
+### Community 253 - "ShareSheet"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 219 - "Module 219"
+### Community 254 - "TemplateCarousel"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 220 - "Module 220"
+### Community 255 - "AssessmentArena"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 221 - "Module 221"
+### Community 256 - "BandProgressCard"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 222 - "Module 222"
+### Community 257 - "MentorResults"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 223 - "Module 223"
+### Community 258 - "ModulePicker"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 224 - "Module 224"
+### Community 259 - "ProgressDashboard"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 225 - "Module 225"
+### Community 260 - "TextAnswer"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 226 - "Module 226"
+### Community 261 - "AssignmentBanner"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 227 - "Module 227"
+### Community 262 - "AssignmentView"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 228 - "Module 228"
+### Community 263 - "ComicProgress"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 229 - "Module 229"
+### Community 264 - "GamePlayer"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 230 - "Module 230"
+### Community 265 - "GameProgress"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 231 - "Module 231"
+### Community 266 - "MusicProgress"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 232 - "Module 232"
+### Community 267 - "MusicSampleCards"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 233 - "Module 233"
+### Community 268 - "QuizProgress"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 234 - "Module 234"
+### Community 269 - "SamplePromptCards"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 235 - "Module 235"
+### Community 270 - "StoryProgress"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 236 - "Module 236"
+### Community 271 - "ChapterPicker"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 237 - "Module 237"
+### Community 272 - "landing.spec"
 Cohesion: 1.0
-Nodes (1): Progressive Web App (PWA)
+Nodes (0): 
 
-### Community 238 - "Module 238"
+### Community 273 - "session.spec"
 Cohesion: 1.0
-Nodes (1): TypeScript Strict Mode
+Nodes (0): 
 
-### Community 239 - "Module 239"
+### Community 274 - "index"
 Cohesion: 1.0
-Nodes (1): Components UI Directory (shadcn/ui primitives)
+Nodes (0): 
 
-### Community 240 - "Module 240"
+### Community 275 - "useAiPoints"
 Cohesion: 1.0
-Nodes (1): cn() Tailwind Utility
+Nodes (0): 
 
-### Community 241 - "Module 241"
+### Community 276 - "api-utils.spec"
 Cohesion: 1.0
-Nodes (1): Kid-Friendly Design Rules (large touch targets, vibrant, rounded)
+Nodes (0): 
 
-### Community 242 - "Module 242"
+### Community 277 - "utils.spec"
 Cohesion: 1.0
-Nodes (1): POST /api/creations
+Nodes (0): 
 
-### Community 243 - "Module 243"
+### Community 278 - "validators.spec"
 Cohesion: 1.0
-Nodes (1): GET /api/creations/:id
+Nodes (0): 
 
-### Community 244 - "Module 244"
+### Community 279 - "validators"
 Cohesion: 1.0
-Nodes (1): GET /api/creations (list with filters)
+Nodes (0): 
 
-### Community 245 - "Module 245"
+### Community 280 - "runner.spec"
 Cohesion: 1.0
-Nodes (1): DELETE /api/creations/:id (soft delete)
+Nodes (0): 
 
-### Community 246 - "Module 246"
+### Community 281 - "types"
 Cohesion: 1.0
-Nodes (1): GET /api/creations/public (Explore feed)
+Nodes (0): 
 
-### Community 247 - "Module 247"
+### Community 282 - "runner.smoke.suite"
 Cohesion: 1.0
-Nodes (1): POST /api/sessions
+Nodes (0): 
 
-### Community 248 - "Module 248"
+### Community 283 - "index"
 Cohesion: 1.0
-Nodes (1): POST /api/auth/send-otp
+Nodes (0): 
 
-### Community 249 - "Module 249"
+### Community 284 - "storyPrompt.spec"
 Cohesion: 1.0
-Nodes (1): POST /api/auth/profile
+Nodes (0): 
 
-### Community 250 - "Module 250"
+### Community 285 - "prompts.test"
 Cohesion: 1.0
-Nodes (1): POST /api/auth/kids
+Nodes (0): 
 
-### Community 251 - "Module 251"
+### Community 286 - "types"
 Cohesion: 1.0
-Nodes (1): POST /api/share/:creationId
+Nodes (0): 
 
-### Community 252 - "Module 252"
+### Community 287 - "languageDetect.spec"
 Cohesion: 1.0
-Nodes (1): POST /api/skill-arena/evaluate (MindX)
+Nodes (0): 
 
-### Community 253 - "Module 253"
+### Community 288 - "recitationScorer.spec"
 Cohesion: 1.0
-Nodes (1): GET /api/skill-arena/progress
+Nodes (0): 
 
-### Community 254 - "Module 254"
+### Community 289 - "phases.spec"
 Cohesion: 1.0
-Nodes (1): GET /api/ceo/business
+Nodes (0): 
 
-### Community 255 - "Module 255"
+### Community 290 - "profileEngine.spec"
 Cohesion: 1.0
-Nodes (1): API Rate Limits Table
+Nodes (0): 
 
-### Community 256 - "Module 256"
+### Community 291 - "pricing.spec"
 Cohesion: 1.0
-Nodes (1): Netlify Frontend Hosting
+Nodes (0): 
 
-### Community 257 - "Module 257"
+### Community 292 - "breakEven.spec"
 Cohesion: 1.0
-Nodes (1): Creation Data Flow (Phase 1 Anonymous)
+Nodes (0): 
 
-### Community 258 - "Module 258"
+### Community 293 - "types"
 Cohesion: 1.0
-Nodes (1): fetchWithSession Wrapper
+Nodes (0): 
 
-### Community 259 - "Module 259"
+### Community 294 - "index"
 Cohesion: 1.0
-Nodes (1): ErrorBoundary Component
+Nodes (0): 
 
-### Community 260 - "Module 260"
+### Community 295 - "types"
 Cohesion: 1.0
-Nodes (1): Idempotent Session Creation (Firestore merge)
+Nodes (0): 
 
-### Community 261 - "Module 261"
+### Community 296 - "sessionService.streak.spec"
 Cohesion: 1.0
-Nodes (1): Razorpay Payments (Phase 2+)
+Nodes (0): 
 
-### Community 262 - "Module 262"
+### Community 297 - "index"
 Cohesion: 1.0
-Nodes (1): Firestore: users collection (Phase 2+)
+Nodes (0): 
 
-### Community 263 - "Module 263"
+### Community 298 - "blocklist"
 Cohesion: 1.0
-Nodes (1): Firestore: users/{userId}/kids sub-collection
+Nodes (0): 
 
-### Community 264 - "Module 264"
+### Community 299 - "imageFilter.spec"
 Cohesion: 1.0
-Nodes (1): Firestore: curriculum collection
+Nodes (0): 
 
-### Community 265 - "Module 265"
+### Community 300 - "inputFilter.spec"
 Cohesion: 1.0
-Nodes (1): Firestore: leaderboards collection (Cerebro, Phase 2+)
+Nodes (0): 
 
-### Community 266 - "Module 266"
+### Community 301 - "outputFilter.spec"
 Cohesion: 1.0
-Nodes (1): Target Market: Indian school students Class 3-12
+Nodes (0): 
 
-### Community 267 - "Module 267"
+### Community 302 - "questionBank.test"
 Cohesion: 1.0
-Nodes (1): Persona: Aarav (Age 10, Young Creator)
+Nodes (0): 
 
-### Community 268 - "Module 268"
+### Community 303 - "scoring.test"
 Cohesion: 1.0
-Nodes (1): Persona: Priya (Age 14, Aspiring Tech Explorer)
+Nodes (0): 
 
-### Community 269 - "Module 269"
+### Community 304 - "comicTemplates"
 Cohesion: 1.0
-Nodes (1): Persona: Meena (Parent, Tech-Aware)
+Nodes (0): 
 
-### Community 270 - "Module 270"
+### Community 305 - "gameTemplates"
 Cohesion: 1.0
-Nodes (1): F5: Share & Showcase (P0, Implemented)
+Nodes (0): 
 
-### Community 271 - "Module 271"
+### Community 306 - "musicTemplates"
 Cohesion: 1.0
-Nodes (1): Phase 2: User Accounts (Phone OTP)
+Nodes (0): 
 
-### Community 272 - "Module 272"
+### Community 307 - "quizTemplates"
 Cohesion: 1.0
-Nodes (1): Phase 1 Anonymous Sessions (localStorage UUID)
+Nodes (0): 
 
-### Community 273 - "Module 273"
+### Community 308 - "storyTemplates"
 Cohesion: 1.0
-Nodes (1): Phase 2 Phone OTP Auth (Firebase)
+Nodes (0): 
 
-### Community 274 - "Module 274"
+### Community 309 - "types"
 Cohesion: 1.0
-Nodes (1): TypeScript Strict Mode Standard
+Nodes (0): 
 
-### Community 275 - "Module 275"
+### Community 310 - "timestamps.spec"
 Cohesion: 1.0
-Nodes (1): SWR for Firestore Data Fetching
+Nodes (0): 
 
-### Community 276 - "Module 276"
+### Community 311 - "api.types"
 Cohesion: 1.0
-Nodes (1): AppException Class (error handling)
+Nodes (0): 
 
-### Community 277 - "Module 277"
+### Community 312 - "bot.types"
 Cohesion: 1.0
-Nodes (1): Named Exports Only (no default exports except pages)
+Nodes (0): 
 
-### Community 278 - "Module 278"
+### Community 313 - "ceo.types"
 Cohesion: 1.0
-Nodes (1): Git Branch Naming: <TICKET-ID>-<short-kebab-slug>
+Nodes (0): 
 
-### Community 279 - "Module 279"
+### Community 314 - "cerebro.types"
 Cohesion: 1.0
-Nodes (1): Create in 60 Seconds Design Philosophy
+Nodes (0): 
 
-### Community 280 - "Module 280"
+### Community 315 - "creation.types"
 Cohesion: 1.0
-Nodes (1): Bottom Navigation (mobile, 3-tab fixed bar)
+Nodes (0): 
 
-### Community 281 - "Module 281"
+### Community 316 - "dpdp.types"
 Cohesion: 1.0
-Nodes (1): Color: Warm Orange #FF9F43 (accent/rewards)
+Nodes (0): 
 
-### Community 282 - "Module 282"
+### Community 317 - "growthMap.types"
 Cohesion: 1.0
-Nodes (1): Color: Soft Purple #8A5CFF (AI features)
+Nodes (0): 
 
-### Community 283 - "Module 283"
+### Community 318 - "index"
 Cohesion: 1.0
-Nodes (1): 8-Point Spacing Grid
+Nodes (0): 
 
-### Community 284 - "Module 284"
+### Community 319 - "mindx.types"
 Cohesion: 1.0
-Nodes (1): ComicPromptForm Component
+Nodes (0): 
 
-### Community 285 - "Module 285"
+### Community 320 - "notification.types"
 Cohesion: 1.0
-Nodes (1): CreationFilters Component
+Nodes (0): 
 
-### Community 286 - "Module 286"
+### Community 321 - "user.types"
 Cohesion: 1.0
-Nodes (1): Mute Toggle in Header
+Nodes (0): 
 
-### Community 287 - "Module 287"
+### Community 322 - "Skills Directory"
 Cohesion: 1.0
-Nodes (1): Beat the AI Visual Style â€” Kid-Friendly Cartoon Illustration
+Nodes (1): Skills Directory
 
-### Community 288 - "Module 288"
+### Community 323 - "Project Directory Structure"
 Cohesion: 1.0
-Nodes (1): Kid vs AI Robot Challenge Motif
+Nodes (1): Project Directory Structure
 
-## Ambiguous Edges - Review These
-- `Story Placeholder Illustration` → `Brand Color: Teal (#05A3AF)`  [AMBIGUOUS]
-  public/images/placeholder-story.svg · relation: conceptually_related_to
+### Community 324 - "4-Phase Workflow"
+Cohesion: 1.0
+Nodes (1): 4-Phase Workflow
 
 ## Knowledge Gaps
-- **244 isolated node(s):** `Tailwind CSS`, `shadcn/ui`, `Firebase Firestore`, `Hierarchical CONTEXT.md System`, `.claude/skills/ Directory` (+239 more)
+- **262 isolated node(s):** `@import Directive Syntax`, `Skills Directory`, `Project Directory Structure`, `4-Phase Workflow`, `Tech Stack (Next.js + Firebase + Netlify)` (+257 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **Thin community `Module 61`** (2 nodes): `not-found.tsx`, `NotFound()`
+- **Thin community `not-found`** (2 nodes): `not-found.tsx`, `NotFound()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 62`** (2 nodes): `page.tsx`, `BeatTheAiPage()`
+- **Thin community `layout`** (2 nodes): `layout.tsx`, `AuthedLayout()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 63`** (2 nodes): `layout.tsx`, `CeoLayout()`
+- **Thin community `page`** (2 nodes): `page.tsx`, `prevId()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 64`** (2 nodes): `page.tsx`, `PlaySkeleton()`
+- **Thin community `page`** (2 nodes): `page.tsx`, `TeacherLoginPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 65`** (2 nodes): `page.tsx`, `ComicStudioPage()`
+- **Thin community `layout`** (2 nodes): `layout.tsx`, `MarketingLayout()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 66`** (2 nodes): `page.tsx`, `GameStudioPage()`
+- **Thin community `page`** (2 nodes): `page.tsx`, `WelcomePage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 67`** (2 nodes): `page.tsx`, `MusicLabPage()`
+- **Thin community `page`** (2 nodes): `page.tsx`, `BeatTheAiPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 68`** (2 nodes): `page.tsx`, `QuizMakerPage()`
+- **Thin community `layout`** (2 nodes): `layout.tsx`, `CeoLayout()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 69`** (2 nodes): `page.tsx`, `StoryStudioPage()`
+- **Thin community `page`** (2 nodes): `page.tsx`, `PlaySkeleton()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 70`** (2 nodes): `page.tsx`, `MyCreationsPage()`
+- **Thin community `page`** (2 nodes): `page.tsx`, `ComicStudioPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 71`** (2 nodes): `page.tsx`, `ExplorePage()`
+- **Thin community `page`** (2 nodes): `page.tsx`, `GameStudioPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 72`** (2 nodes): `page.tsx`, `SkillArenaPage()`
+- **Thin community `page`** (2 nodes): `page.tsx`, `MusicLabPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 73`** (2 nodes): `layout.tsx`, `ViewerLayout()`
+- **Thin community `page`** (2 nodes): `page.tsx`, `QuizMakerPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 74`** (2 nodes): `usesSingleLineInput()`, `ChallengeArena.tsx`
+- **Thin community `page`** (2 nodes): `page.tsx`, `StoryStudioPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 75`** (2 nodes): `SkillRadarChart.tsx`, `polarToCartesian()`
+- **Thin community `page`** (2 nodes): `page.tsx`, `MyCreationsPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 76`** (2 nodes): `ConfettiCelebration.tsx`, `ConfettiCelebration()`
+- **Thin community `page`** (2 nodes): `page.tsx`, `ExplorePage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 77`** (2 nodes): `DimensionRadar.tsx`, `DimensionRadar()`
+- **Thin community `page`** (2 nodes): `page.tsx`, `HomeworkHistoryPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 78`** (2 nodes): `EventCard.tsx`, `EventCard()`
+- **Thin community `page`** (2 nodes): `page.tsx`, `HomeworkTranscriptPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 79`** (2 nodes): `EventFeed.tsx`, `EmptyState()`
+- **Thin community `page`** (2 nodes): `page.tsx`, `SkillArenaPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 80`** (2 nodes): `BeatAiChallengeBanner()`, `BeatAiChallengeBanner.tsx`
+- **Thin community `layout`** (2 nodes): `layout.tsx`, `ViewerLayout()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 81`** (2 nodes): `ContinueCreatingCard.tsx`, `ContinueCreatingCard()`
+- **Thin community `CurriculumHeatmap`** (2 nodes): `CurriculumHeatmap.tsx`, `colorFor()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 82`** (2 nodes): `CreativeJourneySection.tsx`, `MissionCard()`
+- **Thin community `WeeklyTrendChart`** (2 nodes): `WeeklyTrendChart.tsx`, `scale()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 83`** (2 nodes): `CreativeStreakChart.tsx`, `CreativeStreakChart()`
+- **Thin community `usesSingleLineInput()`** (2 nodes): `usesSingleLineInput()`, `ChallengeArena.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 84`** (2 nodes): `DailyMissionCard.tsx`, `DailyMissionCard()`
+- **Thin community `SkillRadarChart`** (2 nodes): `SkillRadarChart.tsx`, `polarToCartesian()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 85`** (2 nodes): `FeaturedStudioCard.tsx`, `FeaturedStudioCard()`
+- **Thin community `ConfettiCelebration`** (2 nodes): `ConfettiCelebration.tsx`, `ConfettiCelebration()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 86`** (2 nodes): `MindXWidget.tsx`, `MindXWidget()`
+- **Thin community `DimensionRadar`** (2 nodes): `DimensionRadar.tsx`, `DimensionRadar()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 87`** (2 nodes): `ProgressPanel.tsx`, `BarChart()`
+- **Thin community `EventFeed`** (2 nodes): `EventFeed.tsx`, `EmptyState()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 88`** (2 nodes): `ShowAllAppsWidget.tsx`, `ShowAllAppsWidget()`
+- **Thin community `handleSubmit()`** (2 nodes): `handleSubmit()`, `BrandBriefingForm.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 89`** (2 nodes): `StreakCard.tsx`, `loadStreak()`
+- **Thin community `handleSubmit()`** (2 nodes): `handleSubmit()`, `CampaignBriefingForm.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 90`** (2 nodes): `StudioCardCompact.tsx`, `StudioCardCompact()`
+- **Thin community `TeamTab`** (2 nodes): `TeamTab.tsx`, `handleHire()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 91`** (2 nodes): `StudioCardsColumn.tsx`, `StudioCourseCard()`
+- **Thin community `BeatAiChallengeBanner()`** (2 nodes): `BeatAiChallengeBanner()`, `BeatAiChallengeBanner.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 92`** (2 nodes): `StudioSelectorPanel.tsx`, `StudioSelectorPanel()`
+- **Thin community `ContinueCreatingCard`** (2 nodes): `ContinueCreatingCard.tsx`, `ContinueCreatingCard()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 93`** (2 nodes): `XpProgressCard.tsx`, `getLevel()`
+- **Thin community `CreativeJourneySection`** (2 nodes): `CreativeJourneySection.tsx`, `MissionCard()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 94`** (2 nodes): `AnimationDemo()`, `AnimationSection.tsx`
+- **Thin community `CreativeStreakChart`** (2 nodes): `CreativeStreakChart.tsx`, `CreativeStreakChart()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 95`** (2 nodes): `cn()`, `CardSection.tsx`
+- **Thin community `DailyMissionCard`** (2 nodes): `DailyMissionCard.tsx`, `DailyMissionCard()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 96`** (2 nodes): `CopyButton.tsx`, `CopyButton()`
+- **Thin community `FeaturedStudioCard`** (2 nodes): `FeaturedStudioCard.tsx`, `FeaturedStudioCard()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 97`** (2 nodes): `DesignSystemSidebar.tsx`, `scrollTo()`
+- **Thin community `MindXWidget`** (2 nodes): `MindXWidget.tsx`, `MindXWidget()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 98`** (2 nodes): `FeaturedSection.tsx`, `fetchFeatured()`
+- **Thin community `ProgressPanel`** (2 nodes): `ProgressPanel.tsx`, `BarChart()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 99`** (2 nodes): `BottomNav()`, `BottomNav.tsx`
+- **Thin community `ShowAllAppsWidget`** (2 nodes): `ShowAllAppsWidget.tsx`, `ShowAllAppsWidget()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 100`** (2 nodes): `MuteToggle.tsx`, `MuteToggle()`
+- **Thin community `StreakCard`** (2 nodes): `StreakCard.tsx`, `loadStreak()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 101`** (2 nodes): `animate()`, `AiPointsBadge.tsx`
+- **Thin community `StudioCardCompact`** (2 nodes): `StudioCardCompact.tsx`, `StudioCardCompact()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 102`** (2 nodes): `getConceptIcon()`, `AiXrayPopup.tsx`
+- **Thin community `StudioCardsColumn`** (2 nodes): `StudioCardsColumn.tsx`, `StudioCourseCard()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 103`** (2 nodes): `CurriculumTag.tsx`, `CurriculumTag()`
+- **Thin community `StudioSelectorPanel`** (2 nodes): `StudioSelectorPanel.tsx`, `StudioSelectorPanel()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 104`** (2 nodes): `MascotSpeechBubble.tsx`, `MascotSpeechBubble()`
+- **Thin community `XpProgressCard`** (2 nodes): `XpProgressCard.tsx`, `getLevel()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 105`** (2 nodes): `OnboardingSlide.tsx`, `OnboardingSlide()`
+- **Thin community `AnimationDemo()`** (2 nodes): `AnimationDemo()`, `AnimationSection.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 106`** (2 nodes): `RemixButton.tsx`, `handleRemix()`
+- **Thin community `cn()`** (2 nodes): `cn()`, `CardSection.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 107`** (2 nodes): `SurpriseButton.tsx`, `SurpriseButton()`
+- **Thin community `CopyButton`** (2 nodes): `CopyButton.tsx`, `CopyButton()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 108`** (2 nodes): `McqOptions.tsx`, `McqOptions()`
+- **Thin community `DesignSystemSidebar`** (2 nodes): `DesignSystemSidebar.tsx`, `scrollTo()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 109`** (2 nodes): `SpeakingInput.tsx`, `handleToggleRecording()`
+- **Thin community `FeaturedSection`** (2 nodes): `FeaturedSection.tsx`, `fetchFeatured()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 110`** (2 nodes): `handleError()`, `ComicPanelView.tsx`
+- **Thin community `BottomNav()`** (2 nodes): `BottomNav()`, `BottomNav.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 111`** (2 nodes): `ComicSampleCards()`, `ComicSampleCards.tsx`
+- **Thin community `MuteToggle`** (2 nodes): `MuteToggle.tsx`, `MuteToggle()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 112`** (2 nodes): `handleDragEnd()`, `ComicViewer.tsx`
+- **Thin community `SentimentDemo`** (2 nodes): `SentimentDemo.tsx`, `scoreSentiment()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 113`** (2 nodes): `GameSampleCards.tsx`, `GameSampleCards()`
+- **Thin community `animate()`** (2 nodes): `animate()`, `AiPointsBadge.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 114`** (2 nodes): `QuizPlayer.tsx`, `handleReplay()`
+- **Thin community `getConceptIcon()`** (2 nodes): `getConceptIcon()`, `AiXrayPopup.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 115`** (2 nodes): `QuizSampleCards.tsx`, `QuizSampleCards()`
+- **Thin community `CurriculumTag`** (2 nodes): `CurriculumTag.tsx`, `CurriculumTag()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 116`** (2 nodes): `StoryPageView.tsx`, `handleError()`
+- **Thin community `AudienceCards()`** (2 nodes): `AudienceCards()`, `AudienceCards.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 117`** (2 nodes): `useAiGeneration.ts`, `useAiGeneration()`
+- **Thin community `FinalCTA`** (2 nodes): `FinalCTA.tsx`, `FinalCTA()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 118`** (2 nodes): `useCreations.ts`, `useCreations()`
+- **Thin community `FlagshipExperiences`** (2 nodes): `FlagshipExperiences.tsx`, `FlagshipExperiences()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 119`** (2 nodes): `useExplore.ts`, `useExplore()`
+- **Thin community `HowItWorks`** (2 nodes): `HowItWorks.tsx`, `HowItWorks()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 120`** (2 nodes): `useSkillArenaProgress.ts`, `useSkillArenaProgress()`
+- **Thin community `LogoBar`** (2 nodes): `LogoBar.tsx`, `LogoBar()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 121`** (2 nodes): `skillEngine.test.ts`, `makeRound()`
+- **Thin community `SiteFooter`** (2 nodes): `SiteFooter.tsx`, `SiteFooter()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 122`** (2 nodes): `telegram.spec.ts`, `mk()`
+- **Thin community `VsChatGPT`** (2 nodes): `VsChatGPT.tsx`, `renderCell()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 123`** (2 nodes): `mkBusiness()`, `businessState.spec.ts`
+- **Thin community `MascotSpeechBubble`** (2 nodes): `MascotSpeechBubble.tsx`, `MascotSpeechBubble()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 124`** (2 nodes): `scoringEngine.spec.ts`, `mkBusiness()`
+- **Thin community `OnboardingSlide`** (2 nodes): `OnboardingSlide.tsx`, `OnboardingSlide()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 125`** (2 nodes): `getDailyTheme()`, `beatTheAi.types.ts`
+- **Thin community `RemixButton`** (2 nodes): `RemixButton.tsx`, `handleRemix()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 126`** (2 nodes): `Mobile-First Design (48px touch targets)`, `WCAG AA Accessibility Compliance`
+- **Thin community `SurpriseButton`** (2 nodes): `SurpriseButton.tsx`, `SurpriseButton()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 127`** (2 nodes): `India DPDPA 2023 Children's Data Compliance`, `Data Minimization Principle`
+- **Thin community `McqOptions`** (2 nodes): `McqOptions.tsx`, `McqOptions()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 128`** (2 nodes): `Server-Side AI Calls Only`, `API Key Protection (Netlify env vars, never client-side)`
+- **Thin community `SpeakingInput`** (2 nodes): `SpeakingInput.tsx`, `handleToggleRecording()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 129`** (2 nodes): `Firebase Auth (Phone OTP)`, `useAuth() Hook`
+- **Thin community `handleError()`** (2 nodes): `handleError()`, `ComicPanelView.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 130`** (1 nodes): `next-env.d.ts`
+- **Thin community `ComicSampleCards()`** (2 nodes): `ComicSampleCards()`, `ComicSampleCards.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 131`** (1 nodes): `next.config.js`
+- **Thin community `handleDragEnd()`** (2 nodes): `handleDragEnd()`, `ComicViewer.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 132`** (1 nodes): `playwright.config.ts`
+- **Thin community `GameSampleCards`** (2 nodes): `GameSampleCards.tsx`, `GameSampleCards()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 133`** (1 nodes): `postcss.config.js`
+- **Thin community `QuizPlayer`** (2 nodes): `QuizPlayer.tsx`, `handleReplay()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 134`** (1 nodes): `tailwind.config.ts`
+- **Thin community `QuizSampleCards`** (2 nodes): `QuizSampleCards.tsx`, `QuizSampleCards()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 135`** (1 nodes): `vitest.config.ts`
+- **Thin community `StoryPageView`** (2 nodes): `StoryPageView.tsx`, `handleError()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 136`** (1 nodes): `vitest.setup.ts`
+- **Thin community `SubmissionGrid`** (2 nodes): `SubmissionGrid.tsx`, `handleBulkApprove()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 137`** (1 nodes): `layout.tsx`
+- **Thin community `useAiGeneration`** (2 nodes): `useAiGeneration.ts`, `useAiGeneration()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 138`** (1 nodes): `page.tsx`
+- **Thin community `useCreations`** (2 nodes): `useCreations.ts`, `useCreations()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 139`** (1 nodes): `BeatTheAiClient.tsx`
+- **Thin community `useExplore`** (2 nodes): `useExplore.ts`, `useExplore()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 140`** (1 nodes): `page.tsx`
+- **Thin community `useSkillArenaProgress`** (2 nodes): `useSkillArenaProgress.ts`, `useSkillArenaProgress()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 141`** (1 nodes): `page.tsx`
+- **Thin community `skillEngine.test`** (2 nodes): `skillEngine.test.ts`, `makeRound()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 142`** (1 nodes): `MyCreationsClient.tsx`
+- **Thin community `telegram.spec`** (2 nodes): `telegram.spec.ts`, `mk()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 143`** (1 nodes): `ExploreClient.tsx`
+- **Thin community `weeklyHomeworkDigest.spec`** (2 nodes): `weeklyHomeworkDigest.spec.ts`, `makeSession()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 144`** (1 nodes): `SkillArenaClient.tsx`
+- **Thin community `makeSession()`** (2 nodes): `makeSession()`, `homeworkRewards.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 145`** (1 nodes): `ViewerClient.tsx`
+- **Thin community `mkBusiness()`** (2 nodes): `mkBusiness()`, `businessState.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 146`** (1 nodes): `route.tsx`
+- **Thin community `scoringEngine.spec`** (2 nodes): `scoringEngine.spec.ts`, `mkBusiness()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 147`** (1 nodes): `CategoryPicker.tsx`
+- **Thin community `toolRegistry`** (2 nodes): `toolRegistry.ts`, `notYetWired()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 148`** (1 nodes): `ResultsScreen.tsx`
+- **Thin community `summarise()`** (2 nodes): `summarise()`, `fluxSchnell.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 149`** (1 nodes): `SideBySideReveal.tsx`
+- **Thin community `matchesBlocklist()`** (2 nodes): `matchesBlocklist()`, `blocklist.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 150`** (1 nodes): `SkillProgressCard.tsx`
+- **Thin community `getDailyTheme()`** (2 nodes): `getDailyTheme()`, `beatTheAi.types.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 151`** (1 nodes): `StatsBoard.tsx`
+- **Thin community `Community Hubs (289 detected)`** (2 nodes): `Community Hubs (289 detected)`, `Graph Report (Navigation Index)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 152`** (1 nodes): `DecisionFeedback.tsx`
+- **Thin community `Quiz Maker page`** (2 nodes): `Quiz Maker page`, `useAiGeneration hook`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 153`** (1 nodes): `PhaseProgress.tsx`
+- **Thin community `next-env.d`** (1 nodes): `next-env.d.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 154`** (1 nodes): `CreationFilters.tsx`
+- **Thin community `next.config`** (1 nodes): `next.config.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 155`** (1 nodes): `CreationGrid.tsx`
+- **Thin community `playwright.config`** (1 nodes): `playwright.config.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 156`** (1 nodes): `BadgeShelf.tsx`
+- **Thin community `postcss.config`** (1 nodes): `postcss.config.js`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 157`** (1 nodes): `BeatAiInfoCard.tsx`
+- **Thin community `tailwind.config`** (1 nodes): `tailwind.config.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 158`** (1 nodes): `BeatAiWidget.tsx`
+- **Thin community `vitest.config`** (1 nodes): `vitest.config.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 159`** (1 nodes): `CategoryFilterTabs.tsx`
+- **Thin community `vitest.setup`** (1 nodes): `vitest.setup.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 160`** (1 nodes): `ChallengesWidget.tsx`
+- **Thin community `layout`** (1 nodes): `layout.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 161`** (1 nodes): `CommunityPicksWidget.tsx`
+- **Thin community `page`** (1 nodes): `page.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 162`** (1 nodes): `DashboardStatsRow.tsx`
+- **Thin community `page`** (1 nodes): `page.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 163`** (1 nodes): `index.ts`
+- **Thin community `page`** (1 nodes): `page.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 164`** (1 nodes): `LearningProgressCarousel.tsx`
+- **Thin community `page`** (1 nodes): `page.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 165`** (1 nodes): `PopularStudiosRow.tsx`
+- **Thin community `page`** (1 nodes): `page.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 166`** (1 nodes): `UserStatsBar.tsx`
+- **Thin community `BeatTheAiClient`** (1 nodes): `BeatTheAiClient.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 167`** (1 nodes): `BorderRadiusSection.tsx`
+- **Thin community `page`** (1 nodes): `page.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 168`** (1 nodes): `ButtonSection.tsx`
+- **Thin community `page`** (1 nodes): `page.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 169`** (1 nodes): `ColorSection.tsx`
+- **Thin community `MyCreationsClient`** (1 nodes): `MyCreationsClient.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 170`** (1 nodes): `GamificationSection.tsx`
+- **Thin community `ExploreClient`** (1 nodes): `ExploreClient.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 171`** (1 nodes): `GradientSection.tsx`
+- **Thin community `page`** (1 nodes): `page.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 172`** (1 nodes): `ShadowSection.tsx`
+- **Thin community `SkillArenaClient`** (1 nodes): `SkillArenaClient.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 173`** (1 nodes): `SpacingSection.tsx`
+- **Thin community `ViewerClient`** (1 nodes): `ViewerClient.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 174`** (1 nodes): `TypographySection.tsx`
+- **Thin community `route`** (1 nodes): `route.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 175`** (1 nodes): `Header.tsx`
+- **Thin community `CategoryPicker`** (1 nodes): `CategoryPicker.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 176`** (1 nodes): `SidebarNav.tsx`
+- **Thin community `ResultsScreen`** (1 nodes): `ResultsScreen.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 177`** (1 nodes): `BadgeGallery.tsx`
+- **Thin community `SideBySideReveal`** (1 nodes): `SideBySideReveal.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 178`** (1 nodes): `CelebrationModal.tsx`
+- **Thin community `SkillProgressCard`** (1 nodes): `SkillProgressCard.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 179`** (1 nodes): `Mascot.tsx`
+- **Thin community `StatsBoard`** (1 nodes): `StatsBoard.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 180`** (1 nodes): `OnboardingCarousel.tsx`
+- **Thin community `BusinessDashboard`** (1 nodes): `BusinessDashboard.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 181`** (1 nodes): `OnboardingIllustrations.tsx`
+- **Thin community `DecisionFeedback`** (1 nodes): `DecisionFeedback.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 182`** (1 nodes): `AvatarPicker.tsx`
+- **Thin community `MilestoneZone`** (1 nodes): `MilestoneZone.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 183`** (1 nodes): `ProfileSelector.tsx`
+- **Thin community `PhaseProgress`** (1 nodes): `PhaseProgress.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 184`** (1 nodes): `ShareButton.tsx`
+- **Thin community `SmallDecisionsZone`** (1 nodes): `SmallDecisionsZone.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 185`** (1 nodes): `ShareSheet.tsx`
+- **Thin community `WorkflowBuilderTab`** (1 nodes): `WorkflowBuilderTab.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 186`** (1 nodes): `TemplateCarousel.tsx`
+- **Thin community `WorkflowTrace`** (1 nodes): `WorkflowTrace.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 187`** (1 nodes): `AssessmentArena.tsx`
+- **Thin community `CreationFilters`** (1 nodes): `CreationFilters.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 188`** (1 nodes): `BandProgressCard.tsx`
+- **Thin community `CreationGrid`** (1 nodes): `CreationGrid.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 189`** (1 nodes): `MentorResults.tsx`
+- **Thin community `BadgeShelf`** (1 nodes): `BadgeShelf.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 190`** (1 nodes): `ModulePicker.tsx`
+- **Thin community `BeatAiInfoCard`** (1 nodes): `BeatAiInfoCard.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 191`** (1 nodes): `ProgressDashboard.tsx`
+- **Thin community `BeatAiWidget`** (1 nodes): `BeatAiWidget.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 192`** (1 nodes): `TextAnswer.tsx`
+- **Thin community `CategoryFilterTabs`** (1 nodes): `CategoryFilterTabs.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 193`** (1 nodes): `ComicProgress.tsx`
+- **Thin community `ChallengesWidget`** (1 nodes): `ChallengesWidget.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 194`** (1 nodes): `GamePlayer.tsx`
+- **Thin community `CommunityPicksWidget`** (1 nodes): `CommunityPicksWidget.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 195`** (1 nodes): `GameProgress.tsx`
+- **Thin community `DashboardStatsRow`** (1 nodes): `DashboardStatsRow.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 196`** (1 nodes): `MusicProgress.tsx`
+- **Thin community `index`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 197`** (1 nodes): `MusicSampleCards.tsx`
+- **Thin community `LearningProgressCarousel`** (1 nodes): `LearningProgressCarousel.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 198`** (1 nodes): `QuizProgress.tsx`
+- **Thin community `PopularStudiosRow`** (1 nodes): `PopularStudiosRow.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 199`** (1 nodes): `SamplePromptCards.tsx`
+- **Thin community `UserStatsBar`** (1 nodes): `UserStatsBar.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 200`** (1 nodes): `StoryProgress.tsx`
+- **Thin community `BorderRadiusSection`** (1 nodes): `BorderRadiusSection.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 201`** (1 nodes): `landing.spec.ts`
+- **Thin community `ButtonSection`** (1 nodes): `ButtonSection.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 202`** (1 nodes): `session.spec.ts`
+- **Thin community `ColorSection`** (1 nodes): `ColorSection.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 203`** (1 nodes): `index.ts`
+- **Thin community `GamificationSection`** (1 nodes): `GamificationSection.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 204`** (1 nodes): `useAiPoints.ts`
+- **Thin community `GradientSection`** (1 nodes): `GradientSection.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 205`** (1 nodes): `api-utils.spec.ts`
+- **Thin community `ShadowSection`** (1 nodes): `ShadowSection.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 206`** (1 nodes): `utils.spec.ts`
+- **Thin community `SpacingSection`** (1 nodes): `SpacingSection.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 207`** (1 nodes): `validators.spec.ts`
+- **Thin community `TypographySection`** (1 nodes): `TypographySection.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 208`** (1 nodes): `validators.ts`
+- **Thin community `Header`** (1 nodes): `Header.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 209`** (1 nodes): `index.ts`
+- **Thin community `SidebarNav`** (1 nodes): `SidebarNav.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 210`** (1 nodes): `storyPrompt.spec.ts`
+- **Thin community `BadgeGallery`** (1 nodes): `BadgeGallery.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 211`** (1 nodes): `prompts.test.ts`
+- **Thin community `CelebrationModal`** (1 nodes): `CelebrationModal.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 212`** (1 nodes): `types.ts`
+- **Thin community `AiXRayShowcase`** (1 nodes): `AiXRayShowcase.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 213`** (1 nodes): `constants.ts`
+- **Thin community `ForSchoolsDetail`** (1 nodes): `ForSchoolsDetail.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 214`** (1 nodes): `phases.spec.ts`
+- **Thin community `Hero`** (1 nodes): `Hero.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 215`** (1 nodes): `profileEngine.spec.ts`
+- **Thin community `HeroBento`** (1 nodes): `HeroBento.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 216`** (1 nodes): `blocklist.ts`
+- **Thin community `KokoLottie`** (1 nodes): `KokoLottie.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 217`** (1 nodes): `imageFilter.spec.ts`
+- **Thin community `MarketingNav`** (1 nodes): `MarketingNav.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 218`** (1 nodes): `inputFilter.spec.ts`
+- **Thin community `ParentFAQ`** (1 nodes): `ParentFAQ.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 219`** (1 nodes): `outputFilter.spec.ts`
+- **Thin community `Pricing`** (1 nodes): `Pricing.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 220`** (1 nodes): `questionBank.test.ts`
+- **Thin community `SafetyTrust`** (1 nodes): `SafetyTrust.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 221`** (1 nodes): `scoring.test.ts`
+- **Thin community `StudioShowcase`** (1 nodes): `StudioShowcase.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 222`** (1 nodes): `comicTemplates.ts`
+- **Thin community `Testimonials`** (1 nodes): `Testimonials.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 223`** (1 nodes): `gameTemplates.ts`
+- **Thin community `Mascot`** (1 nodes): `Mascot.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 224`** (1 nodes): `musicTemplates.ts`
+- **Thin community `OnboardingCarousel`** (1 nodes): `OnboardingCarousel.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 225`** (1 nodes): `quizTemplates.ts`
+- **Thin community `OnboardingIllustrations`** (1 nodes): `OnboardingIllustrations.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 226`** (1 nodes): `storyTemplates.ts`
+- **Thin community `AvatarPicker`** (1 nodes): `AvatarPicker.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 227`** (1 nodes): `types.ts`
+- **Thin community `ProfileSelector`** (1 nodes): `ProfileSelector.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 228`** (1 nodes): `api.types.ts`
+- **Thin community `ShareButton`** (1 nodes): `ShareButton.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 229`** (1 nodes): `bot.types.ts`
+- **Thin community `ShareSheet`** (1 nodes): `ShareSheet.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 230`** (1 nodes): `ceo.types.ts`
+- **Thin community `TemplateCarousel`** (1 nodes): `TemplateCarousel.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 231`** (1 nodes): `cerebro.types.ts`
+- **Thin community `AssessmentArena`** (1 nodes): `AssessmentArena.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 232`** (1 nodes): `creation.types.ts`
+- **Thin community `BandProgressCard`** (1 nodes): `BandProgressCard.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 233`** (1 nodes): `growthMap.types.ts`
+- **Thin community `MentorResults`** (1 nodes): `MentorResults.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 234`** (1 nodes): `index.ts`
+- **Thin community `ModulePicker`** (1 nodes): `ModulePicker.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 235`** (1 nodes): `mindx.types.ts`
+- **Thin community `ProgressDashboard`** (1 nodes): `ProgressDashboard.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 236`** (1 nodes): `user.types.ts`
+- **Thin community `TextAnswer`** (1 nodes): `TextAnswer.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 237`** (1 nodes): `Progressive Web App (PWA)`
+- **Thin community `AssignmentBanner`** (1 nodes): `AssignmentBanner.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 238`** (1 nodes): `TypeScript Strict Mode`
+- **Thin community `AssignmentView`** (1 nodes): `AssignmentView.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 239`** (1 nodes): `Components UI Directory (shadcn/ui primitives)`
+- **Thin community `ComicProgress`** (1 nodes): `ComicProgress.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 240`** (1 nodes): `cn() Tailwind Utility`
+- **Thin community `GamePlayer`** (1 nodes): `GamePlayer.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 241`** (1 nodes): `Kid-Friendly Design Rules (large touch targets, vibrant, rounded)`
+- **Thin community `GameProgress`** (1 nodes): `GameProgress.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 242`** (1 nodes): `POST /api/creations`
+- **Thin community `MusicProgress`** (1 nodes): `MusicProgress.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 243`** (1 nodes): `GET /api/creations/:id`
+- **Thin community `MusicSampleCards`** (1 nodes): `MusicSampleCards.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 244`** (1 nodes): `GET /api/creations (list with filters)`
+- **Thin community `QuizProgress`** (1 nodes): `QuizProgress.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 245`** (1 nodes): `DELETE /api/creations/:id (soft delete)`
+- **Thin community `SamplePromptCards`** (1 nodes): `SamplePromptCards.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 246`** (1 nodes): `GET /api/creations/public (Explore feed)`
+- **Thin community `StoryProgress`** (1 nodes): `StoryProgress.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 247`** (1 nodes): `POST /api/sessions`
+- **Thin community `ChapterPicker`** (1 nodes): `ChapterPicker.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 248`** (1 nodes): `POST /api/auth/send-otp`
+- **Thin community `landing.spec`** (1 nodes): `landing.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 249`** (1 nodes): `POST /api/auth/profile`
+- **Thin community `session.spec`** (1 nodes): `session.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 250`** (1 nodes): `POST /api/auth/kids`
+- **Thin community `index`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 251`** (1 nodes): `POST /api/share/:creationId`
+- **Thin community `useAiPoints`** (1 nodes): `useAiPoints.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 252`** (1 nodes): `POST /api/skill-arena/evaluate (MindX)`
+- **Thin community `api-utils.spec`** (1 nodes): `api-utils.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 253`** (1 nodes): `GET /api/skill-arena/progress`
+- **Thin community `utils.spec`** (1 nodes): `utils.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 254`** (1 nodes): `GET /api/ceo/business`
+- **Thin community `validators.spec`** (1 nodes): `validators.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 255`** (1 nodes): `API Rate Limits Table`
+- **Thin community `validators`** (1 nodes): `validators.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 256`** (1 nodes): `Netlify Frontend Hosting`
+- **Thin community `runner.spec`** (1 nodes): `runner.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 257`** (1 nodes): `Creation Data Flow (Phase 1 Anonymous)`
+- **Thin community `types`** (1 nodes): `types.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 258`** (1 nodes): `fetchWithSession Wrapper`
+- **Thin community `runner.smoke.suite`** (1 nodes): `runner.smoke.suite.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 259`** (1 nodes): `ErrorBoundary Component`
+- **Thin community `index`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 260`** (1 nodes): `Idempotent Session Creation (Firestore merge)`
+- **Thin community `storyPrompt.spec`** (1 nodes): `storyPrompt.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 261`** (1 nodes): `Razorpay Payments (Phase 2+)`
+- **Thin community `prompts.test`** (1 nodes): `prompts.test.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 262`** (1 nodes): `Firestore: users collection (Phase 2+)`
+- **Thin community `types`** (1 nodes): `types.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 263`** (1 nodes): `Firestore: users/{userId}/kids sub-collection`
+- **Thin community `languageDetect.spec`** (1 nodes): `languageDetect.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 264`** (1 nodes): `Firestore: curriculum collection`
+- **Thin community `recitationScorer.spec`** (1 nodes): `recitationScorer.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 265`** (1 nodes): `Firestore: leaderboards collection (Cerebro, Phase 2+)`
+- **Thin community `phases.spec`** (1 nodes): `phases.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 266`** (1 nodes): `Target Market: Indian school students Class 3-12`
+- **Thin community `profileEngine.spec`** (1 nodes): `profileEngine.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 267`** (1 nodes): `Persona: Aarav (Age 10, Young Creator)`
+- **Thin community `pricing.spec`** (1 nodes): `pricing.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 268`** (1 nodes): `Persona: Priya (Age 14, Aspiring Tech Explorer)`
+- **Thin community `breakEven.spec`** (1 nodes): `breakEven.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 269`** (1 nodes): `Persona: Meena (Parent, Tech-Aware)`
+- **Thin community `types`** (1 nodes): `types.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 270`** (1 nodes): `F5: Share & Showcase (P0, Implemented)`
+- **Thin community `index`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 271`** (1 nodes): `Phase 2: User Accounts (Phone OTP)`
+- **Thin community `types`** (1 nodes): `types.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 272`** (1 nodes): `Phase 1 Anonymous Sessions (localStorage UUID)`
+- **Thin community `sessionService.streak.spec`** (1 nodes): `sessionService.streak.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 273`** (1 nodes): `Phase 2 Phone OTP Auth (Firebase)`
+- **Thin community `index`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 274`** (1 nodes): `TypeScript Strict Mode Standard`
+- **Thin community `blocklist`** (1 nodes): `blocklist.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 275`** (1 nodes): `SWR for Firestore Data Fetching`
+- **Thin community `imageFilter.spec`** (1 nodes): `imageFilter.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 276`** (1 nodes): `AppException Class (error handling)`
+- **Thin community `inputFilter.spec`** (1 nodes): `inputFilter.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 277`** (1 nodes): `Named Exports Only (no default exports except pages)`
+- **Thin community `outputFilter.spec`** (1 nodes): `outputFilter.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 278`** (1 nodes): `Git Branch Naming: <TICKET-ID>-<short-kebab-slug>`
+- **Thin community `questionBank.test`** (1 nodes): `questionBank.test.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 279`** (1 nodes): `Create in 60 Seconds Design Philosophy`
+- **Thin community `scoring.test`** (1 nodes): `scoring.test.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 280`** (1 nodes): `Bottom Navigation (mobile, 3-tab fixed bar)`
+- **Thin community `comicTemplates`** (1 nodes): `comicTemplates.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 281`** (1 nodes): `Color: Warm Orange #FF9F43 (accent/rewards)`
+- **Thin community `gameTemplates`** (1 nodes): `gameTemplates.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 282`** (1 nodes): `Color: Soft Purple #8A5CFF (AI features)`
+- **Thin community `musicTemplates`** (1 nodes): `musicTemplates.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 283`** (1 nodes): `8-Point Spacing Grid`
+- **Thin community `quizTemplates`** (1 nodes): `quizTemplates.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 284`** (1 nodes): `ComicPromptForm Component`
+- **Thin community `storyTemplates`** (1 nodes): `storyTemplates.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 285`** (1 nodes): `CreationFilters Component`
+- **Thin community `types`** (1 nodes): `types.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 286`** (1 nodes): `Mute Toggle in Header`
+- **Thin community `timestamps.spec`** (1 nodes): `timestamps.spec.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 287`** (1 nodes): `Beat the AI Visual Style â€” Kid-Friendly Cartoon Illustration`
+- **Thin community `api.types`** (1 nodes): `api.types.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Module 288`** (1 nodes): `Kid vs AI Robot Challenge Motif`
+- **Thin community `bot.types`** (1 nodes): `bot.types.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `ceo.types`** (1 nodes): `ceo.types.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `cerebro.types`** (1 nodes): `cerebro.types.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `creation.types`** (1 nodes): `creation.types.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `dpdp.types`** (1 nodes): `dpdp.types.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `growthMap.types`** (1 nodes): `growthMap.types.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `index`** (1 nodes): `index.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `mindx.types`** (1 nodes): `mindx.types.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `notification.types`** (1 nodes): `notification.types.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `user.types`** (1 nodes): `user.types.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Skills Directory`** (1 nodes): `Skills Directory`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Project Directory Structure`** (1 nodes): `Project Directory Structure`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `4-Phase Workflow`** (1 nodes): `4-Phase Workflow`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **What is the exact relationship between `Story Placeholder Illustration` and `Brand Color: Teal (#05A3AF)`?**
-  _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **Why does `POST()` connect `AI Judge & API Utilities` to `Bot & CEO Integration`, `Tests & Auth Flow`, `AI Opponent & API Context`, `Studio Client Pages`, `CEO Scoring Engine`, `Image Provider Pipeline`, `Music Generation Client`, `CEO Event Engine`, `Skill Arena Question Bank`?**
-  _High betweenness centrality (0.102) - this node is a cross-community bridge._
-- **Why does `GET()` connect `AI Judge & API Utilities` to `Shared Components & Export`, `Bot & CEO Integration`, `Tests & Auth Flow`, `AI Opponent & API Context`, `Studio Client Pages`, `Image Provider Pipeline`?**
-  _High betweenness centrality (0.085) - this node is a cross-community bridge._
-- **Are the 62 inferred relationships involving `GET()` (e.g. with `getUser()` and `apiSuccess()`) actually correct?**
-  _`GET()` has 62 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 50 inferred relationships involving `POST()` (e.g. with `json()` and `filterInput()`) actually correct?**
-  _`POST()` has 50 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 21 inferred relationships involving `json()` (e.g. with `POST()` and `PATCH()`) actually correct?**
-  _`json()` has 21 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 14 inferred relationships involving `handleChoice()` (e.g. with `.send()` and `getCeoEvent()`) actually correct?**
-  _`handleChoice()` has 14 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `POST()` connect `POST()` to `GET()`, `json()`, `.send()`, `endingReport`, `find()`, `isSupportedLocale()`, `sessionService`, `buildComplianceReport()`, `consentService`, `ceoArtifactService`, `getAiGenerator()`, `musicClient`?**
+  _High betweenness centrality (0.115) - this node is a cross-community bridge._
+- **Why does `GET()` connect `GET()` to `runWeeklyDigest()`, `POST()`, `json()`, `.send()`, `homework`, `endingReport`, `useAuth()`, `find()`, `isSupportedLocale()`, `sessionService`, `TelegramAdapter`, `buildComplianceReport()`, `consentService`, `ceoArtifactService`, `getAiGenerator()`?**
+  _High betweenness centrality (0.093) - this node is a cross-community bridge._
+- **Why does `json()` connect `json()` to `GET()`, `POST()`, `find()`, `sessionService`, `TelegramAdapter`, `buildComplianceReport()`, `fetchWithKidAuth()`, `getAiGenerator()`?**
+  _High betweenness centrality (0.053) - this node is a cross-community bridge._
+- **Are the 159 inferred relationships involving `GET()` (e.g. with `requireRole()` and `getCachedAnalytics()`) actually correct?**
+  _`GET()` has 159 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 112 inferred relationships involving `POST()` (e.g. with `json()` and `filterInput()`) actually correct?**
+  _`POST()` has 112 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 46 inferred relationships involving `json()` (e.g. with `handleCreateClass()` and `load()`) actually correct?**
+  _`json()` has 46 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 24 inferred relationships involving `PATCH()` (e.g. with `requireRole()` and `json()`) actually correct?**
+  _`PATCH()` has 24 INFERRED edges - model-reasoned connections that need verification._
