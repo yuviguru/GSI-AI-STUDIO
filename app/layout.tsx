@@ -1,19 +1,16 @@
 import type { Metadata, Viewport } from 'next';
-import localFont from 'next/font/local';
-import { Figtree, JetBrains_Mono } from 'next/font/google';
+import { Figtree, JetBrains_Mono, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 
 /**
  * Font loading — Design System §5
- * Display: Satoshi (local, variable weight)
+ * Display: Plus Jakarta Sans (Google Fonts) — temporary Satoshi stand-in
+ *   (real Satoshi woff2 files in app/fonts/ are placeholder HTML, not actual fonts)
  * Body: Figtree (Google Fonts, variable weight)
  * Mono: JetBrains Mono (Google Fonts, for XP/scores/stats)
  */
-const satoshi = localFont({
-  src: [
-    { path: './fonts/Satoshi-Variable.woff2', style: 'normal' },
-    { path: './fonts/Satoshi-VariableItalic.woff2', style: 'italic' },
-  ],
+const satoshi = Plus_Jakarta_Sans({
+  subsets: ['latin'],
   variable: '--font-display',
   display: 'swap',
 });
