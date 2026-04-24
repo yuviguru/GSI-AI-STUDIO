@@ -3,7 +3,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { RefreshCw, Users, BookOpen, Award, Activity, Trophy, Settings } from 'lucide-react';
+import {
+  RefreshCw,
+  Users,
+  BookOpen,
+  Award,
+  Activity,
+  Trophy,
+  Settings,
+  UserCheck,
+} from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { CurriculumHeatmap } from '@/components/admin/CurriculumHeatmap';
 import { TeacherActivityTable } from '@/components/admin/TeacherActivityTable';
@@ -130,6 +139,13 @@ export default function SchoolDashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href="/school/substitutes"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <UserCheck className="h-4 w-4" />
+            Subs
+          </Link>
           <Link
             href="/school/settings"
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
