@@ -1204,6 +1204,176 @@ Get the CEO profile (6-dimension DNA Card) for a business.
 
 ---
 
+## Kid CEO — Agents (Phase 3)
+
+Agent-driven workflows that produce real artifacts (logos, posters, schedules, pricing strategies, …) the kid can review, accept, and persist. Shape is stable across agents; specific `workflowId`s are per-agent.
+
+All endpoints in this group require `Authorization: Bearer <firebase-id-token>` + `X-Active-Kid-Id: <kidId>`. See `lib/auth-utils.ts#requireAuthWithKid`.
+
+### GET /api/ceo/agents/catalog
+
+Returns the static catalog of all agents with per-agent unlock rules. No kid context; safe to cache.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "agents": [
+      {
+        "id": "design",
+        "name": "Design Agent",
+        "emoji": "🎨",
+        "unlockPhase": "pre_launch",
+        "salaryPerDay": 50,
+        "tagline": "Logos, mottos, brand voice — what makes your business YOU.",
+        "workflows": ["brand.package"]
+      }
+    ]
+  }
+}
+```
+
+### POST /api/ceo/agents/hire
+
+Hires an agent for a business. Validates unlock-phase, deducts the first-day salary from `business.currentCash`, writes a `ceoAgentHires` doc.
+
+**Request body:**
+```json
+{
+  "businessId": "biz_abc123",
+  "agentId": "design",
+  "config": { "focus": "brand", "aggressiveness": "medium" }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "hire": { "id": "hire_xyz", "agentId": "design", "status": "active", "salary": 50, "config": {...} },
+    "business": { "currentCash": 2950, ... }
+  }
+}
+```
+
+**Errors:**
+- `400 AGENT_LOCKED` — Business phase has not reached the agent's unlock phase.
+- `400 ALREADY_HIRED` — An active hire of this agent already exists for the business.
+- `400 INSUFFICIENT_CASH` — Business can't cover the first-day salary.
+
+### POST /api/ceo/agents/run
+
+Runs a workflow for an active agent hire. Returns a CANDIDATE artifact — nothing is attached to the business until the kid accepts.
+
+**Request body:**
+```json
+{
+  "hireId": "hire_xyz",
+  "workflowId": "brand.package",
+  "brief": { "mood": "playful", "audience": "kids_my_age", "oneWord": "tropical" },
+  "eventId": "event_abc"
+}
+```
+
+`eventId` is optional — required only when the workflow is resolving a milestone event.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "artifact": {
+      "id": "art_abc",
+      "status": "candidate",
+      "assets": [
+        { "type": "image", "kind": "logo", "url": "...", "altText": "..." },
+        { "type": "image", "kind": "logo", "url": "...", "altText": "..." },
+        { "type": "image", "kind": "logo", "url": "...", "altText": "..." },
+        { "type": "text", "kind": "motto", "content": "..." },
+        { "type": "text", "kind": "motto", "content": "..." },
+        { "type": "text", "kind": "motto", "content": "..." },
+        { "type": "text", "kind": "voice", "content": "..." }
+      ],
+      "trace": [ ... ],
+      "costInr": 7.5
+    },
+    "remainingFreeReRolls": 0
+  }
+}
+```
+
+**Errors:**
+- `400 BRIEF_INVALID` — Brief failed Zod validation or `filterInput` rejected PII.
+- `402 INSUFFICIENT_CASH` — Re-roll cost exceeds business cash.
+- `502 WORKFLOW_FAILED` — One or more tool steps failed. Partial trace included.
+
+### POST /api/ceo/agents/accept
+
+Accepts one or more candidate assets from an artifact. Writes them to the target (business field for BRAND-like milestones, event for regulars, or the marketing feed for Marketing Agent outputs). Marks the artifact `status: 'accepted'` atomically.
+
+**Request body:**
+```json
+{
+  "artifactId": "art_abc",
+  "selections": {
+    "logo": "asset_0",
+    "motto": "asset_4"
+  },
+  "attach": { "kind": "business_field", "field": "brandAssets" }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "artifact": { "id": "art_abc", "status": "accepted", "acceptedAt": "..." },
+    "business": { "brandAssets": { "logoUrl": "...", "motto": "...", "voice": "..." } }
+  }
+}
+```
+
+### GET /api/ceo/agents/hires?businessId=...
+
+Lists active + dismissed hires for a business.
+
+### GET /api/ceo/artifacts?businessId=...&status=accepted
+
+Paginated artifact feed. Supports `?status=candidate|accepted|rejected|expired`, `?workflowId=...`, `?limit=`, `?cursor=`.
+
+### POST /api/ceo/marketing/post
+
+(Marketing agent story — KIDCEO-AGENT-002-MARKETING.) Surfaces an accepted marketing artifact to the business's customers. Applies a small, deterministic reputation/reach bump, capped at +3/day across all posts.
+
+### Custom Workflows (KIDCEO-WORKFLOW-BUILDER)
+
+Unlocks at Scale phase. Scratch-style canvas serialises to a `WorkflowSpec` the existing executor runs — no new runtime.
+
+- `GET /api/ceo/workflows/custom?businessId=...` — list.
+- `POST /api/ceo/workflows/custom` — create.
+- `PATCH /api/ceo/workflows/custom/:id` — update (rename, re-wire, enable/disable).
+- `DELETE /api/ceo/workflows/custom/:id` — delete.
+- `POST /api/ceo/workflows/custom/:id/run` — manual test-run (bypasses the trigger evaluator).
+
+---
+
+## Learn (AI Lab, Phase 3)
+
+### GET /api/learn/progress
+
+Returns `learnProgress/{kidId}` for the active kid — completed Foundation cards, workshops, embeds tried, CBSE tags covered.
+
+### POST /api/learn/progress/complete
+
+Idempotent "mark this Foundation card / workshop / embed as tried/completed". Body: `{ kind: 'foundation'|'workshop'|'embed', id: string, artifactId?: string }`.
+
+**Response:** updated `learnProgress` doc. Safe to call repeatedly — server dedups.
+
+---
+
 ## Bot Endpoints
 
 ### POST /api/bot/link/create

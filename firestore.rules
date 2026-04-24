@@ -141,6 +141,21 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Agent Hires — server-side only (reads go through authenticated APIs)
+    match /ceoAgentHires/{hireId} {
+      allow read, write: if false;
+    }
+
+    // Agent Artifacts — server-side only
+    match /ceoArtifacts/{artifactId} {
+      allow read, write: if false;
+    }
+
+    // Custom automation workflows (Scale-phase Workflow Builder) — server-side only
+    match /ceoCustomWorkflows/{workflowId} {
+      allow read, write: if false;
+    }
+
     // CEO Profile — public read when isPublic == true (shareable DNA Card)
     match /ceoProfiles/{profileId} {
       allow read: if resource.data.isPublic == true;

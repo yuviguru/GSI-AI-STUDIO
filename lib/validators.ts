@@ -185,6 +185,74 @@ export const ceoProfilePublicSchema = z.object({
   isPublic: z.boolean(),
 });
 
+// ─── Phase 3 — Kid CEO Agents ─────────────────────────────
+
+const ceoAgentIdEnum = z.enum([
+  'design',
+  'marketing',
+  'ops',
+  'finance',
+  'customer_success',
+  'product',
+]);
+
+const ceoAgentAggressivenessEnum = z.enum(['low', 'medium', 'high']);
+
+const ceoAgentConfigSchema = z.object({
+  focus: z.string().min(1).max(32),
+  aggressiveness: ceoAgentAggressivenessEnum,
+});
+
+export const ceoAgentHireSchema = z.object({
+  businessId: z.string().min(1).max(128),
+  agentId: ceoAgentIdEnum,
+  config: ceoAgentConfigSchema,
+});
+
+const ceoWorkflowIdEnum = z.enum([
+  'brand.package',
+  'marketing.firstCampaign',
+  'marketing.dailyPush',
+  'ops.setupPackage',
+  'ops.scheduleCheck',
+  'finance.pricingPackage',
+  'finance.cashCheck',
+]);
+
+/** Brief shape varies per workflow — the executor runs the workflow's
+ *  own `validateBrief` after Zod. This schema just gates on "object up
+ *  to a size" to reject obvious junk before we hit the executor. */
+export const ceoAgentRunSchema = z.object({
+  hireId: z.string().min(1).max(128),
+  workflowId: ceoWorkflowIdEnum,
+  brief: z
+    .record(z.string(), z.unknown())
+    .refine((v) => {
+      try {
+        return JSON.stringify(v).length <= 2000;
+      } catch {
+        return false;
+      }
+    }, { message: 'brief exceeds max size' }),
+  eventId: z.string().min(1).max(128).optional(),
+});
+
+export const ceoAgentAcceptSchema = z.object({
+  artifactId: z.string().min(1).max(128),
+  /** Map of asset slot → index of candidate chosen. Example for BRAND:
+   *  `{ logo: 1, motto: 0 }` picks logo candidate #1 and motto #0. */
+  selections: z.record(z.string(), z.number().int().nonnegative()).default({}),
+  attachTo: z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('business_field'), field: z.literal('brandAssets') }),
+    z.object({ kind: z.literal('event'), eventId: z.string().min(1).max(128) }),
+    z.object({ kind: z.literal('marketing_feed') }),
+  ]),
+});
+
+export const ceoAgentRejectSchema = z.object({
+  artifactId: z.string().min(1).max(128),
+});
+
 export const botLinkCreateSchema = z.object({
   botHandle: z.enum(['GSIPersonalAssistantBot', 'GSIKidCeoAssistantBot']),
   /** Optional: pre-bind this token to a specific business so the bot
@@ -196,4 +264,8 @@ export type CeoRegisterInput = z.infer<typeof ceoRegisterSchema>;
 export type CeoEventRequestInput = z.infer<typeof ceoEventRequestSchema>;
 export type CeoDecideInput = z.infer<typeof ceoDecideSchema>;
 export type CeoProfilePublicInput = z.infer<typeof ceoProfilePublicSchema>;
+export type CeoAgentHireInput = z.infer<typeof ceoAgentHireSchema>;
+export type CeoAgentRunInput = z.infer<typeof ceoAgentRunSchema>;
+export type CeoAgentAcceptInput = z.infer<typeof ceoAgentAcceptSchema>;
+export type CeoAgentRejectInput = z.infer<typeof ceoAgentRejectSchema>;
 export type BotLinkCreateInput = z.infer<typeof botLinkCreateSchema>;

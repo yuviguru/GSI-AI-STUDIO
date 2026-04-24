@@ -8,14 +8,21 @@ import { BusinessDashboard } from '@/components/ceo/BusinessDashboard';
 import { CeoProfileCard } from '@/components/ceo/CeoProfileCard';
 import { DecisionFeedback } from '@/components/ceo/DecisionFeedback';
 import { EventFeed } from '@/components/ceo/EventFeed';
+import { MarketingTab } from '@/components/ceo/MarketingTab';
+import { MilestoneZone } from '@/components/ceo/MilestoneZone';
+import { WorkflowBuilderTab } from '@/components/ceo/WorkflowBuilderTab';
 import { PhaseProgress } from '@/components/ceo/PhaseProgress';
+import { SmallDecisionsZone } from '@/components/ceo/SmallDecisionsZone';
+import { TeamTab } from '@/components/ceo/agents/TeamTab';
 import { TelegramConnectButton } from '@/components/ceo/TelegramConnectButton';
 import { Mascot } from '@/components/mascot/Mascot';
 import { useCeoBusiness } from '@/hooks/useCeoBusiness';
 import { useCeoProfile } from '@/hooks/useCeoProfile';
+import { REGULAR_EVENTS_PER_DAY_CAP } from '@/lib/ceo/constants';
 import type {
   CeoChoiceId,
   CeoDimensionScores,
+  CeoEvent,
 } from '@/types';
 
 interface FeedbackPayload {
@@ -55,12 +62,15 @@ function PlayPageInner() {
 
   const {
     business,
-    pendingEvent,
+    pendingMilestone,
+    pendingRegular,
     decisionHistory,
     ready,
     loading,
     error,
     decide,
+    pullRegularEvent,
+    refetch,
   } = useCeoBusiness({
     businessId: businessIdParam,
     autoFetch: true,
@@ -86,21 +96,29 @@ function PlayPageInner() {
   const [deciding, setDeciding] = useState(false);
   const [decideError, setDecideError] = useState<string | null>(null);
 
-  // Track when the current pending event was first shown so we can compute
-  // a response-time in seconds when the kid picks a choice.
-  const eventStartRef = useRef<number | null>(null);
-  const currentEventIdRef = useRef<string | null>(null);
+  // Track when each pending event was first shown so we can compute a
+  // response-time in seconds when the kid picks a choice. Two independent
+  // timers — milestone + regular may coexist.
+  const milestoneStartRef = useRef<{ id: string | null; at: number | null }>({ id: null, at: null });
+  const regularStartRef = useRef<{ id: string | null; at: number | null }>({ id: null, at: null });
 
   useEffect(() => {
-    if (pendingEvent && pendingEvent.id !== currentEventIdRef.current) {
-      currentEventIdRef.current = pendingEvent.id;
-      eventStartRef.current = Date.now();
+    if (pendingMilestone && pendingMilestone.id !== milestoneStartRef.current.id) {
+      milestoneStartRef.current = { id: pendingMilestone.id, at: Date.now() };
     }
-    if (!pendingEvent) {
-      currentEventIdRef.current = null;
-      eventStartRef.current = null;
+    if (!pendingMilestone) {
+      milestoneStartRef.current = { id: null, at: null };
     }
-  }, [pendingEvent]);
+  }, [pendingMilestone]);
+
+  useEffect(() => {
+    if (pendingRegular && pendingRegular.id !== regularStartRef.current.id) {
+      regularStartRef.current = { id: pendingRegular.id, at: Date.now() };
+    }
+    if (!pendingRegular) {
+      regularStartRef.current = { id: null, at: null };
+    }
+  }, [pendingRegular]);
 
   // Redirect to register if we're done loading and there's no business
   useEffect(() => {
@@ -109,24 +127,22 @@ function PlayPageInner() {
     }
   }, [loading, error, business, router]);
 
-  const handleChoose = useCallback(
-    async (choiceId: CeoChoiceId) => {
-      if (!pendingEvent) return;
-      const start = eventStartRef.current ?? Date.now();
+  const handleDecide = useCallback(
+    async (event: CeoEvent, choiceId: CeoChoiceId, startedAt: number | null) => {
+      const start = startedAt ?? Date.now();
       const responseTimeSeconds = Math.max(
         1,
         Math.round((Date.now() - start) / 1000),
       );
 
-      const eventTitle = pendingEvent.title;
-      const choiceText =
-        pendingEvent.choices.find((c) => c.id === choiceId)?.text ?? '';
+      const eventTitle = event.title;
+      const choiceText = event.choices.find((c) => c.id === choiceId)?.text ?? '';
 
       setDeciding(true);
       setDecideError(null);
       try {
         const res = await decide({
-          eventId: pendingEvent.id,
+          eventId: event.id,
           choiceId,
           responseTimeSeconds,
         });
@@ -149,8 +165,36 @@ function PlayPageInner() {
         setDeciding(false);
       }
     },
-    [decide, pendingEvent],
+    [decide],
   );
+
+  const handleMilestoneChoose = useCallback(
+    (choiceId: CeoChoiceId) => {
+      if (!pendingMilestone) return Promise.resolve();
+      return handleDecide(pendingMilestone, choiceId, milestoneStartRef.current.at);
+    },
+    [handleDecide, pendingMilestone],
+  );
+
+  const handleRegularChoose = useCallback(
+    (choiceId: CeoChoiceId) => {
+      if (!pendingRegular) return Promise.resolve();
+      return handleDecide(pendingRegular, choiceId, regularStartRef.current.at);
+    },
+    [handleDecide, pendingRegular],
+  );
+
+  const handlePullRegular = useCallback(async () => {
+    if (!business) return;
+    setDecideError(null);
+    try {
+      await pullRegularEvent(business.id);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Could not fetch your next small decision.';
+      setDecideError(message);
+    }
+  }, [business, pullRegularEvent]);
 
   const closeFeedback = useCallback(() => {
     setFeedback(null);
@@ -268,12 +312,45 @@ function PlayPageInner() {
 
         <TelegramConnectButton businessId={business.id} />
 
-        <EventFeed
-          activeEvent={pendingEvent}
-          history={decisionHistory}
-          onChoose={handleChoose}
+        <MilestoneZone
+          pendingMilestone={pendingMilestone}
+          business={business}
+          onChoose={handleMilestoneChoose}
+          onAgentResolved={refetch}
           loading={deciding}
         />
+
+        <SmallDecisionsZone
+          pendingRegular={pendingRegular}
+          regularEventsToday={business.dailyRegularEventCount ?? 0}
+          regularEventsCap={REGULAR_EVENTS_PER_DAY_CAP}
+          onChoose={handleRegularChoose}
+          onPull={handlePullRegular}
+          decideLoading={deciding}
+        />
+
+        {business.phase !== 'pre_launch' && (
+          <TeamTab business={business} onCashChanged={refetch} />
+        )}
+
+        {business.phase !== 'pre_launch' && (
+          <MarketingTab business={business} onBusinessChanged={refetch} />
+        )}
+
+        {(business.phase === 'scale' || business.phase === 'mature') && (
+          <WorkflowBuilderTab business={business} />
+        )}
+
+        {decisionHistory.length > 0 && (
+          <EventFeed
+            activeEvent={null}
+            history={decisionHistory}
+            onChoose={() => {
+              /* history-only: choices are disabled */
+            }}
+            loading={false}
+          />
+        )}
       </div>
 
       {feedback && (

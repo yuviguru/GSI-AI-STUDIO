@@ -56,18 +56,27 @@ export interface DecideResponse {
 }
 
 export interface FetchNextEventResponse {
-  event: CeoEvent;
+  event: CeoEvent | null;
   pendingDecisionExists: boolean;
+  regularEventsToday?: number;
+  regularEventsCap?: number;
+  regularCapHit?: boolean;
 }
 
 interface BusinessGetResponse {
   business: CeoBusiness;
+  pendingMilestone: CeoEvent | null;
+  pendingRegular: CeoEvent | null;
+  /** @deprecated milestone ?? regular — kept for legacy compat. */
   pendingEvent: CeoEvent | null;
   decisionHistory: CeoDecisionHistoryEntry[];
 }
 
 export interface UseCeoBusinessReturn {
   business: CeoBusiness | null;
+  pendingMilestone: CeoEvent | null;
+  pendingRegular: CeoEvent | null;
+  /** @deprecated milestone ?? regular — kept for legacy callers. */
   pendingEvent: CeoEvent | null;
   decisionHistory: CeoDecisionHistoryEntry[];
   /** True only when signed in AND a kid is selected. */
@@ -77,6 +86,12 @@ export interface UseCeoBusinessReturn {
   refetch: () => Promise<void>;
   registerBusiness: (params: RegisterBusinessParams) => Promise<RegisterBusinessResponse>;
   decide: (params: DecideParams) => Promise<DecideResponse>;
+  /** Phase 3 — pull a new regular event (kid-initiated "Take a small
+   *  decision" button). Returns the freshly-minted event, or null with
+   *  `regularCapHit: true` when the 5/day cap is reached. */
+  pullRegularEvent: (businessId: string) => Promise<FetchNextEventResponse>;
+  /** @deprecated alias for pullRegularEvent; kept until external callers
+   *  migrate. */
   fetchNextEvent: (businessId: string) => Promise<FetchNextEventResponse>;
 }
 
@@ -94,7 +109,8 @@ export function useCeoBusiness(options?: UseCeoBusinessOptions): UseCeoBusinessR
   const kidId = activeKid?.id ?? null;
 
   const [business, setBusiness] = useState<CeoBusiness | null>(null);
-  const [pendingEvent, setPendingEvent] = useState<CeoEvent | null>(null);
+  const [pendingMilestone, setPendingMilestone] = useState<CeoEvent | null>(null);
+  const [pendingRegular, setPendingRegular] = useState<CeoEvent | null>(null);
   const [decisionHistory, setDecisionHistory] = useState<CeoDecisionHistoryEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(autoFetch);
   const [error, setError] = useState<string | null>(null);
@@ -114,7 +130,8 @@ export function useCeoBusiness(options?: UseCeoBusinessOptions): UseCeoBusinessR
   const refetch = useCallback(async () => {
     if (!ready) {
       setBusiness(null);
-      setPendingEvent(null);
+      setPendingMilestone(null);
+      setPendingRegular(null);
       setDecisionHistory([]);
       setLoading(false);
       setError(null);
@@ -129,7 +146,8 @@ export function useCeoBusiness(options?: UseCeoBusinessOptions): UseCeoBusinessR
         : '/api/ceo/business';
       const data = await apiFetch<BusinessGetResponse>(url, { method: 'GET' });
       setBusiness(data.business);
-      setPendingEvent(data.pendingEvent);
+      setPendingMilestone(data.pendingMilestone ?? null);
+      setPendingRegular(data.pendingRegular ?? null);
       setDecisionHistory(data.decisionHistory);
     } catch (err) {
       if (err instanceof KidAuthMissingError) return;
@@ -156,7 +174,10 @@ export function useCeoBusiness(options?: UseCeoBusinessOptions): UseCeoBusinessR
           body: JSON.stringify(params),
         });
         setBusiness(data.business);
-        setPendingEvent(data.firstEvent);
+        // First event on register is always a milestone (register route pins
+        // it via `firstMilestone`).
+        setPendingMilestone(data.firstEvent);
+        setPendingRegular(null);
         setDecisionHistory([]);
         return data;
       } catch (err) {
@@ -181,7 +202,21 @@ export function useCeoBusiness(options?: UseCeoBusinessOptions): UseCeoBusinessR
         });
 
         setBusiness(data.updatedBusiness);
-        setPendingEvent(data.nextEvent);
+
+        // Phase 3 Daily Rhythm: clear the slot matching the decided event,
+        // and populate the regular slot if the server auto-chained
+        // (milestone decisions never set nextEvent per D4).
+        setPendingMilestone((prev) =>
+          prev && prev.id === params.eventId ? null : prev,
+        );
+        setPendingRegular((prev) => {
+          if (prev && prev.id === params.eventId) {
+            // Regular decision — either chain to the next regular or clear.
+            return data.nextEvent;
+          }
+          return prev;
+        });
+
         setDecisionHistory((prev) => {
           // The decide response doesn't echo the full event. Promote the
           // current pendingEvent (the one the kid just decided) into history.
@@ -212,7 +247,7 @@ export function useCeoBusiness(options?: UseCeoBusinessOptions): UseCeoBusinessR
     [apiFetch],
   );
 
-  const fetchNextEvent = useCallback(
+  const pullRegularEvent = useCallback(
     async (bizId: string): Promise<FetchNextEventResponse> => {
       setLoading(true);
       setError(null);
@@ -221,7 +256,9 @@ export function useCeoBusiness(options?: UseCeoBusinessOptions): UseCeoBusinessR
           method: 'POST',
           body: JSON.stringify({ businessId: bizId }),
         });
-        setPendingEvent(data.event);
+        // Only a REGULAR event comes back from /api/ceo/event (Phase 3 —
+        // the endpoint rejects/ignores milestone context entirely).
+        setPendingRegular(data.event ?? null);
         return data;
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to fetch next event';
@@ -234,8 +271,12 @@ export function useCeoBusiness(options?: UseCeoBusinessOptions): UseCeoBusinessR
     [apiFetch],
   );
 
+  const pendingEvent = pendingMilestone ?? pendingRegular;
+
   return {
     business,
+    pendingMilestone,
+    pendingRegular,
     pendingEvent,
     decisionHistory,
     ready,
@@ -244,6 +285,7 @@ export function useCeoBusiness(options?: UseCeoBusinessOptions): UseCeoBusinessR
     refetch,
     registerBusiness,
     decide,
-    fetchNextEvent,
+    pullRegularEvent,
+    fetchNextEvent: pullRegularEvent,
   };
 }

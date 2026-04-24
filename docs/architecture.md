@@ -512,3 +512,65 @@ Target: consent revocation stops all affected flows within 1 minute; erasure com
 ### Rollout & Sequencing
 
 Phase 4 ships over five 2-week sprints (see root plan file). The messaging layer ships Telegram-first in Sprint 3-4 and adds WhatsApp in Sprint 7-8 once Meta BSP approval lands. ERP layer ships with the interface + LocalProvider in Sprint 1-2; Fedena reference adapter in Sprint 7-8. Multilingual is English + Hindi in Phase 4; regional locales plug in later via `lib/i18n/locales.ts`.
+
+---
+
+## Kid CEO — Daily Rhythm (Phase 3)
+
+See [KIDCEO-DAILY-RHYTHM](../stories/phase-3/KIDCEO-DAILY-RHYTHM.md).
+
+Two independent event tracks per business:
+
+- **Milestone track (push)** — scheduled, one-per-IST-day cadence. First fires synchronously on register; subsequent ones delivered by `netlify/functions/ceo-deliver-milestones.ts` at a fixed IST hour (default 18:30, env-tunable). The old pace-driven `minIntervalHoursFor` is removed; pace now affects total milestones in the arc, not daily cadence.
+- **Regular track (pull)** — the kid's "take a small decision" button. Capped at 5 per IST day. `/api/ceo/decide` no longer auto-chains a regular after a regular decision — each pull is intentional.
+
+**Dual pending slots on `ceoBusiness`**:
+- `pendingMilestoneEventId` and `pendingRegularEventId` are tracked independently so a pending regular doesn't block the milestone cron and vice versa.
+- `getPendingEventForBusiness` is deprecated in favour of the typed `getPendingMilestoneForBusiness` / `getPendingRegularForBusiness`.
+
+**Miss-and-move-on**: if yesterday's milestone is still pending when today's IST tick fires, it's marked `status: 'expired'` (0 outcome impact) and today's new milestone is minted. Kids who skip a day lose the upside, don't get punished.
+
+## Kid CEO — Agent Primitive (Phase 3)
+
+See [KIDCEO-AGENT-PRIMITIVE](../stories/phase-3/KIDCEO-AGENT-PRIMITIVE.md).
+
+The agent system is a single reusable primitive in `lib/ceo/agents/`. Each specific agent (Design, Marketing, Ops, …) is a config + set of workflows, not a new runtime.
+
+```
+lib/ceo/agents/
+├── catalog.ts             ← static agent descriptors (id, unlockPhase, salary, …)
+├── executor.ts            ← runs a WorkflowSpec against tool adapters, emits a trace
+├── workflows/
+│   ├── index.ts           ← WORKFLOW_REGISTRY: Record<CeoWorkflowId, WorkflowSpec>
+│   ├── brandPackage.ts    ← Design agent — BRAND milestone
+│   ├── marketingFirstCampaign.ts
+│   └── …
+├── tools/
+│   ├── claude.ts          ← uniform runTool() wrapper over existing Claude client
+│   ├── groq.ts
+│   ├── fluxSchnell.ts     ← wraps existing image-provider cascade (Pixazo → SDXL → Pollinations)
+│   ├── braveSearch.ts     ← optional, for Finance agent competitor scan
+│   └── breakEven.ts       ← pure-TS, non-LLM "AI isn't always an LLM" teaching moment
+└── triggers.ts            ← curated predicate registry for the custom-workflow builder
+```
+
+**Lifecycle of a kid action**:
+1. Kid fills a briefing (`BriefingForm` renders from `workflow.briefingSchema`).
+2. `POST /api/ceo/agents/run` → server calls `executeWorkflow({ spec, brief, business, kidId })`.
+3. Executor runs each step via a tool adapter, populates a `CeoWorkflowStepTrace[]`, saves a CANDIDATE `ceoArtifacts` doc.
+4. UI renders candidates (images + text) side-by-side. Kid picks or re-rolls (first re-roll free per milestone, subsequent cost in-sim cash).
+5. `POST /api/ceo/agents/accept` marks the artifact `accepted` AND attaches the accepted fields atomically — e.g. `business.brandAssets = { logoUrl, motto, voice }` for the BRAND milestone.
+
+**Transparency by default**: the `WorkflowTrace` panel on every artifact exposes model, token counts, cost estimate, and the real prompt per step. Same trace deep-links to the matching Learn Foundation card ("Why does Flux work like this?"). This is the trojan horse for teaching real AI concepts.
+
+## Learn (AI Lab, Phase 3)
+
+See [LEARN-001-AI-LAB](../stories/phase-3/LEARN-001-AI-LAB.md).
+
+First-class peer to Create / Play / Explore. Three surfaces:
+
+- **Foundations** — MDX-backed explainer cards (`content/learn/*.mdx`) with inline interactive demos. Each card tagged with CBSE AI & CT curriculum outcomes via `lib/learn/cbseMap.ts`.
+- **Try It** — sandboxed iframe embeds of curated Hugging Face Spaces (CSP allowlist in `next.config.js`) + Transformers.js demos running client-side (zero server cost, cached in IndexedDB).
+- **Workshop** — guided mini-projects that produce a shareable artifact (e.g. "Train a classifier to recognize your handwriting").
+
+Cross-link bidirectional: every Kid CEO agent workflow trace links to the matching Foundation card; Learn workshops can produce artifacts that land in the kid's `ceoArtifacts` feed.

@@ -33,15 +33,16 @@ import type { CeoBusiness, CeoEvent } from '@/types';
  * updates atomically, optionally advances the phase, optionally auto-
  * generates a follow-up REGULAR event, and awards AI Points.
  *
- * PR2 behaviour (regular vs milestone split):
+ * Phase 3 Daily Rhythm (D4 — hybrid auto-chain):
  * - Phase advance is gated on `event.eventType === 'milestone'`. Regular
  *   events never advance a phase.
  * - After a MILESTONE decision, no next event is generated here — the kid
- *   waits for tomorrow's scheduled cron. This is the daily-habit hook.
- * - After a REGULAR decision, we auto-generate another regular event IF
- *   the kid is under the daily cap (5/business/UTC-day). At the cap,
+ *   picks "Take a small decision" or waits for tomorrow's 18:30 IST tick.
+ *   This keeps the milestone feeling like the day's anchor.
+ * - After a REGULAR decision, we auto-chain another regular event IF the
+ *   kid is under the daily cap (5 / business / IST day). At the cap,
  *   nextEvent is null and the response carries `regularCapHit: true` so
- *   the UI can prompt "Come back tomorrow for your Big Choice".
+ *   the UI shows "All 5 done — resets at midnight IST".
  * - Points are split by event type: milestone decision = 10 base, regular
  *   decision = 3 base. Phase / simulation bonuses layer on top of both.
  *
