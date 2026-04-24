@@ -75,22 +75,47 @@ interface BrandingPdfSurface {
 }
 
 /**
+ * Only URLs whose host is the public GCS bucket qualify as branding assets.
+ * Prevents SSRF in case a branding URL is tampered with directly in
+ * Firestore (bypassing the upload API which already scopes paths under
+ * `schools/{schoolId}/branding/`).
+ */
+const SAFE_ASSET_URL_PREFIX = /^https:\/\/storage\.googleapis\.com\/[^\/]+\/schools\/[^\/]+\/branding\//;
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+function safeAssetUrl(url: string | undefined): string | null {
+  if (!url) return null;
+  return SAFE_ASSET_URL_PREFIX.test(url) ? url : null;
+}
+
+function safeHexColor(value: string | undefined, fallback: string): string {
+  if (value && HEX_COLOR_RE.test(value)) return value;
+  return fallback;
+}
+
+/**
  * Renders a branded header (logo + school name strip) at the top of a jsPDF
  * document. Safe to call even if branding is unconfigured — falls back to
  * text-only school-name header with default colors.
+ *
+ * Defence-in-depth: logoUrl is matched against the GCS bucket prefix so a
+ * tampered Firestore branding doc can't turn this into an SSRF vector via
+ * jsPDF's remote `addImage`. Color strings are re-validated against the
+ * hex pattern to avoid jsPDF DoS from malformed input.
  */
 export function renderBrandedHeader(
   doc: BrandingPdfSurface,
   branding: ResolvedBranding,
 ): void {
-  if (branding.logoUrl && doc.addImage) {
+  const logoUrl = safeAssetUrl(branding.logoUrl);
+  if (logoUrl && doc.addImage) {
     try {
-      doc.addImage(branding.logoUrl, 'PNG', 14, 10, 20, 20);
+      doc.addImage(logoUrl, 'PNG', 14, 10, 20, 20);
     } catch {
       // Remote image addition can fail in server contexts; fall through.
     }
   }
   doc.setFontSize(16);
-  doc.setTextColor(branding.primaryColor);
+  doc.setTextColor(safeHexColor(branding.primaryColor, DEFAULT_PRIMARY));
   doc.text(branding.schoolName, 40, 22);
 }

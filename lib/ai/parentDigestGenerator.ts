@@ -24,6 +24,16 @@ export interface ParentDigestContent {
   text: string;
 }
 
+/**
+ * Strip Telegram / WhatsApp markdown metacharacters from free-form teacher
+ * notes. The outbound provider sends with `parseMode: 'markdown'`, so an
+ * unescaped `*bold*`, backtick, or `[label](url)` in a teacher-typed note
+ * could render as a fake link / emphasised text and phish a parent.
+ */
+function sanitizeForTelegramMarkdown(input: string): string {
+  return input.replace(/[*_`[\]()~]/g, '');
+}
+
 function startOfWeek(from: Date = new Date()): Date {
   const d = new Date(from);
   const day = d.getDay(); // 0=Sun
@@ -186,7 +196,7 @@ export async function generateParentDigest(
     lines.push(t.noUpcoming);
   }
   if (input.teacherNote) {
-    lines.push(t.teacherNote(input.teacherNote.slice(0, 200)));
+    lines.push(t.teacherNote(sanitizeForTelegramMarkdown(input.teacherNote.slice(0, 200))));
   }
   lines.push('');
   lines.push(t.footer);

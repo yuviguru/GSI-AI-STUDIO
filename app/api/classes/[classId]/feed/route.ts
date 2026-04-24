@@ -18,10 +18,22 @@ async function resolveScope(
 ): Promise<{ schoolId: string; viewerKidId?: string }> {
   const auth = await verifyAuth(request);
 
-  // Teacher / schoolAdmin: scope by their school.
+  // Teacher / schoolAdmin: scope by their school, but re-verify the class
+  // actually belongs to that school. Defence-in-depth: the downstream
+  // `listClassFeed` already filters by `schoolId`, but explicit checks
+  // turn silent empty results into explicit 403 / 404 responses.
   if (auth.role === 'teacher' || auth.role === 'schoolAdmin') {
     if (!auth.schoolId) {
       throw new AppException('FORBIDDEN', 'Not attached to a school.', 403);
+    }
+    const classSnap = await adminDb
+      .collection('schools')
+      .doc(auth.schoolId)
+      .collection('classes')
+      .doc(classId)
+      .get();
+    if (!classSnap.exists) {
+      throw new AppException('NOT_FOUND', 'Class not found in your school.', 404);
     }
     return { schoolId: auth.schoolId };
   }

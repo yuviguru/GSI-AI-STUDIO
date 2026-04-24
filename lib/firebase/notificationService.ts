@@ -96,6 +96,11 @@ export async function markNotificationRead(
   uid: string,
   notificationId: string,
 ): Promise<void> {
+  // Ownership is enforced by path: each user's notifications live under
+  // `users/{uid}/notifications/{id}`. A notification ID belonging to a
+  // different user resolves to a non-existent doc under *this* user's
+  // subcollection, so the transaction below is an idempotent no-op — no
+  // additional `data.recipientUid === uid` check is needed.
   const userRef = adminDb.collection(USERS_COLLECTION).doc(uid);
   const notifRef = userRef.collection(NOTIFICATIONS_SUBCOLLECTION).doc(notificationId);
   await adminDb.runTransaction(async (tx) => {

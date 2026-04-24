@@ -17,8 +17,18 @@ import {
 export async function GET(request: NextRequest) {
   try {
     const auth = await verifyAuth(request);
-    if (auth.role !== 'parent' && auth.role !== 'schoolAdmin') {
-      throw new AppException('FORBIDDEN', 'Only a parent or DPO can list requests.', 403);
+    // Parent-scoped list only. A schoolAdmin DPO school-wide list is a
+    // follow-up (`listErasureRequestsForSchool` in the compliance query
+    // service already exists and is consumed by the compliance v2 PDF +
+    // DPO dashboard — expose it through a dedicated `/api/admin/dpdp/
+    // erasure` route rather than overloading this one with a role-switch
+    // that would silently treat the admin's uid as a parentUid).
+    if (auth.role !== 'parent') {
+      throw new AppException(
+        'FORBIDDEN',
+        'This endpoint lists only your own erasure requests. School admins use the compliance dashboard.',
+        403,
+      );
     }
     const requests = await listErasureRequestsForParent(auth.userId);
     return apiSuccess({ requests });

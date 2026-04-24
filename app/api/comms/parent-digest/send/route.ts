@@ -10,6 +10,7 @@ import { requireRole } from '@/lib/auth-utils';
 import { adminDb } from '@/lib/firebase/admin';
 import { generateParentDigest } from '@/lib/ai/parentDigestGenerator';
 import { sendMessage } from '@/lib/comms/messagingService';
+import { requireConsent } from '@/lib/dpdp/consentService';
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,6 +43,10 @@ export async function POST(request: NextRequest) {
         400,
       );
     }
+
+    // DPDP: gate before assembling PII. sendMessage() re-checks at
+    // delivery time — belt + braces so assembly is never a back-door.
+    await requireConsent(kidId, 'parent_messaging');
 
     const digest = await generateParentDigest({ kidId, locale, teacherNote });
     const result = await sendMessage({

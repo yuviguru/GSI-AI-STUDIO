@@ -8,6 +8,7 @@ import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { requireRole } from '@/lib/auth-utils';
 import { adminDb } from '@/lib/firebase/admin';
 import { generateParentDigest } from '@/lib/ai/parentDigestGenerator';
+import { requireConsent } from '@/lib/dpdp/consentService';
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,6 +32,12 @@ export async function POST(request: NextRequest) {
     if (kidSnap.data()?.schoolId !== auth.schoolId) {
       throw new AppException('FORBIDDEN', 'Student is not in your school.', 403);
     }
+
+    // DPDP: the preview response contains the student's assembled PII
+    // (creations summary, concepts, upcoming assignments). Gate on the
+    // same consent scope as delivery so previewing a digest is never a
+    // back-door around consent.
+    await requireConsent(kidId, 'parent_messaging');
 
     const digest = await generateParentDigest({ kidId, locale, teacherNote });
     return apiSuccess({ digest });

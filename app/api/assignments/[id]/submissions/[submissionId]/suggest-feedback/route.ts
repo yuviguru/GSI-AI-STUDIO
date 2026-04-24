@@ -37,6 +37,9 @@ export async function POST(
     await checkAndIncrementAiRate({
       teacherUid: auth.userId,
       generator: 'feedback',
+      // Explicit cap keeps this endpoint in line with the other AI
+      // generators (M-3 defence-in-depth vs relying on the service default).
+      cap: 30,
     });
 
     const submission = await getSubmissionWithContext(params.submissionId);

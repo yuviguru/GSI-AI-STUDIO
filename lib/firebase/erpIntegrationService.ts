@@ -30,11 +30,29 @@ export interface SaveIntegrationInput {
   enabled?: boolean;
 }
 
+// `credentialsRef` is a stub until the KMS adapter lands. It must match
+// a bounded-charset opaque reference pattern (letters, digits, and a
+// limited set of structural characters) and be <= 256 chars so a
+// compromised admin can't inject path-traversal-style references into
+// a future KMS lookup.
+const CREDENTIALS_REF_RE = /^[A-Za-z0-9_\-./:]{1,256}$/;
+
 export async function saveErpIntegration(
   input: SaveIntegrationInput,
 ): Promise<ErpIntegrationConfig> {
   if (!SUPPORTED.includes(input.provider)) {
     throw new AppException('INVALID_INPUT', `Unsupported provider: ${input.provider}`, 400);
+  }
+  if (
+    input.credentialsRef !== undefined &&
+    input.credentialsRef !== '' &&
+    !CREDENTIALS_REF_RE.test(input.credentialsRef)
+  ) {
+    throw new AppException(
+      'INVALID_INPUT',
+      'credentialsRef must be ≤256 chars, letters/digits/._-/: only.',
+      400,
+    );
   }
   const ref = adminDb.collection(COLLECTION).doc(input.schoolId);
   const payload = {

@@ -50,6 +50,16 @@ export class TelegramProvider implements MessagingProvider {
         error: 'Empty Telegram chat ID.',
       };
     }
+    // Telegram chat IDs are either a signed integer (user or negative
+    // group ID) or an @channel username. Anything else is malformed —
+    // fail fast with a clear receipt instead of letting Telegram 400.
+    if (!/^(-?\d{5,})$|^@[A-Za-z0-9_]{5,}$/.test(chatId)) {
+      return {
+        channel: this.channel,
+        status: 'failed',
+        error: 'Invalid Telegram chat ID format — expected numeric ID or @username.',
+      };
+    }
 
     try {
       const text = message.cta

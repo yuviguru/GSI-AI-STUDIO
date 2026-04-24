@@ -13,7 +13,10 @@ import {
   checkAndIncrementAiRate,
   logTeacherAiUsage,
 } from '@/lib/firebase/teacherAiUsageService';
+import { getSchool } from '@/lib/firebase/schoolService';
 import { isSupportedLocale, type Locale } from '@/lib/i18n/locales';
+
+const SUBJECT_MAX_LEN = 80;
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,13 +34,32 @@ export async function POST(request: NextRequest) {
     const absentTeacherUid =
       typeof body.absentTeacherUid === 'string' ? body.absentTeacherUid : '';
     const classId = typeof body.classId === 'string' ? body.classId : '';
-    const subject = typeof body.subject === 'string' ? body.subject : '';
+    const rawSubject = typeof body.subject === 'string' ? body.subject : '';
     const locale: Locale = isSupportedLocale(body.locale) ? body.locale : 'en';
-    if (!absentTeacherUid || !classId || !subject) {
+    if (!absentTeacherUid || !classId || !rawSubject) {
       throw new AppException(
         'INVALID_INPUT',
         'absentTeacherUid, classId, and subject are required.',
         400,
+      );
+    }
+    const subject = rawSubject.trim().slice(0, SUBJECT_MAX_LEN);
+    if (!subject) {
+      throw new AppException('INVALID_INPUT', 'subject is empty.', 400);
+    }
+
+    // Verify the "absent teacher" actually belongs to this admin's school
+    // — otherwise a school A admin could enumerate / trigger Claude runs
+    // against teachers at school B.
+    const school = await getSchool(auth.schoolId);
+    if (!school) {
+      throw new AppException('NOT_FOUND', 'School not found.', 404);
+    }
+    if (!school.teacherIds.includes(absentTeacherUid)) {
+      throw new AppException(
+        'FORBIDDEN',
+        'That teacher is not in your school.',
+        403,
       );
     }
 
