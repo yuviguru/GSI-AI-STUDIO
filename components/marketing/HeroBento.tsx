@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Sparkles,
   Play,
   Check,
-  ArrowRight,
+  Bot,
+  Brain,
   BarChart3,
   MessageCircle,
 } from 'lucide-react';
@@ -67,12 +67,20 @@ export function HeroBento() {
           <GamesTile />
         </BentoCell>
 
-        {/* 7 — AI X-Ray (full-width footer) */}
+        {/* 7 — Beat the AI (half-width footer) */}
         <BentoCell
-          className="col-span-2 row-span-1 sm:col-span-4"
+          className="col-span-2 row-span-1 sm:col-span-2"
           delay={0.35}
         >
-          <XRayTile />
+          <BeatAiTile />
+        </BentoCell>
+
+        {/* 8 — MindX Skill Arena (half-width footer) */}
+        <BentoCell
+          className="col-span-2 row-span-1 sm:col-span-2"
+          delay={0.4}
+        >
+          <MindXTile />
         </BentoCell>
       </div>
 
@@ -521,64 +529,122 @@ function KidCeoTile() {
   );
 }
 
-// ── Tile: AI X-Ray (wide footer) ─────────────────────────────────────────────
+// ── Tile: Beat the AI (half-width footer) ────────────────────────────────────
 
-function XRayTile() {
+function BeatAiTile() {
   return (
-    <div className="flex h-full items-center gap-4 p-4 sm:p-5">
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-ai to-brand-primary text-white">
-        <Sparkles className="h-5 w-5" />
+    <div className="flex h-full flex-col justify-between bg-gradient-to-br from-purple-50 via-white to-indigo-50 p-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5 rounded-full bg-white px-2 py-0.5 shadow-soft">
+          <Bot className="h-3 w-3 text-purple-600" />
+          <span className="text-[9px] font-bold uppercase tracking-wide text-purple-600">
+            Beat the AI
+          </span>
+        </div>
+        <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">
+          Maths Monday
+        </span>
       </div>
 
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="font-display text-sm font-bold text-brand-text">
-            AI X-Ray
-          </span>
-          <span className="rounded-full bg-brand-secondary/10 px-2 py-0.5 text-[9px] font-bold text-brand-secondary">
-            +15 AI Points
-          </span>
-          <span className="hidden text-[10px] text-brand-text-muted sm:inline">
-            · Story Studio · Class 5 · 11.4s
+      <div className="flex items-center gap-2">
+        {/* Kid side */}
+        <div className="flex flex-1 items-center gap-1.5 rounded-md bg-white px-2 py-1.5 ring-1 ring-brand-secondary/30">
+          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-brand-secondary to-emerald-400 text-[10px] font-bold text-white">
+            A
+          </div>
+          <div className="min-w-0">
+            <div className="text-[8px] font-semibold uppercase tracking-wide text-brand-text-muted">
+              You
+            </div>
+            <div className="numeric text-[11px] font-extrabold text-brand-secondary">
+              92
+            </div>
+          </div>
+          <span className="ml-auto rounded-full bg-brand-secondary/10 px-1 py-0.5 text-[8px] font-bold uppercase text-brand-secondary">
+            Win
           </span>
         </div>
-        <div className="mt-1.5 hidden grid-cols-3 gap-2 sm:grid">
-          <XRayCell label="Prompt" value="A brave dosa that saved Chennai" />
-          <XRayCell label="Model" value="Claude + Replicate SDXL" />
-          <XRayCell label="Concept" value="Text-to-image generation" accent />
-        </div>
-        <div className="mt-1 text-[11px] text-brand-text-muted sm:hidden">
-          Claude + SDXL · Text-to-image
+
+        <span className="text-[9px] font-bold text-brand-text-muted">vs</span>
+
+        {/* AI side */}
+        <div className="flex flex-1 items-center gap-1.5 rounded-md bg-white/60 px-2 py-1.5 ring-1 ring-brand-border">
+          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 text-white">
+            <Bot className="h-2.5 w-2.5" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[8px] font-semibold uppercase tracking-wide text-brand-text-muted">
+              Hard AI
+            </div>
+            <div className="numeric text-[11px] font-extrabold text-brand-text-secondary">
+              78
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="hidden shrink-0 items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1.5 text-[10px] font-bold text-brand-primary sm:flex">
-        See all <ArrowRight className="h-3 w-3" />
+      <div className="flex items-center justify-between text-[10px]">
+        <span className="truncate font-semibold text-brand-text">
+          &ldquo;Show your working: 27 × 13&rdquo;
+        </span>
+        <span className="ml-2 shrink-0 rounded-full bg-brand-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-brand-primary">
+          +50 XP
+        </span>
       </div>
     </div>
   );
 }
 
-function XRayCell({
-  label,
-  value,
-  accent = false,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-}) {
+// ── Tile: MindX Skill Arena (half-width footer) ──────────────────────────────
+
+const MINDX_SKILLS = [
+  { label: 'Speak', value: 0.82, color: 'from-cyan-500 to-blue-500' },
+  { label: 'Listen', value: 0.65, color: 'from-emerald-500 to-teal-500' },
+  { label: 'Think', value: 0.74, color: 'from-purple-500 to-indigo-500' },
+  { label: 'Read', value: 0.58, color: 'from-amber-500 to-orange-500' },
+];
+
+function MindXTile() {
   return (
-    <div className="min-w-0 rounded-md bg-brand-background px-2 py-1">
-      <div className="text-[9px] font-semibold uppercase tracking-wide text-brand-text-muted">
-        {label}
+    <div className="flex h-full flex-col justify-between bg-gradient-to-br from-cyan-50 via-white to-purple-50 p-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5 rounded-full bg-white px-2 py-0.5 shadow-soft">
+          <Brain className="h-3 w-3 text-cyan-600" />
+          <span className="text-[9px] font-bold uppercase tracking-wide text-cyan-600">
+            MindX Arena
+          </span>
+        </div>
+        <span className="rounded-full bg-gradient-to-r from-cyan-500 to-purple-500 px-1.5 py-0.5 text-[9px] font-bold text-white">
+          Explorer
+        </span>
       </div>
-      <div
-        className={`truncate text-[10px] font-semibold ${
-          accent ? 'text-brand-ai' : 'text-brand-text'
-        }`}
-      >
-        {value}
+
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+        {MINDX_SKILLS.map((skill) => (
+          <div key={skill.label} className="flex items-center gap-1.5">
+            <span className="w-9 shrink-0 text-[9px] font-bold uppercase tracking-wide text-brand-text-secondary">
+              {skill.label}
+            </span>
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-brand-border/40">
+              <div
+                className={`h-full rounded-full bg-gradient-to-r ${skill.color}`}
+                style={{ width: `${skill.value * 100}%` }}
+              />
+            </div>
+            <span className="numeric w-6 shrink-0 text-right text-[9px] font-bold text-brand-text">
+              {Math.round(skill.value * 100)}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between text-[10px]">
+        <span className="truncate font-semibold text-brand-text">
+          Next: Achiever band
+        </span>
+        <span className="ml-2 shrink-0 rounded-full bg-cyan-100 px-1.5 py-0.5 text-[9px] font-bold text-cyan-700">
+          Day 12 streak
+        </span>
       </div>
     </div>
   );
