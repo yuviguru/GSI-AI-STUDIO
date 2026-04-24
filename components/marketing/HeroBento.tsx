@@ -29,11 +29,11 @@ export function HeroBento() {
         }}
       />
 
-      {/* Bento grid */}
-      <div className="relative grid auto-rows-[130px] grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4 lg:auto-rows-[140px]">
+      {/* Bento grid — 2-col on phone & tablet-portrait, 4-col only from lg+ */}
+      <div className="relative grid auto-rows-[130px] grid-cols-2 gap-3 sm:gap-4 lg:auto-rows-[140px] lg:grid-cols-4">
         {/* 1 — Story Studio (2×2, tall book-cover feel) */}
         <BentoCell
-          className="col-span-2 row-span-2 sm:col-span-1 sm:row-span-2 lg:col-span-1 lg:row-span-2"
+          className="col-span-2 row-span-2"
           delay={0.05}
         >
           <StoryTile />
@@ -51,7 +51,7 @@ export function HeroBento() {
 
         {/* 4 — Kid CEO (2×2, dashboard feel, NEW badge) */}
         <BentoCell
-          className="col-span-2 row-span-2 sm:col-span-1 sm:row-span-2 lg:col-span-1 lg:row-span-2"
+          className="col-span-2 row-span-2"
           delay={0.2}
         >
           <KidCeoTile />
@@ -69,7 +69,7 @@ export function HeroBento() {
 
         {/* 7 — AI X-Ray (full-width footer) */}
         <BentoCell
-          className="col-span-2 row-span-1 sm:col-span-4"
+          className="col-span-2 row-span-1 lg:col-span-4"
           delay={0.35}
         >
           <XRayTile />

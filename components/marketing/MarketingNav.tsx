@@ -20,7 +20,7 @@ export function MarketingNav() {
     <header className="sticky top-0 z-50 border-b border-brand-border/60 bg-white/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-screen-xl items-center justify-between px-5 sm:px-6">
         {/* Logo */}
-        <Link href="/welcome" className="flex items-center gap-2">
+        <Link href="/welcome" className="flex items-center gap-2 whitespace-nowrap">
           <Image
             src="/images/gsi-logo.svg"
             alt="GSI AI Studio"
@@ -33,8 +33,8 @@ export function MarketingNav() {
           </span>
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden items-center gap-7 md:flex">
+        {/* Desktop nav — only from lg+, before that the hamburger handles it */}
+        <nav className="hidden items-center gap-7 lg:flex">
           {LINKS.map((l) => (
             <Link
               key={l.href}
@@ -47,7 +47,7 @@ export function MarketingNav() {
         </nav>
 
         {/* CTAs */}
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-3 lg:flex">
           <Link
             href="/"
             className="text-body font-medium text-brand-text-secondary hover:text-brand-text"
@@ -62,11 +62,11 @@ export function MarketingNav() {
           </Link>
         </div>
 
-        {/* Mobile toggle */}
+        {/* Mobile toggle — everything below lg */}
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className="flex h-10 w-10 items-center justify-center rounded-lg text-brand-text md:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-lg text-brand-text lg:hidden"
           aria-label="Toggle menu"
         >
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -75,7 +75,7 @@ export function MarketingNav() {
 
       {/* Mobile menu */}
       {open && (
-        <div className="border-t border-brand-border bg-white md:hidden">
+        <div className="border-t border-brand-border bg-white lg:hidden">
           <nav className="flex flex-col px-5 py-4">
             {LINKS.map((l) => (
               <Link
