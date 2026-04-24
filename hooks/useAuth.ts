@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { auth, signOutUser } from '@/lib/firebase/client';
+import { auth, signOutUser, isFirebaseConfigured } from '@/lib/firebase/client';
 import type { UserRole, UserPlan } from '@/types/user.types';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -72,6 +72,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Listen for Firebase Auth state changes
   useEffect(() => {
+    if (!isFirebaseConfigured) {
+      setFirebaseUser(null);
+      setUserProfile(null);
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setFirebaseUser(user);
       if (!user) {
