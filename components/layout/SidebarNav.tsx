@@ -10,6 +10,7 @@ import {
   Briefcase,
   Compass,
   FolderOpen,
+  GraduationCap,
   HelpCircle,
   Settings,
   ChevronDown,
@@ -71,6 +72,12 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Explore',
     icon: Compass,
     match: (p) => p === '/explore',
+  },
+  {
+    href: '/learn',
+    label: 'Learn',
+    icon: GraduationCap,
+    match: (p) => p.startsWith('/learn'),
   },
   {
     href: '/creations',
