@@ -49,7 +49,7 @@ const AUDIENCES: AudienceCardData[] = [
     ring: 'ring-brand-secondary/20',
   },
   {
-    id: 'schools',
+    id: 'schools-intro',
     kicker: 'For schools',
     title: 'CBSE AI mandate, solved.',
     body: 'The 2026-27 AI & Computational Thinking curriculum starts from Class 3. We ship the studios, lesson plans, teacher dashboards and compliance reports — so you don’t have to hire a specialist.',
@@ -58,7 +58,7 @@ const AUDIENCES: AudienceCardData[] = [
       'Teacher dashboard: assignments, progress, class reports',
       'Auto-generated compliance reports for audits',
     ],
-    cta: { label: 'Book a school pilot', href: '/school' },
+    cta: { label: 'See what schools get', href: '#schools' },
     icon: GraduationCap,
     gradient: 'from-brand-accent to-brand-primary',
     accent: 'text-brand-accent',

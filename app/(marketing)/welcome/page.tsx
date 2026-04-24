@@ -2,11 +2,16 @@ import type { Metadata } from 'next';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
 import { Hero } from '@/components/marketing/Hero';
 import { LogoBar } from '@/components/marketing/LogoBar';
+import { HowItWorks } from '@/components/marketing/HowItWorks';
 import { AudienceCards } from '@/components/marketing/AudienceCards';
 import { StudioShowcase } from '@/components/marketing/StudioShowcase';
+import { FlagshipExperiences } from '@/components/marketing/FlagshipExperiences';
 import { AiXRayShowcase } from '@/components/marketing/AiXRayShowcase';
+import { ForSchoolsDetail } from '@/components/marketing/ForSchoolsDetail';
+import { VsChatGPT } from '@/components/marketing/VsChatGPT';
 import { SafetyTrust } from '@/components/marketing/SafetyTrust';
 import { Pricing } from '@/components/marketing/Pricing';
+import { ParentFAQ } from '@/components/marketing/ParentFAQ';
 import { Testimonials } from '@/components/marketing/Testimonials';
 import { FinalCTA } from '@/components/marketing/FinalCTA';
 import { SiteFooter } from '@/components/marketing/SiteFooter';
@@ -30,11 +35,16 @@ export default function WelcomePage() {
       <main>
         <Hero />
         <LogoBar />
+        <HowItWorks />
         <AudienceCards />
         <StudioShowcase />
+        <FlagshipExperiences />
         <AiXRayShowcase />
+        <VsChatGPT />
         <SafetyTrust />
         <Pricing />
+        <ForSchoolsDetail />
+        <ParentFAQ />
         <Testimonials />
         <FinalCTA />
       </main>
