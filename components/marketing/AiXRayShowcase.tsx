@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { Sparkles, BookOpen, Brain, Lightbulb } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { KokoLottie } from './KokoLottie';
 
 interface ConceptProps {
   icon: LucideIcon;
@@ -46,10 +47,15 @@ export function AiXRayShowcase() {
         <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr] lg:items-center lg:gap-16">
           {/* Left: copy */}
           <div>
-            <p className="text-caption font-semibold uppercase tracking-wide text-brand-secondary">
-              The parent&apos;s favourite feature
-            </p>
-            <h2 className="mt-3 font-display text-[32px] font-extrabold leading-tight tracking-tight text-brand-text text-balance sm:text-[44px]">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-soft">
+                <KokoLottie expression="painting" size={56} />
+              </div>
+              <p className="text-caption font-semibold uppercase tracking-wide text-brand-secondary">
+                The parent&apos;s favourite feature
+              </p>
+            </div>
+            <h2 className="mt-4 font-display text-[32px] font-extrabold leading-tight tracking-tight text-brand-text text-balance sm:text-[44px]">
               Every creation comes with a 30-second lesson in how the AI made it.
             </h2>
             <p className="mt-4 text-body-lg leading-relaxed text-brand-text-secondary">

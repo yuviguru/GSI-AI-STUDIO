@@ -3,13 +3,15 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight, Sparkles, Shield } from 'lucide-react';
+import { KokoLottie } from './KokoLottie';
 
 const FLOATING_TILES = [
   { emoji: '📖', label: 'Stories', gradient: 'gradient-story', rotate: -8, x: '-14%', y: '8%', delay: 0 },
-  { emoji: '🎵', label: 'Music', gradient: 'gradient-music', rotate: 6, x: '82%', y: '4%', delay: 0.1 },
-  { emoji: '🎮', label: 'Games', gradient: 'gradient-game', rotate: -4, x: '78%', y: '62%', delay: 0.2 },
-  { emoji: '🎨', label: 'Comics', gradient: 'gradient-comic', rotate: 9, x: '-10%', y: '58%', delay: 0.3 },
-  { emoji: '🧠', label: 'Quiz', gradient: 'gradient-quiz', rotate: -6, x: '42%', y: '-6%', delay: 0.4 },
+  { emoji: '🎵', label: 'Music', gradient: 'gradient-music', rotate: 6, x: '80%', y: '4%', delay: 0.1 },
+  { emoji: '👔', label: 'Kid CEO', gradient: 'gradient-primary', rotate: -6, x: '-10%', y: '62%', delay: 0.15, featured: true },
+  { emoji: '🎨', label: 'Comics', gradient: 'gradient-comic', rotate: 8, x: '-6%', y: '33%', delay: 0.2 },
+  { emoji: '🎮', label: 'Games', gradient: 'gradient-game', rotate: -4, x: '80%', y: '78%', delay: 0.3 },
+  { emoji: '🧠', label: 'Quiz', gradient: 'gradient-quiz', rotate: -6, x: '42%', y: '-8%', delay: 0.4 },
 ];
 
 export function Hero() {
@@ -131,15 +133,55 @@ export function Hero() {
               }}
             >
               <div
-                className={`${tile.gradient} flex items-center gap-2.5 rounded-2xl px-4 py-3 text-white shadow-card`}
+                className={`${tile.gradient} relative flex items-center gap-2.5 rounded-2xl px-4 py-3 text-white shadow-card ${tile.featured ? 'ring-2 ring-white/70' : ''}`}
               >
                 <span className="text-2xl">{tile.emoji}</span>
                 <span className="font-display text-sm font-bold">
                   {tile.label}
                 </span>
+                {tile.featured && (
+                  <span className="absolute -top-2 -right-2 rounded-full bg-brand-accent px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-button">
+                    New
+                  </span>
+                )}
               </div>
             </motion.div>
           ))}
+
+          {/* Koko floating to the right of the X-Ray card */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: [0, -10, 0] }}
+            transition={{
+              opacity: { duration: 0.6, delay: 0.6 },
+              scale: { duration: 0.6, delay: 0.6 },
+              y: { duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 1.2 },
+            }}
+            className="absolute right-[2%] top-[14%] z-20 hidden lg:block"
+          >
+            <div className="relative">
+              <div
+                aria-hidden
+                className="absolute inset-0 rounded-[40px] bg-gradient-to-br from-brand-accent/25 via-brand-ai/15 to-transparent blur-2xl"
+              />
+              <div className="relative rounded-[32px] bg-gradient-to-br from-brand-soft to-white p-2 shadow-elevated ring-1 ring-brand-primary/10">
+                <KokoLottie expression="waving" size={160} />
+              </div>
+              {/* Speech bubble */}
+              <div className="absolute -left-4 top-6 -translate-x-full rounded-2xl bg-white px-4 py-2.5 shadow-card ring-1 ring-brand-border/60">
+                <div className="font-display text-caption font-bold text-brand-text">
+                  Hi, I&apos;m Koko!
+                </div>
+                <div className="text-[11px] text-brand-text-muted">
+                  Your AI buddy
+                </div>
+                <div
+                  aria-hidden
+                  className="absolute right-0 top-5 h-2 w-2 translate-x-1/2 rotate-45 bg-white ring-1 ring-brand-border/60"
+                />
+              </div>
+            </div>
+          </motion.div>
 
           {/* Centerpiece: AI X-Ray style card */}
           <motion.div
