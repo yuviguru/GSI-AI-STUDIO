@@ -1,13 +1,13 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   Sparkles,
   Play,
   Check,
   ArrowRight,
   BarChart3,
-  Target,
   MessageCircle,
 } from 'lucide-react';
 import { KokoLottie } from './KokoLottie';
@@ -129,91 +129,153 @@ function BentoCell({
 
 // ── Tile: Story Studio ───────────────────────────────────────────────────────
 
+// ── Story carousel pages ─────────────────────────────────────────────────────
+
+interface StoryPage {
+  emoji: string;
+  text: string;
+  background: string;
+  accent: string;
+}
+
+const STORY_PAGES: StoryPage[] = [
+  {
+    emoji: '🥞',
+    text: 'Meet Vada the Dosa — the bravest breakfast in all of Chennai.',
+    background: 'linear-gradient(155deg, #FF9F43 0%, #FF6B6B 100%)',
+    accent: 'rgba(255, 255, 255, 0.4)',
+  },
+  {
+    emoji: '🤖',
+    text: 'One cloudy morning, a giant robot stomped through Marina Beach.',
+    background: 'linear-gradient(155deg, #5B5FFF 0%, #8A5CFF 100%)',
+    accent: 'rgba(255, 159, 67, 0.5)',
+  },
+  {
+    emoji: '⚡',
+    text: '&ldquo;Not on my watch!&rdquo; shouted Vada, leaping into action.',
+    background: 'linear-gradient(155deg, #20C997 0%, #5B5FFF 100%)',
+    accent: 'rgba(255, 255, 255, 0.45)',
+  },
+  {
+    emoji: '🏙️',
+    text: 'Chennai cheered as the robot wobbled — then tumbled into the sea.',
+    background: 'linear-gradient(155deg, #FF9F43 0%, #FFD166 60%, #8A5CFF 120%)',
+    accent: 'rgba(138, 92, 255, 0.35)',
+  },
+];
+
 function StoryTile() {
+  const [page, setPage] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    if (paused) return;
+    const id = window.setInterval(() => {
+      setPage((p) => (p + 1) % STORY_PAGES.length);
+    }, 3200);
+    return () => window.clearInterval(id);
+  }, [paused]);
+
+  const current = STORY_PAGES[page]!;
+
   return (
-    <div className="flex h-full flex-col">
-      {/* Book-cover style panel */}
-      <div
-        className="relative flex flex-1 flex-col justify-between overflow-hidden p-3 text-white"
-        style={{
-          background:
-            'linear-gradient(155deg, #8A5CFF 0%, #5B5FFF 55%, #FF9F43 110%)',
-        }}
-      >
-        {/* Ambient blobs */}
-        <div
-          aria-hidden
-          className="absolute -right-14 -top-14 h-36 w-36 rounded-full bg-white/20 blur-3xl"
-        />
-        <div
-          aria-hidden
-          className="absolute -bottom-16 -left-10 h-40 w-40 rounded-full bg-brand-accent/40 blur-3xl"
-        />
-
-        {/* Subtle star dust */}
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          <span className="absolute left-6 top-10 text-[10px] opacity-70">✦</span>
-          <span className="absolute right-5 top-14 text-[8px] opacity-60">✦</span>
-          <span className="absolute left-[60%] top-[40%] text-[9px] opacity-50">✦</span>
-          <span className="absolute right-8 bottom-10 text-[7px] opacity-60">✦</span>
-        </div>
-
-        {/* Top row — chip + page count */}
-        <div className="relative flex items-start justify-between">
-          <div className="rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand-primary shadow-soft">
-            Story
-          </div>
-          <div className="flex items-center gap-1 rounded-full bg-black/20 px-2 py-0.5 text-[9px] font-bold text-white/90 backdrop-blur-sm">
-            <span aria-hidden>📄</span>
-            <span className="numeric">6 pages</span>
-          </div>
-        </div>
-
-        {/* Centerpiece — title overlay with hero emoji as seal */}
-        <div className="relative flex flex-col items-start">
-          {/* Hero-stamp emoji with glow */}
-          <div className="relative mb-2">
+    <div
+      className="flex h-full flex-col"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      {/* Carousel panel */}
+      <div className="relative flex-1 overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={page}
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -40 }}
+            transition={{ duration: 0.45, ease: 'easeOut' }}
+            className="absolute inset-0 flex flex-col justify-between p-3 text-white"
+            style={{ background: current.background }}
+          >
+            {/* Ambient accent blob */}
             <div
               aria-hidden
-              className="absolute inset-0 rounded-full bg-white/40 blur-xl"
+              className="absolute -right-10 -top-10 h-32 w-32 rounded-full blur-3xl"
+              style={{ background: current.accent }}
             />
-            <motion.span
-              animate={{ rotate: [-3, 3, -3], y: [0, -3, 0] }}
-              transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
-              className="relative block text-4xl drop-shadow-lg"
-            >
-              🥞
-            </motion.span>
-          </div>
+            <div
+              aria-hidden
+              className="absolute -bottom-14 -left-10 h-36 w-36 rounded-full bg-white/15 blur-3xl"
+            />
 
-          {/* Title */}
-          <h4 className="font-display text-[15px] font-extrabold leading-[1.1] text-white drop-shadow-md">
-            A Brave Dosa<br />Saves Chennai
-          </h4>
-        </div>
+            {/* Top row — STORY chip + page counter */}
+            <div className="relative flex items-start justify-between">
+              <div className="rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand-primary shadow-soft">
+                Story
+              </div>
+              <div className="numeric rounded-full bg-black/25 px-2 py-0.5 text-[9px] font-bold text-white/95 backdrop-blur-sm">
+                Page {page + 1} / {STORY_PAGES.length}
+              </div>
+            </div>
 
-        {/* Bottom — byline + rating */}
-        <div className="relative flex items-center justify-between text-[10px]">
-          <span className="font-semibold text-white/90">By Aarav · Class 5</span>
-          <span className="flex items-center gap-0.5 rounded-full bg-white/20 px-2 py-0.5 font-bold text-white backdrop-blur-sm">
-            <span aria-hidden>❤️</span>
-            <span className="numeric">28</span>
-          </span>
+            {/* Centered hero emoji */}
+            <div className="relative flex justify-center">
+              <div
+                aria-hidden
+                className="absolute inset-0 -z-10 mx-auto my-auto h-20 w-20 rounded-full bg-white/30 blur-2xl"
+              />
+              <motion.span
+                initial={{ scale: 0.85, rotate: -6 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
+                className="block text-[44px] drop-shadow-lg"
+              >
+                {current.emoji}
+              </motion.span>
+            </div>
+
+            {/* Page text */}
+            <p
+              className="relative font-display text-[12px] font-bold leading-[1.25] text-white drop-shadow-md"
+              dangerouslySetInnerHTML={{ __html: current.text }}
+            />
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Page indicator dots */}
+        <div className="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 gap-1">
+          {STORY_PAGES.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => {
+                setPage(i);
+                setPaused(true);
+                window.setTimeout(() => setPaused(false), 4000);
+              }}
+              className={`h-1 rounded-full transition-all duration-300 ${
+                i === page ? 'w-5 bg-white' : 'w-1 bg-white/50 hover:bg-white/80'
+              }`}
+              aria-label={`Go to page ${i + 1}`}
+            />
+          ))}
         </div>
       </div>
 
-      {/* Clean footer strip */}
+      {/* Footer strip */}
       <div className="flex items-center justify-between bg-white px-3 py-2">
         <div className="flex items-center gap-1.5">
           <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-brand-ai to-brand-primary text-[10px] font-bold text-white">
             A
           </div>
           <span className="text-[10px] font-semibold text-brand-text">
-            Story Studio
+            Aarav · Class 5
           </span>
         </div>
-        <span className="flex items-center gap-0.5 text-[10px] font-bold text-brand-secondary">
-          <span>Made in 11s</span>
+        <span className="flex items-center gap-1 text-[10px] font-bold text-brand-text-muted">
+          <span>❤️ 28</span>
+          <span className="text-brand-border">·</span>
+          <span className="text-brand-secondary">11s</span>
         </span>
       </div>
     </div>
