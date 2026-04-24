@@ -13,7 +13,7 @@ import type { ToolRegistry } from './executor';
 import { claudeHaikuTool, claudeSonnetTool } from './tools/claude';
 import { groqLlamaTool } from './tools/groq';
 import { fluxSchnellTool } from './tools/fluxSchnell';
-import { breakEvenTool } from './tools/breakEven';
+import { deterministicPassthroughTool } from './tools/breakEven';
 
 function notYetWired<I, O>(id: ToolAdapter<I, O>['id'], label: string): ToolAdapter<I, O> {
   return {
@@ -35,5 +35,10 @@ export const DEFAULT_TOOL_REGISTRY: ToolRegistry = {
   pollinations: notYetWired('pollinations', 'Pollinations (fallback)'),
   transformers_js: notYetWired('transformers_js', 'Transformers.js (in-browser)'),
   brave_search: notYetWired('brave_search', 'Brave Search'),
-  deterministic: breakEvenTool as unknown as ToolAdapter<unknown, unknown>,
+  // Generic pass-through for workflow steps whose math lives in
+  // `prepareInput` (e.g. finance.pricingPackage's break-even step).
+  // `breakEvenTool` is still the canonical break-even adapter for
+  // direct use; the registry binds the pass-through so *any*
+  // deterministic step works.
+  deterministic: deterministicPassthroughTool,
 };

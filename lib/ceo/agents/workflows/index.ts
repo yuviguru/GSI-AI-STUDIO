@@ -14,3 +14,5 @@ export type { AnyWorkflowSpec } from './registry';
 // any API route reads it.
 import './brandPackage';
 import './marketingFirstCampaign';
+import './opsSetupPackage';
+import './financePricingPackage';
