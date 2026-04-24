@@ -271,6 +271,14 @@
       ]
     },
     {
+      "collectionGroup": "ceoCustomWorkflows",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "businessId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "botSessions",
       "queryScope": "COLLECTION",
       "fields": [

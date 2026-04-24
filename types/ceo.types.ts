@@ -250,6 +250,52 @@ export interface CeoBrandAssets {
   palette?: string[];
 }
 
+// ─── Custom workflows (Scale-phase Workflow Builder) ──────────
+
+/** Closed vocabulary of triggers a custom workflow can listen for.
+ *  Decision W3 locks this as a 8-value enum — open-ended triggers
+ *  would create a prompt-injection surface the Scale-phase kid isn't
+ *  equipped to vet. */
+export type CeoCustomTrigger =
+  | 'negative_customer_feedback'
+  | 'positive_customer_feedback'
+  | 'cash_below_threshold'
+  | 'cash_above_threshold'
+  | 'reputation_below_threshold'
+  | 'new_phase_reached'
+  | 'milestone_missed'
+  | 'end_of_day';
+
+/** Firestore doc in `ceoCustomWorkflows`. One per "recipe" a kid has
+ *  built. Matches the CONTEXT of phase 3's KIDCEO-WORKFLOW-BUILDER
+ *  story — simple IF-trigger THEN-agent-run-workflow pairing; the
+ *  full drag-drop React Flow canvas is deferred behind this minimum-
+ *  viable shape. */
+export interface CeoCustomWorkflow {
+  id: string;
+  userId: string;
+  kidId: string;
+  businessId: string;
+  /** Kid-facing name, e.g. "If customers complain, have Marketing
+   *  post an apology". */
+  name: string;
+  trigger: CeoCustomTrigger;
+  /** Optional numeric threshold for triggers that gate on a value
+   *  (cash_below_threshold ₹500, reputation_below_threshold 40, …). */
+  triggerThreshold?: number;
+  /** The agent + workflow to run when the trigger fires. */
+  agentId: CeoAgentId;
+  workflowId: CeoWorkflowId;
+  /** Whether the recipe is currently armed. Kids can pause / resume
+   *  without deleting. */
+  enabled: boolean;
+  /** Count of times this recipe has fired since creation. Surfaced
+   *  in the UI so kids see their automations actually working. */
+  firedCount: number;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
 // ─── Events & Choices ──────────────────────────────────────
 
 export interface CeoChoice {

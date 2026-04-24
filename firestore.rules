@@ -151,6 +151,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Custom automation workflows (Scale-phase Workflow Builder) — server-side only
+    match /ceoCustomWorkflows/{workflowId} {
+      allow read, write: if false;
+    }
+
     // CEO Profile — public read when isPublic == true (shareable DNA Card)
     match /ceoProfiles/{profileId} {
       allow read: if resource.data.isPublic == true;
