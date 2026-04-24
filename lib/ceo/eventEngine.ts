@@ -284,6 +284,8 @@ function resolveAgentWorkflowId(
   const MILESTONE_TO_WORKFLOW: Record<string, string | undefined> = {
     BRAND: 'brand.package',
     FIRST_CUSTOMERS: 'marketing.firstCampaign',
+    OPERATIONS_SETUP: 'ops.setupPackage',
+    PRICING: 'finance.pricingPackage',
   };
   return MILESTONE_TO_WORKFLOW[milestone];
 }

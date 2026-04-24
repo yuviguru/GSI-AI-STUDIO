@@ -111,3 +111,31 @@ export const breakEvenTool: ToolAdapter<BreakEvenInput, BreakEvenOutput> = {
     };
   },
 };
+
+/**
+ * Generic pass-through adapter for workflow steps that compute their
+ * result entirely inside `prepareInput` and just need a ₹0-cost trace
+ * row. The adapter simply echoes the input as output + summarises it
+ * for the X-ray panel. Registered under `deterministic` alongside
+ * `breakEvenTool` — the executor picks one based on workflow wiring.
+ */
+export const deterministicPassthroughTool: ToolAdapter<unknown, unknown> = {
+  id: 'deterministic',
+  label: 'Deterministic math',
+  async run(input): Promise<ToolRunResult<unknown>> {
+    let summary: string;
+    try {
+      const s = JSON.stringify(input);
+      summary = s.length > 120 ? `${s.slice(0, 117)}…` : s;
+    } catch {
+      summary = '[deterministic result]';
+    }
+    return {
+      output: input,
+      outputSummary: summary,
+      model: '',
+      promptTokens: 0,
+      completionTokens: 0,
+    };
+  },
+};

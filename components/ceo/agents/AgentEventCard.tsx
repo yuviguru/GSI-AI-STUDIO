@@ -7,6 +7,8 @@ import { BrandBriefingForm, type BrandBriefValue } from './BrandBriefingForm';
 import { BrandCandidateReview } from './BrandCandidateReview';
 import { CampaignBriefingForm, type CampaignBriefValue } from './CampaignBriefingForm';
 import { CampaignCandidateReview } from './CampaignCandidateReview';
+import { SimpleBriefingForm } from './SimpleBriefingForm';
+import { TextArtifactReview } from './TextArtifactReview';
 import {
   baseWorkflowCostInr,
   runMultiplier,
@@ -160,6 +162,24 @@ export function AgentEventCard({ event, business, onResolved }: AgentEventCardPr
     }
   }
 
+  async function handleTextPackageAccept() {
+    if (!artifact) return;
+    setError(null);
+    try {
+      // Ops / Finance artifacts attach to the deciding event — their
+      // assets live on the artifact (viewable via /creations-like flow
+      // later) and the milestone resolves as soon as the kid accepts.
+      await acceptArtifact({
+        artifactId: artifact.id,
+        selections: {},
+        attachTo: { kind: 'event', eventId: event.id },
+      });
+      onResolved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not accept this package.');
+    }
+  }
+
   return (
     <div className="rounded-2xl bg-white p-4 shadow-card">
       <header className="mb-3 flex items-start gap-3">
@@ -209,6 +229,85 @@ export function AgentEventCard({ event, business, onResolved }: AgentEventCardPr
           helperText={`Business cash: ₹${business.currentCash.toLocaleString('en-IN')}`}
         />
       )}
+      {!artifact && workflowId === 'ops.setupPackage' && (
+        <SimpleBriefingForm
+          title="Brief your Ops Agent"
+          description="Tell them when you're open, how much help you've got, and anything else they should know."
+          accent="amber"
+          predictedCostInr={predictedFirstCost}
+          helperText={`Business cash: ₹${business.currentCash.toLocaleString('en-IN')}`}
+          fields={[
+            {
+              id: 'daysOpen',
+              label: 'When are you open?',
+              options: [
+                { id: 'weekends_only', label: 'Weekends only' },
+                { id: 'weekdays_after_school', label: 'Weekdays after school' },
+                { id: 'both', label: 'Every day' },
+              ],
+            },
+            {
+              id: 'shiftsNeeded',
+              label: 'Team',
+              options: [
+                { id: 'just_me', label: 'Just me' },
+                { id: 'with_helper', label: 'With a helper' },
+              ],
+            },
+            {
+              id: 'notes',
+              label: 'Anything else',
+              description: 'One line — what your agent should plan around.',
+              maxChars: 60,
+              placeholder: 'e.g. bike delivery on Saturdays',
+              optional: true,
+            },
+          ]}
+          onSubmit={(values) =>
+            handleSubmit(values as unknown as BrandBriefValue)
+          }
+        />
+      )}
+      {!artifact && workflowId === 'finance.pricingPackage' && (
+        <SimpleBriefingForm
+          title="Brief your Finance Agent"
+          description="Pick a pricing strategy and a target margin. They'll come back with three real numbers + break-even math."
+          accent="sky"
+          predictedCostInr={predictedFirstCost}
+          helperText={`Business cash: ₹${business.currentCash.toLocaleString('en-IN')}`}
+          fields={[
+            {
+              id: 'strategy',
+              label: 'Pricing strategy',
+              options: [
+                { id: 'volume', label: 'Volume' },
+                { id: 'premium', label: 'Premium' },
+                { id: 'mixed', label: 'Mixed' },
+              ],
+            },
+            {
+              id: 'targetMargin',
+              label: 'Target margin',
+              options: [
+                { id: 'tight', label: 'Tight (cheaper, more sales)' },
+                { id: 'fair', label: 'Fair' },
+                { id: 'fat', label: 'Fat (fewer sales, bigger margin)' },
+              ],
+            },
+            {
+              id: 'notes',
+              label: 'Anything else',
+              description: 'Context your agent should weigh — ingredients, competitors, etc.',
+              maxChars: 40,
+              placeholder: 'e.g. mango season',
+              optional: true,
+            },
+          ]}
+          onSubmit={(values) =>
+            handleSubmit(values as unknown as BrandBriefValue)
+          }
+        />
+      )}
 
       {artifact && workflowId === 'brand.package' && (
         <BrandCandidateReview
@@ -225,6 +324,30 @@ export function AgentEventCard({ event, business, onResolved }: AgentEventCardPr
           costInr={costInr}
           rerollCostInr={predictedRerollCost}
           onAccept={handleCampaignAccept}
+          onReroll={handleReroll}
+        />
+      )}
+      {artifact && workflowId === 'ops.setupPackage' && (
+        <TextArtifactReview
+          artifact={artifact}
+          costInr={costInr}
+          rerollCostInr={predictedRerollCost}
+          title="Your ops plan"
+          acceptLabel="Lock this in"
+          accent="amber"
+          onAccept={handleTextPackageAccept}
+          onReroll={handleReroll}
+        />
+      )}
+      {artifact && workflowId === 'finance.pricingPackage' && (
+        <TextArtifactReview
+          artifact={artifact}
+          costInr={costInr}
+          rerollCostInr={predictedRerollCost}
+          title="Three pricing candidates"
+          acceptLabel="Use this pricing"
+          accent="sky"
+          onAccept={handleTextPackageAccept}
           onReroll={handleReroll}
         />
       )}
@@ -262,10 +385,13 @@ function predictWorkflowCost(workflowId: CeoWorkflowId, runIndex: number): numbe
       { tool: 'claude_haiku' },
     ],
     'marketing.dailyPush': [],
-    'ops.setupPackage': [],
-    'ops.scheduleCheck': [],
-    'finance.pricingPackage': [],
-    'finance.cashCheck': [],
+    'ops.setupPackage': [{ tool: 'claude_haiku' }],
+    'ops.scheduleCheck': [{ tool: 'claude_haiku' }],
+    'finance.pricingPackage': [
+      { tool: 'claude_haiku' },
+      { tool: 'deterministic' },
+    ],
+    'finance.cashCheck': [{ tool: 'claude_haiku' }],
   };
   const steps = STEPS[workflowId] ?? [];
   if (steps.length === 0) return 0;
