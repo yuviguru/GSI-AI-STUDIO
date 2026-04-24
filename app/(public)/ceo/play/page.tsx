@@ -10,6 +10,7 @@ import { DecisionFeedback } from '@/components/ceo/DecisionFeedback';
 import { EventFeed } from '@/components/ceo/EventFeed';
 import { MarketingTab } from '@/components/ceo/MarketingTab';
 import { MilestoneZone } from '@/components/ceo/MilestoneZone';
+import { WorkflowBuilderTab } from '@/components/ceo/WorkflowBuilderTab';
 import { PhaseProgress } from '@/components/ceo/PhaseProgress';
 import { SmallDecisionsZone } from '@/components/ceo/SmallDecisionsZone';
 import { TeamTab } from '@/components/ceo/agents/TeamTab';
@@ -334,6 +335,10 @@ function PlayPageInner() {
 
         {business.phase !== 'pre_launch' && (
           <MarketingTab business={business} onBusinessChanged={refetch} />
+        )}
+
+        {(business.phase === 'scale' || business.phase === 'mature') && (
+          <WorkflowBuilderTab business={business} />
         )}
 
         {decisionHistory.length > 0 && (
