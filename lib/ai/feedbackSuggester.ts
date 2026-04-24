@@ -39,7 +39,7 @@ Constraints:
 - Do NOT fabricate details not present in the context.
 - Do NOT reference any other student.`;
 
-interface PriorApproval {
+export interface PriorApproval {
   title: string;
   feedback?: string;
   aiConceptsTaught: string[];
@@ -80,14 +80,15 @@ async function loadPriorApprovals(
   return rows;
 }
 
-interface BuildContextInput {
+export interface BuildContextInput {
   submission: SubmissionWithContext;
   assignmentTitle: string;
   locale: Locale;
   priorApprovals: PriorApproval[];
 }
 
-function buildUserMessage(input: BuildContextInput): string {
+/** Exported for the eval harness (QA-001) to test prompt assembly purity. */
+export function buildUserMessage(input: BuildContextInput): string {
   const { submission, assignmentTitle, locale, priorApprovals } = input;
   const kid = submission.kid;
   const creation = submission.creation;
