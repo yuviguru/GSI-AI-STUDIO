@@ -7,6 +7,12 @@ import {
   listClassesForSchool,
 } from '@/lib/firebase/schoolService';
 import { buildComplianceReport } from '@/lib/export/complianceReport';
+import { buildComplianceReportV2 } from '@/lib/export/complianceReportV2';
+import {
+  getConsentSnapshotForSchool,
+  getTeacherAiUsageRollup,
+  listErasureRequestsForSchool,
+} from '@/lib/firebase/complianceQueryService';
 import type {
   AssignmentDoc,
   SubmissionDoc,
@@ -25,6 +31,7 @@ export async function GET(request: NextRequest) {
     }
 
     const url = new URL(request.url);
+    const version = url.searchParams.get('version') === '2' ? 2 : 1;
     const startStr = url.searchParams.get('start');
     const endStr = url.searchParams.get('end');
     const dateRange = startStr && endStr
@@ -109,17 +116,30 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const doc = buildComplianceReport({
+    const baseInput = {
       school,
       classes,
       assignments: filteredAssignments,
       submissions: filteredSubmissions,
       students,
       dateRange,
-    });
+    };
+
+    const doc =
+      version === 2
+        ? buildComplianceReportV2({
+            ...baseInput,
+            dpdp: {
+              consentSnapshot: await getConsentSnapshotForSchool(auth.schoolId),
+              teacherAiUsage: await getTeacherAiUsageRollup(auth.schoolId),
+              erasureRequests: await listErasureRequestsForSchool(auth.schoolId),
+            },
+          })
+        : buildComplianceReport(baseInput);
 
     const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
-    const filename = `compliance-${school.schoolCode || school.id}-${new Date()
+    const versionTag = version === 2 ? 'v2' : 'v1';
+    const filename = `compliance-${versionTag}-${school.schoolCode || school.id}-${new Date()
       .toISOString()
       .slice(0, 10)}.pdf`;
 

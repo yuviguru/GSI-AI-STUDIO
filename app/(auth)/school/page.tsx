@@ -12,6 +12,7 @@ import {
   Trophy,
   Settings,
   UserCheck,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { CurriculumHeatmap } from '@/components/admin/CurriculumHeatmap';
@@ -145,6 +146,13 @@ export default function SchoolDashboardPage() {
           >
             <UserCheck className="h-4 w-4" />
             Subs
+          </Link>
+          <Link
+            href="/school/compliance"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+          >
+            <ShieldCheck className="h-4 w-4" />
+            Compliance
           </Link>
           <Link
             href="/school/settings"
