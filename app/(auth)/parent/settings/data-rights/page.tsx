@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { ChannelPreferences } from '@/components/parent/ChannelPreferences';
 import { ConsentRegister } from '@/components/parent/ConsentRegister';
 import { DataRightsPanel } from '@/components/parent/DataRightsPanel';
 
@@ -104,6 +105,13 @@ export default function ParentDataRightsPage() {
           Consent settings
         </h2>
         <ConsentRegister kidId={kidId} kidName={activeKid!.name} />
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-lg font-semibold text-slate-900">
+          Messaging preferences
+        </h2>
+        <ChannelPreferences />
       </section>
 
       <section>
