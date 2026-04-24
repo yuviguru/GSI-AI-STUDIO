@@ -11,13 +11,24 @@ const INLINE_STEPS = [
   { num: '03', icon: Share2, label: 'Share + learn' },
 ];
 
-const FLOATING_TILES = [
-  { emoji: '📖', label: 'Stories', gradient: 'gradient-story', rotate: -8, x: '-14%', y: '8%', delay: 0 },
-  { emoji: '🎵', label: 'Music', gradient: 'gradient-music', rotate: 6, x: '80%', y: '4%', delay: 0.1 },
-  { emoji: '👔', label: 'Kid CEO', gradient: 'gradient-primary', rotate: -6, x: '-10%', y: '62%', delay: 0.15, featured: true },
-  { emoji: '🎨', label: 'Comics', gradient: 'gradient-comic', rotate: 8, x: '-6%', y: '33%', delay: 0.2 },
-  { emoji: '🎮', label: 'Games', gradient: 'gradient-game', rotate: -4, x: '80%', y: '78%', delay: 0.3 },
-  { emoji: '🧠', label: 'Quiz', gradient: 'gradient-quiz', rotate: -6, x: '42%', y: '-8%', delay: 0.4 },
+interface Tile {
+  emoji: string;
+  label: string;
+  gradient: string;
+  featured?: boolean;
+}
+
+// Arranged in two visual rows — top 3 + bottom 3 — around the centerpiece.
+const TOP_TILES: Tile[] = [
+  { emoji: '📖', label: 'Stories', gradient: 'gradient-story' },
+  { emoji: '🧠', label: 'Quiz', gradient: 'gradient-quiz' },
+  { emoji: '🎵', label: 'Music', gradient: 'gradient-music' },
+];
+
+const BOTTOM_TILES: Tile[] = [
+  { emoji: '👔', label: 'Kid CEO', gradient: 'gradient-primary', featured: true },
+  { emoji: '🎨', label: 'Comics', gradient: 'gradient-comic' },
+  { emoji: '🎮', label: 'Games', gradient: 'gradient-game' },
 ];
 
 export function Hero() {
@@ -138,161 +149,156 @@ export function Hero() {
           })}
         </motion.div>
 
-        {/* Floating studio tiles + Koko focal visual */}
-        <div className="relative mx-auto mt-16 h-[360px] w-full max-w-4xl sm:h-[420px] lg:h-[460px]">
-          {/* Ambient gradient card behind tiles */}
+        {/* Focal visual — X-Ray centerpiece with tiles on a clean grid + Koko to the side */}
+        <div className="relative mx-auto mt-16 w-full max-w-5xl">
+          {/* Soft radial glow backdrop (no hard card) */}
           <div
             aria-hidden
-            className="absolute inset-x-[6%] top-6 bottom-6 rounded-[40px] bg-gradient-to-br from-brand-soft via-white to-brand-soft shadow-soft"
+            className="pointer-events-none absolute left-1/2 top-1/2 h-[480px] w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-50 blur-3xl"
+            style={{
+              background:
+                'radial-gradient(ellipse at center, rgba(91,95,255,0.18), rgba(138,92,255,0.10) 45%, transparent 70%)',
+            }}
           />
 
-          {/* Floating tiles */}
-          {FLOATING_TILES.map((tile) => (
-            <motion.div
-              key={tile.label}
-              className="absolute"
-              style={{ left: tile.x, top: tile.y }}
-              initial={{ opacity: 0, y: 24, rotate: 0 }}
-              animate={{
-                opacity: 1,
-                y: [0, -8, 0],
-                rotate: tile.rotate,
-              }}
-              transition={{
-                opacity: { duration: 0.5, delay: 0.3 + tile.delay },
-                rotate: { duration: 0.5, delay: 0.3 + tile.delay },
-                y: {
-                  duration: 3 + tile.delay,
-                  repeat: Infinity,
-                  ease: 'easeInOut',
-                  delay: 0.8 + tile.delay,
-                },
-              }}
-            >
-              <div
-                className={`${tile.gradient} relative flex items-center gap-2.5 rounded-2xl px-4 py-3 text-white shadow-card ${tile.featured ? 'ring-2 ring-white/70' : ''}`}
-              >
-                <span className="text-2xl">{tile.emoji}</span>
-                <span className="font-display text-sm font-bold">
-                  {tile.label}
-                </span>
-                {tile.featured && (
-                  <span className="absolute -top-2 -right-2 rounded-full bg-brand-accent px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-button">
-                    New
-                  </span>
-                )}
-              </div>
-            </motion.div>
-          ))}
+          {/* Main composition grid */}
+          <div className="relative grid items-center gap-6 lg:grid-cols-[1fr_auto] lg:gap-10">
+            {/* Left — tiles + centerpiece card */}
+            <div className="grid grid-cols-3 gap-4 sm:gap-5">
+              {/* Row 1 — top tiles */}
+              {TOP_TILES.map((tile, i) => (
+                <TileCard key={tile.label} tile={tile} index={i} />
+              ))}
 
-          {/* Koko floating to the right of the X-Ray card */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: [0, -10, 0] }}
-            transition={{
-              opacity: { duration: 0.6, delay: 0.6 },
-              scale: { duration: 0.6, delay: 0.6 },
-              y: { duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 1.2 },
-            }}
-            className="absolute right-[2%] top-[14%] z-20 hidden lg:block"
-          >
-            <div className="relative">
-              <div
-                aria-hidden
-                className="absolute inset-0 rounded-[40px] bg-gradient-to-br from-brand-accent/25 via-brand-ai/15 to-transparent blur-2xl"
-              />
-              <div className="relative rounded-[32px] bg-gradient-to-br from-brand-soft to-white p-2 shadow-elevated ring-1 ring-brand-primary/10">
-                <KokoLottie expression="waving" size={160} />
-              </div>
-              {/* Speech bubble */}
-              <div className="absolute -left-4 top-6 -translate-x-full rounded-2xl bg-white px-4 py-2.5 shadow-card ring-1 ring-brand-border/60">
-                <div className="font-display text-caption font-bold text-brand-text">
-                  Hi, I&apos;m Koko!
+              {/* Row 2 — X-Ray centerpiece spans all 3 columns */}
+              <motion.div
+                initial={{ opacity: 0, y: 16, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.6, delay: 0.4, ease: 'easeOut' }}
+                className="col-span-3 rounded-3xl bg-white p-5 shadow-elevated ring-1 ring-brand-border/60 sm:p-6"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-ai to-brand-primary text-white">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-display text-sm font-bold text-brand-text">
+                      AI X-Ray
+                    </div>
+                    <div className="text-[11px] text-brand-text-muted">
+                      What just happened?
+                    </div>
+                  </div>
+                  <div className="ml-auto shrink-0 rounded-full bg-brand-secondary/10 px-2.5 py-0.5 text-[10px] font-bold text-brand-secondary">
+                    +15 AI Points
+                  </div>
                 </div>
-                <div className="text-[11px] text-brand-text-muted">
-                  Your AI buddy
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  <XRayLine label="Prompt" value="A brave dosa that saved Chennai" />
+                  <XRayLine label="Model" value="Claude + Replicate SDXL" />
+                  <XRayLine label="Concept" value="Text-to-image generation" accent />
                 </div>
+
+                <div className="mt-4 flex items-center justify-between border-t border-brand-border pt-3">
+                  <span className="text-[11px] font-semibold text-brand-text-secondary">
+                    Story Studio · Class 5
+                  </span>
+                  <span className="numeric text-[11px] text-brand-text-muted">
+                    11.4s
+                  </span>
+                </div>
+              </motion.div>
+
+              {/* Row 3 — bottom tiles */}
+              {BOTTOM_TILES.map((tile, i) => (
+                <TileCard key={tile.label} tile={tile} index={i + 3} />
+              ))}
+            </div>
+
+            {/* Right — Koko */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1, y: [0, -6, 0] }}
+              transition={{
+                opacity: { duration: 0.6, delay: 0.6 },
+                scale: { duration: 0.6, delay: 0.6 },
+                y: { duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1.4 },
+              }}
+              className="relative flex justify-center lg:justify-start"
+            >
+              <div className="relative">
                 <div
                   aria-hidden
-                  className="absolute right-0 top-5 h-2 w-2 translate-x-1/2 rotate-45 bg-white ring-1 ring-brand-border/60"
+                  className="absolute inset-0 rounded-full bg-gradient-to-br from-brand-accent/30 via-brand-ai/20 to-transparent blur-2xl"
                 />
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Centerpiece: AI X-Ray style card */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.35, type: 'spring' }}
-            className="absolute left-1/2 top-1/2 w-[82%] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-3xl bg-white p-5 shadow-elevated ring-1 ring-brand-border/60"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-ai to-brand-primary text-white">
-                <Sparkles className="h-4 w-4" />
-              </div>
-              <div>
-                <div className="font-display text-sm font-bold text-brand-text">
-                  AI X-Ray
+                <div className="relative rounded-full bg-white p-4 shadow-elevated ring-1 ring-brand-border/60">
+                  <KokoLottie expression="waving" size={128} />
                 </div>
-                <div className="text-[11px] text-brand-text-muted">
-                  What just happened?
+                {/* Speech tag — pinned cleanly below */}
+                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-3 py-1 text-[11px] font-bold text-brand-text shadow-card ring-1 ring-brand-border/60">
+                  <span className="text-brand-primary">Koko</span> · your AI buddy
                 </div>
               </div>
-              <div className="ml-auto rounded-full bg-brand-secondary/10 px-2.5 py-0.5 text-[10px] font-bold text-brand-secondary">
-                +15 AI Points
-              </div>
-            </div>
-
-            <div className="mt-4 space-y-2.5">
-              <XRayLine label="Prompt" value="A brave dosa that saved Chennai" delay={0.8} />
-              <XRayLine label="Model" value="Claude + Replicate SDXL" delay={0.95} />
-              <XRayLine label="Concept" value="Text-to-image generation" delay={1.1} accent />
-            </div>
-
-            <div className="mt-4 flex items-center justify-between border-t border-brand-border pt-3">
-              <span className="text-[11px] font-semibold text-brand-text-secondary">
-                Story Studio · Class 5
-              </span>
-              <span className="numeric text-[11px] text-brand-text-muted">
-                11.4s
-              </span>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </div>
       </div>
     </section>
   );
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function TileCard({ tile, index }: { tile: Tile; index: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.3 + index * 0.06, ease: 'easeOut' }}
+      className="flex items-center justify-center"
+    >
+      <div
+        className={`${tile.gradient} relative flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-white shadow-card sm:px-5 sm:py-4`}
+      >
+        <span className="text-xl sm:text-2xl" aria-hidden>
+          {tile.emoji}
+        </span>
+        <span className="font-display text-[13px] font-bold sm:text-sm">
+          {tile.label}
+        </span>
+        {tile.featured && (
+          <span className="absolute -top-2 -right-2 rounded-full bg-brand-accent px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-button">
+            New
+          </span>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 function XRayLine({
   label,
   value,
-  delay,
   accent = false,
 }: {
   label: string;
   value: string;
-  delay: number;
   accent?: boolean;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.4, delay }}
-      className="flex items-center justify-between gap-3 rounded-lg bg-brand-background px-3 py-2"
-    >
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-brand-text-muted">
+    <div className="rounded-lg bg-brand-background px-3 py-2">
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-brand-text-muted">
         {label}
-      </span>
-      <span
-        className={`truncate text-caption font-semibold ${
+      </div>
+      <div
+        className={`mt-0.5 truncate text-[12px] font-semibold ${
           accent ? 'text-brand-ai' : 'text-brand-text'
         }`}
       >
         {value}
-      </span>
-    </motion.div>
+      </div>
+    </div>
   );
 }
+
