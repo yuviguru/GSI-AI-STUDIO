@@ -14,44 +14,33 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { adminDb } from './admin';
 import { AppException } from '@/lib/api-utils';
+import {
+  WEEKDAYS,
+  type TeacherTimetable,
+  type TimetableSlot,
+  type Weekday,
+  type WeeklySchedule,
+} from './timetableTypes';
 
-export type Weekday =
-  | 'monday'
-  | 'tuesday'
-  | 'wednesday'
-  | 'thursday'
-  | 'friday'
-  | 'saturday';
-
-export const WEEKDAYS: Weekday[] = [
-  'monday',
-  'tuesday',
-  'wednesday',
-  'thursday',
-  'friday',
-  'saturday',
-];
-
-export interface TimetableSlot {
-  periodIdx: number;
-  subject: string;
-  classId: string;
-}
-
-export type WeeklySchedule = Partial<Record<Weekday, TimetableSlot[]>>;
-
-export interface TeacherTimetable {
-  schoolId: string;
-  teacherUid: string;
-  periods: WeeklySchedule;
-  subjects: string[];
-  seniority: number;
-  recentSubLoad?: number;
-  updatedAt: Date;
-}
+export {
+  WEEKDAYS,
+  type TeacherTimetable,
+  type TimetableSlot,
+  type Weekday,
+  type WeeklySchedule,
+};
 
 interface TeacherTimetableFirestore extends Omit<TeacherTimetable, 'updatedAt'> {
   updatedAt: Timestamp;
+}
+
+export interface SubCandidate {
+  teacherUid: string;
+  score: number;
+  subjects: string[];
+  seniority: number;
+  recentSubLoad: number;
+  reasoning: string[];
 }
 
 function teacherDoc(schoolId: string, teacherUid: string) {
@@ -158,15 +147,6 @@ export async function listTimetablesForSchool(
 ): Promise<TeacherTimetable[]> {
   const snap = await teachersCol(schoolId).get();
   return snap.docs.map((d) => toDoc(d.data() as TeacherTimetableFirestore));
-}
-
-export interface SubCandidate {
-  teacherUid: string;
-  score: number;
-  subjects: string[];
-  seniority: number;
-  recentSubLoad: number;
-  reasoning: string[];
 }
 
 /**

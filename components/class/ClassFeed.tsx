@@ -7,7 +7,7 @@ import { fetchWithKidAuth } from '@/lib/fetchWithKidAuth';
 import {
   ALLOWED_REACTIONS,
   type ReactionEmoji,
-} from '@/lib/firebase/classFeedService';
+} from '@/lib/firebase/classFeedTypes';
 
 interface FeedItem {
   submissionId: string;

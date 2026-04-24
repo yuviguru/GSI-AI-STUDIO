@@ -13,7 +13,7 @@ import {
   type TeacherTimetable,
   type Weekday,
   WEEKDAYS,
-} from '@/lib/firebase/timetableService';
+} from '@/lib/firebase/timetableTypes';
 import type { SubInstructionsDraft } from '@/lib/ai/subInstructionsGenerator';
 
 interface TeacherInfo {

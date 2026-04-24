@@ -9,37 +9,24 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { adminDb } from './admin';
 import { AppException } from '@/lib/api-utils';
+import {
+  ALLOWED_REACTIONS,
+  isAllowedReaction,
+  type ClassFeedItem,
+  type ReactionEmoji,
+} from './classFeedTypes';
+
+export {
+  ALLOWED_REACTIONS,
+  isAllowedReaction,
+  type ClassFeedItem,
+  type ReactionEmoji,
+};
 
 const SUBMISSIONS = 'submissions';
 const CREATIONS = 'creations';
 const KIDS = 'kids';
 const REACTIONS_SUBCOLLECTION = 'reactions';
-
-export const ALLOWED_REACTIONS = ['👍', '🎉', '🌟', '🔥', '💯'] as const;
-export type ReactionEmoji = (typeof ALLOWED_REACTIONS)[number];
-
-export function isAllowedReaction(v: unknown): v is ReactionEmoji {
-  return typeof v === 'string' && (ALLOWED_REACTIONS as readonly string[]).includes(v);
-}
-
-export interface ClassFeedItem {
-  submissionId: string;
-  creationId: string;
-  classId: string;
-  schoolId: string;
-  kid: { id: string; name: string; avatar?: string };
-  creation: {
-    id: string;
-    type: string;
-    title: string;
-    thumbnail?: string;
-    aiConceptsTaught: string[];
-    createdAt: Date;
-  };
-  approvedAt: Date;
-  reactionCounts: Record<string, number>;
-  myReaction?: ReactionEmoji;
-}
 
 export async function isKidInClass(
   schoolId: string,
