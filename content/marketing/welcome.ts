@@ -122,6 +122,54 @@ export const heroVariants = {
       'Free forever tier',
     ],
   },
+
+  /* ─── v6: screen-time permission ────────────────────────────────────── */
+  v6_screen_time: {
+    eyebrow: 'CBSE AI & CT curriculum · India',
+    headlinePrefix: "The screen time you'll be",
+    headlineHighlight: 'glad they had.',
+    subhead:
+      'An AI creation studio for Indian kids ages 8–17. They make stories, music and games — and walk away knowing how AI actually works. CBSE AI & CT-aligned. Safe by default.',
+    primaryCta: { label: 'Start free trial', href: '/create/story' },
+    secondaryCta: { label: 'See how it works', href: '#schools' },
+    trustChips: [
+      '100% child-safe outputs',
+      'CBSE 2026-27 AI & CT-aligned',
+      'Free forever tier',
+    ],
+  },
+
+  /* ─── v7: realist urgency (kids will use AI — direct it) ─────────────── */
+  v7_realist: {
+    eyebrow: 'CBSE AI & CT-aligned · ages 8–17',
+    headlinePrefix: 'Indian kids are using AI anyway.',
+    headlineHighlight: 'Teach them to use it well.',
+    subhead:
+      'A safe, CBSE-aligned creation studio for ages 8–17. Kids learn what AI can do, where it gets things wrong, and how to direct it — by making real things. Free forever tier.',
+    primaryCta: { label: 'Get started — free', href: '/create/story' },
+    secondaryCta: { label: 'See how it works', href: '#schools' },
+    trustChips: [
+      '100% child-safe outputs',
+      'CBSE AI & CT-aligned',
+      'Free forever tier',
+    ],
+  },
+
+  /* ─── v9: use → understand (build literacy, not just usage) ──────────── */
+  v9_understand: {
+    eyebrow: 'CBSE AI & CT curriculum · 2026-27',
+    headlinePrefix: "Your kid won't just use AI.",
+    headlineHighlight: "They'll learn how it works.",
+    subhead:
+      'A creation studio for Indian kids ages 8–17. Aligned to the CBSE AI & Computational Thinking curriculum. Every output is safe, shareable, and built by them — not for them.',
+    primaryCta: { label: 'Start free trial', href: '/create/story' },
+    secondaryCta: { label: 'See how it works', href: '#schools' },
+    trustChips: [
+      '100% child-safe outputs',
+      'CBSE 2026-27 AI & CT-aligned',
+      'Free forever tier',
+    ],
+  },
 } satisfies Record<string, HeroCopy>;
 
 export type HeroVariantKey = keyof typeof heroVariants;
