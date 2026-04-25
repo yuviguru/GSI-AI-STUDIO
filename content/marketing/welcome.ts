@@ -16,7 +16,7 @@
  */
 
 export interface HeroCopy {
-  /** Small pill above the headline (e.g. "Aligned to CBSE..."). */
+  /** Small pill above the headline (e.g. "Aligned to India's school AI curriculum"). */
   eyebrow: string;
   /** Plain text before the gradient highlight. */
   headlinePrefix: string;
@@ -45,7 +45,7 @@ export const HERO_STEPS: HeroStep[] = [
 export const heroVariants = {
   /* ─── v1: parent-careerist (current default) ────────────────────────── */
   v1_career: {
-    eyebrow: 'Aligned to CBSE AI & Computational Thinking · 2026-27',
+    eyebrow: "Aligned to India's school AI curriculum",
     headlinePrefix: 'From first story to',
     headlineHighlight: 'first AI engineer.',
     subhead:
@@ -61,7 +61,7 @@ export const heroVariants = {
 
   /* ─── v2: kid-magnetic (kids feel social pull, parents read "creative") */
   v2_kid_magnetic: {
-    eyebrow: 'CBSE AI & CT-aligned · Ages 8–17',
+    eyebrow: 'AI & CT curriculum-aligned · Ages 8–17',
     headlinePrefix: 'Make stuff other kids',
     headlineHighlight: 'actually want to see.',
     subhead:
@@ -70,7 +70,7 @@ export const heroVariants = {
     secondaryCta: { label: 'For schools', href: '#schools' },
     trustChips: [
       '100% child-safe outputs',
-      'CBSE AI & CT-aligned',
+      'AI & CT curriculum-aligned',
       'Free forever tier',
     ],
   },
@@ -81,7 +81,7 @@ export const heroVariants = {
     headlinePrefix: 'What will you',
     headlineHighlight: 'make today?',
     subhead:
-      'Indian kids spin up stories, songs, comics, quizzes and games with AI — and learn how AI actually works while they create. CBSE-aligned. Safe. Shareable.',
+      'Indian kids spin up stories, songs, comics, quizzes and games with AI — and learn how AI actually works while they create. Curriculum-aligned. Safe. Shareable.',
     primaryCta: { label: 'Make something — free', href: '/create/story' },
     secondaryCta: { label: 'For schools', href: '#schools' },
     trustChips: [
@@ -93,7 +93,7 @@ export const heroVariants = {
 
   /* ─── v4: sidekick (kid-empowerment, agency-first) ──────────────────── */
   v4_sidekick: {
-    eyebrow: 'CBSE AI & CT curriculum · 2026-27',
+    eyebrow: "Aligned to India's school AI curriculum",
     headlinePrefix: 'AI is your sidekick.',
     headlineHighlight: "You're the boss.",
     subhead:
@@ -109,64 +109,64 @@ export const heroVariants = {
 
   /* ─── v5: parent-first ("screen time worth keeping") ────────────────── */
   v5_parent_first: {
-    eyebrow: 'CBSE AI & CT curriculum · India',
+    eyebrow: "Aligned to India's school AI curriculum",
     headlinePrefix: 'Where Indian kids learn AI by',
     headlineHighlight: 'making — not watching.',
     subhead:
-      'A safe, CBSE-aligned creation studio for ages 8–17. Kids build real things — stories, music, games — and learn how AI works in the process. Screen time worth keeping.',
+      'A safe, curriculum-aligned creation studio for ages 8–17. Kids build real things — stories, music, games — and learn how AI works in the process. Screen time worth keeping.',
     primaryCta: { label: 'Start free trial', href: '/create/story' },
     secondaryCta: { label: 'See how it works', href: '#schools' },
     trustChips: [
       '100% child-safe outputs',
-      'CBSE 2026-27 AI & CT-aligned',
+      'AI & CT curriculum-aligned',
       'Free forever tier',
     ],
   },
 
   /* ─── v6: screen-time permission ────────────────────────────────────── */
   v6_screen_time: {
-    eyebrow: 'CBSE AI & CT curriculum · India',
+    eyebrow: "Aligned to India's school AI curriculum",
     headlinePrefix: "The screen time you'll be",
     headlineHighlight: 'glad they had.',
     subhead:
-      'An AI creation studio for Indian kids ages 8–17. They make stories, music and games — and walk away knowing how AI actually works. CBSE AI & CT-aligned. Safe by default.',
+      'An AI creation studio for Indian kids ages 8–17. They make stories, music and games — and walk away knowing how AI actually works. AI & CT curriculum-aligned. Safe by default.',
     primaryCta: { label: 'Start free trial', href: '/create/story' },
     secondaryCta: { label: 'See how it works', href: '#schools' },
     trustChips: [
       '100% child-safe outputs',
-      'CBSE 2026-27 AI & CT-aligned',
+      'AI & CT curriculum-aligned',
       'Free forever tier',
     ],
   },
 
   /* ─── v7: realist urgency (kids will use AI — direct it) ─────────────── */
   v7_realist: {
-    eyebrow: 'CBSE AI & CT-aligned · ages 8–17',
+    eyebrow: 'AI & CT curriculum-aligned · ages 8–17',
     headlinePrefix: 'Indian kids are using AI anyway.',
     headlineHighlight: 'Teach them to use it well.',
     subhead:
-      'A safe, CBSE-aligned creation studio for ages 8–17. Kids learn what AI can do, where it gets things wrong, and how to direct it — by making real things. Free forever tier.',
+      'A safe, curriculum-aligned creation studio for ages 8–17. Kids learn what AI can do, where it gets things wrong, and how to direct it — by making real things. Free forever tier.',
     primaryCta: { label: 'Get started — free', href: '/create/story' },
     secondaryCta: { label: 'See how it works', href: '#schools' },
     trustChips: [
       '100% child-safe outputs',
-      'CBSE AI & CT-aligned',
+      'AI & CT curriculum-aligned',
       'Free forever tier',
     ],
   },
 
   /* ─── v9: use → understand (build literacy, not just usage) ──────────── */
   v9_understand: {
-    eyebrow: 'CBSE AI & CT curriculum · 2026-27',
+    eyebrow: "Aligned to India's school AI curriculum",
     headlinePrefix: "Your kid won't just use AI.",
     headlineHighlight: "They'll learn how it works.",
     subhead:
-      'A creation studio for Indian kids ages 8–17. Aligned to the CBSE AI & Computational Thinking curriculum. Every output is safe, shareable, and built by them — not for them.',
+      "A creation studio for Indian kids ages 8–17. Aligned to India's AI & Computational Thinking curriculum — across every board. Every output is safe, shareable, and built by them — not for them.",
     primaryCta: { label: 'Start free trial', href: '/create/story' },
     secondaryCta: { label: 'See how it works', href: '#schools' },
     trustChips: [
       '100% child-safe outputs',
-      'CBSE 2026-27 AI & CT-aligned',
+      'AI & CT curriculum-aligned',
       'Free forever tier',
     ],
   },

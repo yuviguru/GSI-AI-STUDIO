@@ -1,7 +1,7 @@
 import { BadgeCheck, School, Globe2, Sparkles } from 'lucide-react';
 
 const AUTHORITIES = [
-  { icon: BadgeCheck, label: 'CBSE AI & CT Aligned', sub: '2026-27 curriculum' },
+  { icon: BadgeCheck, label: 'AI & CT Curriculum-Aligned', sub: 'For every Indian board' },
   { icon: School, label: 'GSI School Network', sub: '100+ partner schools' },
   { icon: Globe2, label: 'Made in Chennai', sub: 'Built for Indian kids' },
   { icon: Sparkles, label: 'DPDPA-ready', sub: 'Safe by design' },

@@ -20,7 +20,7 @@ import { SiteFooter } from '@/components/marketing/SiteFooter';
 export const metadata: Metadata = {
   title: 'GSI AI Studio — From first story to first AI engineer',
   description:
-    'Indian kids learn AI by making things worth sharing. Create stories, music, quizzes and games with AI — and see how AI actually works. Aligned to the CBSE AI & Computational Thinking curriculum.',
+    "Indian kids learn AI by making things worth sharing. Create stories, music, quizzes and games with AI — and see how AI actually works. Aligned to India's school AI & Computational Thinking curriculum (every board).",
   openGraph: {
     title: 'GSI AI Studio',
     description: 'AI literacy, learned by creating.',
