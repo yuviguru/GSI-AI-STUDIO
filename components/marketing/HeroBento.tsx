@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useInView } from 'framer-motion';
 import {
   Play,
   Check,
@@ -12,6 +12,26 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import { KokoLottie } from './KokoLottie';
+
+// Count up from 0 to `target` once `triggered` flips true. Subtle easeOutCubic
+// so numbers settle gracefully — not a rapid slot-machine clatter.
+function useTriggeredCountUp(triggered: boolean, target: number, durationMs = 1200) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (!triggered) return;
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / durationMs);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setValue(target * eased);
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [triggered, target, durationMs]);
+  return value;
+}
 
 // Each tile is a mini preview of what the studio actually produces —
 // not an icon. Designed to read like miniature product screenshots.
@@ -337,9 +357,52 @@ function MusicTile() {
 
 // ── Tile: Quiz Maker ─────────────────────────────────────────────────────────
 
+interface QuizSample {
+  question: string;
+  options: { label: string; correct?: boolean }[];
+}
+
+const QUIZ_SAMPLES: QuizSample[] = [
+  {
+    question: 'Which Indian state has the most tigers?',
+    options: [
+      { label: 'A. Karnataka' },
+      { label: 'B. Madhya Pradesh', correct: true },
+      { label: 'C. Kerala' },
+    ],
+  },
+  {
+    question: 'Which planet has the most moons?',
+    options: [
+      { label: 'A. Jupiter' },
+      { label: 'B. Saturn', correct: true },
+      { label: 'C. Neptune' },
+    ],
+  },
+  {
+    question: 'Which is the longest river in India?',
+    options: [
+      { label: 'A. Yamuna' },
+      { label: 'B. Brahmaputra' },
+      { label: 'C. Ganga', correct: true },
+    ],
+  },
+];
+
 function QuizTile() {
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setIdx((p) => (p + 1) % QUIZ_SAMPLES.length);
+    }, 5200);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const current = QUIZ_SAMPLES[idx]!;
+
   return (
-    <div className="flex h-full flex-col justify-between bg-gradient-to-br from-emerald-50 via-white to-indigo-50 p-3">
+    <div className="relative flex h-full flex-col justify-between overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-indigo-50 p-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 rounded-full bg-white px-2 py-0.5 shadow-soft">
           <span className="text-xs">🧠</span>
@@ -348,19 +411,37 @@ function QuizTile() {
           </span>
         </div>
         <div className="numeric text-[9px] font-bold text-brand-text-muted">
-          Q3/10
+          Q{idx + 1}/{QUIZ_SAMPLES.length}
         </div>
       </div>
 
-      <div className="font-display text-[11px] font-bold leading-snug text-brand-text">
-        Which Indian state has the most tigers?
-      </div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={idx}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="flex flex-1 flex-col justify-between gap-1.5 pt-1.5"
+        >
+          <div className="font-display text-[11px] font-bold leading-snug text-brand-text">
+            {current.question}
+          </div>
 
-      <div className="space-y-1">
-        <AnswerRow label="A. Karnataka" />
-        <AnswerRow label="B. Madhya Pradesh" correct />
-        <AnswerRow label="C. Kerala" />
-      </div>
+          <div className="space-y-1">
+            {current.options.map((o, i) => (
+              <motion.div
+                key={`${idx}-${i}`}
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, delay: 0.15 + i * 0.08 }}
+              >
+                <AnswerRow label={o.label} correct={o.correct} />
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }
@@ -391,8 +472,14 @@ const COMIC_PANELS = [
 ];
 
 function ComicsTile() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, amount: 0.4 });
+
   return (
-    <div className="flex h-full min-h-0 flex-col gap-1.5 bg-gradient-to-br from-amber-50 via-white to-rose-50 p-2.5">
+    <div
+      ref={ref}
+      className="flex h-full min-h-0 flex-col gap-1.5 bg-gradient-to-br from-amber-50 via-white to-rose-50 p-2.5"
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 rounded-full bg-white px-2 py-0.5 shadow-soft">
           <span className="text-xs">🎨</span>
@@ -403,11 +490,18 @@ function ComicsTile() {
         <div className="text-[9px] font-bold text-brand-text-muted">4 panels</div>
       </div>
 
-      {/* 2×2 panel grid with real comic panels */}
+      {/* 2×2 panel grid — panels pop in sequence on scroll-into-view */}
       <div className="grid flex-1 grid-cols-2 gap-1">
         {COMIC_PANELS.map((panel, i) => (
-          <div
+          <motion.div
             key={i}
+            initial={{ opacity: 0, scale: 0.78 }}
+            animate={inView ? { opacity: 1, scale: 1 } : {}}
+            transition={{
+              duration: 0.45,
+              delay: 0.15 + i * 0.18,
+              ease: [0.22, 1, 0.36, 1],
+            }}
             className="relative overflow-hidden rounded-md ring-1 ring-black/20"
           >
             <Image
@@ -417,25 +511,54 @@ function ComicsTile() {
               sizes="(max-width: 640px) 20vw, 80px"
               className="object-cover"
             />
-          </div>
+          </motion.div>
         ))}
       </div>
 
-      <div className="flex items-center gap-1 rounded-md bg-white px-2 py-1 shadow-soft">
+      <motion.div
+        initial={{ opacity: 0, y: 4 }}
+        animate={inView ? { opacity: 1, y: 0 } : {}}
+        transition={{ duration: 0.4, delay: 1.05 }}
+        className="flex items-center gap-1 rounded-md bg-white px-2 py-1 shadow-soft"
+      >
         <MessageCircle className="h-2.5 w-2.5 text-brand-accent" />
         <span className="truncate text-[9px] font-semibold text-brand-text">
           &ldquo;Not so fast, robot!&rdquo;
         </span>
-      </div>
+      </motion.div>
     </div>
   );
 }
 
 // ── Tile: Game Studio ────────────────────────────────────────────────────────
 
+interface GameScene {
+  scene: number;
+  prompt: string;
+  primary: string;
+  secondary: string;
+}
+
+const GAME_SCENES: GameScene[] = [
+  { scene: 4, prompt: 'The cave is dark. The growl gets louder.', primary: '⚔ Fight', secondary: '🏃 Run' },
+  { scene: 5, prompt: 'A locked door blocks your path forward.', primary: '🗝 Pick lock', secondary: '🔍 Find key' },
+  { scene: 6, prompt: 'The dragon offers a curious deal.', primary: '🤝 Accept', secondary: '🚫 Refuse' },
+];
+
 function GamesTile() {
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setIdx((p) => (p + 1) % GAME_SCENES.length);
+    }, 4800);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const current = GAME_SCENES[idx]!;
+
   return (
-    <div className="flex h-full flex-col justify-between bg-gradient-to-br from-teal-50 via-white to-indigo-50 p-3">
+    <div className="relative flex h-full flex-col justify-between overflow-hidden bg-gradient-to-br from-teal-50 via-white to-indigo-50 p-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 rounded-full bg-white px-2 py-0.5 shadow-soft">
           <span className="text-xs">🎮</span>
@@ -443,36 +566,55 @@ function GamesTile() {
             Game Studio
           </span>
         </div>
-        <div className="text-[9px] font-bold text-brand-text-muted">Scene 4</div>
+        <div className="numeric text-[9px] font-bold text-brand-text-muted">
+          Scene {current.scene}
+        </div>
       </div>
 
-      <div className="font-display text-[11px] font-bold leading-snug text-brand-text">
-        The cave is dark. The growl gets louder.
-      </div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={idx}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="flex flex-1 flex-col justify-between gap-2 pt-2"
+        >
+          <div className="font-display text-[11px] font-bold leading-snug text-brand-text">
+            {current.prompt}
+          </div>
 
-      <div className="grid grid-cols-2 gap-1.5">
-        <button
-          type="button"
-          className="rounded-md bg-brand-primary px-1.5 py-1 text-[9px] font-bold text-white shadow-button"
-        >
-          ⚔ Fight
-        </button>
-        <button
-          type="button"
-          className="rounded-md bg-white px-1.5 py-1 text-[9px] font-bold text-brand-text ring-1 ring-brand-border"
-        >
-          🏃 Run
-        </button>
-      </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              className="rounded-md bg-brand-primary px-1.5 py-1 text-[9px] font-bold text-white shadow-button"
+            >
+              {current.primary}
+            </button>
+            <button
+              type="button"
+              className="rounded-md bg-white px-1.5 py-1 text-[9px] font-bold text-brand-text ring-1 ring-brand-border"
+            >
+              {current.secondary}
+            </button>
+          </div>
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }
 
 // ── Tile: Kid CEO (flagship, NEW) ────────────────────────────────────────────
 
+const KID_CEO_BARS = [0.35, 0.45, 0.3, 0.6, 0.55, 0.7, 0.85];
+
 function KidCeoTile() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, amount: 0.4 });
+  const revenue = useTriggeredCountUp(inView, 2480, 1500);
+
   return (
-    <div className="relative flex h-full flex-col overflow-hidden">
+    <div ref={ref} className="relative flex h-full flex-col overflow-hidden">
       {/* Top gradient band with NEW ribbon */}
       <div
         className="relative px-3 pt-3 pb-2"
@@ -491,7 +633,7 @@ function KidCeoTile() {
         </div>
         <div className="mt-2 text-[10px] text-white/85">Lemonade Stand · Week 3</div>
         <div className="numeric mt-0.5 font-display text-lg font-extrabold text-white">
-          ₹2,480
+          ₹{Math.round(revenue).toLocaleString('en-IN')}
           <span className="ml-1 text-[10px] font-semibold text-white/75">revenue</span>
         </div>
       </div>
@@ -506,11 +648,18 @@ function KidCeoTile() {
           </span>
         </div>
         <div className="mt-1.5 flex h-10 items-end gap-1">
-          {[0.35, 0.45, 0.3, 0.6, 0.55, 0.7, 0.85].map((h, i) => (
-            <div
+          {KID_CEO_BARS.map((h, i) => (
+            <motion.div
               key={i}
-              className="flex-1 rounded-sm bg-gradient-to-t from-brand-primary to-brand-ai"
+              className="flex-1 origin-bottom rounded-sm bg-gradient-to-t from-brand-primary to-brand-ai"
               style={{ height: `${h * 100}%`, opacity: 0.5 + h * 0.5 }}
+              initial={{ scaleY: 0 }}
+              animate={inView ? { scaleY: 1 } : {}}
+              transition={{
+                duration: 0.55,
+                delay: 0.25 + i * 0.07,
+                ease: [0.22, 1, 0.36, 1],
+              }}
             />
           ))}
         </div>
@@ -532,8 +681,16 @@ function KidCeoTile() {
 // ── Tile: Beat the AI (half-width footer) ────────────────────────────────────
 
 function BeatAiTile() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, amount: 0.5 });
+  const kidScore = useTriggeredCountUp(inView, 92, 1300);
+  const aiScore = useTriggeredCountUp(inView, 78, 1300);
+
   return (
-    <div className="flex h-full flex-col justify-between bg-gradient-to-br from-purple-50 via-white to-indigo-50 p-3">
+    <div
+      ref={ref}
+      className="flex h-full flex-col justify-between bg-gradient-to-br from-purple-50 via-white to-indigo-50 p-3"
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 rounded-full bg-white px-2 py-0.5 shadow-soft">
           <Bot className="h-3 w-3 text-purple-600" />
@@ -557,12 +714,23 @@ function BeatAiTile() {
               You
             </div>
             <div className="numeric text-[11px] font-extrabold text-brand-secondary">
-              92
+              {Math.round(kidScore)}
             </div>
           </div>
-          <span className="ml-auto rounded-full bg-brand-secondary/10 px-1 py-0.5 text-[8px] font-bold uppercase text-brand-secondary">
+          <motion.span
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={inView ? { opacity: 1, scale: 1 } : {}}
+            transition={{
+              duration: 0.5,
+              delay: 1.35,
+              type: 'spring',
+              stiffness: 320,
+              damping: 16,
+            }}
+            className="ml-auto rounded-full bg-brand-secondary/10 px-1 py-0.5 text-[8px] font-bold uppercase text-brand-secondary"
+          >
             Win
-          </span>
+          </motion.span>
         </div>
 
         <span className="text-[9px] font-bold text-brand-text-muted">vs</span>
@@ -577,7 +745,7 @@ function BeatAiTile() {
               Hard AI
             </div>
             <div className="numeric text-[11px] font-extrabold text-brand-text-secondary">
-              78
+              {Math.round(aiScore)}
             </div>
           </div>
         </div>
@@ -587,9 +755,14 @@ function BeatAiTile() {
         <span className="truncate font-semibold text-brand-text">
           &ldquo;Show your working: 27 × 13&rdquo;
         </span>
-        <span className="ml-2 shrink-0 rounded-full bg-brand-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-brand-primary">
+        <motion.span
+          initial={{ opacity: 0, y: 4 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.4, delay: 1.55 }}
+          className="ml-2 shrink-0 rounded-full bg-brand-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-brand-primary"
+        >
           +50 XP
-        </span>
+        </motion.span>
       </div>
     </div>
   );
@@ -605,8 +778,14 @@ const MINDX_SKILLS = [
 ];
 
 function MindXTile() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, amount: 0.5 });
+
   return (
-    <div className="flex h-full flex-col justify-between bg-gradient-to-br from-cyan-50 via-white to-purple-50 p-3">
+    <div
+      ref={ref}
+      className="flex h-full flex-col justify-between bg-gradient-to-br from-cyan-50 via-white to-purple-50 p-3"
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 rounded-full bg-white px-2 py-0.5 shadow-soft">
           <Brain className="h-3 w-3 text-cyan-600" />
@@ -620,21 +799,13 @@ function MindXTile() {
       </div>
 
       <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-        {MINDX_SKILLS.map((skill) => (
-          <div key={skill.label} className="flex items-center gap-1.5">
-            <span className="w-9 shrink-0 text-[9px] font-bold uppercase tracking-wide text-brand-text-secondary">
-              {skill.label}
-            </span>
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-brand-border/40">
-              <div
-                className={`h-full rounded-full bg-gradient-to-r ${skill.color}`}
-                style={{ width: `${skill.value * 100}%` }}
-              />
-            </div>
-            <span className="numeric w-6 shrink-0 text-right text-[9px] font-bold text-brand-text">
-              {Math.round(skill.value * 100)}
-            </span>
-          </div>
+        {MINDX_SKILLS.map((skill, i) => (
+          <MindXSkillBar
+            key={skill.label}
+            skill={skill}
+            triggered={inView}
+            delay={0.2 + i * 0.12}
+          />
         ))}
       </div>
 
@@ -642,10 +813,53 @@ function MindXTile() {
         <span className="truncate font-semibold text-brand-text">
           Next: Achiever band
         </span>
-        <span className="ml-2 shrink-0 rounded-full bg-cyan-100 px-1.5 py-0.5 text-[9px] font-bold text-cyan-700">
+        <motion.span
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={inView ? { opacity: 1, scale: 1 } : {}}
+          transition={{ duration: 0.5, delay: 0.95, type: 'spring', stiffness: 280, damping: 18 }}
+          className="ml-2 shrink-0 rounded-full bg-cyan-100 px-1.5 py-0.5 text-[9px] font-bold text-cyan-700"
+        >
           Day 12 streak
-        </span>
+        </motion.span>
       </div>
+    </div>
+  );
+}
+
+function MindXSkillBar({
+  skill,
+  triggered,
+  delay,
+}: {
+  skill: (typeof MINDX_SKILLS)[number];
+  triggered: boolean;
+  delay: number;
+}) {
+  const [counting, setCounting] = useState(false);
+  useEffect(() => {
+    if (!triggered) return;
+    const t = window.setTimeout(() => setCounting(true), delay * 1000);
+    return () => window.clearTimeout(t);
+  }, [triggered, delay]);
+  const value = useTriggeredCountUp(counting, skill.value * 100, 900);
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="w-9 shrink-0 text-[9px] font-bold uppercase tracking-wide text-brand-text-secondary">
+        {skill.label}
+      </span>
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-brand-border/40">
+        <motion.div
+          className={`h-full origin-left rounded-full bg-gradient-to-r ${skill.color}`}
+          style={{ width: `${skill.value * 100}%` }}
+          initial={{ scaleX: 0 }}
+          animate={triggered ? { scaleX: 1 } : {}}
+          transition={{ duration: 0.9, delay, ease: [0.22, 1, 0.36, 1] }}
+        />
+      </div>
+      <span className="numeric w-6 shrink-0 text-right text-[9px] font-bold text-brand-text">
+        {Math.round(value)}
+      </span>
     </div>
   );
 }
