@@ -23,22 +23,22 @@ export function LogoBar() {
           Built for the 26 crore kids entering India&apos;s new AI curriculum
         </p>
 
-        <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-6">
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-6">
           {AUTHORITIES.map((a) => {
             const Icon = a.icon;
             return (
               <div
                 key={a.label}
-                className="flex items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-soft ring-1 ring-brand-border/60"
+                className="flex flex-col items-center gap-2 rounded-xl bg-white px-3 py-4 text-center shadow-soft ring-1 ring-brand-border/60 sm:flex-row sm:gap-3 sm:px-4 sm:py-3 sm:text-left"
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand-primary">
-                  <Icon className="h-4.5 w-4.5" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand-primary sm:h-10 sm:w-10">
+                  <Icon className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
                 </div>
                 <div className="min-w-0">
-                  <div className="truncate font-display text-sm font-bold text-brand-text">
+                  <div className="font-display text-[13px] font-bold leading-tight text-brand-text sm:truncate sm:text-sm">
                     {a.label}
                   </div>
-                  <div className="truncate text-[11px] text-brand-text-muted">
+                  <div className="mt-0.5 text-[11px] leading-tight text-brand-text-muted sm:mt-0 sm:truncate">
                     {a.sub}
                   </div>
                 </div>
@@ -51,11 +51,11 @@ export function LogoBar() {
         <div className="mt-10 grid grid-cols-2 gap-4 border-t border-brand-border pt-10 sm:grid-cols-4 sm:gap-6">
           {STATS.map((s) => (
             <div key={s.unit} className="text-center sm:text-left">
-              <div className="flex items-baseline justify-center gap-1.5 sm:justify-start">
+              <div className="flex flex-col items-center sm:flex-row sm:items-baseline sm:justify-start sm:gap-1.5">
                 <span className="numeric font-display text-3xl font-extrabold text-brand-text sm:text-4xl">
                   {s.value}
                 </span>
-                <span className="text-body font-semibold text-brand-text-secondary">
+                <span className="text-caption font-semibold text-brand-text-secondary sm:text-body">
                   {s.unit}
                 </span>
               </div>
