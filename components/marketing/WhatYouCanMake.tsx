@@ -11,6 +11,7 @@ import {
   Send,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { HeroBento } from './HeroBento';
 
 interface FeatureRow {
   icon: LucideIcon;
@@ -74,27 +75,6 @@ const FLAGSHIPS: Flagship[] = [
   },
 ];
 
-interface Studio {
-  name: string;
-  tagline: string;
-  emoji: string;
-  gradient: string;
-  href: string;
-}
-
-// Excludes Kid CEO (covered as flagship above)
-const STUDIOS: Studio[] = [
-  { name: 'Story Studio', tagline: 'Storybooks from an idea', emoji: '📖', gradient: 'gradient-story', href: '/create/story' },
-  { name: 'Music Lab', tagline: 'Melodies from mood + genre', emoji: '🎵', gradient: 'gradient-music', href: '/create/music' },
-  { name: 'Quiz Maker', tagline: 'Trivia on any topic', emoji: '🧠', gradient: 'gradient-quiz', href: '/create/quiz' },
-  { name: 'Game Studio', tagline: 'Choose-your-own-adventure', emoji: '🎮', gradient: 'gradient-game', href: '/create/game' },
-  { name: 'Comic Studio', tagline: 'Panel-by-panel comics', emoji: '🎨', gradient: 'gradient-comic', href: '/create/comic' },
-  { name: 'Beat the AI', tagline: '9 head-to-head challenges', emoji: '⚡', gradient: 'gradient-ai', href: '/beat-the-ai' },
-  { name: 'Skill Arena', tagline: 'Quickfire drills', emoji: '🏆', gradient: 'gradient-reward', href: '/skill-arena' },
-  { name: 'AI X-Ray', tagline: 'See the AI behind creation', emoji: '🔍', gradient: 'gradient-gamification', href: '/learn' },
-  { name: 'Remix Feed', tagline: 'Riff on what other kids made', emoji: '✨', gradient: 'gradient-ai', href: '/explore' },
-];
-
 export function WhatYouCanMake() {
   return (
     <section id="studios" className="relative overflow-hidden bg-white py-20 sm:py-28">
@@ -129,15 +109,15 @@ export function WhatYouCanMake() {
           ))}
         </div>
 
-        {/* Studio grid — bottom */}
+        {/* Studios bento — visual showcase, every tile is a clickable preview */}
         <div className="mt-16">
           <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
             <div>
               <p className="text-caption font-semibold uppercase tracking-wide text-brand-text-muted">
-                Plus nine creation studios
+                Plus the creation studios
               </p>
               <h3 className="mt-1 font-display text-xl font-bold text-brand-text sm:text-2xl">
-                Pick any. They all teach AI while you create.
+                Tap any tile. Every one teaches AI while you create.
               </h3>
             </div>
             <Link
@@ -149,29 +129,11 @@ export function WhatYouCanMake() {
             </Link>
           </div>
 
-          <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
-            {STUDIOS.map((studio) => (
-              <Link
-                key={studio.name}
-                href={studio.href}
-                className="group flex flex-col rounded-2xl bg-white p-4 shadow-soft ring-1 ring-brand-border/60 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover hover:ring-brand-primary/30"
-              >
-                <div
-                  className={`${studio.gradient} mb-3 flex h-10 w-10 items-center justify-center rounded-xl text-xl shadow-button`}
-                >
-                  <span aria-hidden>{studio.emoji}</span>
-                </div>
-                <h4 className="font-display text-caption font-bold text-brand-text">
-                  {studio.name}
-                </h4>
-                <p className="mt-0.5 text-[11px] leading-relaxed text-brand-text-muted">
-                  {studio.tagline}
-                </p>
-              </Link>
-            ))}
+          <div className="mt-10">
+            <HeroBento />
           </div>
 
-          <p className="mt-8 text-center text-caption text-brand-text-muted">
+          <p className="mt-10 text-center text-caption text-brand-text-muted">
             More studios every month. App &amp; Chatbot Builder, Video Studio,
             Indian Language Mode — shipping in 2026.
           </p>

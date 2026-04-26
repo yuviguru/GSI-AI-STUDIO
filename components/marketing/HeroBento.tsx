@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { AnimatePresence, motion, useInView } from 'framer-motion';
 import {
   Play,
@@ -55,17 +56,19 @@ export function HeroBento() {
         <BentoCell
           className="col-span-2 row-span-2 sm:col-span-1 sm:row-span-2 lg:col-span-1 lg:row-span-2"
           delay={0.05}
+          href="/create/story"
+          ariaLabel="Open Story Studio"
         >
           <StoryTile />
         </BentoCell>
 
         {/* 2 — Music Lab (1×1, waveform) */}
-        <BentoCell delay={0.1}>
+        <BentoCell delay={0.1} href="/create/music" ariaLabel="Open Music Lab">
           <MusicTile />
         </BentoCell>
 
         {/* 3 — Quiz Maker (1×1, mock question) */}
-        <BentoCell delay={0.15}>
+        <BentoCell delay={0.15} href="/create/quiz" ariaLabel="Open Quiz Maker">
           <QuizTile />
         </BentoCell>
 
@@ -73,17 +76,19 @@ export function HeroBento() {
         <BentoCell
           className="col-span-2 row-span-2 sm:col-span-1 sm:row-span-2 lg:col-span-1 lg:row-span-2"
           delay={0.2}
+          href="/ceo"
+          ariaLabel="Open Kid CEO"
         >
           <KidCeoTile />
         </BentoCell>
 
         {/* 5 — Comics (1×1, panel grid) */}
-        <BentoCell delay={0.25}>
+        <BentoCell delay={0.25} href="/create/comic" ariaLabel="Open Comic Studio">
           <ComicsTile />
         </BentoCell>
 
         {/* 6 — Games (1×1, adventure choice) */}
-        <BentoCell delay={0.3}>
+        <BentoCell delay={0.3} href="/create/game" ariaLabel="Open Game Studio">
           <GamesTile />
         </BentoCell>
 
@@ -91,6 +96,8 @@ export function HeroBento() {
         <BentoCell
           className="col-span-2 row-span-1 sm:col-span-2"
           delay={0.35}
+          href="/beat-the-ai"
+          ariaLabel="Open Beat the AI"
         >
           <BeatAiTile />
         </BentoCell>
@@ -99,6 +106,8 @@ export function HeroBento() {
         <BentoCell
           className="col-span-2 row-span-1 sm:col-span-2"
           delay={0.4}
+          href="/skill-arena"
+          ariaLabel="Open MindX Skill Arena"
         >
           <MindXTile />
         </BentoCell>
@@ -139,21 +148,39 @@ function BentoCell({
   children,
   className = '',
   delay = 0,
+  href,
+  ariaLabel,
 }: {
   children: React.ReactNode;
   className?: string;
   delay?: number;
+  href?: string;
+  ariaLabel?: string;
 }) {
-  return (
+  const inner = (
     <motion.div
       initial={{ opacity: 0, y: 16, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.5, delay, ease: 'easeOut' }}
-      className={`group overflow-hidden rounded-2xl bg-white shadow-card ring-1 ring-brand-border/60 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover ${className}`}
+      className={`group h-full overflow-hidden rounded-2xl bg-white shadow-card ring-1 ring-brand-border/60 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover ${className}`}
     >
       {children}
     </motion.div>
   );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        aria-label={ariaLabel}
+        className={`block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 ${className}`}
+      >
+        {inner}
+      </Link>
+    );
+  }
+
+  return inner;
 }
 
 // ── Tile: Story Studio ───────────────────────────────────────────────────────
