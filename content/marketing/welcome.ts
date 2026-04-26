@@ -171,13 +171,13 @@ export const heroVariants = {
     ],
   },
 
-  /* ─── v10: head start — pitch-voice, live default ───────────────────── */
+  /* ─── v10: head start — manifesto/we-voice, live default ────────────── */
   v10_head_start: {
     eyebrow: "Aligned to India's school AI curriculum",
     headlinePrefix: 'Give your kid the head start',
     headlineHighlight: 'the next decade demands.',
     subhead:
-      "Indian kids ages 8–17 don't just use AI here. They create with it, see how it works under the hood, and challenge it head-to-head. Because knowledge isn't the advantage anymore — understanding is. Curriculum-aligned. Safe by default.",
+      "We're building how the next generation grows up with AI. At GSI AI Studio, Indian kids ages 8–17 create with AI, see how it works under the hood, and challenge it head-to-head — because knowledge isn't the advantage anymore. Understanding is. Curriculum-aligned. Safe by default.",
     primaryCta: { label: 'Start free trial', href: '/create/story' },
     secondaryCta: { label: 'See how it works', href: '#schools' },
     trustChips: [
@@ -191,7 +191,7 @@ export const heroVariants = {
 export type HeroVariantKey = keyof typeof heroVariants;
 
 /* ─── Active variant — change THIS line to swap the live hero copy. ──── */
-export const activeHero: HeroCopy = heroVariants.v1_career;
+export const activeHero: HeroCopy = heroVariants.v10_head_start;
 
 /** Resolve a variant key from a URL search param, falling back to the active default. */
 export function resolveHeroCopy(variantParam: string | null | undefined): HeroCopy {
