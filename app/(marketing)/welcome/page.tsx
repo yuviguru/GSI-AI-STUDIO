@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
 import { Hero } from '@/components/marketing/Hero';
 import { LogoBar } from '@/components/marketing/LogoBar';
@@ -19,7 +20,7 @@ import { SiteFooter } from '@/components/marketing/SiteFooter';
 export const metadata: Metadata = {
   title: 'GSI AI Studio — From first story to first AI engineer',
   description:
-    'Indian kids learn AI by making things worth sharing. Create stories, music, quizzes and games with AI — and see how AI actually works. Aligned to the CBSE AI & Computational Thinking curriculum.',
+    "Indian kids learn AI by making things worth sharing. Create stories, music, quizzes and games with AI — and see how AI actually works. Aligned to India's school AI & Computational Thinking curriculum (every board).",
   openGraph: {
     title: 'GSI AI Studio',
     description: 'AI literacy, learned by creating.',
@@ -34,7 +35,11 @@ export default function WelcomePage() {
       <MarketingNav />
       <main>
         {/* 1 — Hero (includes inline 3-step how-it-works) */}
-        <Hero />
+        {/* Suspense lets Hero use useSearchParams (?heroVariant=...) without
+            opting the whole route out of static prerendering. */}
+        <Suspense>
+          <Hero />
+        </Suspense>
         {/* 2 — LogoBar (authorities + stats) */}
         <LogoBar />
         {/* 3 — What you can make (Flagship + Studios merged) */}

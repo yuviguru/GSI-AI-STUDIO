@@ -1,17 +1,18 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowRight, Sparkles, Shield, Layers, Share2 } from 'lucide-react';
 import { HeroBento } from './HeroBento';
+import { HERO_STEPS, resolveHeroCopy } from '@/content/marketing/welcome';
 
-const INLINE_STEPS = [
-  { num: '01', icon: Layers, label: 'Pick a studio' },
-  { num: '02', icon: Sparkles, label: 'Describe an idea' },
-  { num: '03', icon: Share2, label: 'Share + learn' },
-];
+const STEP_ICONS = [Layers, Sparkles, Share2];
 
 export function Hero() {
+  const searchParams = useSearchParams();
+  const copy = resolveHeroCopy(searchParams?.get('heroVariant'));
+
   return (
     <section className="relative overflow-hidden bg-white pt-12 pb-20 sm:pt-16 sm:pb-28">
       {/* Background ambient glow */}
@@ -33,7 +34,7 @@ export function Hero() {
           className="mx-auto mb-6 flex w-fit items-center gap-2 rounded-full border border-brand-primary/20 bg-brand-soft px-4 py-1.5 text-caption font-semibold text-brand-primary"
         >
           <Sparkles className="h-3.5 w-3.5" />
-          Aligned to CBSE AI &amp; Computational Thinking · 2026-27
+          {copy.eyebrow}
         </motion.div>
 
         {/* Headline */}
@@ -43,8 +44,8 @@ export function Hero() {
           transition={{ duration: 0.6, delay: 0.05 }}
           className="mx-auto max-w-4xl text-center font-display text-[44px] font-extrabold leading-[1.05] tracking-tight text-brand-text text-balance sm:text-[60px] lg:text-[72px]"
         >
-          From first story to{' '}
-          <span className="text-gradient-primary">first AI engineer.</span>
+          {copy.headlinePrefix}{' '}
+          <span className="text-gradient-primary">{copy.headlineHighlight}</span>
         </motion.h1>
 
         {/* Sub-headline */}
@@ -54,9 +55,7 @@ export function Hero() {
           transition={{ duration: 0.6, delay: 0.15 }}
           className="mx-auto mt-6 max-w-2xl text-center text-body-lg leading-relaxed text-brand-text-secondary sm:text-lg"
         >
-          Indian kids build stories, music, quizzes and games with AI — and
-          discover how AI actually works while they create. Safe by default.
-          Shareable in one tap. Built for ages 8–17.
+          {copy.subhead}
         </motion.p>
 
         {/* Dual CTA */}
@@ -67,17 +66,17 @@ export function Hero() {
           className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
         >
           <Link
-            href="/create/story"
+            href={copy.primaryCta.href}
             className="group flex h-13 items-center justify-center gap-2 rounded-full bg-brand-primary px-8 py-3.5 text-body-lg font-semibold text-white shadow-button transition-all hover:brightness-110 hover:shadow-button-hover active:scale-[0.98]"
           >
-            Start creating — free
+            {copy.primaryCta.label}
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
           <Link
-            href="#schools"
+            href={copy.secondaryCta.href}
             className="flex h-13 items-center justify-center gap-2 rounded-full border-2 border-brand-border bg-white px-8 py-3.5 text-body-lg font-semibold text-brand-text transition-all hover:border-brand-primary hover:bg-brand-soft"
           >
-            For schools
+            {copy.secondaryCta.label}
           </Link>
         </motion.div>
 
@@ -88,14 +87,15 @@ export function Hero() {
           transition={{ duration: 0.6, delay: 0.4 }}
           className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-caption text-brand-text-muted"
         >
-          <span className="flex items-center gap-1.5">
-            <Shield className="h-3.5 w-3.5 text-brand-secondary" />
-            100% child-safe outputs
-          </span>
-          <span className="hidden h-1 w-1 rounded-full bg-brand-border sm:block" />
-          <span>No credit card · Free forever tier</span>
-          <span className="hidden h-1 w-1 rounded-full bg-brand-border sm:block" />
-          <span>10 studios · 12 badges · WhatsApp-ready</span>
+          {copy.trustChips.map((chip, i) => (
+            <span key={chip} className="flex items-center gap-1.5">
+              {i === 0 && <Shield className="h-3.5 w-3.5 text-brand-secondary" />}
+              {i > 0 && (
+                <span className="hidden h-1 w-1 rounded-full bg-brand-border sm:block" />
+              )}
+              <span>{chip}</span>
+            </span>
+          ))}
         </motion.div>
 
         {/* Inline 3-step how-it-works (replaces the full HowItWorks section) */}
@@ -105,8 +105,8 @@ export function Hero() {
           transition={{ duration: 0.6, delay: 0.5 }}
           className="mx-auto mt-10 flex w-fit max-w-3xl flex-wrap items-center justify-center gap-x-3 gap-y-3 rounded-full border border-brand-border bg-white px-3 py-2 shadow-soft sm:gap-x-5 sm:px-5"
         >
-          {INLINE_STEPS.map((step, i) => {
-            const Icon = step.icon;
+          {HERO_STEPS.map((step, i) => {
+            const Icon = STEP_ICONS[i] ?? Sparkles;
             return (
               <div key={step.num} className="flex items-center gap-2.5">
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-soft">
@@ -118,7 +118,7 @@ export function Hero() {
                 <span className="font-display text-caption font-bold text-brand-text">
                   {step.label}
                 </span>
-                {i < INLINE_STEPS.length - 1 && (
+                {i < HERO_STEPS.length - 1 && (
                   <span
                     aria-hidden
                     className="hidden h-3 w-px bg-brand-border sm:block"
