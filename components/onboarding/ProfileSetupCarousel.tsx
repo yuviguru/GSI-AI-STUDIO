@@ -47,7 +47,11 @@ export function ProfileSetupCarousel({
   const { isAuthenticated, getIdToken, user } = useAuth();
   const { refreshKids } = useKidProfile();
   const [step, setStep] = useState<Step>('mascot');
-  const [mascotId, setMascotId] = useState<string | null>(null);
+  // Pre-select the brand default (Pixie). During pilot all other mascots are
+  // locked so the picker is effectively a "meet your buddy" screen — no need
+  // to make the kid click before Next is enabled. They can still see all
+  // mascots in the grid; locked tiles show a "Soon" badge.
+  const [mascotId, setMascotId] = useState<string | null>(DEFAULT_MASCOT_ID);
   const [name, setName] = useState('');
   const [age, setAge] = useState<number | null>(null);
   const [avatar, setAvatar] = useState<GeneratedAvatar | null>(null);
