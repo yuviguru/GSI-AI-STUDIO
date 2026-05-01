@@ -5,9 +5,13 @@
  * Each mascot is tied to a kid's profile and serves as their personal AI
  * companion throughout the GSI AI Studio experience.
  *
- * Note: Emoji is the placeholder until per-mascot illustrated/animated art
- * is finalised. The Mascot component reads from this roster — swapping the
- * art channel later means updating only the `art` field below.
+ * Pilot phase: Pixie is the only unlocked mascot and the brand default.
+ * Other mascots are flagged `comingSoon` — visible in the picker but locked
+ * with a "Coming soon" badge — so we ship the system end-to-end before all
+ * Lottie art is finalised.
+ *
+ * Animation channel: when `lottie` is set, MascotAvatar renders the Lottie
+ * file instead of the emoji placeholder. Path is relative to /public.
  */
 
 export type MascotVibe =
@@ -33,17 +37,38 @@ export interface Mascot {
   personality: string;
   vibe: MascotVibe;
   kind: MascotKind;
-  /** Emoji used as placeholder art (will be replaced by Lottie/SVG). */
+  /** Emoji used as placeholder art (always available, used as Lottie fallback). */
   art: string;
+  /** Public path to a self-contained Lottie JSON. When set, takes precedence
+   *  over `art` in MascotAvatar. Add new poses by extending this to a record
+   *  later (e.g. `lottie: { default: '...', happy: '...' }`). */
+  lottie?: string;
   /** Tailwind gradient classes for the mascot's signature card background. */
   gradient: string;
   /** Tailwind ring color used when the mascot card is selected. */
   ringColor: string;
   /** Tailwind background for the soft tile. */
   softBg: string;
+  /** When true, the picker shows a "Coming soon" badge and disables selection.
+   *  All non-Pixie mascots are flagged this way until their Lottie art ships. */
+  comingSoon?: boolean;
 }
 
 export const MASCOTS: readonly Mascot[] = [
+  {
+    id: 'pixie',
+    name: 'Pixie',
+    tagline: 'The helper bot',
+    greeting: "Beep! I'm Pixie. I'll show you the wires inside every AI.",
+    personality: 'Curious tinkerer. Loves taking things apart and explaining how they work.',
+    vibe: 'techy',
+    kind: 'sci-fi',
+    art: '🤖',
+    lottie: '/lottie/pixie-default.json',
+    gradient: 'from-cyan-200 via-sky-100 to-blue-100',
+    ringColor: 'ring-cyan-400',
+    softBg: 'bg-cyan-50',
+  },
   {
     id: 'koko',
     name: 'Koko',
@@ -56,19 +81,7 @@ export const MASCOTS: readonly Mascot[] = [
     gradient: 'from-orange-200 via-amber-100 to-rose-100',
     ringColor: 'ring-orange-400',
     softBg: 'bg-orange-50',
-  },
-  {
-    id: 'pixie',
-    name: 'Pixie',
-    tagline: 'The helper bot',
-    greeting: "Beep! I'm Pixie. I'll show you the wires inside every AI.",
-    personality: 'Curious tinkerer. Loves taking things apart and explaining how they work.',
-    vibe: 'techy',
-    kind: 'sci-fi',
-    art: '🤖',
-    gradient: 'from-cyan-200 via-sky-100 to-blue-100',
-    ringColor: 'ring-cyan-400',
-    softBg: 'bg-cyan-50',
+    comingSoon: true,
   },
   {
     id: 'aria',
@@ -82,6 +95,7 @@ export const MASCOTS: readonly Mascot[] = [
     gradient: 'from-violet-200 via-indigo-100 to-purple-100',
     ringColor: 'ring-violet-400',
     softBg: 'bg-violet-50',
+    comingSoon: true,
   },
   {
     id: 'bolt',
@@ -95,6 +109,7 @@ export const MASCOTS: readonly Mascot[] = [
     gradient: 'from-rose-200 via-red-100 to-orange-100',
     ringColor: 'ring-rose-400',
     softBg: 'bg-rose-50',
+    comingSoon: true,
   },
   {
     id: 'luma',
@@ -108,6 +123,7 @@ export const MASCOTS: readonly Mascot[] = [
     gradient: 'from-emerald-200 via-teal-100 to-cyan-100',
     ringColor: 'ring-emerald-400',
     softBg: 'bg-emerald-50',
+    comingSoon: true,
   },
   {
     id: 'pebble',
@@ -121,6 +137,7 @@ export const MASCOTS: readonly Mascot[] = [
     gradient: 'from-teal-200 via-emerald-100 to-lime-100',
     ringColor: 'ring-teal-400',
     softBg: 'bg-teal-50',
+    comingSoon: true,
   },
   {
     id: 'rio',
@@ -134,6 +151,7 @@ export const MASCOTS: readonly Mascot[] = [
     gradient: 'from-pink-200 via-fuchsia-100 to-purple-100',
     ringColor: 'ring-pink-400',
     softBg: 'bg-pink-50',
+    comingSoon: true,
   },
   {
     id: 'nova',
@@ -147,16 +165,26 @@ export const MASCOTS: readonly Mascot[] = [
     gradient: 'from-blue-200 via-indigo-100 to-violet-100',
     ringColor: 'ring-blue-400',
     softBg: 'bg-blue-50',
+    comingSoon: true,
   },
 ] as const;
 
 export type MascotId = (typeof MASCOTS)[number]['id'];
 
-/** Find a mascot by ID; returns Koko as the default when not found. */
+/** Default mascot used before the kid picks one — also the brand mascot. */
+export const DEFAULT_MASCOT_ID: MascotId = 'pixie';
+
+/** Find a mascot by ID; returns the default when not found. */
 export function getMascot(id: string | undefined | null): Mascot {
-  if (!id) return MASCOTS[0]!;
-  return MASCOTS.find((m) => m.id === id) ?? MASCOTS[0]!;
+  if (!id) return MASCOTS.find((m) => m.id === DEFAULT_MASCOT_ID) ?? MASCOTS[0]!;
+  return (
+    MASCOTS.find((m) => m.id === id) ??
+    MASCOTS.find((m) => m.id === DEFAULT_MASCOT_ID) ??
+    MASCOTS[0]!
+  );
 }
 
-/** Default mascot used before the kid picks one. */
-export const DEFAULT_MASCOT_ID: MascotId = 'koko';
+/** True if the kid is allowed to choose this mascot right now. */
+export function isMascotSelectable(m: Mascot): boolean {
+  return !m.comingSoon;
+}

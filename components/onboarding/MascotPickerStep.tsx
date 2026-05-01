@@ -1,8 +1,9 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { MASCOTS, type Mascot } from '@/lib/mascots/roster';
+import { MASCOTS, type Mascot, isMascotSelectable } from '@/lib/mascots/roster';
 import { MascotAvatar } from '@/components/mascot/MascotAvatar';
 
 interface MascotPickerStepProps {
@@ -19,6 +20,13 @@ export function MascotPickerStep({
   onBack,
 }: MascotPickerStepProps) {
   const selected = MASCOTS.find((m) => m.id === selectedId) ?? null;
+  // Sort unlocked mascots first so the picker doesn't show a wall of locked
+  // tiles before the selectable one. Original roster order is preserved
+  // within each group.
+  const orderedMascots = [
+    ...MASCOTS.filter((m) => !m.comingSoon),
+    ...MASCOTS.filter((m) => m.comingSoon),
+  ];
 
   return (
     <div className="flex h-full flex-col px-5 py-6">
@@ -30,7 +38,7 @@ export function MascotPickerStep({
           Pick your AI buddy
         </h2>
         <p className="mt-1 text-sm text-gray-500">
-          They&rsquo;ll cheer you on through every creation.
+          They&rsquo;ll cheer you on through every creation. More buddies are on the way!
         </p>
       </div>
 
@@ -39,23 +47,33 @@ export function MascotPickerStep({
         aria-label="Choose your mascot"
         className="mt-5 grid flex-1 grid-cols-2 gap-3 overflow-y-auto pb-4 sm:grid-cols-4"
       >
-        {MASCOTS.map((m: Mascot) => {
+        {orderedMascots.map((m: Mascot) => {
           const isSelected = selectedId === m.id;
+          const selectable = isMascotSelectable(m);
+          const ariaLabel = selectable
+            ? `${m.name}, ${m.tagline}`
+            : `${m.name}, ${m.tagline} (coming soon — locked)`;
+
           return (
             <motion.button
               key={m.id}
               type="button"
               role="radio"
               aria-checked={isSelected}
-              aria-label={`${m.name}, ${m.tagline}`}
-              onClick={() => onSelect(m.id)}
-              whileTap={{ scale: 0.95 }}
+              aria-label={ariaLabel}
+              aria-disabled={!selectable}
+              disabled={!selectable}
+              onClick={() => selectable && onSelect(m.id)}
+              whileTap={selectable ? { scale: 0.95 } : undefined}
               className={cn(
-                'flex flex-col items-center gap-2 rounded-2xl bg-gradient-to-br p-3 text-left transition-all',
+                'relative flex flex-col items-center gap-2 rounded-2xl bg-gradient-to-br p-3 text-left transition-all',
                 m.gradient,
-                isSelected
+                selectable && isSelected
                   ? cn('ring-4 ring-offset-2', m.ringColor)
-                  : 'ring-1 ring-black/5 hover:ring-black/15',
+                  : 'ring-1 ring-black/5',
+                selectable
+                  ? 'cursor-pointer hover:ring-black/15'
+                  : 'cursor-not-allowed opacity-60 grayscale',
               )}
             >
               <MascotAvatar id={m.id} size="lg" />
@@ -67,6 +85,13 @@ export function MascotPickerStep({
                   {m.tagline}
                 </p>
               </div>
+
+              {!selectable && (
+                <div className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-gray-700 shadow-sm">
+                  <Lock className="h-2.5 w-2.5" aria-hidden />
+                  <span>Soon</span>
+                </div>
+              )}
             </motion.button>
           );
         })}
