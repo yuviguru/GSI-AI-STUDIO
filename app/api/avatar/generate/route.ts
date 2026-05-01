@@ -10,6 +10,7 @@ import {
   stripJpegMetadata,
 } from '@/lib/images/jpegSanitize';
 import { uploadAvatarToStorage } from '@/lib/images/avatarStorage';
+import { isPersistableAvatarUrl } from '@/lib/images/avatarUrl';
 
 /** Allowed trait values — restricts the prompt surface so kids can't inject
  *  unsafe descriptors via the trait picker. Free-text is filtered separately. */
@@ -245,18 +246,21 @@ export async function POST(request: NextRequest) {
 
       if (storageUrl) {
         imageUrl = storageUrl;
-        persisted = true;
+        // Storage URLs always pass the persistable allowlist — but route through
+        // the same predicate to keep the source of truth in one place.
+        persisted = isPersistableAvatarUrl(storageUrl);
       } else {
         // Fall back to sanitised data URI (still smaller than the original).
         imageUrl = encodeDataUri(decoded.contentType, sanitised);
       }
-    } else if (
-      rawImageUrl.startsWith('https://') &&
-      rawImageUrl.length < 2048
-    ) {
-      // Provider returned a URL directly — pass through, mark as persisted
-      // since the URL is stable.
-      persisted = true;
+    } else {
+      // Provider returned a URL directly. Only mark persisted when it's on
+      // the shared allowlist — otherwise downstream (claim-session,
+      // /api/users/kids) will reject it as an unknown host and the migration
+      // path will silently drop the avatar. Stock-photo fallbacks we don't
+      // recognise come back here as persisted=false; the client keeps them
+      // for the current session but doesn't try to migrate them.
+      persisted = isPersistableAvatarUrl(rawImageUrl);
     }
 
     return apiSuccess({ imageUrl, prompt, providerName, persisted });

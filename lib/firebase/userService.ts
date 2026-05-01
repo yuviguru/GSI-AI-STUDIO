@@ -226,25 +226,30 @@ export async function claimSession(
       shareCount: 0,
     };
 
-    const mergedClaim = {
+    const mergedOnboarding = mergeOnboarding(previous.onboarding, options.onboarding);
+
+    // Build the payload field-by-field — Firestore rejects nested
+    // `FieldValue.delete()` inside an `update()` map value, and also rejects
+    // explicit `undefined` values. So we omit `onboarding` entirely when there
+    // is nothing to write. Because we're replacing the whole claimedSessionData
+    // map atomically (top-level key, not dot-path), omitting the field cleanly
+    // drops any previously-stored onboarding too — no delete sentinel needed.
+    const claimedSessionDataPayload: Record<string, unknown> = {
       aiPoints: previous.aiPoints + sessionPoints.aiPoints,
       badges: dedupe([...previous.badges, ...sessionPoints.badges]),
       conceptsLearned: dedupe([...previous.conceptsLearned, ...sessionPoints.conceptsLearned]),
       creationsByType: addCounts(previous.creationsByType, sessionPoints.creationsByType),
       shareCount: previous.shareCount + sessionPoints.shareCount,
-      onboarding: mergeOnboarding(previous.onboarding, options.onboarding) ?? undefined,
     };
+    if (mergedOnboarding) {
+      claimedSessionDataPayload.onboarding = mergedOnboarding;
+    }
 
-    // Drop `onboarding` if it's empty so we don't write `undefined` to Firestore.
-    const writePayload: Record<string, unknown> = {
-      claimedSessionData: mergedClaim.onboarding === undefined
-        ? { ...mergedClaim, onboarding: FieldValue.delete() }
-        : mergedClaim,
+    tx.update(userRef, {
+      claimedSessionData: claimedSessionDataPayload,
       claimedSessionIds: FieldValue.arrayUnion(sessionId),
       updatedAt: Timestamp.now(),
-    };
-
-    tx.update(userRef, writePayload);
+    });
 
     if (sessionSnap.exists) {
       tx.update(sessionRef, { claimedBy: uid });
@@ -276,12 +281,18 @@ function mergeOnboarding(
   if (!prev && !next) return undefined;
   // First-write wins for each field — don't let a later anonymous session
   // overwrite a name/mascot/avatar the kid already chose.
-  return {
-    name: prev?.name ?? next?.name,
-    age: prev?.age ?? next?.age,
-    mascotId: prev?.mascotId ?? next?.mascotId,
-    avatarUrl: prev?.avatarUrl ?? next?.avatarUrl,
-  };
+  // Build the object incrementally so absent fields don't appear as
+  // `undefined` values (which Firestore rejects on write).
+  const merged: ClaimSessionOnboarding = {};
+  const name = prev?.name ?? next?.name;
+  const age = prev?.age ?? next?.age;
+  const mascotId = prev?.mascotId ?? next?.mascotId;
+  const avatarUrl = prev?.avatarUrl ?? next?.avatarUrl;
+  if (name !== undefined) merged.name = name;
+  if (age !== undefined) merged.age = age;
+  if (mascotId !== undefined) merged.mascotId = mascotId;
+  if (avatarUrl !== undefined) merged.avatarUrl = avatarUrl;
+  return Object.keys(merged).length > 0 ? merged : undefined;
 }
 
 /**

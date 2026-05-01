@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { verifyAuth } from '@/lib/auth-utils';
 import { createKid, listKids } from '@/lib/firebase/kidService';
+import { isPersistableAvatarUrl } from '@/lib/images/avatarUrl';
 
 /**
  * POST /api/users/kids
@@ -64,20 +65,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate avatarUrl — must be a Firebase Storage URL or our own /api path.
-    // Reject arbitrary URLs to prevent storing untrusted external links on the kid doc.
+    // Validate avatarUrl against the shared allowlist (Firebase Storage,
+    // Pollinations, curated stock CDNs, or local paths). The same predicate
+    // is used in /api/avatar/generate's `persisted` flag and in
+    // claim-session's onboarding sanitiser, so what the generator advertises
+    // as persistable is exactly what we accept here.
     if (avatarUrl !== undefined && avatarUrl !== null) {
-      if (typeof avatarUrl !== 'string' || avatarUrl.length > 2048) {
-        throw new AppException('INVALID_INPUT', 'Invalid avatar URL', 400);
-      }
-      const allowed =
-        avatarUrl.startsWith('https://firebasestorage.googleapis.com/') ||
-        avatarUrl.startsWith('https://storage.googleapis.com/') ||
-        avatarUrl.startsWith('/');
-      if (!allowed) {
+      if (!isPersistableAvatarUrl(avatarUrl)) {
         throw new AppException(
           'INVALID_INPUT',
-          'Avatar URL must be a Firebase Storage or local URL',
+          'Avatar URL must come from a trusted host (Firebase Storage, Pollinations, or stock CDN)',
           400,
         );
       }

@@ -3,10 +3,10 @@ import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { adminAuth } from '@/lib/firebase/admin';
 import { claimSession } from '@/lib/firebase/userService';
 import { MASCOTS } from '@/lib/mascots/roster';
+import { isPersistableAvatarUrl } from '@/lib/images/avatarUrl';
 
 const VALID_MASCOT_IDS = new Set(MASCOTS.map((m) => m.id));
 const MAX_NAME = 30;
-const MAX_AVATAR_URL = 2048;
 
 interface OnboardingBody {
   name?: unknown;
@@ -29,14 +29,8 @@ function sanitizeOnboarding(raw: OnboardingBody | undefined) {
   if (typeof raw.mascotId === 'string' && VALID_MASCOT_IDS.has(raw.mascotId)) {
     out.mascotId = raw.mascotId;
   }
-  if (typeof raw.avatarUrl === 'string' && raw.avatarUrl.length <= MAX_AVATAR_URL) {
-    const url = raw.avatarUrl;
-    const allowed =
-      url.startsWith('https://firebasestorage.googleapis.com/') ||
-      url.startsWith('https://storage.googleapis.com/') ||
-      url.startsWith('https://image.pollinations.ai/') ||
-      url.startsWith('/');
-    if (allowed) out.avatarUrl = url;
+  if (isPersistableAvatarUrl(raw.avatarUrl)) {
+    out.avatarUrl = raw.avatarUrl;
   }
 
   return Object.keys(out).length > 0 ? out : undefined;
