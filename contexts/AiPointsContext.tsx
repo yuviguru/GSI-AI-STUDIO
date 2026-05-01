@@ -83,7 +83,7 @@ const AiPointsContext = createContext<AiPointsState | null>(null);
 
 export function AiPointsProvider({ children }: { children: ReactNode }) {
   const { activeKid } = useKidProfile();
-  const { getIdToken } = useAuth();
+  const { getIdToken, isAuthenticated, loading: authLoading } = useAuth();
   const [totalPoints, setTotalPoints] = useState(0);
   const [conceptsLearned, setConceptsLearned] = useState<string[]>([]);
   const [badges, setBadges] = useState<string[]>([]);
@@ -130,7 +130,12 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
     }
   }, [checkMilestones]);
 
-  // Load from Firestore on mount; use localStorage as optimistic initial value
+  // Load from Firestore on mount; use localStorage as optimistic initial value.
+  //
+  // For authenticated users we DEFER the session fetch until either (a) the
+  // active kid resolves (kid hydration takes precedence), or (b) it's clear
+  // no kid is coming. This prevents the brief flash where session points
+  // appear, then get overwritten by kid points one tick later.
   useEffect(() => {
     // Instant display from localStorage while server responds
     if (typeof window !== 'undefined') {
@@ -143,12 +148,24 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Wait for auth resolution before deciding. Authed users get kid data;
+    // anonymous users get session data. Prevents the race outright.
+    if (authLoading) return;
+
+    // Authenticated path: skip session fetch entirely — the kid hydration
+    // effect (below) is the source of truth. If the kid never resolves
+    // (e.g. parent not yet finished onboarding), state stays at the optimistic
+    // localStorage value, which is acceptable.
+    if (isAuthenticated) {
+      setIsLoaded(true);
+      return;
+    }
+
+    // Anonymous path: hydrate from session.
     fetchWithSession('/api/sessions/points')
       .then((res) => res.json())
       .then((json: ApiResponse<PointsResponse>) => {
-        // If kid hydration already set the correct state, don't overwrite
-        // it with potentially stale session data (race condition guard).
-        if (kidHydratedRef.current) return;
+        if (kidHydratedRef.current) return; // belt-and-braces guard
         if (json.success && json.data) {
           applySnapshot({ ...json.data, newBadges: [] }, true);
         }
@@ -157,7 +174,7 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
         // Server unavailable — keep localStorage values, non-blocking
       })
       .finally(() => setIsLoaded(true));
-  }, [applySnapshot]);
+  }, [applySnapshot, authLoading, isAuthenticated]);
 
   // When an active kid is selected (post sign-in / profile pick), hydrate
   // dashboard state from the kid's profile so XP, badges, completed counts

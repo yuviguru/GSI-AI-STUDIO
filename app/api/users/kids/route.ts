@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const auth = await verifyAuth(request);
 
     const body = await request.json();
-    const { name, email, avatar, age, grade, board } = body;
+    const { name, email, avatar, mascotId, avatarUrl, age, grade, board } = body;
 
     // Validate name
     if (!name || typeof name !== 'string' || name.trim().length < 1) {
@@ -55,10 +55,40 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validate mascotId — must be from the known roster
+    if (mascotId !== undefined) {
+      const { MASCOTS } = await import('@/lib/mascots/roster');
+      const validIds = MASCOTS.map((m) => m.id);
+      if (typeof mascotId !== 'string' || !validIds.includes(mascotId)) {
+        throw new AppException('INVALID_INPUT', 'Unknown mascot', 400);
+      }
+    }
+
+    // Validate avatarUrl — must be a Firebase Storage URL or our own /api path.
+    // Reject arbitrary URLs to prevent storing untrusted external links on the kid doc.
+    if (avatarUrl !== undefined && avatarUrl !== null) {
+      if (typeof avatarUrl !== 'string' || avatarUrl.length > 2048) {
+        throw new AppException('INVALID_INPUT', 'Invalid avatar URL', 400);
+      }
+      const allowed =
+        avatarUrl.startsWith('https://firebasestorage.googleapis.com/') ||
+        avatarUrl.startsWith('https://storage.googleapis.com/') ||
+        avatarUrl.startsWith('/');
+      if (!allowed) {
+        throw new AppException(
+          'INVALID_INPUT',
+          'Avatar URL must be a Firebase Storage or local URL',
+          400,
+        );
+      }
+    }
+
     const kid = await createKid(auth.userId, {
       name: name.trim(),
       email: email.trim().toLowerCase(),
       avatar,
+      mascotId,
+      avatarUrl,
       age,
       grade,
       board,
@@ -70,6 +100,8 @@ export async function POST(request: NextRequest) {
         name: kid.name,
         email: kid.email,
         avatar: kid.avatar,
+        mascotId: kid.mascotId,
+        avatarUrl: kid.avatarUrl,
         age: kid.age,
         grade: kid.grade,
         board: kid.board,
@@ -98,6 +130,8 @@ export async function GET(request: NextRequest) {
         id: kid.id,
         name: kid.name,
         avatar: kid.avatar,
+        mascotId: kid.mascotId,
+        avatarUrl: kid.avatarUrl,
         age: kid.age,
         grade: kid.grade,
         board: kid.board,

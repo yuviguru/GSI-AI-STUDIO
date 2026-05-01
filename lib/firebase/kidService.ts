@@ -14,6 +14,8 @@ interface KidDocFirestore {
   googleEmail?: string;
   name: string;
   avatar?: string;
+  mascotId?: string;
+  avatarUrl?: string;
   verifiedBy: 'parent' | 'teacher' | null;
   verifiedAt?: Timestamp;
   verificationDeadline?: Timestamp;
@@ -53,6 +55,8 @@ export interface CreateKidInput {
   name: string;
   email: string; // Kid's email — unique identifier
   avatar?: string;
+  mascotId?: string;
+  avatarUrl?: string;
   age?: number;
   grade?: string;
   board?: 'cbse' | 'icse' | 'state';
@@ -61,6 +65,8 @@ export interface CreateKidInput {
 export interface UpdateKidInput {
   name?: string;
   avatar?: string;
+  mascotId?: string;
+  avatarUrl?: string;
   age?: number;
   grade?: string;
   board?: 'cbse' | 'icse' | 'state';
@@ -100,15 +106,26 @@ export async function createKid(
   const kidRef = adminDb.collection(KIDS_COLLECTION).doc(); // Auto-ID
   const kidId = kidRef.id;
 
-  // Check if parent has claimed session data to migrate to first kid
+  // Check if parent has claimed session data to migrate to first kid.
+  // claimedSessionData carries: points snapshot + onboarding profile (mascotId,
+  // avatarUrl, name, age) collected during the anonymous phase.
   const claimedData = parentData.claimedSessionData;
   const isFirstKid = existingKids.length === 0 && claimedData;
+  const onboarding = (isFirstKid && claimedData?.onboarding) || null;
+
+  // For the first kid only, fall back to onboarding values when the input
+  // didn't provide one. The KidProfileSetup form should pre-fill these but
+  // we double-protect against client-side data loss.
+  const mascotId = input.mascotId ?? onboarding?.mascotId;
+  const avatarUrl = input.avatarUrl ?? onboarding?.avatarUrl;
 
   const kidDoc: KidDocFirestore = {
     id: kidId,
     email: input.email,
     name: input.name,
     avatar: input.avatar,
+    ...(mascotId ? { mascotId } : {}),
+    ...(avatarUrl ? { avatarUrl } : {}),
     verifiedBy: 'parent',
     verifiedAt: now,
     age: input.age,
@@ -117,7 +134,7 @@ export async function createKid(
     parentId: parentUid,
     schoolId: null,
     classIds: [],
-    // If first kid, migrate parent's claimed session data
+    // If first kid, migrate parent's claimed session points + creation tally.
     aiPoints: isFirstKid ? (claimedData.aiPoints || 0) : 0,
     badges: isFirstKid ? (claimedData.badges || []) : [],
     conceptsLearned: isFirstKid ? (claimedData.conceptsLearned || []) : [],
@@ -191,6 +208,8 @@ export async function updateKid(
   const updates: Record<string, unknown> = { updatedAt: Timestamp.now() };
   if (input.name !== undefined) updates.name = input.name;
   if (input.avatar !== undefined) updates.avatar = input.avatar;
+  if (input.mascotId !== undefined) updates.mascotId = input.mascotId;
+  if (input.avatarUrl !== undefined) updates.avatarUrl = input.avatarUrl;
   if (input.age !== undefined) updates.age = input.age;
   if (input.grade !== undefined) updates.grade = input.grade;
   if (input.board !== undefined) updates.board = input.board;

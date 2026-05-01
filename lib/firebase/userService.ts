@@ -26,13 +26,25 @@ interface UserDocFirestore {
     theme: 'light' | 'dark';
   };
   claimedSessionIds?: string[];
-  // Temporary holding for session data before kid profile is created
+  // Temporary holding for session data before kid profile is created.
+  // Repeated claim-session calls MERGE points/badges (additive) instead of
+  // overwriting, so a parent who claims multiple anonymous sessions before
+  // creating a kid keeps the cumulative total.
   claimedSessionData?: {
     aiPoints: number;
     badges: string[];
     conceptsLearned: string[];
     creationsByType: Record<string, number>;
     shareCount: number;
+    /** Onboarding profile picked anonymously — name/age/mascot/avatar.
+     *  Carried through from useOnboardingProfile localStorage on first claim,
+     *  then migrated onto first kid by createKid(). */
+    onboarding?: {
+      name?: string;
+      age?: number;
+      mascotId?: string;
+      avatarUrl?: string;
+    };
   };
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -85,87 +97,210 @@ export async function getUser(uid: string): Promise<UserDocFirestore | null> {
   return doc.data() as UserDocFirestore;
 }
 
+export interface ClaimSessionOnboarding {
+  name?: string;
+  age?: number;
+  mascotId?: string;
+  avatarUrl?: string;
+}
+
 /**
  * Claim an anonymous session — migrate creations and points to the authenticated user.
  *
- * 1. Find all creations with matching sessionId → set userId
- * 2. Copy session points/badges to user doc (temporary holding until kid profile is created)
- * 3. Mark session as claimed
+ * 1. Auto-create user doc if missing (handles claim-before-register race).
+ * 2. Find all creations with matching sessionId → set userId.
+ * 3. Merge session points/badges into user.claimedSessionData (additive across
+ *    multiple claims — first kid created consumes the merged total).
+ * 4. Carry forward the kid's anonymous onboarding profile (mascot, avatar,
+ *    name, age) so it lands on the first kid doc.
+ * 5. Mark session as claimed.
  *
- * Idempotent: safe to call multiple times for the same session.
+ * Idempotent: safe to call multiple times for the same session — the first
+ * claim wins for points, subsequent calls for the same sessionId are no-ops.
+ *
+ * `phone`/`role` parameters are used only when the user doc doesn't yet exist
+ * (race recovery). They come from the verified Firebase ID token — never from
+ * the request body.
  */
 export async function claimSession(
   uid: string,
-  sessionId: string
+  sessionId: string,
+  options: {
+    phone?: string;
+    role?: UserRole;
+    onboarding?: ClaimSessionOnboarding;
+  } = {},
 ): Promise<{ claimedCreations: number; pointsMigrated: number }> {
-  // Check if already claimed
-  const userDoc = await adminDb.collection(USERS_COLLECTION).doc(uid).get();
-  if (!userDoc.exists) {
-    throw new AppException('USER_NOT_FOUND', 'User not found', 404);
+  const userRef = adminDb.collection(USERS_COLLECTION).doc(uid);
+
+  // 0. Auto-create the user doc if it's missing — closes the race where
+  //    SessionInit fires claim-session before PhoneAuthFlow has finished
+  //    register. Phone is the only required field (from verified token).
+  const initialUserDoc = await userRef.get();
+  if (!initialUserDoc.exists) {
+    if (!options.phone) {
+      throw new AppException(
+        'USER_NOT_FOUND',
+        'User profile not found and no phone available to auto-create',
+        404,
+      );
+    }
+    const now = Timestamp.now();
+    await userRef.set({
+      id: uid,
+      phone: options.phone,
+      role: options.role ?? 'parent',
+      plan: 'free',
+      kidIds: [],
+      consentedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    } satisfies UserDocFirestore);
   }
 
-  const userData = userDoc.data() as UserDocFirestore;
-  if (userData.claimedSessionIds?.includes(sessionId)) {
-    return { claimedCreations: 0, pointsMigrated: 0 };
-  }
-
-  // 1. Find and update creations
+  // 1. Find and update creations (read outside the transaction — large batches
+  //    don't fit in a transaction and creation ownership is monotonic anyway).
   const creationsSnapshot = await adminDb
     .collection(CREATIONS_COLLECTION)
     .where('sessionId', '==', sessionId)
     .get();
 
-  const batch = adminDb.batch();
+  const creationBatch = adminDb.batch();
   let claimedCreations = 0;
 
   creationsSnapshot.docs.forEach((doc) => {
-    // Only claim creations that don't already have a userId
     if (!doc.data().userId) {
-      batch.update(doc.ref, { userId: uid });
+      creationBatch.update(doc.ref, { userId: uid });
       claimedCreations++;
     }
   });
 
-  // 2. Read session points data
-  const sessionDoc = await adminDb.collection(SESSIONS_COLLECTION).doc(sessionId).get();
+  if (claimedCreations > 0) {
+    await creationBatch.commit();
+  }
+
+  // 2. Merge session data into user.claimedSessionData inside a transaction so
+  //    concurrent claims don't clobber each other. Idempotent on sessionId.
+  const sessionRef = adminDb.collection(SESSIONS_COLLECTION).doc(sessionId);
   let pointsMigrated = 0;
 
-  if (sessionDoc.exists) {
-    const sessionData = sessionDoc.data();
+  await adminDb.runTransaction(async (tx) => {
+    const userSnap = await tx.get(userRef);
+    if (!userSnap.exists) {
+      // Should be unreachable — created above — but guard anyway.
+      throw new AppException('USER_NOT_FOUND', 'User profile vanished', 500);
+    }
+    const userData = userSnap.data() as UserDocFirestore;
+
+    // Already claimed this session — no-op (return early but still merge
+    // onboarding profile if the caller sent one and the user has none yet).
+    if (userData.claimedSessionIds?.includes(sessionId)) {
+      const existing = userData.claimedSessionData?.onboarding ?? {};
+      const merged = mergeOnboarding(existing, options.onboarding);
+      if (merged && JSON.stringify(merged) !== JSON.stringify(existing)) {
+        tx.update(userRef, {
+          'claimedSessionData.onboarding': merged,
+          updatedAt: Timestamp.now(),
+        });
+      }
+      return;
+    }
+
+    const sessionSnap = await tx.get(sessionRef);
+    const sessionData = sessionSnap.exists ? sessionSnap.data() : null;
+
     const sessionPoints = {
       aiPoints: sessionData?.aiPoints ?? 0,
-      badges: sessionData?.badges ?? [],
-      conceptsLearned: sessionData?.conceptsLearned ?? [],
-      creationsByType: sessionData?.creationsByType ?? {},
+      badges: (sessionData?.badges ?? []) as string[],
+      conceptsLearned: (sessionData?.conceptsLearned ?? []) as string[],
+      creationsByType: (sessionData?.creationsByType ?? {}) as Record<string, number>,
       shareCount: sessionData?.shareCount ?? 0,
     };
     pointsMigrated = sessionPoints.aiPoints;
 
-    // Store on user doc as temporary holding (moves to kid doc in CLA-17)
-    if (sessionPoints.aiPoints > 0 || sessionPoints.badges.length > 0) {
-      batch.update(adminDb.collection(USERS_COLLECTION).doc(uid), {
-        claimedSessionData: sessionPoints,
-        claimedSessionIds: FieldValue.arrayUnion(sessionId),
-        updatedAt: Timestamp.now(),
-      });
-    } else {
-      batch.update(adminDb.collection(USERS_COLLECTION).doc(uid), {
-        claimedSessionIds: FieldValue.arrayUnion(sessionId),
-        updatedAt: Timestamp.now(),
-      });
-    }
+    const previous = userData.claimedSessionData ?? {
+      aiPoints: 0,
+      badges: [],
+      conceptsLearned: [],
+      creationsByType: {},
+      shareCount: 0,
+    };
 
-    // Mark session as claimed
-    batch.update(sessionDoc.ref, { claimedBy: uid });
-  } else {
-    // No session doc — just mark claimed on user
-    batch.update(adminDb.collection(USERS_COLLECTION).doc(uid), {
+    const mergedClaim = {
+      aiPoints: previous.aiPoints + sessionPoints.aiPoints,
+      badges: dedupe([...previous.badges, ...sessionPoints.badges]),
+      conceptsLearned: dedupe([...previous.conceptsLearned, ...sessionPoints.conceptsLearned]),
+      creationsByType: addCounts(previous.creationsByType, sessionPoints.creationsByType),
+      shareCount: previous.shareCount + sessionPoints.shareCount,
+      onboarding: mergeOnboarding(previous.onboarding, options.onboarding) ?? undefined,
+    };
+
+    // Drop `onboarding` if it's empty so we don't write `undefined` to Firestore.
+    const writePayload: Record<string, unknown> = {
+      claimedSessionData: mergedClaim.onboarding === undefined
+        ? { ...mergedClaim, onboarding: FieldValue.delete() }
+        : mergedClaim,
       claimedSessionIds: FieldValue.arrayUnion(sessionId),
       updatedAt: Timestamp.now(),
-    });
-  }
+    };
 
-  await batch.commit();
+    tx.update(userRef, writePayload);
+
+    if (sessionSnap.exists) {
+      tx.update(sessionRef, { claimedBy: uid });
+    }
+  });
 
   return { claimedCreations, pointsMigrated };
+}
+
+function dedupe<T>(arr: T[]): T[] {
+  return Array.from(new Set(arr));
+}
+
+function addCounts(
+  a: Record<string, number>,
+  b: Record<string, number>,
+): Record<string, number> {
+  const out = { ...a };
+  for (const key of Object.keys(b)) {
+    out[key] = (out[key] ?? 0) + (b[key] ?? 0);
+  }
+  return out;
+}
+
+function mergeOnboarding(
+  prev: ClaimSessionOnboarding | undefined,
+  next: ClaimSessionOnboarding | undefined,
+): ClaimSessionOnboarding | undefined {
+  if (!prev && !next) return undefined;
+  // First-write wins for each field — don't let a later anonymous session
+  // overwrite a name/mascot/avatar the kid already chose.
+  return {
+    name: prev?.name ?? next?.name,
+    age: prev?.age ?? next?.age,
+    mascotId: prev?.mascotId ?? next?.mascotId,
+    avatarUrl: prev?.avatarUrl ?? next?.avatarUrl,
+  };
+}
+
+/**
+ * Server-side cleanup hook for sign-out. Clears any orphaned claimedSessionData
+ * so that if the user signs back in later their stale anonymous-session points
+ * snapshot doesn't seed a future kid by mistake. Safe no-op if absent.
+ */
+export async function clearOrphanedClaimSnapshot(uid: string): Promise<void> {
+  const userRef = adminDb.collection(USERS_COLLECTION).doc(uid);
+  const snap = await userRef.get();
+  if (!snap.exists) return;
+  const data = snap.data() as UserDocFirestore;
+  // Only clear if there's no kid yet — once a kid exists the snapshot is already
+  // consumed (createKid deletes it). This guards against overwriting in-flight
+  // claim writes from a parallel session.
+  if (!data.claimedSessionData) return;
+  if ((data.kidIds ?? []).length > 0) return;
+  await userRef.update({
+    claimedSessionData: FieldValue.delete(),
+    updatedAt: Timestamp.now(),
+  });
 }
