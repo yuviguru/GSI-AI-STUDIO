@@ -1,0 +1,162 @@
+/**
+ * Mascot Roster — Diverse AI buddies for kids ages 8-17
+ *
+ * 8 mascots covering different temperaments and likings (not just animals).
+ * Each mascot is tied to a kid's profile and serves as their personal AI
+ * companion throughout the GSI AI Studio experience.
+ *
+ * Note: Emoji is the placeholder until per-mascot illustrated/animated art
+ * is finalised. The Mascot component reads from this roster — swapping the
+ * art channel later means updating only the `art` field below.
+ */
+
+export type MascotVibe =
+  | 'playful'
+  | 'techy'
+  | 'mystical'
+  | 'bold'
+  | 'curious'
+  | 'calm'
+  | 'creative'
+  | 'heroic';
+
+export type MascotKind = 'animal' | 'fantasy' | 'sci-fi' | 'cosmic';
+
+export interface Mascot {
+  id: string;
+  name: string;
+  /** Short kid-facing tagline (≤6 words). */
+  tagline: string;
+  /** First-person greeting line for onboarding ("Hi, I'm…"). */
+  greeting: string;
+  /** Short description of the mascot's personality. */
+  personality: string;
+  vibe: MascotVibe;
+  kind: MascotKind;
+  /** Emoji used as placeholder art (will be replaced by Lottie/SVG). */
+  art: string;
+  /** Tailwind gradient classes for the mascot's signature card background. */
+  gradient: string;
+  /** Tailwind ring color used when the mascot card is selected. */
+  ringColor: string;
+  /** Tailwind background for the soft tile. */
+  softBg: string;
+}
+
+export const MASCOTS: readonly Mascot[] = [
+  {
+    id: 'koko',
+    name: 'Koko',
+    tagline: 'The cosmic fox',
+    greeting: "Hi, I'm Koko! Ready to explore some wild ideas with me?",
+    personality: 'Playful and full of wonder. Loves silly stories and surprise plot twists.',
+    vibe: 'playful',
+    kind: 'animal',
+    art: '🦊',
+    gradient: 'from-orange-200 via-amber-100 to-rose-100',
+    ringColor: 'ring-orange-400',
+    softBg: 'bg-orange-50',
+  },
+  {
+    id: 'pixie',
+    name: 'Pixie',
+    tagline: 'The helper bot',
+    greeting: "Beep! I'm Pixie. I'll show you the wires inside every AI.",
+    personality: 'Curious tinkerer. Loves taking things apart and explaining how they work.',
+    vibe: 'techy',
+    kind: 'sci-fi',
+    art: '🤖',
+    gradient: 'from-cyan-200 via-sky-100 to-blue-100',
+    ringColor: 'ring-cyan-400',
+    softBg: 'bg-cyan-50',
+  },
+  {
+    id: 'aria',
+    name: 'Aria',
+    tagline: 'The starlit owl',
+    greeting: "Hello there, I'm Aria. I see what others miss in the dark.",
+    personality: 'Calm and wise. Notices small details and asks good questions.',
+    vibe: 'mystical',
+    kind: 'fantasy',
+    art: '🦉',
+    gradient: 'from-violet-200 via-indigo-100 to-purple-100',
+    ringColor: 'ring-violet-400',
+    softBg: 'bg-violet-50',
+  },
+  {
+    id: 'bolt',
+    name: 'Bolt',
+    tagline: 'The lightning dragon',
+    greeting: "I'm Bolt — let's make something LOUD and fast!",
+    personality: 'Bold, fearless, and a little dramatic. Cheers you on through every challenge.',
+    vibe: 'bold',
+    kind: 'fantasy',
+    art: '🐉',
+    gradient: 'from-rose-200 via-red-100 to-orange-100',
+    ringColor: 'ring-rose-400',
+    softBg: 'bg-rose-50',
+  },
+  {
+    id: 'luma',
+    name: 'Luma',
+    tagline: 'The space explorer',
+    greeting: "I'm Luma. Earth is fascinating — what should we discover today?",
+    personality: 'Endlessly curious. Asks "but why?" and finds wonder in tiny things.',
+    vibe: 'curious',
+    kind: 'cosmic',
+    art: '👽',
+    gradient: 'from-emerald-200 via-teal-100 to-cyan-100',
+    ringColor: 'ring-emerald-400',
+    softBg: 'bg-emerald-50',
+  },
+  {
+    id: 'pebble',
+    name: 'Pebble',
+    tagline: 'The crystal turtle',
+    greeting: "Take a deep breath. I'm Pebble. Slow and steady wins.",
+    personality: 'Calm and thoughtful. Reminds you that good ideas take time.',
+    vibe: 'calm',
+    kind: 'animal',
+    art: '🐢',
+    gradient: 'from-teal-200 via-emerald-100 to-lime-100',
+    ringColor: 'ring-teal-400',
+    softBg: 'bg-teal-50',
+  },
+  {
+    id: 'rio',
+    name: 'Rio',
+    tagline: 'The music panda',
+    greeting: "Yo, I'm Rio. Let's drop a beat on this idea!",
+    personality: 'Creative and rhythmic. Hums while thinking and turns prompts into songs.',
+    vibe: 'creative',
+    kind: 'animal',
+    art: '🐼',
+    gradient: 'from-pink-200 via-fuchsia-100 to-purple-100',
+    ringColor: 'ring-pink-400',
+    softBg: 'bg-pink-50',
+  },
+  {
+    id: 'nova',
+    name: 'Nova',
+    tagline: 'The astronaut kid',
+    greeting: "Suit up — I'm Nova. We're going on an adventure today.",
+    personality: 'Heroic and adventurous. Treats every creation like a moon mission.',
+    vibe: 'heroic',
+    kind: 'cosmic',
+    art: '🧑‍🚀',
+    gradient: 'from-blue-200 via-indigo-100 to-violet-100',
+    ringColor: 'ring-blue-400',
+    softBg: 'bg-blue-50',
+  },
+] as const;
+
+export type MascotId = (typeof MASCOTS)[number]['id'];
+
+/** Find a mascot by ID; returns Koko as the default when not found. */
+export function getMascot(id: string | undefined | null): Mascot {
+  if (!id) return MASCOTS[0]!;
+  return MASCOTS.find((m) => m.id === id) ?? MASCOTS[0]!;
+}
+
+/** Default mascot used before the kid picks one. */
+export const DEFAULT_MASCOT_ID: MascotId = 'koko';

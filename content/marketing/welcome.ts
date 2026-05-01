@@ -193,9 +193,15 @@ export type HeroVariantKey = keyof typeof heroVariants;
 /* ─── Active variant — change THIS line to swap the live hero copy. ──── */
 export const activeHero: HeroCopy = heroVariants.v10_head_start;
 
-/** Resolve a variant key from a URL search param, falling back to the active default. */
+/** Resolve a variant key from a URL search param, falling back to the active default.
+ *
+ * Uses Object.hasOwn (own-property check) instead of `in` so prototype
+ * lookups like `?heroVariant=toString` or `?heroVariant=constructor` cannot
+ * smuggle a function reference through and crash Hero downstream when it
+ * tries to read `copy.primaryCta.href`.
+ */
 export function resolveHeroCopy(variantParam: string | null | undefined): HeroCopy {
-  if (variantParam && variantParam in heroVariants) {
+  if (variantParam && Object.hasOwn(heroVariants, variantParam)) {
     return heroVariants[variantParam as HeroVariantKey];
   }
   return activeHero;

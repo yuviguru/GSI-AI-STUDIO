@@ -4,11 +4,39 @@ import { useEffect, useRef } from 'react';
 import { useSession } from '@/hooks/useSession';
 import { useAuth } from '@/hooks/useAuth';
 import { fetchWithSession } from '@/lib/fetchWithSession';
+import { ONBOARDING_PROFILE_STORAGE_KEY } from '@/hooks/useOnboardingProfile';
 
 const MIGRATION_KEY = 'gsi-points-migrated';
 const SESSION_KEY = 'gsi-session-id';
 const POINTS_KEY = 'gsi-ai-points';
 const CLAIM_KEY = 'gsi-session-claimed';
+
+interface ClaimOnboardingPayload {
+  name?: string;
+  age?: number;
+  mascotId?: string;
+  avatarUrl?: string;
+}
+
+function readOnboardingForClaim(): ClaimOnboardingPayload | undefined {
+  try {
+    const raw = localStorage.getItem(ONBOARDING_PROFILE_STORAGE_KEY);
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const payload: ClaimOnboardingPayload = {};
+    if (typeof parsed.name === 'string' && parsed.name.trim()) payload.name = parsed.name.trim();
+    if (typeof parsed.age === 'number') payload.age = parsed.age;
+    if (typeof parsed.mascotId === 'string') payload.mascotId = parsed.mascotId;
+    if (typeof parsed.avatarUrl === 'string' && parsed.avatarUrl.length < 2048) {
+      // Skip data: URIs — too large to send and they're not migratable.
+      // The avatarUrl set during pilot/login-only flow will be a Storage URL.
+      if (!parsed.avatarUrl.startsWith('data:')) payload.avatarUrl = parsed.avatarUrl;
+    }
+    return Object.keys(payload).length > 0 ? payload : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Isolates session initialization into its own component so that
@@ -73,19 +101,25 @@ export function SessionInit() {
         const token = await getIdToken();
         if (!token) return;
 
+        const onboarding = readOnboardingForClaim();
+
         const res = await fetch('/api/auth/claim-session', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ sessionId }),
+          body: JSON.stringify({
+            sessionId,
+            ...(onboarding ? { onboarding } : {}),
+          }),
         });
 
         if (res.ok) {
           localStorage.setItem(CLAIM_KEY, sessionId!);
         } else {
-          // Non-OK (e.g. 404 if user doc not created yet) — allow retry
+          // Allow retry — claim-session now auto-creates the user doc itself,
+          // so 404 should be impossible. Network blips might still happen.
           claimAttempted.current = false;
         }
       } catch {

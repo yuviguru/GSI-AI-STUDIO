@@ -17,6 +17,8 @@ export interface KidProfileSummary {
   id: string;
   name: string;
   avatar?: string;
+  mascotId?: string;
+  avatarUrl?: string;
   age?: number;
   grade?: string;
   board?: string;
