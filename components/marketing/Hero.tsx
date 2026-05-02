@@ -245,7 +245,7 @@ function BrandMascotHero() {
       >
         <MascotAvatar
           id={mascot.id}
-          size="xl"
+          size="2xl"
           ariaLabel={`${mascot.name} — GSI brand mascot`}
         />
 
@@ -254,7 +254,7 @@ function BrandMascotHero() {
           aria-hidden
           animate={{ rotate: [0, 18, -10, 0], scale: [1, 1.15, 1] }}
           transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute -left-5 top-1 text-xl"
+          className="absolute -left-7 top-2 text-2xl"
         >
           ✨
         </motion.span>
@@ -262,7 +262,7 @@ function BrandMascotHero() {
           aria-hidden
           animate={{ rotate: [0, -18, 10, 0], scale: [1, 1.15, 1] }}
           transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1.2 }}
-          className="absolute -right-4 bottom-3 text-base"
+          className="absolute -right-5 bottom-4 text-xl"
         >
           💬
         </motion.span>
