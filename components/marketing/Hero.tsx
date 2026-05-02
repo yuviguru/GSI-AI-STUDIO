@@ -271,10 +271,10 @@ function BrandMascotHero() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 6 }}
                 transition={{ duration: 0.3 }}
-                className="flex items-center gap-1 font-display text-[11px] font-bold text-brand-text"
+                className="flex min-w-0 items-center gap-1 whitespace-nowrap font-display text-[11px] font-bold text-brand-text"
               >
                 <span>{scene.badge}</span>
-                <span>{scene.label}</span>
+                <span className="truncate">{scene.label}</span>
               </motion.span>
             </AnimatePresence>
           </div>
@@ -290,21 +290,24 @@ function BrandMascotHero() {
           </div>
         </div>
 
-        {/* Chat messages */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`msgs-${sceneIdx}`}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.3 }}
-            className="mt-2.5 space-y-1.5"
-          >
-            {scene.messages.map((msg, i) => (
-              <ChatBubble key={i} msg={msg} delay={i * 0.35} />
-            ))}
-          </motion.div>
-        </AnimatePresence>
+        {/* Chat messages — min-height locks the panel size so the longest
+            scene doesn't shift the layout when shorter scenes cycle in */}
+        <div className="relative mt-2.5 min-h-[140px]">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`msgs-${sceneIdx}`}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.3 }}
+              className="absolute inset-x-0 top-0 space-y-1.5"
+            >
+              {scene.messages.map((msg, i) => (
+                <ChatBubble key={i} msg={msg} delay={i * 0.35} />
+              ))}
+            </motion.div>
+          </AnimatePresence>
+        </div>
 
         {/* Tail — points down from the bubble toward Pixie */}
         <div
