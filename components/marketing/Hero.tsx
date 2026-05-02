@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowRight, Sparkles, Shield, Wand2, Eye, Swords } from 'lucide-react';
-import { KokoLottie } from './KokoLottie';
+import { MascotAvatar } from '@/components/mascot/MascotAvatar';
+import { getMascot } from '@/lib/mascots/roster';
 import { resolveHeroCopy } from '@/content/marketing/welcome';
 
 /** Founder-pitch loop — replaces the old "Pick / Describe / Share" steps. */
@@ -138,9 +139,9 @@ export function Hero() {
             </motion.div>
           </div>
 
-          {/* ─── Koko column (mobile: 1st, lg: 2nd, spans 5/12) ─────────── */}
+          {/* ─── Mascot column (mobile: 1st, lg: 2nd, spans 5/12) ───────── */}
           <div className="order-1 lg:order-2 lg:col-span-5">
-            <KokoHero />
+            <BrandMascotHero />
           </div>
         </div>
       </div>
@@ -148,9 +149,13 @@ export function Hero() {
   );
 }
 
-/* Koko mascot — focal visual. Friendly, kid-magnetic, with a speech bubble
-   that frames the product as a creative invitation rather than a tool. */
-function KokoHero() {
+/* Brand mascot — focal hero visual. Renders the current brand-default mascot
+   (Pixie today) inside a soft floating card with a speech bubble + sparkle
+   accents. Mascot data comes from the roster, so swapping the brand default
+   is a one-line change in lib/mascots/roster.ts. */
+function BrandMascotHero() {
+  const mascot = getMascot('pixie');
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -158,7 +163,7 @@ function KokoHero() {
       transition={{ duration: 0.7, ease: 'easeOut' }}
       className="relative mx-auto flex w-full max-w-sm items-center justify-center lg:max-w-none"
     >
-      {/* Soft halo behind Koko */}
+      {/* Soft halo behind the mascot */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10 mx-auto h-[80%] w-[80%] rounded-full opacity-60 blur-3xl"
@@ -168,13 +173,13 @@ function KokoHero() {
         }}
       />
 
-      {/* Koko card */}
+      {/* Mascot card */}
       <motion.div
         animate={{ y: [0, -8, 0] }}
         transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
         className="relative flex aspect-square w-[260px] items-center justify-center rounded-[40px] bg-gradient-to-br from-white via-brand-soft/40 to-white shadow-elevated ring-1 ring-brand-border/50 sm:w-[300px] lg:w-[340px]"
       >
-        <KokoLottie expression="waving" size={220} />
+        <MascotAvatar id={mascot.id} size="2xl" ariaLabel={`${mascot.name} — GSI brand mascot`} />
 
         {/* Speech bubble — top-right */}
         <motion.div
@@ -184,7 +189,7 @@ function KokoHero() {
           className="absolute -right-3 -top-3 max-w-[180px] rounded-2xl bg-white px-3.5 py-2 shadow-card ring-1 ring-brand-border/60 sm:-right-5 sm:-top-5"
         >
           <div className="text-[9px] font-bold uppercase tracking-wide text-brand-primary">
-            Koko
+            {mascot.name}
           </div>
           <div className="mt-0.5 font-display text-[12px] font-bold leading-snug text-brand-text">
             What should we make today?

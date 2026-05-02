@@ -12,7 +12,7 @@ import {
   BarChart3,
   MessageCircle,
 } from 'lucide-react';
-import { KokoLottie } from './KokoLottie';
+import { MascotAvatar } from '@/components/mascot/MascotAvatar';
 
 // Count up from 0 to `target` once `triggered` flips true. Subtle easeOutCubic
 // so numbers settle gracefully — not a rapid slot-machine clatter.
@@ -131,10 +131,10 @@ export function HeroBento() {
             className="absolute inset-0 rounded-full bg-gradient-to-br from-brand-accent/40 to-brand-ai/25 blur-2xl"
           />
           <div className="relative rounded-full bg-white p-2.5 shadow-elevated ring-1 ring-brand-border/60">
-            <KokoLottie expression="waving" size={84} />
+            <MascotAvatar id="pixie" size="lg" ariaLabel="Pixie — GSI brand mascot" />
           </div>
           <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-3 py-1 text-[10px] font-bold text-brand-text shadow-card ring-1 ring-brand-border/60">
-            <span className="text-brand-primary">Koko</span>
+            <span className="text-brand-primary">Pixie</span>
           </div>
         </div>
       </motion.div>

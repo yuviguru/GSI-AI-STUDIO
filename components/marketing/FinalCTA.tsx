@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-import { KokoLottie } from './KokoLottie';
+import { MascotAvatar } from '@/components/mascot/MascotAvatar';
 
 export function FinalCTA() {
   return (
@@ -17,10 +17,10 @@ export function FinalCTA() {
             className="pointer-events-none absolute -bottom-16 -right-16 h-72 w-72 rounded-full bg-brand-accent/30 blur-3xl"
           />
 
-          {/* Koko celebrating — top-right, peeking into the CTA */}
+          {/* Pixie — top-right, peeking into the CTA */}
           <div className="pointer-events-none absolute right-6 top-6 hidden sm:block lg:right-14 lg:top-10">
             <div className="rounded-full bg-white/15 p-2 backdrop-blur-sm">
-              <KokoLottie expression="celebrating" size={110} />
+              <MascotAvatar id="pixie" size="xl" ariaLabel="Pixie celebrating" />
             </div>
           </div>
 

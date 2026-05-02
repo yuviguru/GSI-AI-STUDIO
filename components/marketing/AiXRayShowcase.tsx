@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { Sparkles, BookOpen, Brain, Lightbulb } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { KokoLottie } from './KokoLottie';
+import { MascotAvatar } from '@/components/mascot/MascotAvatar';
 
 interface ConceptProps {
   icon: LucideIcon;
@@ -49,7 +49,7 @@ export function AiXRayShowcase() {
           <div>
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-soft">
-                <KokoLottie expression="painting" size={56} />
+                <MascotAvatar id="pixie" size="md" ariaLabel="Pixie illustrating an X-Ray" />
               </div>
               <p className="text-caption font-semibold uppercase tracking-wide text-brand-secondary">
                 The parent&apos;s favourite feature
