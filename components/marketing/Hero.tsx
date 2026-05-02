@@ -348,10 +348,33 @@ function BrandMascotHero() {
         </motion.span>
       </motion.div>
 
-      {/* Caption */}
-      <p className="mt-1 text-center text-caption text-brand-text-muted">
-        Meet <span className="font-bold text-brand-text">{mascot.name}</span>, your kid&apos;s AI buddy. She sparks ideas, gives hints, explains how AI works, and pushes them to think.
-      </p>
+      {/* Pixie role callout — replaces the small caption with a more
+          legible 2-line block + a visible chip strip of her four roles.
+          Sized so younger kids and skim-reading parents both catch it. */}
+      <div className="mt-2 flex w-full max-w-[360px] flex-col items-center gap-2 text-center">
+        <div>
+          <p className="font-display text-base font-extrabold text-brand-text sm:text-lg">
+            Meet <span className="text-brand-primary">Pixie</span> <span aria-hidden>👋</span>
+          </p>
+          <p className="mt-0.5 text-sm font-medium text-brand-text-secondary">
+            Your kid&apos;s AI buddy.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-1.5">
+          <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-bold text-cyan-700 ring-1 ring-cyan-200">
+            ✨ Sparks ideas
+          </span>
+          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-200">
+            💡 Hints, not answers
+          </span>
+          <span className="rounded-full bg-purple-50 px-2.5 py-1 text-[11px] font-bold text-purple-700 ring-1 ring-purple-200">
+            🔍 Shows how AI works
+          </span>
+          <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200">
+            ⚡ Pushes them to think
+          </span>
+        </div>
+      </div>
     </motion.div>
   );
 }
