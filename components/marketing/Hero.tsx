@@ -5,8 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, Sparkles, Shield, Wand2, Eye, Swords } from 'lucide-react';
-import { MascotAvatar } from '@/components/mascot/MascotAvatar';
-import { getMascot } from '@/lib/mascots/roster';
+import { PixieFloatingBubble } from '@/components/mascot/PixieFloatingBubble';
 import { resolveHeroCopy } from '@/content/marketing/welcome';
 
 /** Founder-pitch loop — replaces the old "Pick / Describe / Share" steps. */
@@ -150,170 +149,72 @@ export function Hero() {
   );
 }
 
-/* Brand mascot — focal hero visual. Pixie + a mini cycling chat demo
-   that shows the four ways she helps a kid: spark creativity, give
-   homework hints (never answers), explain how AI made things via
-   X-Ray, and challenge them in head-to-head Beat the AI. Each scene
-   is a 2-message exchange; the demo cycles every ~6s. */
+/* Brand mascot hero — preview of Pixie's actual in-app UX, not a marketing demo.
+   The hero shows a cycling "mock app screen" (Story Studio canvas, Homework
+   panel, AI X-Ray reveal, Beat the AI scoreboard) with PixieFloatingBubble
+   overlaid in her real corner position. Each scene cycles every ~6s, with
+   Pixie's contextual message changing to match what's on screen. The same
+   PixieFloatingBubble component drops into the in-app layouts unchanged. */
 
-interface ChatMsg {
-  from: 'kid' | 'pixie';
-  text: string;
-}
-
-interface ChatScene {
+interface PixieScene {
   id: string;
   label: string;
-  badge: string;
-  messages: ChatMsg[];
+  pixieMessage: string;
+  /** Mock canvas component rendered as the "app screen" background. */
+  Canvas: () => JSX.Element;
 }
 
-const PIXIE_DEMO_SCENES: ChatScene[] = [
-  {
-    id: 'create',
-    label: 'Creative spark',
-    badge: '✨',
-    messages: [
-      { from: 'kid', text: "I'm bored 😩" },
-      {
-        from: 'pixie',
-        text: "Bored is the best time to make stuff. Wanna build a story? You pick the hero, I'll do the pictures.",
-      },
-    ],
-  },
-  {
-    id: 'homework',
-    label: 'Homework hints, not answers',
-    badge: '📚',
-    messages: [
-      { from: 'kid', text: 'Stuck on 27 × 13' },
-      {
-        from: 'pixie',
-        text: "I never give answers, only hints. Start with 27 × 10. What's that?",
-      },
-    ],
-  },
-  {
-    id: 'xray',
-    label: 'AI X-Ray',
-    badge: '🔍',
-    messages: [
-      { from: 'kid', text: 'How did you make my dragon?' },
-      {
-        from: 'pixie',
-        text: "I sent your idea to an AI artist that paints with words. Tap X-Ray and I'll show you which words made the wings.",
-      },
-    ],
-  },
-  {
-    id: 'beat',
-    label: 'Beat the AI',
-    badge: '⚡',
-    messages: [
-      { from: 'kid', text: 'Bet I can beat you' },
-      {
-        from: 'pixie',
-        text: "It's Maths Monday. Same problem, you and me. The clearer answer wins.",
-      },
-    ],
-  },
-];
-
 function BrandMascotHero() {
-  const mascot = getMascot('pixie');
   const [sceneIdx, setSceneIdx] = useState(0);
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      setSceneIdx((p) => (p + 1) % PIXIE_DEMO_SCENES.length);
-    }, 5800);
+      setSceneIdx((p) => (p + 1) % PIXIE_SCENES.length);
+    }, 6200);
     return () => window.clearInterval(id);
   }, []);
 
-  const scene = PIXIE_DEMO_SCENES[sceneIdx]!;
+  const scene = PIXIE_SCENES[sceneIdx]!;
 
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.94 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.7, ease: 'easeOut' }}
-      className="relative mx-auto flex w-full max-w-md flex-col items-center gap-3 lg:max-w-none"
+      className="relative mx-auto w-full max-w-md lg:max-w-none"
     >
-      {/* Soft halo glow behind Pixie */}
+      {/* Soft halo behind the mock app screen */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-2 left-1/2 -z-10 h-[260px] w-[400px] -translate-x-1/2 rounded-full opacity-65 blur-3xl"
+        className="pointer-events-none absolute -inset-8 -z-10 rounded-[48px] opacity-65 blur-3xl"
         style={{
           background:
-            'radial-gradient(ellipse at center, rgba(91,179,255,0.35), rgba(138,92,255,0.18) 45%, transparent 75%)',
+            'radial-gradient(ellipse at center, rgba(91,179,255,0.35), rgba(138,92,255,0.18) 50%, transparent 80%)',
         }}
       />
 
-      {/* Pixie — sits free, with subtle bob */}
-      <motion.div
-        animate={{ y: [0, -5, 0] }}
-        transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
-        className="relative"
-      >
-        <MascotAvatar
-          id={mascot.id}
-          size="2xl"
-          ariaLabel={`${mascot.name} — GSI brand mascot`}
-        />
-
-        {/* Sparkle accents */}
-        <motion.span
-          aria-hidden
-          animate={{ rotate: [0, 18, -10, 0], scale: [1, 1.15, 1] }}
-          transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute -left-7 top-2 text-2xl"
-        >
-          ✨
-        </motion.span>
-        <motion.span
-          aria-hidden
-          animate={{ rotate: [0, -18, 10, 0], scale: [1, 1.15, 1] }}
-          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1.2 }}
-          className="absolute -right-5 bottom-4 text-xl"
-        >
-          💬
-        </motion.span>
-      </motion.div>
-
-      {/* Identity tag — Pixie name + live indicator */}
-      <div className="flex items-center gap-1.5">
-        <span className="flex items-center gap-1 rounded-full bg-cyan-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-700">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-75" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-cyan-500" />
-          </span>
-          {mascot.name}
-        </span>
-        <span className="text-[11px] text-brand-text-muted">your kid&apos;s AI buddy</span>
-      </div>
-
-      {/* Mini chat demo — cycles through 4 scenarios showing Pixie's 4 roles */}
-      <div className="w-full max-w-[340px] rounded-3xl bg-white p-3 shadow-card ring-1 ring-brand-border/60">
-        {/* Scene label tab */}
-        <div className="flex items-center justify-between border-b border-brand-border/50 pb-2">
+      {/* Mock "app screen" — looks like a real product surface, cycles through 4 contexts */}
+      <div className="relative h-[420px] w-full overflow-hidden rounded-[28px] bg-white shadow-elevated ring-1 ring-brand-border/60 sm:h-[440px]">
+        {/* Browser-y top bar — gives the "this is the app" cue */}
+        <div className="flex items-center gap-1.5 border-b border-brand-border/40 px-4 py-2.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-rose-300" />
+          <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
+          <span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
           <AnimatePresence mode="wait">
-            <motion.div
-              key={`label-${sceneIdx}`}
-              initial={{ opacity: 0, x: -6 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 6 }}
-              transition={{ duration: 0.3 }}
-              className="flex items-center gap-1.5"
+            <motion.span
+              key={`label-${scene.id}`}
+              initial={{ opacity: 0, y: 3 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -3 }}
+              transition={{ duration: 0.25 }}
+              className="ml-2 font-display text-[11px] font-bold text-brand-text-muted"
             >
-              <span className="text-sm">{scene.badge}</span>
-              <span className="font-display text-[11px] font-bold text-brand-text">
-                {scene.label}
-              </span>
-            </motion.div>
+              gsi.studio / {scene.label}
+            </motion.span>
           </AnimatePresence>
-          {/* Scene dots — show progression */}
-          <div className="flex items-center gap-1">
-            {PIXIE_DEMO_SCENES.map((s, i) => (
+          {/* Scene progression dots */}
+          <div className="ml-auto flex items-center gap-1">
+            {PIXIE_SCENES.map((s, i) => (
               <span
                 key={s.id}
                 className={`h-1 rounded-full transition-all ${
@@ -324,49 +225,217 @@ function BrandMascotHero() {
           </div>
         </div>
 
-        {/* Chat messages */}
+        {/* Cycling canvas */}
         <AnimatePresence mode="wait">
           <motion.div
-            key={`msgs-${sceneIdx}`}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.3 }}
-            className="mt-2.5 space-y-1.5"
+            key={`canvas-${scene.id}`}
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+            className="absolute inset-x-0 bottom-0 top-[42px]"
           >
-            {scene.messages.map((msg, i) => (
-              <ChatBubble key={i} msg={msg} delay={i * 0.35} />
-            ))}
+            <scene.Canvas />
           </motion.div>
         </AnimatePresence>
+
+        {/* Pixie — actual in-app pattern, overlaid in the corner */}
+        <PixieFloatingBubble message={scene.pixieMessage} avatarSize="lg" />
       </div>
 
       {/* Caption */}
-      <p className="text-center text-caption text-brand-text-muted">
-        Meet <span className="font-bold text-brand-text">{mascot.name}</span>, your kid&apos;s AI buddy. She sparks ideas, gives hints, explains how AI works, and pushes them to think.
+      <p className="mt-4 text-center text-caption text-brand-text-muted">
+        Meet <span className="font-bold text-brand-text">Pixie</span>, your kid&apos;s AI buddy. She lives in every studio. Always there. Never in the way.
       </p>
     </motion.div>
   );
 }
 
-function ChatBubble({ msg, delay }: { msg: ChatMsg; delay: number }) {
-  const isKid = msg.from === 'kid';
+/* ─── Mock canvases — each is a stripped-down preview of a real product surface ──── */
+
+function StoryCanvasMock() {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 4, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.35, delay, ease: 'easeOut' }}
-      className={`flex ${isKid ? 'justify-end' : 'justify-start'}`}
-    >
-      <div
-        className={`max-w-[85%] px-3 py-1.5 text-[12px] leading-snug shadow-soft ${
-          isKid
-            ? 'rounded-2xl rounded-br-md bg-brand-primary text-white'
-            : 'rounded-2xl rounded-bl-md bg-cyan-50 text-brand-text ring-1 ring-cyan-100'
-        }`}
-      >
-        {msg.text}
+    <div className="h-full w-full bg-gradient-to-br from-amber-50 via-white to-rose-50 p-4">
+      <div className="text-[9px] font-bold uppercase tracking-wide text-amber-700">
+        📖 Story Studio
       </div>
-    </motion.div>
+      <div className="mt-2 rounded-xl bg-white p-3 shadow-soft ring-1 ring-amber-100">
+        <h4 className="font-display text-[15px] font-extrabold text-brand-text">
+          The Brave Dosa
+        </h4>
+        <p className="mt-1 text-[11px] leading-snug text-brand-text-secondary">
+          One cloudy morning at Marina Beach, a brave dosa decided to save Chennai from a giant robot…
+        </p>
+      </div>
+      <div className="mt-3 flex h-[140px] items-end overflow-hidden rounded-xl bg-gradient-to-br from-orange-200 via-amber-200 to-rose-200 ring-1 ring-amber-300/50">
+        <div className="flex w-full items-end justify-around px-3 pb-2">
+          <span className="text-4xl">🥞</span>
+          <span className="text-3xl">🌊</span>
+          <span className="text-2xl opacity-70">🤖</span>
+        </div>
+      </div>
+      <div className="mt-2 flex items-center gap-2 text-[10px]">
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 font-bold text-amber-700">
+          Page 1 of 4
+        </span>
+        <span className="text-brand-text-muted">Drawing the next scene…</span>
+      </div>
+    </div>
   );
 }
+
+function HomeworkCanvasMock() {
+  return (
+    <div className="h-full w-full bg-gradient-to-br from-emerald-50 via-white to-blue-50 p-4">
+      <div className="text-[9px] font-bold uppercase tracking-wide text-emerald-700">
+        📚 Homework Helper
+      </div>
+      <div className="mt-2 rounded-xl bg-white p-4 shadow-soft ring-1 ring-emerald-100">
+        <p className="text-[10px] font-semibold text-brand-text-muted">
+          Class 5 · Math · Question 3
+        </p>
+        <h4 className="mt-1 font-display text-3xl font-extrabold text-brand-text">
+          27 × 13 = ?
+        </h4>
+      </div>
+      <div className="mt-3 space-y-1.5 rounded-xl bg-white p-3 shadow-soft ring-1 ring-cyan-100">
+        <div className="text-[9px] font-bold uppercase tracking-wide text-cyan-700">
+          Pixie&apos;s hint trail
+        </div>
+        <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-2 py-1.5 text-[11px]">
+          <span className="text-emerald-600">✓</span>
+          <span className="font-semibold text-brand-text">Step 1: 27 × 10 = 270</span>
+        </div>
+        <div className="flex items-center gap-2 rounded-lg bg-cyan-50 px-2 py-1.5 text-[11px] ring-1 ring-cyan-200">
+          <span className="font-bold text-cyan-700">→</span>
+          <span className="font-semibold text-brand-text">Step 2: 27 × 3 = ?</span>
+        </div>
+        <div className="flex items-center gap-2 rounded-lg bg-brand-background px-2 py-1.5 text-[11px] opacity-50">
+          <span className="text-brand-text-muted">·</span>
+          <span className="text-brand-text-muted">Step 3: add them up</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function XRayCanvasMock() {
+  return (
+    <div className="h-full w-full bg-gradient-to-br from-purple-50 via-white to-cyan-50 p-4">
+      <div className="text-[9px] font-bold uppercase tracking-wide text-purple-700">
+        🔍 AI X-Ray
+      </div>
+      <div className="mt-2 flex h-[110px] items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-purple-300 via-fuchsia-300 to-pink-300 shadow-soft ring-1 ring-purple-200">
+        <span className="text-5xl drop-shadow-md">🐉</span>
+      </div>
+      <div className="mt-3 space-y-1.5">
+        <div className="rounded-lg bg-white p-2 shadow-soft ring-1 ring-purple-100">
+          <div className="text-[8px] font-bold uppercase tracking-wide text-purple-600">
+            Your prompt
+          </div>
+          <div className="mt-0.5 text-[11px] font-semibold text-brand-text">
+            &ldquo;a fierce dragon with rainbow wings&rdquo;
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-1.5">
+          <div className="rounded-lg bg-white p-2 shadow-soft ring-1 ring-purple-100">
+            <div className="text-[8px] font-bold uppercase tracking-wide text-purple-600">
+              Model
+            </div>
+            <div className="mt-0.5 text-[10px] font-semibold text-brand-text">
+              SDXL · text-to-image
+            </div>
+          </div>
+          <div className="rounded-lg bg-white p-2 shadow-soft ring-1 ring-cyan-100">
+            <div className="text-[8px] font-bold uppercase tracking-wide text-cyan-700">
+              Concept
+            </div>
+            <div className="mt-0.5 text-[10px] font-semibold text-brand-text">
+              How AI paints words
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BeatAiCanvasMock() {
+  return (
+    <div className="h-full w-full bg-gradient-to-br from-cyan-50 via-white to-purple-50 p-4">
+      <div className="flex items-center justify-between">
+        <div className="text-[9px] font-bold uppercase tracking-wide text-cyan-700">
+          ⚡ Beat the AI
+        </div>
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-700">
+          Maths Monday
+        </span>
+      </div>
+      <div className="mt-3 rounded-xl bg-white p-3 shadow-soft ring-1 ring-cyan-100">
+        <div className="text-[9px] font-semibold uppercase tracking-wide text-brand-text-muted">
+          Today&apos;s problem
+        </div>
+        <div className="mt-1 font-display text-[13px] font-bold text-brand-text">
+          &ldquo;Show your working: 27 × 13&rdquo;
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="relative rounded-xl bg-white p-2.5 shadow-soft ring-2 ring-emerald-300">
+          <div className="text-[9px] font-bold uppercase tracking-wide text-emerald-600">
+            You
+          </div>
+          <div className="numeric mt-0.5 font-display text-2xl font-extrabold text-emerald-600">
+            92
+          </div>
+          <span className="absolute -right-1 -top-1 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[8px] font-bold uppercase text-white">
+            Win
+          </span>
+        </div>
+        <div className="rounded-xl bg-white/70 p-2.5 shadow-soft ring-1 ring-brand-border">
+          <div className="text-[9px] font-bold uppercase tracking-wide text-brand-text-muted">
+            Hard AI 🤖
+          </div>
+          <div className="numeric mt-0.5 font-display text-2xl font-extrabold text-brand-text-secondary">
+            78
+          </div>
+        </div>
+      </div>
+      <div className="mt-2 flex items-center justify-end gap-1 text-[10px]">
+        <span className="rounded-full bg-brand-primary/10 px-2 py-0.5 font-bold text-brand-primary">
+          +50 XP earned
+        </span>
+      </div>
+    </div>
+  );
+}
+
+const PIXIE_SCENES: PixieScene[] = [
+  {
+    id: 'story',
+    label: 'Story Studio',
+    pixieMessage:
+      "Bored is the best time to make stuff. Wanna build a story? You pick the hero.",
+    Canvas: StoryCanvasMock,
+  },
+  {
+    id: 'homework',
+    label: 'Homework Helper',
+    pixieMessage:
+      "I never give answers, only hints. Try Step 2 next. What's 27 × 3?",
+    Canvas: HomeworkCanvasMock,
+  },
+  {
+    id: 'xray',
+    label: 'AI X-Ray',
+    pixieMessage:
+      "I drew your dragon with these words. Tap any tag to see what it changed.",
+    Canvas: XRayCanvasMock,
+  },
+  {
+    id: 'beat',
+    label: 'Beat the AI',
+    pixieMessage:
+      "You won this round. Wanna try Hard AI on Truth Tuesday tomorrow?",
+    Canvas: BeatAiCanvasMock,
+  },
+];
