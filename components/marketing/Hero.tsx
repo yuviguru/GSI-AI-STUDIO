@@ -1,8 +1,9 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, Sparkles, Shield, Wand2, Eye, Swords } from 'lucide-react';
 import { MascotAvatar } from '@/components/mascot/MascotAvatar';
 import { getMascot } from '@/lib/mascots/roster';
@@ -149,65 +150,99 @@ export function Hero() {
   );
 }
 
-/* Brand mascot — focal hero visual. Renders the current brand-default mascot
-   (Pixie today) inside a soft floating card with a speech bubble + sparkle
-   accents. Mascot data comes from the roster, so swapping the brand default
-   is a one-line change in lib/mascots/roster.ts. */
+/* Brand mascot — focal hero visual. Pixie sits free on the page (no card)
+   with a stack of cycling chat bubbles that demonstrate her conversational
+   role: she's the kid's AI buddy who walks them through it. Mascot data
+   comes from the roster, so swapping the brand default is a one-line edit
+   in lib/mascots/roster.ts. */
+
+const PIXIE_LINES = [
+  "Hi! I'm Pixie. What should we make today?",
+  'Ask me how AI made it — anytime.',
+  'Stuck on homework? I give hints, never answers.',
+  'Wanna beat the AI? Pick a challenge.',
+];
+
 function BrandMascotHero() {
   const mascot = getMascot('pixie');
+  const [lineIndex, setLineIndex] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setLineIndex((p) => (p + 1) % PIXIE_LINES.length);
+    }, 3600);
+    return () => window.clearInterval(id);
+  }, []);
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0, scale: 0.92 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.7, ease: 'easeOut' }}
-      className="relative mx-auto flex w-full max-w-sm items-center justify-center lg:max-w-none"
+      className="relative mx-auto flex w-full max-w-md flex-col items-center gap-4 lg:max-w-none"
     >
-      {/* Soft halo behind the mascot */}
+      {/* Soft halo glow behind Pixie */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 mx-auto h-[80%] w-[80%] rounded-full opacity-60 blur-3xl"
+        className="pointer-events-none absolute -top-6 left-1/2 -z-10 h-[300px] w-[420px] -translate-x-1/2 rounded-full opacity-70 blur-3xl"
         style={{
           background:
-            'radial-gradient(ellipse at center, rgba(138,92,255,0.30), rgba(91,95,255,0.15) 50%, transparent 75%)',
+            'radial-gradient(ellipse at center, rgba(91,179,255,0.35), rgba(138,92,255,0.18) 45%, transparent 75%)',
         }}
       />
 
-      {/* Mascot card */}
-      <motion.div
-        animate={{ y: [0, -8, 0] }}
-        transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
-        className="relative flex aspect-square w-[260px] items-center justify-center rounded-[40px] bg-gradient-to-br from-white via-brand-soft/40 to-white shadow-elevated ring-1 ring-brand-border/50 sm:w-[300px] lg:w-[340px]"
-      >
-        <MascotAvatar id={mascot.id} size="2xl" ariaLabel={`${mascot.name} — GSI brand mascot`} />
+      {/* Cycling chat bubble — Pixie talking */}
+      <div className="relative flex min-h-[78px] w-full max-w-[320px] items-end justify-center">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={lineIndex}
+            initial={{ opacity: 0, y: 8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+            className="relative w-full rounded-3xl bg-white px-4 py-3 shadow-card ring-1 ring-brand-border/60"
+          >
+            <div className="flex items-center gap-1.5">
+              <span className="flex items-center gap-1 rounded-full bg-cyan-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-cyan-700">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-cyan-500" />
+                </span>
+                {mascot.name}
+              </span>
+              <span className="text-[10px] text-brand-text-muted">your AI buddy</span>
+            </div>
+            <p className="mt-1.5 font-display text-[14px] font-semibold leading-snug text-brand-text">
+              {PIXIE_LINES[lineIndex]}
+            </p>
+            {/* Tail pointing down to Pixie */}
+            <div
+              aria-hidden
+              className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-white ring-1 ring-brand-border/60"
+              style={{ clipPath: 'polygon(100% 0, 100% 100%, 0 100%)' }}
+            />
+          </motion.div>
+        </AnimatePresence>
+      </div>
 
-        {/* Speech bubble — top-right */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.7, y: -6 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.6, type: 'spring', stiffness: 260, damping: 18 }}
-          className="absolute -right-3 -top-3 max-w-[180px] rounded-2xl bg-white px-3.5 py-2 shadow-card ring-1 ring-brand-border/60 sm:-right-5 sm:-top-5"
-        >
-          <div className="text-[9px] font-bold uppercase tracking-wide text-brand-primary">
-            {mascot.name}
-          </div>
-          <div className="mt-0.5 font-display text-[12px] font-bold leading-snug text-brand-text">
-            What should we make today?
-          </div>
-          {/* Tail */}
-          <div
-            aria-hidden
-            className="absolute -bottom-1.5 left-6 h-3 w-3 rotate-45 bg-white ring-1 ring-brand-border/60"
-            style={{ clipPath: 'polygon(0 0, 100% 100%, 0 100%)' }}
-          />
-        </motion.div>
+      {/* Pixie — sits free, no card, with subtle bob */}
+      <motion.div
+        animate={{ y: [0, -6, 0] }}
+        transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
+        className="relative"
+      >
+        <MascotAvatar
+          id={mascot.id}
+          size="2xl"
+          ariaLabel={`${mascot.name} — GSI brand mascot`}
+        />
 
         {/* Sparkle decorations */}
         <motion.span
           aria-hidden
           animate={{ rotate: [0, 18, -10, 0], scale: [1, 1.15, 1] }}
           transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute -bottom-2 -left-2 text-2xl"
+          className="absolute -left-6 top-2 text-xl"
         >
           ✨
         </motion.span>
@@ -215,11 +250,16 @@ function BrandMascotHero() {
           aria-hidden
           animate={{ rotate: [0, -18, 10, 0], scale: [1, 1.15, 1] }}
           transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1.2 }}
-          className="absolute -bottom-3 right-4 text-xl"
+          className="absolute -right-5 bottom-4 text-lg"
         >
-          🎨
+          💬
         </motion.span>
       </motion.div>
+
+      {/* Caption — names the role under the mascot */}
+      <p className="text-center text-caption text-brand-text-muted">
+        Meet <span className="font-bold text-brand-text">{mascot.name}</span> — your kid&apos;s AI buddy who explains every prompt, every output, every concept.
+      </p>
     </motion.div>
   );
 }
