@@ -11,6 +11,7 @@ import {
   Brain,
   BarChart3,
   MessageCircle,
+  Sparkles,
 } from 'lucide-react';
 import { MascotAvatar } from '@/components/mascot/MascotAvatar';
 
@@ -50,64 +51,148 @@ export function HeroBento() {
         }}
       />
 
-      {/* Bento grid */}
+      {/* Bento grid — flagships on top, studios + challenges below.
+          Hover any tile for a description + Try-now CTA (desktop) or tap
+          to navigate (mobile, where there's no hover state). */}
       <div className="relative grid auto-rows-[130px] grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4 lg:auto-rows-[140px]">
-        {/* 1 — Story Studio (2×2, tall book-cover feel) */}
+        {/* ─── Flagship row (rows 1-2) — Kid CEO + AI Homework Assistant ── */}
+
+        {/* 1 — Kid CEO (flagship, 2×2) */}
         <BentoCell
-          className="col-span-2 row-span-2 sm:col-span-1 sm:row-span-2 lg:col-span-1 lg:row-span-2"
+          className="col-span-2 row-span-2"
           delay={0.05}
-          href="/create/story"
-          ariaLabel="Open Story Studio"
-        >
-          <StoryTile />
-        </BentoCell>
-
-        {/* 2 — Music Lab (1×1, waveform) */}
-        <BentoCell delay={0.1} href="/create/music" ariaLabel="Open Music Lab">
-          <MusicTile />
-        </BentoCell>
-
-        {/* 3 — Quiz Maker (1×1, mock question) */}
-        <BentoCell delay={0.15} href="/create/quiz" ariaLabel="Open Quiz Maker">
-          <QuizTile />
-        </BentoCell>
-
-        {/* 4 — Kid CEO (2×2, dashboard feel, NEW badge) */}
-        <BentoCell
-          className="col-span-2 row-span-2 sm:col-span-1 sm:row-span-2 lg:col-span-1 lg:row-span-2"
-          delay={0.2}
           href="/ceo"
           ariaLabel="Open Kid CEO"
+          hoverDetail={{
+            name: 'Kid CEO · Flagship',
+            description:
+              'Run a real business sim over weeks. Make decisions as events hit and discover your CEO DNA. Telegram bot pings you when something changes.',
+            ctaLabel: 'Start a business',
+          }}
         >
           <KidCeoTile />
         </BentoCell>
 
-        {/* 5 — Comics (1×1, panel grid) */}
-        <BentoCell delay={0.25} href="/create/comic" ariaLabel="Open Comic Studio">
+        {/* 2 — AI Homework Assistant (flagship, 2×2) */}
+        <BentoCell
+          className="col-span-2 row-span-2"
+          delay={0.1}
+          href="/homework"
+          ariaLabel="Open AI Homework Assistant"
+          hoverDetail={{
+            name: 'AI Homework · Flagship',
+            description:
+              'A Telegram tutor that gives hints, never answers. Per-subject scores and full transcripts logged for parents — every session.',
+            ctaLabel: 'Try it on Telegram',
+          }}
+        >
+          <HomeworkTile />
+        </BentoCell>
+
+        {/* ─── Studios row 1 (row 3) — Story / Music / Quiz / Comics ───── */}
+
+        <BentoCell
+          delay={0.15}
+          href="/create/story"
+          ariaLabel="Open Story Studio"
+          hoverDetail={{
+            name: 'Story Studio',
+            description:
+              'Your kid imagines, AI illustrates. Build illustrated storybooks scene by scene from a single idea.',
+          }}
+        >
+          <StoryTile />
+        </BentoCell>
+
+        <BentoCell
+          delay={0.2}
+          href="/create/music"
+          ariaLabel="Open Music Lab"
+          hoverDetail={{
+            name: 'Music Lab',
+            description:
+              'Compose original tracks from a mood and a genre. Sing along, share with friends, and remix.',
+          }}
+        >
+          <MusicTile />
+        </BentoCell>
+
+        <BentoCell
+          delay={0.25}
+          href="/create/quiz"
+          ariaLabel="Open Quiz Maker"
+          hoverDetail={{
+            name: 'Quiz Maker',
+            description:
+              'Build trivia on any topic, then challenge friends. Earn AI Points and badges as you climb the leaderboard.',
+          }}
+        >
+          <QuizTile />
+        </BentoCell>
+
+        <BentoCell
+          delay={0.3}
+          href="/create/comic"
+          ariaLabel="Open Comic Studio"
+          hoverDetail={{
+            name: 'Comic Studio',
+            description:
+              'Panel-by-panel comics with AI-illustrated art and your speech bubbles. Tell the stories you want to read.',
+          }}
+        >
           <ComicsTile />
         </BentoCell>
 
-        {/* 6 — Games (1×1, adventure choice) */}
-        <BentoCell delay={0.3} href="/create/game" ariaLabel="Open Game Studio">
+        {/* ─── Studios row 2 (row 4) — Game / X-Ray / Beat AI / MindX ──── */}
+
+        <BentoCell
+          delay={0.35}
+          href="/create/game"
+          ariaLabel="Open Game Studio"
+          hoverDetail={{
+            name: 'Game Studio',
+            description:
+              'Choose-your-own-adventure games written and illustrated by AI. You decide what happens next.',
+          }}
+        >
           <GamesTile />
         </BentoCell>
 
-        {/* 7 — Beat the AI (half-width footer) */}
         <BentoCell
-          className="col-span-2 row-span-1 sm:col-span-2"
-          delay={0.35}
+          delay={0.4}
+          href="/learn"
+          ariaLabel="Open AI X-Ray"
+          hoverDetail={{
+            name: 'AI X-Ray',
+            description:
+              'See exactly how AI made every output. Concepts mapped to your school AI curriculum — across every Indian board.',
+          }}
+        >
+          <XRayTile />
+        </BentoCell>
+
+        <BentoCell
+          delay={0.45}
           href="/beat-the-ai"
           ariaLabel="Open Beat the AI"
+          hoverDetail={{
+            name: 'Beat the AI',
+            description:
+              '9 head-to-head challenges. Same prompt, you and the AI. Whoever is clearer and faster wins.',
+          }}
         >
           <BeatAiTile />
         </BentoCell>
 
-        {/* 8 — MindX Skill Arena (half-width footer) */}
         <BentoCell
-          className="col-span-2 row-span-1 sm:col-span-2"
-          delay={0.4}
+          delay={0.5}
           href="/skill-arena"
           ariaLabel="Open MindX Skill Arena"
+          hoverDetail={{
+            name: 'MindX Skill Arena',
+            description:
+              'Quickfire drills across Speak, Listen, Think, Read. Personal feedback. Climb from Explorer to Champion.',
+          }}
         >
           <MindXTile />
         </BentoCell>
@@ -144,27 +229,54 @@ export function HeroBento() {
 
 // ── Bento cell wrapper ───────────────────────────────────────────────────────
 
+interface BentoCellHoverDetail {
+  /** Display name shown in the overlay header. */
+  name: string;
+  /** One-sentence value prop shown under the name. */
+  description: string;
+  /** Override the Try-now CTA label. Defaults to "Try now". */
+  ctaLabel?: string;
+}
+
 function BentoCell({
   children,
   className = '',
   delay = 0,
   href,
   ariaLabel,
+  hoverDetail,
 }: {
   children: React.ReactNode;
   className?: string;
   delay?: number;
   href?: string;
   ariaLabel?: string;
+  hoverDetail?: BentoCellHoverDetail;
 }) {
   const inner = (
     <motion.div
       initial={{ opacity: 0, y: 16, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.5, delay, ease: 'easeOut' }}
-      className={`group h-full overflow-hidden rounded-2xl bg-white shadow-card ring-1 ring-brand-border/60 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover ${className}`}
+      className="group relative h-full overflow-hidden rounded-2xl bg-white shadow-card ring-1 ring-brand-border/60 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card-hover"
     >
       {children}
+      {hoverDetail && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-brand-text via-brand-text/85 to-transparent p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100"
+        >
+          <h4 className="font-display text-sm font-extrabold leading-tight text-white">
+            {hoverDetail.name}
+          </h4>
+          <p className="mt-1 line-clamp-3 text-[11px] leading-snug text-white/85">
+            {hoverDetail.description}
+          </p>
+          <span className="mt-2.5 inline-flex w-fit items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-brand-primary shadow-button">
+            {hoverDetail.ctaLabel ?? 'Try now'} <span aria-hidden>→</span>
+          </span>
+        </div>
+      )}
     </motion.div>
   );
 
@@ -180,7 +292,7 @@ function BentoCell({
     );
   }
 
-  return inner;
+  return <div className={className}>{inner}</div>;
 }
 
 // ── Tile: Story Studio ───────────────────────────────────────────────────────
@@ -705,7 +817,7 @@ function KidCeoTile() {
   );
 }
 
-// ── Tile: Beat the AI (half-width footer) ────────────────────────────────────
+// ── Tile: Beat the AI (1×1 compact) ──────────────────────────────────────────
 
 function BeatAiTile() {
   const ref = useRef<HTMLDivElement>(null);
@@ -719,83 +831,57 @@ function BeatAiTile() {
       className="flex h-full flex-col justify-between bg-gradient-to-br from-purple-50 via-white to-indigo-50 p-3"
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 rounded-full bg-white px-2 py-0.5 shadow-soft">
-          <Bot className="h-3 w-3 text-purple-600" />
-          <span className="text-[9px] font-bold uppercase tracking-wide text-purple-600">
-            Beat the AI
+        <div className="flex items-center gap-1 rounded-full bg-white px-1.5 py-0.5 shadow-soft">
+          <Bot className="h-2.5 w-2.5 text-purple-600" />
+          <span className="text-[8px] font-bold uppercase tracking-wide text-purple-600">
+            Beat AI
           </span>
         </div>
-        <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">
-          Maths Monday
+        <span className="rounded-full bg-amber-100 px-1 py-0.5 text-[8px] font-bold text-amber-700">
+          Maths Mon
         </span>
       </div>
 
-      <div className="flex items-center gap-2">
-        {/* Kid side */}
-        <div className="flex flex-1 items-center gap-1.5 rounded-md bg-white px-2 py-1.5 ring-1 ring-brand-secondary/30">
-          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-brand-secondary to-emerald-400 text-[10px] font-bold text-white">
-            A
-          </div>
-          <div className="min-w-0">
-            <div className="text-[8px] font-semibold uppercase tracking-wide text-brand-text-muted">
-              You
-            </div>
-            <div className="numeric text-[11px] font-extrabold text-brand-secondary">
-              {Math.round(kidScore)}
-            </div>
-          </div>
-          <motion.span
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={inView ? { opacity: 1, scale: 1 } : {}}
-            transition={{
-              duration: 0.5,
-              delay: 1.35,
-              type: 'spring',
-              stiffness: 320,
-              damping: 16,
-            }}
-            className="ml-auto rounded-full bg-brand-secondary/10 px-1 py-0.5 text-[8px] font-bold uppercase text-brand-secondary"
-          >
-            Win
-          </motion.span>
+      {/* Compact scoreboard — kid score big, AI score smaller */}
+      <div className="flex items-center justify-center gap-2">
+        <div className="flex flex-col items-center">
+          <span className="text-[8px] font-bold uppercase tracking-wide text-emerald-600">
+            You
+          </span>
+          <span className="numeric font-display text-2xl font-extrabold text-emerald-600">
+            {Math.round(kidScore)}
+          </span>
         </div>
-
         <span className="text-[9px] font-bold text-brand-text-muted">vs</span>
-
-        {/* AI side */}
-        <div className="flex flex-1 items-center gap-1.5 rounded-md bg-white/60 px-2 py-1.5 ring-1 ring-brand-border">
-          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 text-white">
-            <Bot className="h-2.5 w-2.5" />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[8px] font-semibold uppercase tracking-wide text-brand-text-muted">
-              Hard AI
-            </div>
-            <div className="numeric text-[11px] font-extrabold text-brand-text-secondary">
-              {Math.round(aiScore)}
-            </div>
-          </div>
+        <div className="flex flex-col items-center opacity-70">
+          <span className="text-[8px] font-bold uppercase tracking-wide text-brand-text-muted">
+            AI
+          </span>
+          <span className="numeric font-display text-xl font-extrabold text-brand-text-secondary">
+            {Math.round(aiScore)}
+          </span>
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-[10px]">
-        <span className="truncate font-semibold text-brand-text">
-          &ldquo;Show your working: 27 × 13&rdquo;
-        </span>
-        <motion.span
-          initial={{ opacity: 0, y: 4 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.4, delay: 1.55 }}
-          className="ml-2 shrink-0 rounded-full bg-brand-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-brand-primary"
-        >
-          +50 XP
-        </motion.span>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: 4 }}
+        animate={inView ? { opacity: 1, y: 0 } : {}}
+        transition={{
+          duration: 0.5,
+          delay: 1.35,
+          type: 'spring',
+          stiffness: 320,
+          damping: 16,
+        }}
+        className="flex items-center justify-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-700"
+      >
+        🏆 Win · +50 XP
+      </motion.div>
     </div>
   );
 }
 
-// ── Tile: MindX Skill Arena (half-width footer) ──────────────────────────────
+// ── Tile: MindX Skill Arena (1×1 compact) ────────────────────────────────────
 
 const MINDX_SKILLS = [
   { label: 'Speak', value: 0.82, color: 'from-cyan-500 to-blue-500' },
@@ -814,18 +900,19 @@ function MindXTile() {
       className="flex h-full flex-col justify-between bg-gradient-to-br from-cyan-50 via-white to-purple-50 p-3"
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 rounded-full bg-white px-2 py-0.5 shadow-soft">
-          <Brain className="h-3 w-3 text-cyan-600" />
-          <span className="text-[9px] font-bold uppercase tracking-wide text-cyan-600">
-            MindX Arena
+        <div className="flex items-center gap-1 rounded-full bg-white px-1.5 py-0.5 shadow-soft">
+          <Brain className="h-2.5 w-2.5 text-cyan-600" />
+          <span className="text-[8px] font-bold uppercase tracking-wide text-cyan-600">
+            MindX
           </span>
         </div>
-        <span className="rounded-full bg-gradient-to-r from-cyan-500 to-purple-500 px-1.5 py-0.5 text-[9px] font-bold text-white">
+        <span className="rounded-full bg-gradient-to-r from-cyan-500 to-purple-500 px-1.5 py-0.5 text-[8px] font-bold text-white">
           Explorer
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+      {/* 4 skill bars stacked compactly */}
+      <div className="space-y-1">
         {MINDX_SKILLS.map((skill, i) => (
           <MindXSkillBar
             key={skill.label}
@@ -836,19 +923,20 @@ function MindXTile() {
         ))}
       </div>
 
-      <div className="flex items-center justify-between text-[10px]">
-        <span className="truncate font-semibold text-brand-text">
-          Next: Achiever band
-        </span>
-        <motion.span
-          initial={{ opacity: 0, scale: 0.85 }}
-          animate={inView ? { opacity: 1, scale: 1 } : {}}
-          transition={{ duration: 0.5, delay: 0.95, type: 'spring', stiffness: 280, damping: 18 }}
-          className="ml-2 shrink-0 rounded-full bg-cyan-100 px-1.5 py-0.5 text-[9px] font-bold text-cyan-700"
-        >
-          Day 12 streak
-        </motion.span>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.85 }}
+        animate={inView ? { opacity: 1, scale: 1 } : {}}
+        transition={{
+          duration: 0.5,
+          delay: 0.95,
+          type: 'spring',
+          stiffness: 280,
+          damping: 18,
+        }}
+        className="flex items-center justify-center gap-1 rounded-full bg-cyan-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-cyan-700"
+      >
+        Day 12 streak 🔥
+      </motion.div>
     </div>
   );
 }
@@ -871,11 +959,11 @@ function MindXSkillBar({
   const value = useTriggeredCountUp(counting, skill.value * 100, 900);
 
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="w-9 shrink-0 text-[9px] font-bold uppercase tracking-wide text-brand-text-secondary">
+    <div className="flex items-center gap-1">
+      <span className="w-7 shrink-0 text-[8px] font-bold uppercase tracking-wide text-brand-text-secondary">
         {skill.label}
       </span>
-      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-brand-border/40">
+      <div className="h-1 flex-1 overflow-hidden rounded-full bg-brand-border/40">
         <motion.div
           className={`h-full origin-left rounded-full bg-gradient-to-r ${skill.color}`}
           style={{ width: `${skill.value * 100}%` }}
@@ -884,9 +972,124 @@ function MindXSkillBar({
           transition={{ duration: 0.9, delay, ease: [0.22, 1, 0.36, 1] }}
         />
       </div>
-      <span className="numeric w-6 shrink-0 text-right text-[9px] font-bold text-brand-text">
+      <span className="numeric w-5 shrink-0 text-right text-[8px] font-bold text-brand-text">
         {Math.round(value)}
       </span>
+    </div>
+  );
+}
+
+// ── Tile: AI Homework Assistant (flagship, 2×2) ──────────────────────────────
+
+function HomeworkTile() {
+  return (
+    <div className="relative flex h-full flex-col overflow-hidden">
+      {/* Top gradient band — emerald/cyan to feel different from Kid CEO */}
+      <div
+        className="relative px-3 pt-3 pb-2"
+        style={{ background: 'linear-gradient(135deg, #10B981, #06B6D4)' }}
+      >
+        <div className="flex items-center justify-between text-white">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm">📚</span>
+            <span className="text-[9px] font-bold uppercase tracking-wide">
+              Homework
+            </span>
+          </div>
+          <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
+            Class 3–12
+          </span>
+        </div>
+        <div className="mt-2 text-[10px] text-white/85">Aarav · Math · Q3</div>
+        <div className="numeric mt-0.5 font-display text-lg font-extrabold text-white">
+          27 × 13 = ?
+        </div>
+      </div>
+
+      {/* Hint stepper — Pixie's hint trail */}
+      <div className="flex-1 bg-white px-3 py-2">
+        <div className="text-[9px] font-bold uppercase tracking-wide text-cyan-700">
+          Pixie&apos;s hints
+        </div>
+        <div className="mt-1.5 space-y-1">
+          <div className="flex items-center gap-1.5 rounded-md bg-emerald-50 px-1.5 py-1 text-[10px]">
+            <span className="font-bold text-emerald-600">✓</span>
+            <span className="font-semibold text-brand-text">27 × 10 = 270</span>
+          </div>
+          <div className="flex items-center gap-1.5 rounded-md bg-cyan-50 px-1.5 py-1 text-[10px] ring-1 ring-cyan-200">
+            <span className="font-bold text-cyan-700">→</span>
+            <span className="font-semibold text-brand-text">27 × 3 = ?</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer — the contract */}
+      <div className="bg-gradient-to-br from-emerald-50 to-white px-3 py-2">
+        <div className="text-[9px] font-semibold uppercase tracking-wide text-emerald-700">
+          Hints · never answers
+        </div>
+        <div className="mt-0.5 line-clamp-2 text-[10px] font-semibold leading-snug text-brand-text">
+          &ldquo;What&apos;s 27 × 3? Almost there!&rdquo;
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Tile: AI X-Ray (1×1 compact) ─────────────────────────────────────────────
+
+function XRayTile() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, amount: 0.5 });
+
+  return (
+    <div
+      ref={ref}
+      className="flex h-full flex-col justify-between bg-gradient-to-br from-purple-50 via-white to-fuchsia-50 p-3"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1 rounded-full bg-white px-1.5 py-0.5 shadow-soft">
+          <Sparkles className="h-2.5 w-2.5 text-purple-600" />
+          <span className="text-[8px] font-bold uppercase tracking-wide text-purple-600">
+            X-Ray
+          </span>
+        </div>
+        <motion.span
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={inView ? { opacity: 1, scale: 1 } : {}}
+          transition={{ duration: 0.4, delay: 0.6 }}
+          className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[8px] font-bold text-purple-700"
+        >
+          +15 AI Pts
+        </motion.span>
+      </div>
+
+      {/* Generated image preview */}
+      <div className="relative flex h-12 items-center justify-center overflow-hidden rounded-md bg-gradient-to-br from-purple-300 via-fuchsia-300 to-pink-300 shadow-soft">
+        <span className="text-2xl drop-shadow-md">🐉</span>
+      </div>
+
+      {/* Concept tags — staggered reveal on scroll */}
+      <div className="space-y-0.5">
+        <motion.div
+          initial={{ opacity: 0, x: -4 }}
+          animate={inView ? { opacity: 1, x: 0 } : {}}
+          transition={{ duration: 0.4, delay: 0.3 }}
+          className="rounded bg-white px-1.5 py-0.5 text-[9px] ring-1 ring-purple-100"
+        >
+          <span className="font-bold text-purple-700">Prompt:</span>{' '}
+          <span className="text-brand-text">&ldquo;rainbow dragon&rdquo;</span>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, x: -4 }}
+          animate={inView ? { opacity: 1, x: 0 } : {}}
+          transition={{ duration: 0.4, delay: 0.45 }}
+          className="rounded bg-white px-1.5 py-0.5 text-[9px] ring-1 ring-fuchsia-100"
+        >
+          <span className="font-bold text-fuchsia-700">Concept:</span>{' '}
+          <span className="text-brand-text">Text-to-image</span>
+        </motion.div>
+      </div>
     </div>
   );
 }
