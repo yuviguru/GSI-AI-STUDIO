@@ -175,16 +175,22 @@ const PIXIE_DEMO_SCENES: ChatScene[] = [
     badge: '✨',
     messages: [
       { from: 'kid', text: "I'm bored 😩" },
-      { from: 'pixie', text: "Let's make a story! Hero — dragon or dosa?" },
+      {
+        from: 'pixie',
+        text: "Bored is the best time to make stuff. Wanna build a story? You pick the hero, I'll do the pictures.",
+      },
     ],
   },
   {
     id: 'homework',
-    label: 'Homework — hints, not answers',
+    label: 'Homework hints, not answers',
     badge: '📚',
     messages: [
       { from: 'kid', text: 'Stuck on 27 × 13' },
-      { from: 'pixie', text: 'Try 27 × 10 first. What do you get?' },
+      {
+        from: 'pixie',
+        text: "I never give answers, only hints. Start with 27 × 10. What's that?",
+      },
     ],
   },
   {
@@ -193,7 +199,10 @@ const PIXIE_DEMO_SCENES: ChatScene[] = [
     badge: '🔍',
     messages: [
       { from: 'kid', text: 'How did you make my dragon?' },
-      { from: 'pixie', text: 'Replicate SDXL turned your prompt into pixels — wanna see how?' },
+      {
+        from: 'pixie',
+        text: "I sent your idea to an AI artist that paints with words. Tap X-Ray and I'll show you which words made the wings.",
+      },
     ],
   },
   {
@@ -201,8 +210,11 @@ const PIXIE_DEMO_SCENES: ChatScene[] = [
     label: 'Beat the AI',
     badge: '⚡',
     messages: [
-      { from: 'kid', text: 'Bet I can write better than you' },
-      { from: 'pixie', text: 'Maths Monday — pick your champion 🤖' },
+      { from: 'kid', text: 'Bet I can beat you' },
+      {
+        from: 'pixie',
+        text: "It's Maths Monday. Same problem, you and me. The clearer answer wins.",
+      },
     ],
   },
 ];
@@ -331,7 +343,7 @@ function BrandMascotHero() {
 
       {/* Caption */}
       <p className="text-center text-caption text-brand-text-muted">
-        Meet <span className="font-bold text-brand-text">{mascot.name}</span> — your kid&apos;s AI buddy who sparks ideas, gives hints, explains every prompt, and challenges them.
+        Meet <span className="font-bold text-brand-text">{mascot.name}</span>, your kid&apos;s AI buddy. She sparks ideas, gives hints, explains how AI works, and pushes them to think.
       </p>
     </motion.div>
   );
