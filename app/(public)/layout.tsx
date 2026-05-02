@@ -11,7 +11,10 @@ import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { KidProfileProvider, useKidProfile } from '@/hooks/useKidProfile';
 import { LoginPrompt } from '@/components/auth/LoginPrompt';
 import { ProfilePicker } from '@/components/profile/ProfilePicker';
-import { KidProfileSetup } from '@/components/profile/KidProfileSetup';
+import { ProfileSetupCarousel } from '@/components/onboarding/ProfileSetupCarousel';
+import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
+
+const REQUIRE_LOGIN = process.env.NEXT_PUBLIC_REQUIRE_LOGIN === 'true';
 
 function AppGate({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -20,18 +23,25 @@ function AppGate({ children }: { children: React.ReactNode }) {
   // Still loading auth/profile state
   if (authLoading) return null;
 
-  // Anonymous user — no gate, full access
-  if (!isAuthenticated) return <>{children}</>;
-
-  // Authenticated but no kids — force kid profile creation
-  if (needsProfileSetup) {
+  // Pilot login-only mode: force phone auth before showing anything else.
+  // Toggle via NEXT_PUBLIC_REQUIRE_LOGIN env var (defaults to false = open beta).
+  if (REQUIRE_LOGIN && !isAuthenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-purple-50 to-white p-4">
         <div className="w-full max-w-sm rounded-3xl bg-white p-2 shadow-xl">
-          <KidProfileSetup onComplete={refreshKids} />
+          <PhoneAuthFlow />
         </div>
       </div>
     );
+  }
+
+  // Anonymous user (open beta) — no gate, full access
+  if (!isAuthenticated) return <>{children}</>;
+
+  // Authenticated but no kids — run the rich onboarding carousel which creates
+  // the verified kid profile (mascot + AI avatar + X-Ray lesson) in one flow.
+  if (needsProfileSetup) {
+    return <ProfileSetupCarousel createKidProfile onComplete={refreshKids} />;
   }
 
   // Authenticated with kids but none selected — show Netflix picker

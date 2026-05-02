@@ -33,3 +33,7 @@ export { StudioCardsColumn } from './StudioCardsColumn';
 export { BeatAiWidget } from './BeatAiWidget';
 export { MindXWidget } from './MindXWidget';
 export { ShowAllAppsWidget } from './ShowAllAppsWidget';
+
+// ─── Quick-access link tiles ────────────────────────────────────────────────
+export { CeoLinkWidget } from './CeoLinkWidget';
+export { HomeworkLinkWidget } from './HomeworkLinkWidget';

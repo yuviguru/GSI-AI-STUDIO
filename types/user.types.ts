@@ -37,7 +37,11 @@ export interface KidProfile {
   email: string; // Kid's email — identifier for the profile
   googleEmail?: string; // Only if kid signed in with Google
   name: string; // Display name (can be fictional per DPDPA)
-  avatar?: string; // Avatar ID from picker
+  avatar?: string; // Legacy emoji-avatar id (e.g. "tiger") from old picker
+  /** AI-buddy chosen during onboarding (e.g. "koko", "pixie"). Roster in lib/mascots/roster.ts */
+  mascotId?: string;
+  /** AI-generated avatar URL (Firebase Storage) created during onboarding */
+  avatarUrl?: string;
 
   // DPDPA verification
   verifiedBy: 'parent' | 'teacher' | null;

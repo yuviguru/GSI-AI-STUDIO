@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { verifyAuth } from '@/lib/auth-utils';
 import { createKid, listKids } from '@/lib/firebase/kidService';
+import { isPersistableAvatarUrl } from '@/lib/images/avatarUrl';
 
 /**
  * POST /api/users/kids
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
     const auth = await verifyAuth(request);
 
     const body = await request.json();
-    const { name, email, avatar, age, grade, board } = body;
+    const { name, email, avatar, mascotId, avatarUrl, age, grade, board } = body;
 
     // Validate name
     if (!name || typeof name !== 'string' || name.trim().length < 1) {
@@ -55,10 +56,36 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validate mascotId — must be from the known roster
+    if (mascotId !== undefined) {
+      const { MASCOTS } = await import('@/lib/mascots/roster');
+      const validIds = MASCOTS.map((m) => m.id);
+      if (typeof mascotId !== 'string' || !validIds.includes(mascotId)) {
+        throw new AppException('INVALID_INPUT', 'Unknown mascot', 400);
+      }
+    }
+
+    // Validate avatarUrl against the shared allowlist (Firebase Storage,
+    // Pollinations, curated stock CDNs, or local paths). The same predicate
+    // is used in /api/avatar/generate's `persisted` flag and in
+    // claim-session's onboarding sanitiser, so what the generator advertises
+    // as persistable is exactly what we accept here.
+    if (avatarUrl !== undefined && avatarUrl !== null) {
+      if (!isPersistableAvatarUrl(avatarUrl)) {
+        throw new AppException(
+          'INVALID_INPUT',
+          'Avatar URL must come from a trusted host (Firebase Storage, Pollinations, or stock CDN)',
+          400,
+        );
+      }
+    }
+
     const kid = await createKid(auth.userId, {
       name: name.trim(),
       email: email.trim().toLowerCase(),
       avatar,
+      mascotId,
+      avatarUrl,
       age,
       grade,
       board,
@@ -70,6 +97,8 @@ export async function POST(request: NextRequest) {
         name: kid.name,
         email: kid.email,
         avatar: kid.avatar,
+        mascotId: kid.mascotId,
+        avatarUrl: kid.avatarUrl,
         age: kid.age,
         grade: kid.grade,
         board: kid.board,
@@ -98,6 +127,8 @@ export async function GET(request: NextRequest) {
         id: kid.id,
         name: kid.name,
         avatar: kid.avatar,
+        mascotId: kid.mascotId,
+        avatarUrl: kid.avatarUrl,
         age: kid.age,
         grade: kid.grade,
         board: kid.board,

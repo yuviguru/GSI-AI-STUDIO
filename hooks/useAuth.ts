@@ -139,6 +139,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const handleSignOut = useCallback(async () => {
     try {
       setError(null);
+
+      // Best-effort server cleanup BEFORE we lose the auth token. If this
+      // fails (network, server cold start) we still proceed with sign-out —
+      // the orphan snapshot is recoverable on next sign-in.
+      try {
+        const token = firebaseUser ? await firebaseUser.getIdToken() : null;
+        if (token) {
+          await fetch('/api/auth/signout-cleanup', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            // Don't block UI if the network is slow.
+            signal: AbortSignal.timeout(2000),
+          }).catch(() => {});
+        }
+      } catch {
+        // Non-blocking — proceed with sign-out
+      }
+
       await signOutUser();
       setUserProfile(null);
       // Hard reset: clear all gsi-* localStorage + sessionStorage keys so the
@@ -175,7 +193,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const message = err instanceof Error ? err.message : 'Sign out failed';
       setError(message);
     }
-  }, []);
+  }, [firebaseUser]);
 
   const getIdToken = useCallback(async (): Promise<string | null> => {
     if (!firebaseUser) return null;

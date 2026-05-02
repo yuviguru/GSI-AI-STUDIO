@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import {
-  OnboardingCarousel,
-  ONBOARDING_STORAGE_KEY,
-} from '@/components/onboarding/OnboardingCarousel';
+  ProfileSetupCarousel,
+  ONBOARDING_DONE_KEY,
+} from '@/components/onboarding/ProfileSetupCarousel';
 import {
   DashboardStatsRow,
   BeatAiWidget,
@@ -16,6 +16,8 @@ import {
   ChallengesWidget,
   LeaderboardPanel,
   ContinueCreatingCard,
+  CeoLinkWidget,
+  HomeworkLinkWidget,
 } from '@/components/dashboard';
 import { AssignmentView } from '@/components/student/AssignmentView';
 
@@ -24,7 +26,7 @@ export default function HomePage() {
 
   useEffect(() => {
     try {
-      const completed = localStorage.getItem(ONBOARDING_STORAGE_KEY);
+      const completed = localStorage.getItem(ONBOARDING_DONE_KEY);
       if (!completed) setShowOnboarding(true);
     } catch {
       // localStorage unavailable — skip onboarding
@@ -39,7 +41,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-brand-background">
       <AnimatePresence>
         {showOnboarding && (
-          <OnboardingCarousel onComplete={handleOnboardingComplete} />
+          <ProfileSetupCarousel onComplete={handleOnboardingComplete} />
         )}
       </AnimatePresence>
 
@@ -51,6 +53,12 @@ export default function HomePage() {
         {/* Pending assignments from teachers (Phase 3) */}
         <div className="mb-4">
           <AssignmentView />
+        </div>
+
+        {/* ── QUICK ACCESS — CEO + Homework ───────────────────────────── */}
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <CeoLinkWidget />
+          <HomeworkLinkWidget />
         </div>
 
         {/* ── ROW 1 — Stats + Badges: 4 equal cards ────────────────────── */}
