@@ -183,6 +183,29 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ─── Books (Book Studio) ────────────────────────────────
+    // Multi-session authoring artifacts. Distinct from `creations` because
+    // books are the kid's authored work (multi-page, locked layout) rather
+    // than one-shot AI generations.
+    //
+    // - Reads: public-read when status=published AND isPublic=true so the
+    //   /view/book/[slug] route can resolve. All other reads (owner's
+    //   library, drafts) flow through the Admin SDK in API routes.
+    // - Writes: server-side only via Admin SDK. Clients NEVER write
+    //   directly — would bypass locked-field defenses, page-count caps,
+    //   and ownership checks.
+    match /books/{bookId} {
+      allow read: if resource.data.isPublic == true && resource.data.status == 'published';
+      allow write: if false; // Server-side only via Admin SDK
+
+      // Pages subcollection — same gating as parent book.
+      match /pages/{pageId} {
+        allow read: if get(/databases/$(database)/documents/books/$(bookId)).data.isPublic == true
+          && get(/databases/$(database)/documents/books/$(bookId)).data.status == 'published';
+        allow write: if false; // Server-side only via Admin SDK
+      }
+    }
+
     // Default: deny all
     match /{document=**} {
       allow read, write: if false;
