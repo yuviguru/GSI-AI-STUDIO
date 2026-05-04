@@ -3,3 +3,4 @@ export * from './user.types';
 export * from './api.types';
 export * from './ceo.types';
 export * from './bot.types';
+export * from './book.types';
