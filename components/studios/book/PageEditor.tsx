@@ -1,0 +1,496 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import { StarterKit } from '@tiptap/starter-kit';
+import { Underline } from '@tiptap/extension-underline';
+import { TextAlign } from '@tiptap/extension-text-align';
+import { Color } from '@tiptap/extension-color';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { FontFamily } from '@tiptap/extension-font-family';
+import { Placeholder } from '@tiptap/extension-placeholder';
+import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
+  Bold,
+  Heading1,
+  Heading2,
+  Italic,
+  List,
+  ListOrdered,
+  Mic,
+  MicOff,
+  Sparkles,
+  Underline as UnderlineIcon,
+  Wand2,
+  ImagePlus,
+} from 'lucide-react';
+import type { Book, BookPage, GrammarSuggestion, TipTapDocument } from '@/types/book.types';
+import { BOOK_FONTS } from '@/lib/templates/bookTemplates';
+import { useVoiceInput } from '@/hooks/useVoiceInput';
+import { useGrammarCheck } from '@/hooks/useGrammarCheck';
+import { usePageImage } from '@/hooks/usePageImage';
+import { GrammarSuggestionList } from './GrammarSuggestionPopover';
+
+interface PageEditorProps {
+  book: Book;
+  page: BookPage;
+  onSave: (patch: {
+    richText?: TipTapDocument;
+    plainText?: string;
+    imageUrl?: string;
+    imagePrompt?: string;
+    imageStyle?: string;
+  }) => Promise<unknown>;
+  saving: boolean;
+}
+
+const TEXT_COLORS = [
+  '#1F2937',
+  '#5B5FFF',
+  '#8A5CFF',
+  '#FF9F43',
+  '#20C997',
+  '#EF4444',
+  '#3B82F6',
+  '#EC4899',
+];
+
+const SIZE_PRESETS: Array<{ label: string; px: number }> = [
+  { label: 'S', px: 14 },
+  { label: 'M', px: 16 },
+  { label: 'L', px: 20 },
+  { label: 'XL', px: 28 },
+];
+
+function plainTextFromDoc(doc: unknown): string {
+  if (!doc || typeof doc !== 'object') return '';
+  const content = (doc as { content?: unknown }).content;
+  if (!Array.isArray(content)) return '';
+  const out: string[] = [];
+  const visit = (node: unknown) => {
+    if (!node || typeof node !== 'object') return;
+    const n = node as Record<string, unknown>;
+    if (typeof n.text === 'string') out.push(n.text);
+    if (Array.isArray(n.content)) for (const c of n.content) visit(c);
+  };
+  for (const n of content) visit(n);
+  return out.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+export function PageEditor({ book, page, onSave, saving }: PageEditorProps) {
+  const showText = book.format === 'text' || book.format === 'text_image';
+  const showImage = book.format === 'image' || book.format === 'text_image';
+
+  const editor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit,
+      Underline,
+      TextStyle,
+      Color,
+      FontFamily,
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Placeholder.configure({
+        placeholder: 'Start writing your page... ✍️',
+      }),
+    ],
+    content: (page.richText ?? { type: 'doc', content: [{ type: 'paragraph' }] }) as never,
+    editorProps: {
+      attributes: {
+        class:
+          'prose prose-sm max-w-none focus:outline-none min-h-[180px] px-3 py-3',
+      },
+    },
+  });
+
+  // Reload content when navigating between pages
+  useEffect(() => {
+    if (!editor) return;
+    const nextContent: TipTapDocument =
+      page.richText ?? { type: 'doc', content: [{ type: 'paragraph' }] };
+    editor.commands.setContent(nextContent as never, { emitUpdate: false });
+  }, [editor, page.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save: debounced PATCH on edit
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!editor) return;
+    const handler = () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        const json = editor.getJSON() as TipTapDocument;
+        const plainText = plainTextFromDoc(json);
+        void onSave({ richText: json, plainText });
+      }, 700);
+    };
+    editor.on('update', handler);
+    return () => {
+      editor.off('update', handler);
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [editor, onSave, page.id]);
+
+  // Voice input
+  const voice = useVoiceInput({ lang: 'en-IN' });
+  const lastVoiceTranscriptRef = useRef('');
+  useEffect(() => {
+    if (!editor || !voice.transcript) return;
+    const newText = voice.transcript.slice(lastVoiceTranscriptRef.current.length);
+    if (newText) {
+      editor.commands.insertContent(newText);
+      lastVoiceTranscriptRef.current = voice.transcript;
+    }
+  }, [editor, voice.transcript]);
+
+  const handleVoiceToggle = () => {
+    if (voice.isRecording) {
+      voice.stopRecording();
+    } else {
+      lastVoiceTranscriptRef.current = '';
+      voice.reset();
+      voice.startRecording();
+    }
+  };
+
+  // Grammar check
+  const grammar = useGrammarCheck();
+  const handleGrammarCheck = async () => {
+    if (!editor) return;
+    const json = editor.getJSON() as TipTapDocument;
+    const plainText = plainTextFromDoc(json);
+    if (!plainText.trim()) return;
+    await grammar.run({
+      text: plainText,
+      bookId: book.id,
+      pageId: page.id,
+    });
+  };
+
+  const handleAcceptSuggestion = (s: GrammarSuggestion) => {
+    if (!editor) return;
+    const currentText = plainTextFromDoc(editor.getJSON());
+    const updated =
+      currentText.slice(0, s.startIndex) + s.suggested + currentText.slice(s.endIndex);
+    // Reset editor to a single paragraph with the corrected text. This loses
+    // formatting on the affected page edit — acceptable for v1; v1.1 can
+    // patch the prosemirror tree more surgically.
+    editor.commands.setContent(
+      { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: updated }] }] },
+      { emitUpdate: true }
+    );
+    grammar.dismissSuggestion(s.id);
+  };
+
+  const handleKeepSuggestion = (s: GrammarSuggestion) => {
+    grammar.dismissSuggestion(s.id);
+  };
+
+  // Page image
+  const image = usePageImage();
+  const [imagePrompt, setImagePrompt] = useState(page.imagePrompt ?? '');
+  const handleGenerateImage = async () => {
+    if (!imagePrompt.trim()) return;
+    const aspect: 'square' | 'portrait' | 'landscape' =
+      book.size === 'square'
+        ? 'square'
+        : book.size === 'landscape'
+          ? 'landscape'
+          : 'portrait';
+    const result = await image.generate({
+      prompt: imagePrompt,
+      aspect,
+      bookId: book.id,
+      pageId: page.id,
+    });
+    if (result) {
+      await onSave({
+        imageUrl: result.imageUrl,
+        imagePrompt,
+      });
+    }
+  };
+
+  if (!editor) {
+    return (
+      <div className="flex h-64 items-center justify-center text-sm text-gray-500">
+        Loading editor…
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[auto,1fr]">
+      {/* Toolbar */}
+      <div className="flex flex-row flex-wrap gap-1.5 rounded-2xl border border-gray-200 bg-white p-2 lg:flex-col lg:p-2.5">
+        {showText && (
+          <>
+            <ToolbarGroup>
+              <ToolbarButton
+                onClick={() => editor.chain().focus().toggleBold().run()}
+                active={editor.isActive('bold')}
+                label="Bold"
+              >
+                <Bold className="h-4 w-4" />
+              </ToolbarButton>
+              <ToolbarButton
+                onClick={() => editor.chain().focus().toggleItalic().run()}
+                active={editor.isActive('italic')}
+                label="Italic"
+              >
+                <Italic className="h-4 w-4" />
+              </ToolbarButton>
+              <ToolbarButton
+                onClick={() => editor.chain().focus().toggleUnderline().run()}
+                active={editor.isActive('underline')}
+                label="Underline"
+              >
+                <UnderlineIcon className="h-4 w-4" />
+              </ToolbarButton>
+            </ToolbarGroup>
+
+            <ToolbarGroup>
+              <ToolbarButton
+                onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+                active={editor.isActive('heading', { level: 1 })}
+                label="Heading 1"
+              >
+                <Heading1 className="h-4 w-4" />
+              </ToolbarButton>
+              <ToolbarButton
+                onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+                active={editor.isActive('heading', { level: 2 })}
+                label="Heading 2"
+              >
+                <Heading2 className="h-4 w-4" />
+              </ToolbarButton>
+            </ToolbarGroup>
+
+            <ToolbarGroup>
+              <ToolbarButton
+                onClick={() => editor.chain().focus().toggleBulletList().run()}
+                active={editor.isActive('bulletList')}
+                label="Bulleted list"
+              >
+                <List className="h-4 w-4" />
+              </ToolbarButton>
+              <ToolbarButton
+                onClick={() => editor.chain().focus().toggleOrderedList().run()}
+                active={editor.isActive('orderedList')}
+                label="Numbered list"
+              >
+                <ListOrdered className="h-4 w-4" />
+              </ToolbarButton>
+            </ToolbarGroup>
+
+            <ToolbarGroup>
+              <ToolbarButton
+                onClick={() => editor.chain().focus().setTextAlign('left').run()}
+                active={editor.isActive({ textAlign: 'left' })}
+                label="Align left"
+              >
+                <AlignLeft className="h-4 w-4" />
+              </ToolbarButton>
+              <ToolbarButton
+                onClick={() => editor.chain().focus().setTextAlign('center').run()}
+                active={editor.isActive({ textAlign: 'center' })}
+                label="Align center"
+              >
+                <AlignCenter className="h-4 w-4" />
+              </ToolbarButton>
+              <ToolbarButton
+                onClick={() => editor.chain().focus().setTextAlign('right').run()}
+                active={editor.isActive({ textAlign: 'right' })}
+                label="Align right"
+              >
+                <AlignRight className="h-4 w-4" />
+              </ToolbarButton>
+            </ToolbarGroup>
+
+            <ToolbarGroup>
+              <select
+                onChange={(e) => editor.chain().focus().setFontFamily(e.target.value).run()}
+                className="h-8 rounded border border-gray-200 bg-white px-2 text-xs"
+                aria-label="Font family"
+                defaultValue=""
+              >
+                <option value="">Font</option>
+                {BOOK_FONTS.map((f) => (
+                  <option key={f.id} value={f.name}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                onChange={(e) => {
+                  const px = Number(e.target.value);
+                  if (px) {
+                    editor
+                      .chain()
+                      .focus()
+                      .setMark('textStyle', { fontSize: `${px}px` })
+                      .run();
+                  }
+                }}
+                className="h-8 rounded border border-gray-200 bg-white px-2 text-xs"
+                aria-label="Font size"
+                defaultValue=""
+              >
+                <option value="">Size</option>
+                {SIZE_PRESETS.map((s) => (
+                  <option key={s.label} value={s.px}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </ToolbarGroup>
+
+            <ToolbarGroup>
+              <div className="flex flex-wrap gap-1">
+                {TEXT_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => editor.chain().focus().setColor(c).run()}
+                    className="h-6 w-6 rounded-full ring-1 ring-gray-200"
+                    style={{ backgroundColor: c }}
+                    aria-label={`Text colour ${c}`}
+                  />
+                ))}
+              </div>
+            </ToolbarGroup>
+
+            <ToolbarGroup>
+              <ToolbarButton
+                onClick={handleVoiceToggle}
+                active={voice.isRecording}
+                label={voice.isRecording ? 'Stop recording' : 'Voice input'}
+                disabled={!voice.isSupported}
+              >
+                {voice.isRecording ? (
+                  <MicOff className="h-4 w-4" />
+                ) : (
+                  <Mic className="h-4 w-4" />
+                )}
+              </ToolbarButton>
+
+              <ToolbarButton
+                onClick={handleGrammarCheck}
+                label="Check grammar"
+                disabled={grammar.loading}
+              >
+                <Wand2 className="h-4 w-4" />
+              </ToolbarButton>
+            </ToolbarGroup>
+          </>
+        )}
+      </div>
+
+      {/* Canvas */}
+      <div className="flex flex-col gap-3">
+        {voice.isRecording && (
+          <div className="flex items-center gap-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+            <span className="flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-2.5 w-2.5 animate-ping rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+            </span>
+            Listening… speak your page text
+          </div>
+        )}
+
+        {showText && (
+          <div className="rounded-2xl border border-gray-200 bg-white shadow-card">
+            <EditorContent editor={editor} />
+            <div className="border-t border-gray-100 px-3 py-1.5 text-[10px] uppercase tracking-wide text-gray-400">
+              {saving ? 'Saving…' : 'Saved'}
+            </div>
+          </div>
+        )}
+
+        {showImage && (
+          <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-card">
+            <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+              Page illustration
+            </div>
+            {page.imageUrl ? (
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={page.imageUrl}
+                  alt=""
+                  className="aspect-square w-full rounded-xl object-cover"
+                />
+              </div>
+            ) : (
+              <div className="flex aspect-square w-full items-center justify-center rounded-xl bg-gray-50 text-gray-400">
+                <ImagePlus className="h-12 w-12" />
+              </div>
+            )}
+            <textarea
+              value={imagePrompt}
+              onChange={(e) => setImagePrompt(e.target.value)}
+              placeholder="Describe what you want in the picture..."
+              rows={2}
+              maxLength={500}
+              className="mt-2 w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+            />
+            <button
+              type="button"
+              onClick={handleGenerateImage}
+              disabled={!imagePrompt.trim() || image.loading}
+              className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {image.loading ? 'Generating…' : page.imageUrl ? 'Regenerate' : 'Generate image'}
+            </button>
+            {image.error && (
+              <div className="mt-2 rounded-lg bg-red-50 px-2 py-1.5 text-xs text-red-700">
+                {image.error}
+              </div>
+            )}
+          </div>
+        )}
+
+        <GrammarSuggestionList
+          suggestions={grammar.suggestions}
+          loading={grammar.loading}
+          error={grammar.error}
+          hasRun={grammar.hasRun}
+          onAccept={handleAcceptSuggestion}
+          onKeep={handleKeepSuggestion}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ToolbarGroup({ children }: { children: React.ReactNode }) {
+  return <div className="flex flex-wrap items-center gap-1 lg:flex-row">{children}</div>;
+}
+
+interface ToolbarButtonProps {
+  onClick: () => void;
+  active?: boolean;
+  disabled?: boolean;
+  label: string;
+  children: React.ReactNode;
+}
+
+function ToolbarButton({ onClick, active, disabled, label, children }: ToolbarButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+      className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+        active ? 'bg-brand-purple text-white' : 'text-gray-700 hover:bg-gray-100'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
