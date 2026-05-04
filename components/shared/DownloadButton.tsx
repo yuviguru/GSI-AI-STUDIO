@@ -55,6 +55,9 @@ export function DownloadButton({ creation, variant, className }: DownloadButtonP
         URL.revokeObjectURL(url);
       } else if (creation.type === 'music') {
         const content = creation.content as MusicContent;
+        if (!content.audioUrl) {
+          throw new Error('Audio URL not available for download');
+        }
         triggerDownload(content.audioUrl, `${slug}-gsi-ai-studio.mp3`);
       } else if (creation.type === 'quiz') {
         const { generateQuizPdf } = await import('@/lib/export/pdfGenerator');

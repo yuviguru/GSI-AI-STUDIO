@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Mic, Music2 } from 'lucide-react';
+import { Music2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AiXrayPopup } from '@/components/learning/AiXrayPopup';
 import { ShareButton } from '@/components/shared/ShareButton';
 import { DownloadButton } from '@/components/shared/DownloadButton';
+import { SingAlongRecorder } from './SingAlongRecorder';
 import type { AiXrayData, MusicContent } from '@/types';
 
 type MusicData = MusicContent & { title: string; waveformData: number[] };
@@ -68,10 +69,19 @@ export function MusicPlayer({ music, aiXray, onCreateAnother, creationId, readOn
   useEffect(() => {
     let howl: import('howler').Howl | null = null;
 
+    if (!music.audioUrl) {
+      // Asset persistence may have failed for this creation; mark loaded so
+      // the rest of the UI (lyrics, sing-along) renders without spinning.
+      setIsLoaded(true);
+      return;
+    }
+
+    const audioSrc = music.audioUrl;
+
     (async () => {
       const { Howl } = await import('howler');
       howl = new Howl({
-        src: [music.audioUrl],
+        src: [audioSrc],
         html5: true,
         onload: () => {
           setAudioDuration(howl!.duration());
@@ -177,22 +187,23 @@ export function MusicPlayer({ music, aiXray, onCreateAnother, creationId, readOn
     }
   };
 
-  const toggleSingAlong = () => {
+  const playBackingTrack = useCallback(() => {
     const howl = howlRef.current;
-    setIsSingAlong((prev) => {
-      const next = !prev;
-      if (howl) {
-        if (next && !isPlaying) {
-          howl.play();
-          setIsPlaying(true);
-        } else if (!next && isPlaying) {
-          howl.pause();
-          setIsPlaying(false);
-        }
-      }
-      return next;
-    });
-  };
+    if (!howl) return;
+    if (!howl.playing()) {
+      howl.seek(0);
+      howl.play();
+      setIsPlaying(true);
+    }
+  }, []);
+
+  const pauseBackingTrack = useCallback(() => {
+    const howl = howlRef.current;
+    if (howl && howl.playing()) {
+      howl.pause();
+      setIsPlaying(false);
+    }
+  }, []);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -273,31 +284,31 @@ export function MusicPlayer({ music, aiXray, onCreateAnother, creationId, readOn
         </div>
       </div>
 
-      {/* Sing Along (stub — recording coming soon) */}
-      {music.lyrics && !readOnly && (
+      {/* Sing Along — opens the recorder */}
+      {music.lyrics && !readOnly && creationId && !isSingAlong && (
         <button
-          onClick={toggleSingAlong}
+          onClick={() => setIsSingAlong(true)}
           disabled={!isLoaded}
           className={cn(
             'flex w-full items-center justify-center gap-2 rounded-2xl border-2 py-3 font-bold transition-all active:scale-95',
-            isSingAlong
-              ? 'border-brand-orange bg-brand-orange/10 text-brand-orange'
-              : 'border-brand-purple bg-brand-purple/5 text-brand-purple hover:bg-brand-purple/10',
+            'border-brand-purple bg-brand-purple/5 text-brand-purple hover:bg-brand-purple/10',
+            !isLoaded && 'cursor-wait opacity-60',
           )}
-          aria-pressed={isSingAlong}
         >
-          {isSingAlong ? (
-            <>
-              <Mic className="h-5 w-5 animate-pulse" />
-              Listening...
-            </>
-          ) : (
-            <>
-              <Music2 className="h-5 w-5" />
-              Sing Along
-            </>
-          )}
+          <Music2 className="h-5 w-5" />
+          Sing Along
         </button>
+      )}
+
+      {/* Sing-along recorder */}
+      {music.lyrics && !readOnly && creationId && isSingAlong && (
+        <SingAlongRecorder
+          parentCreationId={creationId}
+          isParentReady={isLoaded}
+          onPlayBackingTrack={playBackingTrack}
+          onPauseBackingTrack={pauseBackingTrack}
+          onClose={() => setIsSingAlong(false)}
+        />
       )}
 
       {/* Lyrics */}
