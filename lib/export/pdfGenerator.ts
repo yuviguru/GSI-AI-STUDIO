@@ -1,4 +1,5 @@
 import type { QuizContent } from '@/types/creation.types';
+import type { Book, BookPage } from '@/types/book.types';
 
 /** Minimal story shape needed for PDF generation */
 interface PdfStory {
@@ -296,6 +297,213 @@ export async function generateQuizPdf(
   doc.setFontSize(10);
   doc.setTextColor(BRAND_GRAY);
   doc.text(BRANDING_TEXT, A4_WIDTH / 2, A4_HEIGHT - 15, { align: 'center' });
+
+  return doc.output('blob');
+}
+
+// ── Book Studio PDF generator ───────────────────────────────────
+
+/** Convert a hex color to a [r,g,b] tuple. Falls back to white on bad input. */
+function hexToRgb(hex: string | null | undefined): [number, number, number] {
+  if (!hex) return [255, 255, 255];
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!m) return [255, 255, 255];
+  return [parseInt(m[1]!, 16), parseInt(m[2]!, 16), parseInt(m[3]!, 16)];
+}
+
+/**
+ * Generate a printable PDF for a kid-authored book.
+ * Layout follows the page's `layout` field. Renders plainText (TipTap rich
+ * formatting is preserved in `richText` but PDF rendering uses the flat
+ * plainText for v1 — full rich-text rendering is a v1.1 enhancement).
+ */
+export async function generateBookPdf(book: Book, pages: BookPage[]): Promise<Blob> {
+  const { jsPDF } = await import('jspdf');
+
+  const widthMm = book.dimensions.widthMm;
+  const heightMm = book.dimensions.heightMm;
+  const orientation = widthMm > heightMm ? 'landscape' : 'portrait';
+  const pageMargin = Math.max(8, Math.round(Math.min(widthMm, heightMm) * 0.06));
+  const contentWidth = widthMm - pageMargin * 2;
+  const contentHeight = heightMm - pageMargin * 2;
+
+  const doc = new jsPDF({
+    orientation,
+    unit: 'mm',
+    format: [widthMm, heightMm],
+  });
+
+  // ── Cover page ──
+  const [bgR, bgG, bgB] = hexToRgb(book.cover.backgroundColor);
+  doc.setFillColor(bgR, bgG, bgB);
+  doc.rect(0, 0, widthMm, heightMm, 'F');
+
+  // Optional cover image (full bleed top half)
+  if (book.cover.imageUrl) {
+    const dataUrl = await loadImageAsDataUrl(book.cover.imageUrl);
+    if (dataUrl) {
+      const imgH = heightMm * 0.55;
+      doc.addImage(dataUrl, 'JPEG', 0, 0, widthMm, imgH);
+    }
+  }
+
+  // Cover title
+  doc.setFontSize(28);
+  doc.setTextColor('#FFFFFF');
+  const titleY = book.cover.imageUrl ? heightMm * 0.7 : heightMm * 0.4;
+  const coverTitleLines = wrapText(doc, book.cover.title || book.title, contentWidth);
+  coverTitleLines.forEach((line, i) => {
+    doc.text(line, widthMm / 2, titleY + i * 12, { align: 'center' });
+  });
+
+  // Cover subtitle
+  if (book.cover.subtitle) {
+    doc.setFontSize(14);
+    doc.text(book.cover.subtitle, widthMm / 2, titleY + coverTitleLines.length * 12 + 8, {
+      align: 'center',
+    });
+  }
+
+  // Author byline at bottom
+  doc.setFontSize(12);
+  doc.setTextColor('#FFFFFF');
+  doc.text(
+    `By ${book.cover.authorName || book.author}`,
+    widthMm / 2,
+    heightMm - pageMargin,
+    { align: 'center' }
+  );
+
+  // ── Body pages ──
+  const sortedPages = [...pages].sort((a, b) => a.pageNumber - b.pageNumber);
+
+  for (const page of sortedPages) {
+    doc.addPage([widthMm, heightMm], orientation);
+
+    // White background for body pages
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 0, widthMm, heightMm, 'F');
+
+    const isFullBleed = page.layout === 'image_full_bleed' || page.layout === 'gallery';
+    const isImageTop =
+      page.layout === 'image_top_text_bottom' || page.layout === 'concept_letter';
+    const isTextOnly = page.layout === 'text_only' || page.layout === 'entry_centered';
+    const isCentered = page.layout === 'entry_centered';
+
+    let imageDataUrl: string | null = null;
+    if (page.imageUrl && !isTextOnly) {
+      imageDataUrl = await loadImageAsDataUrl(page.imageUrl);
+    }
+
+    if (isFullBleed && imageDataUrl) {
+      doc.addImage(imageDataUrl, 'JPEG', 0, 0, widthMm, heightMm);
+      // Optional caption overlay at bottom
+      if (page.plainText) {
+        doc.setFillColor(0, 0, 0);
+        doc.rect(0, heightMm - 18, widthMm, 18, 'F');
+        doc.setTextColor('#FFFFFF');
+        doc.setFontSize(11);
+        const captionLines = wrapText(doc, page.plainText, contentWidth);
+        doc.text(captionLines.slice(0, 2).join(' '), widthMm / 2, heightMm - 9, {
+          align: 'center',
+        });
+      }
+      continue;
+    }
+
+    let yPos = pageMargin;
+
+    // Image (if any, half page)
+    if (imageDataUrl && !isTextOnly) {
+      const imgHeight = contentHeight * 0.5;
+      if (isImageTop) {
+        doc.addImage(imageDataUrl, 'JPEG', pageMargin, yPos, contentWidth, imgHeight);
+        yPos += imgHeight + 6;
+      }
+    }
+
+    // Text
+    const fontSize = page.style?.fontSize ?? 13;
+    doc.setFontSize(fontSize);
+    const [tR, tG, tB] = hexToRgb(page.style?.textColor ?? '#1F2937');
+    doc.setTextColor(tR, tG, tB);
+
+    const textAlign = page.style?.alignment ?? (isCentered ? 'center' : 'left');
+    const lineHeight = fontSize * 0.5;
+
+    const textLines = wrapText(doc, page.plainText || ' ', contentWidth);
+    if (isCentered && isTextOnly) {
+      // Vertical center the text block
+      const blockHeight = textLines.length * lineHeight;
+      yPos = (heightMm - blockHeight) / 2;
+    }
+
+    for (const line of textLines) {
+      if (yPos + lineHeight > heightMm - pageMargin) break;
+      const x =
+        textAlign === 'center'
+          ? widthMm / 2
+          : textAlign === 'right'
+            ? widthMm - pageMargin
+            : pageMargin;
+      doc.text(line, x, yPos, { align: textAlign as 'left' | 'center' | 'right' });
+      yPos += lineHeight;
+    }
+
+    // Image at bottom if not yet drawn
+    if (imageDataUrl && !isImageTop && !isTextOnly) {
+      const imgHeight = contentHeight * 0.45;
+      const imgY = heightMm - pageMargin - imgHeight;
+      if (imgY > yPos + 4) {
+        doc.addImage(imageDataUrl, 'JPEG', pageMargin, imgY, contentWidth, imgHeight);
+      }
+    }
+
+    // Page number footer
+    doc.setFontSize(9);
+    doc.setTextColor(BRAND_GRAY);
+    doc.text(`${page.pageNumber}`, widthMm / 2, heightMm - 4, { align: 'center' });
+  }
+
+  // ── Back cover (optional) ──
+  if (book.backCover && (book.backCover.text || book.backCover.imageUrl)) {
+    doc.addPage([widthMm, heightMm], orientation);
+    const [bcR, bcG, bcB] = hexToRgb(book.cover.backgroundColor);
+    doc.setFillColor(bcR, bcG, bcB);
+    doc.rect(0, 0, widthMm, heightMm, 'F');
+
+    if (book.backCover.imageUrl) {
+      const dataUrl = await loadImageAsDataUrl(book.backCover.imageUrl);
+      if (dataUrl) {
+        doc.addImage(dataUrl, 'JPEG', pageMargin, pageMargin, contentWidth, contentHeight * 0.5);
+      }
+    }
+
+    if (book.backCover.text) {
+      doc.setFontSize(12);
+      doc.setTextColor('#FFFFFF');
+      const lines = wrapText(doc, book.backCover.text, contentWidth);
+      lines.forEach((line, i) => {
+        doc.text(line, widthMm / 2, heightMm * 0.7 + i * 6, { align: 'center' });
+      });
+    }
+  }
+
+  // ── Branding page ──
+  doc.addPage([widthMm, heightMm], orientation);
+  doc.setFillColor('#F9FAFB');
+  doc.rect(0, 0, widthMm, heightMm, 'F');
+  doc.setFontSize(16);
+  doc.setTextColor(BRAND_PURPLE);
+  doc.text(BRANDING_TEXT, widthMm / 2, heightMm / 2, { align: 'center' });
+  doc.setFontSize(10);
+  doc.setTextColor(BRAND_GRAY);
+  doc.text(
+    'gsi-ai-studio.netlify.app',
+    widthMm / 2,
+    heightMm / 2 + 8,
+    { align: 'center' }
+  );
 
   return doc.output('blob');
 }
