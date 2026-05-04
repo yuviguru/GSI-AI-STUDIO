@@ -632,3 +632,31 @@ export async function setBookPdfUrl(
     updatedAt: Timestamp.now(),
   });
 }
+
+/**
+ * Look up a published book by its share-URL slug. Used by the public
+ * /view/book/[slug] route — does NOT require an owner scope, but only
+ * returns books with status='published' AND isPublic=true OR with a
+ * direct slug match (link-only sharing).
+ */
+export async function getPublishedBookBySlug(
+  slug: string
+): Promise<{ book: Book; pages: BookPage[] } | null> {
+  const fullShareUrl = `/view/book/${slug}`;
+  const querySnap = await adminDb
+    .collection(BOOKS_COLLECTION)
+    .where('shareUrl', '==', fullShareUrl)
+    .where('status', '==', 'published')
+    .limit(1)
+    .get();
+
+  if (querySnap.empty) return null;
+  const doc = querySnap.docs[0]!;
+  const book = docToBook(doc);
+  const pagesSnap = await doc.ref
+    .collection(PAGES_SUBCOLLECTION)
+    .orderBy('pageNumber', 'asc')
+    .get();
+  const pages = pagesSnap.docs.map(docToPage);
+  return { book, pages };
+}

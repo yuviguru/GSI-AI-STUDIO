@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { LayoutGrid, BookOpen, Music, Gamepad2, Palette, HelpCircle } from 'lucide-react';
+import { LayoutGrid, BookOpen, BookMarked, Music, Gamepad2, Palette, HelpCircle } from 'lucide-react';
 
 const CATEGORIES = [
+  { label: 'Books',   icon: BookMarked, bg: 'bg-indigo-100', text: 'text-indigo-700', href: '/create/book',  isNew: true },
   { label: 'Stories', icon: BookOpen, bg: 'bg-violet-100', text: 'text-violet-700', href: '/create/story' },
   { label: 'Music',   icon: Music,    bg: 'bg-orange-100', text: 'text-orange-700', href: '/create/music' },
   { label: 'Games',   icon: Gamepad2, bg: 'bg-cyan-100',   text: 'text-cyan-700',   href: '/create/game'  },
@@ -32,10 +33,15 @@ export function StudioSelectorPanel() {
           return (
             <Link key={c.label} href={c.href}>
               <button
-                className={`flex shrink-0 items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors ${c.bg} ${c.text} hover:opacity-80`}
+                className={`relative flex shrink-0 items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors ${c.bg} ${c.text} hover:opacity-80`}
               >
                 <Icon className="h-3.5 w-3.5" />
                 {c.label}
+                {c.isNew && (
+                  <span className="ml-1 rounded-full bg-indigo-600 px-1.5 py-0.5 text-[8px] font-bold uppercase text-white">
+                    New
+                  </span>
+                )}
               </button>
             </Link>
           );
