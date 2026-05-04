@@ -269,3 +269,162 @@ export type CeoAgentRunInput = z.infer<typeof ceoAgentRunSchema>;
 export type CeoAgentAcceptInput = z.infer<typeof ceoAgentAcceptSchema>;
 export type CeoAgentRejectInput = z.infer<typeof ceoAgentRejectSchema>;
 export type BotLinkCreateInput = z.infer<typeof botLinkCreateSchema>;
+
+// ─── Book Studio ────────────────────────────────────────────
+
+const bookFormatSchema = z.enum(['text', 'image', 'text_image']);
+const bookSizeSchema = z.enum(['square', 'tall', 'pocket', 'landscape']);
+const bookBucketSchema = z.enum([
+  'narrative',
+  'memoir_catalog',
+  'entry_list',
+  'collection',
+  'concept',
+  'visual',
+]);
+const bookTypeSchema = z.enum([
+  'storybook',
+  'picture_book',
+  'about_me',
+  'family',
+  'travel',
+  'recipe',
+  'field_guide',
+  'fact_book',
+  'how_to',
+  'science_log',
+  'poem',
+  'joke',
+  'diary',
+  'quote',
+  'letter',
+  'sketchbook',
+  'wordless',
+  'abc_counting',
+]);
+const pageLayoutSchema = z.enum([
+  'text_top_image_bottom',
+  'image_top_text_bottom',
+  'image_full_bleed',
+  'text_only',
+  'entry_centered',
+  'recipe_split',
+  'concept_letter',
+  'gallery',
+]);
+
+const colorHexSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color hex (use #RRGGBB)');
+
+const typographyInputSchema = z.object({
+  titleFont: z.string().min(1).max(50),
+  bodyFont: z.string().min(1).max(50),
+  baseFontSize: z.number().int().min(10).max(28),
+});
+
+const pageStyleOverrideSchema = z.object({
+  font: z.string().min(1).max(50).optional(),
+  fontSize: z.number().int().min(8).max(72).optional(),
+  alignment: z.enum(['left', 'center', 'right']).optional(),
+  textColor: z.string().max(20).optional(),
+  backgroundColor: z.string().max(20).optional(),
+});
+
+/** Wizard input for creating a new book — fields LOCKED after creation:
+ *  type, bucket, format, size. */
+export const bookCreateSchema = z.object({
+  title: z.string().min(1).max(100).default('Untitled book'),
+  author: z.string().min(1).max(60).default('Anonymous Author'),
+  type: bookTypeSchema,
+  bucket: bookBucketSchema,
+  format: bookFormatSchema,
+  size: bookSizeSchema,
+  pageLimit: z.number().int().min(4).max(40),
+  typography: typographyInputSchema,
+  themeColor: colorHexSchema.optional(),
+});
+export type BookCreateInput = z.infer<typeof bookCreateSchema>;
+
+/** Patch metadata only — never size/format/bucket/dimensions. `.strict()` rejects unknown keys. */
+export const bookPatchSchema = z
+  .object({
+    title: z.string().min(1).max(100).optional(),
+    author: z.string().min(1).max(60).optional(),
+    themeColor: colorHexSchema.optional(),
+    typography: typographyInputSchema.partial().optional(),
+    cover: z.record(z.string(), z.unknown()).optional(),
+    backCover: z
+      .object({
+        text: z.string().max(500),
+        imageUrl: z.string().url().nullable(),
+      })
+      .nullable()
+      .optional(),
+    isPublic: z.boolean().optional(),
+  })
+  .strict();
+export type BookPatchInput = z.infer<typeof bookPatchSchema>;
+
+/** Append a new page */
+export const pageCreateSchema = z.object({
+  layout: pageLayoutSchema,
+  richText: z.record(z.string(), z.unknown()).optional(),
+  imagePrompt: z.string().max(500).optional(),
+});
+export type PageCreateInput = z.infer<typeof pageCreateSchema>;
+
+/** Update an existing page (any subset) */
+export const pagePatchSchema = z.object({
+  layout: pageLayoutSchema.optional(),
+  richText: z.record(z.string(), z.unknown()).optional(),
+  plainText: z.string().max(10_000).optional(),
+  imageUrl: z.string().url().nullable().optional(),
+  imagePrompt: z.string().max(500).nullable().optional(),
+  imageStyle: z.string().max(50).nullable().optional(),
+  voiceTranscriptRaw: z.string().max(20_000).nullable().optional(),
+  style: pageStyleOverrideSchema.nullable().optional(),
+});
+export type PagePatchInput = z.infer<typeof pagePatchSchema>;
+
+/** Reorder pages */
+export const pageReorderSchema = z.object({
+  order: z
+    .array(
+      z.object({
+        pageId: z.string().min(1).max(128),
+        pageNumber: z.number().int().min(1).max(40),
+      })
+    )
+    .min(1)
+    .max(40),
+});
+export type PageReorderInput = z.infer<typeof pageReorderSchema>;
+
+/** Update cover composition (partial) */
+export const coverPatchSchema = z.object({
+  title: z.string().max(100).optional(),
+  subtitle: z.string().max(150).optional(),
+  authorName: z.string().max(60).optional(),
+  backgroundColor: colorHexSchema.optional(),
+  imagePrompt: z.string().max(500).optional(),
+  font: z.string().max(50).optional(),
+});
+export type CoverPatchInput = z.infer<typeof coverPatchSchema>;
+
+/** Grammar check — Groq returns suggestions for grammar/spelling/punctuation only. */
+export const grammarCheckSchema = z.object({
+  text: z.string().min(1).max(10_000),
+  ageHint: z.number().int().min(5).max(18).optional(),
+  bookId: z.string().max(128).optional(),
+  pageId: z.string().max(128).optional(),
+});
+export type GrammarCheckInput = z.infer<typeof grammarCheckSchema>;
+
+/** Page image generation — uses existing image cascade */
+export const pageImageSchema = z.object({
+  prompt: z.string().min(3).max(500),
+  style: z.string().max(50).optional(),
+  aspect: z.enum(['square', 'portrait', 'landscape', 'cover']).default('square'),
+  bookId: z.string().max(128).optional(),
+  pageId: z.string().max(128).optional(),
+});
+export type PageImageInput = z.infer<typeof pageImageSchema>;
