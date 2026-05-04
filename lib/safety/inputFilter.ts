@@ -1,32 +1,41 @@
 import { AppException } from '@/lib/api-utils';
 import { BLOCKLIST_PATTERNS } from './blocklist';
+import { assertClean, maskProfanity } from './profanityFilter';
 
 /** Filter user input for safety before sending to AI */
 export function filterInput(text: string): string {
-  const lower = text.toLowerCase().trim();
+  const trimmed = text.trim();
+  const lower = trimmed.toLowerCase();
 
-  // Check blocklist patterns
+  // Check minimum meaningful content first — short input is a UX issue,
+  // not a safety issue, so we report it differently.
+  if (lower.length < 3) {
+    throw new AppException('INVALID_INPUT', 'Tell us a bit more about your idea!', 400);
+  }
+
+  // Topical blocklist — violence, sex, drugs, hate, PII (subjects we don't
+  // want the AI to write *about*).
   for (const pattern of BLOCKLIST_PATTERNS) {
     if (pattern.test(lower)) {
       throw new AppException(
         'UNSAFE_CONTENT',
         "Let's try a different idea! Think of something fun and creative.",
-        400
+        400,
       );
     }
   }
 
-  // Check minimum meaningful content
-  if (lower.length < 3) {
-    throw new AppException('INVALID_INPUT', 'Tell us a bit more about your idea!', 400);
-  }
+  // Profanity filter — abusive *words* regardless of topic. Reusable
+  // across studios and voice transcripts. Defaults to 'moderate' so
+  // mild words pass input and get masked at output.
+  assertClean(trimmed, 'moderate');
 
-  return text.trim();
+  return trimmed;
 }
 
 /** Filter AI-generated output for safety */
 export function filterOutput(text: string): string {
-  // Check for PII patterns (phone, email, addresses)
+  // PII redaction (phone, email, addresses, Aadhaar)
   const piiPatterns = [
     /\b\d{10}\b/, // phone numbers
     /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z]{2,}\b/i, // email
@@ -38,6 +47,11 @@ export function filterOutput(text: string): string {
   for (const pattern of piiPatterns) {
     filtered = filtered.replace(pattern, '[REDACTED]');
   }
+
+  // Profanity masking — the AI shouldn't be emitting abusive words, but
+  // if it does we mask rather than throw (the kid is waiting on a
+  // generation; we don't want to fail the whole flow over one word).
+  filtered = maskProfanity(filtered).masked;
 
   return filtered;
 }
@@ -56,10 +70,14 @@ export function filterImagePrompt(prompt: string): string {
       throw new AppException(
         'UNSAFE_CONTENT',
         "Let's try a different image idea!",
-        400
+        400,
       );
     }
   }
+
+  // Profanity check — image prompts go through the same word-level
+  // filter as text input. Reuses profanityList.ts.
+  assertClean(prompt, 'moderate');
 
   return prompt;
 }
