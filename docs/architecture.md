@@ -2,7 +2,7 @@
 
 ## System Overview
 
-GSI AI Studio is a serverless PWA built on Next.js (Netlify) + Firebase, designed for zero-ops overhead as a solo developer project. The frontend handles all UI and creation workflows, Firebase provides auth/database/storage/functions, and external AI APIs (Claude, Replicate, Suno) power the creation engines. The architecture prioritizes fast iteration, low cost, and progressive enhancement from anonymous playground to authenticated creator platform.
+GSI AI Studio is a serverless PWA built on Next.js (Netlify) + Firebase, designed for zero-ops overhead as a solo developer project. The frontend handles all UI and creation workflows, Firebase provides auth/Firestore/functions, **Cloudflare R2 stores binary media** (assets layer, PERF-001+), and external AI APIs (Groq, Claude, Replicate, Lyria) power the creation engines. **AI vocal generation is intentionally not used** — kids record their own voices for sing-alongs and book readings (better pedagogy, lower cost, dodges deepfake/voice-clone safety risk). The architecture prioritizes fast iteration, low cost, and progressive enhancement from anonymous playground to authenticated creator platform.
 
 ### Architecture Diagram
 
@@ -157,13 +157,41 @@ app/
 - Free tier covers Phase 1 (50K reads/day, 20K writes/day)
 - Firebase Auth integration is native
 
-### Storage (Firebase Cloud Storage)
-**Purpose**: Generated media files (images, audio, creation assets)
-**Strategy**:
-- AI-generated images → Cloud Storage with CDN
-- Audio files (music creations) → Cloud Storage
-- Creation thumbnails → Cloud Storage (auto-generated)
-- Public read access for shared creations, write access requires auth or server-side
+### Storage — Cloudflare R2 (primary) + Firebase Cloud Storage (legacy/non-UGC)
+
+**As of PERF-001, all binary media goes through the unified `assets` collection (see `docs/data-model.md#assets`) backed by Cloudflare R2**. R2 was chosen over Firebase Cloud Storage for the UGC-heavy, kids-app workload because of one number: **R2 charges $0/GB egress**. Firebase Cloud Storage charges ~$0.12/GB egress, which becomes a surprise bill the moment a kid's song goes viral or a class re-watches a popular performance. Storage cost is comparable; egress dominates total cost for read-heavy media at our scale.
+
+**Storage providers**:
+- **Cloudflare R2** — primary store for all new binary media (audio recordings, AI-generated images persisted post-PERF-001, music tracks, comic panels, book PDFs). S3-compatible API; accessed via the AWS S3 SDK.
+- **Firebase Cloud Storage** — retained for: (a) school branding assets (low traffic, already integrated), (b) historical creations migrated from before PERF-001. New writes go to R2.
+- **Replicate / Pixazo / Pollinations** — external URLs for AI-generated images that we don't yet rehost. PERF-001+ pipeline rehosts them to R2 to avoid breakage when provider URLs expire.
+
+**Why R2 wins for UGC kids' app**:
+
+| Concern | Firebase Cloud Storage | Cloudflare R2 |
+|---|---|---|
+| $/GB stored | $0.026/mo | $0.015/mo |
+| $/GB egress | $0.12 | **$0** |
+| Free tier | 5 GB / 1 GB egress per day | 10 GB storage / unlimited egress |
+| 100k 60s audio recordings, viewed 10× each | ~$30/mo (egress dominates) | ~$0.40/mo |
+| Surprise-bill risk | High (viral content blows budget) | Capped (no egress charge) |
+| Migration if needed | Lock-in | S3-compatible — swap to any provider |
+
+**R2 storage layout**: see `docs/data-model.md#assets > Storage layout (R2)`.
+
+**Access pattern**:
+- **Reads**: served via custom domain `cdn.gsi.studio` fronted by Cloudflare CDN (cache hits don't reach R2). Public URLs are stored directly on the asset doc.
+- **Writes**: clients upload directly to R2 using **pre-signed PUT URLs** issued by `POST /api/assets/upload-url`. Server bandwidth = 0 for both directions.
+- **Private assets**: served via a signed-URL Cloudflare Worker that validates session/kid ownership before issuing a short-lived signed URL.
+- **Auth**: server uses R2 Access Key / Secret Key (env vars `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`); never exposed to clients.
+
+**Asset abstraction layer** (`lib/storage/assetService.ts`, PERF-001):
+- `createUploadUrl(kind, mimeType, sizeBytes, owner)` — quota check + pre-signed PUT URL
+- `finalizeAsset(assetId)` — HEAD the R2 object, set `status='ready'`, run auto-moderation
+- `getPublicUrl(assetId)` — returns CDN URL for `public` assets
+- `getSignedUrl(assetId, ownerSession)` — short-lived signed URL for `private` assets
+- `softDeleteAsset(assetId)` — flips status; nightly worker hard-deletes from R2
+- Provider-pluggable behind a `StorageProvider` interface (`R2Provider` default; `FirebaseProvider` for legacy reads)
 
 ### Kid CEO (Business Simulation)
 
@@ -339,8 +367,51 @@ Claude Response → [Content Safety Filter] → [PII Detection] → Frontend
   ↓
 Image Prompt → [Safety Keywords Block] → Replicate API
   ↓
-Generated Image → [NSFW Detection] → Cloud Storage → Frontend
+Generated Image → [NSFW Detection] → R2 (assets) → Frontend
 ```
+
+### Sing-Along / Performance Recording Flow (PERF-001)
+```
+1. Kid views a music creation → /view/{creationId} → MusicPlayer renders
+2. Kid taps "Sing Along" → SingAlongRecorder mounts
+   a. Client checks voice_recording consent (Phase 2+ only)
+   b. If missing → on-demand consent flow (POST /api/dpdp/consent/request)
+      → parent receives WhatsApp/SMS link → grants → kid client polls and unlocks
+   c. Anonymous Phase 1 sessions skip consent (audio only — video gated until Phase 2)
+3. Kid taps Record → MediaRecorder API captures Opus audio @ 32 kbps mono
+   - 90s max enforced client-side; visual countdown
+   - Backing track plays simultaneously via existing Howler instance
+   - Waveform animates from MediaRecorder dataavailable events
+4. Kid taps Stop → recorder produces a Blob
+5. Kid previews; can retake (discard blob) or keep
+6. Kid taps "Save" or "Post":
+   a. Frontend calls POST /api/assets/upload-url with kind=audio, sourceType=user_recording
+      → server quota check + R2 pre-signed PUT URL
+   b. Frontend uploads Blob directly to R2 (server bandwidth = 0)
+   c. Frontend calls POST /api/assets/finalize → server runs auto-moderation
+      (size/duration sanity, format check; phase-2: speech-to-text + profanity scan)
+   d. Frontend calls POST /api/performances with audioAssetId + parentCreationId
+      → server creates performance doc, returns shareUrl
+7. Performance appears immediately in My Creations > Performances tab
+8. If kid sets visibility=public:
+   a. First 3 public performances per kid → moderation queue (status='draft')
+   b. After 3 clean publishes → auto-published (status='published')
+   c. Visible in /explore Performances tab and on the parent creation's view page
+9. Other kids can react (👍🎉🌟🔥💯) via POST /api/performances/:id/react
+```
+
+### Asset Upload Pattern (Generalized)
+```
+Client → POST /api/assets/upload-url { kind, mimeType, sizeBytes, ... }
+       ← { assetId, uploadUrl (pre-signed PUT to R2), expiresInSec }
+Client → PUT to R2 directly (no proxy, no server bandwidth)
+Client → POST /api/assets/finalize { assetId }
+       ← { asset: { publicUrl, status: 'ready', moderation: {...} } }
+Client → POST /api/<parent> { ..., audioAssetId/imageAssetId/pdfAssetId }
+       ← { parent: {...}, shareUrl }
+```
+
+This pattern is used by every studio that produces binary media: music (track audio), book (PDF + cover image), comic (panel images), story (hero images), and performances (kid recordings). The server never proxies binary data.
 
 ## External Integrations
 
@@ -355,7 +426,8 @@ Generated Image → [NSFW Detection] → Cloud Storage → Frontend
 | Replicate MusicGen | Music generation fallback | API token (server-side) | 1 | → Mock silence |
 | Firebase Auth | Phone OTP authentication | Firebase SDK | 2 | — |
 | Firebase Firestore | Database | Firebase SDK | 1 | — |
-| Firebase Cloud Storage | Media file storage | Firebase SDK | 1 | — |
+| Cloudflare R2 | Primary media storage (audio/video/image/pdf) — `lib/storage/assetService.ts` | S3 access keys (server-side) | 1 (PERF-001) | → Firebase Cloud Storage |
+| Firebase Cloud Storage | Legacy media + school branding assets | Firebase SDK | 1 | — |
 | Razorpay | Payments (UPI, cards, wallets) | API key + webhook | 2 | — |
 | WhatsApp Share API | Social sharing | URL scheme (client-side) | 1 | — |
 | Google Classroom API | School distribution | OAuth | 3 | — |

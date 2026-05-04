@@ -498,6 +498,275 @@ List public creations for the Explore feed. No session required.
 
 ---
 
+## Asset Endpoints (PERF-001)
+
+The asset endpoints power the unified media-storage layer (`docs/data-model.md#assets`). All binary uploads — kid recordings AND AI-generated outputs persisted to R2 — go through this two-step flow:
+
+1. Server hands the client a **pre-signed PUT URL** (R2/S3-compatible). Client uploads directly; server bandwidth = 0.
+2. Client calls **finalize** to flip the asset to `ready` and trigger auto-moderation.
+
+Quotas, rate limits, and per-kid size caps are enforced on `upload-url`. Visibility, retention, and moderation state are tracked on the asset doc — the parent (`creation`/`performance`) only stores `assetId` references.
+
+### POST /api/assets/upload-url
+
+Request a pre-signed PUT URL for direct upload to R2.
+
+**Request:**
+```json
+{
+  "kind": "audio",
+  "mimeType": "audio/webm",
+  "sizeBytes": 245760,
+  "durationSec": 32.4,
+  "sourceType": "user_recording",
+  "parentRefType": "performance",
+  "parentRefId": null
+}
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `kind` | yes | `audio` \| `video` \| `image` \| `pdf` |
+| `mimeType` | yes | Whitelist enforced server-side per `kind` |
+| `sizeBytes` | yes | Rejected if exceeds per-kid quota or per-file cap (audio: 10 MB; video: 50 MB; image: 5 MB; pdf: 20 MB) |
+| `durationSec` | audio/video | Rejected if > 90s for sing-along/voice memo (configurable per `parentRefType`) |
+| `sourceType` | yes | `user_recording` \| `user_upload` \| `ai_generated` |
+| `parentRefType` | no | `creation` \| `performance` \| `standalone` (default) |
+| `parentRefId` | no | Set when attaching to existing parent; null on first upload (set during finalize/parent-create) |
+
+**Consent enforcement:** if `kind='audio'` and `sourceType='user_recording'`, the server checks `voice_recording` consent for the owning kid (Phase 2+). If `kind='video'`, checks `video_recording` consent. Anonymous Phase 1 sessions have no parent yet — voice recording is allowed; video recording is blocked entirely until Phase 2. See `docs/security.md#voice-and-video-consent`.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "assetId": "asset_abc123",
+    "uploadUrl": "https://gsi-assets.r2.cloudflarestorage.com/audio/asset_abc123.webm?X-Amz-Signature=...",
+    "headers": { "Content-Type": "audio/webm" },
+    "expiresInSec": 600
+  }
+}
+```
+
+**Errors:**
+- `429 QUOTA_EXCEEDED` — kid hit asset quota
+- `403 CONSENT_MISSING` — recording requires parental consent (response includes `requiredScope`, `requestConsentUrl`)
+- `413 PAYLOAD_TOO_LARGE` — file size exceeds cap
+- `400 UNSUPPORTED_MIME` — mimeType not allowed for this kind
+
+### POST /api/assets/finalize
+
+Confirm upload completed; server verifies the R2 object exists and runs auto-moderation.
+
+**Request:**
+```json
+{ "assetId": "asset_abc123" }
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "asset": {
+      "id": "asset_abc123",
+      "kind": "audio",
+      "publicUrl": "https://cdn.gsi.studio/audio/asset_abc123.webm",
+      "durationSec": 32.4,
+      "status": "ready",
+      "moderation": { "state": "auto_approved" }
+    }
+  }
+}
+```
+
+**Errors:**
+- `404 ASSET_NOT_FOUND` — no R2 object at the expected key (upload likely failed)
+- `409 ASSET_ALREADY_FINALIZED`
+- `422 MODERATION_FLAGGED` — auto-moderation rejected; asset status is `flagged`, parent docs cannot reference it
+
+### GET /api/assets/:id
+
+Fetch asset metadata. Public assets are readable without session; private assets require ownership.
+
+### DELETE /api/assets/:id
+
+Soft-delete an asset. Owner-only. Cascades: any performance/creation referencing this asset is also archived. Hard-delete from R2 runs nightly.
+
+---
+
+## Performance Endpoints (PERF-001)
+
+Performances are kid-recorded responses to creations (sing-alongs, readings, voice memos, reactions). They live alongside creations: same affordances on `/creations` and `/explore`, separate tab. See `docs/data-model.md#performances`.
+
+### POST /api/performances
+
+Create a performance after the audio (and optionally video) asset has been finalized.
+
+**Request:**
+```json
+{
+  "kind": "sing_along",
+  "parentCreationId": "creation_xyz789",
+  "audioAssetId": "asset_abc123",
+  "videoAssetId": null,
+  "durationSec": 32.4,
+  "caption": "My first song!",
+  "visibility": "private"
+}
+```
+
+| Field | Required | Notes |
+|---|---|---|
+| `kind` | yes | `sing_along` \| `reading` \| `voice_memo` \| `reaction` |
+| `parentCreationId` | no | Required for `sing_along` and `reading`; optional for `voice_memo` |
+| `audioAssetId` | yes | Must reference a `ready` asset owned by the same session |
+| `videoAssetId` | no | If set, requires video consent; asset must be `kind='video'` |
+| `durationSec` | yes | Cross-checked against asset; max 90s |
+| `caption` | no | Max 280 chars; passed through `filterInput()` safety pipeline |
+| `visibility` | yes | Defaults to `private`; `public` triggers pre-moderation queue for first 3 publishes per kid |
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "performance": {
+      "id": "perf_def456",
+      "kind": "sing_along",
+      "parentCreationId": "creation_xyz789",
+      "audioAssetId": "asset_abc123",
+      "durationSec": 32.4,
+      "caption": "My first song!",
+      "visibility": "private",
+      "status": "published",
+      "shareUrl": "/perform/perf_def456",
+      "createdAt": "2026-05-05T12:34:56Z"
+    }
+  }
+}
+```
+
+**Errors:**
+- `404 ASSET_NOT_FOUND` — `audioAssetId` doesn't exist or isn't owned
+- `404 CREATION_NOT_FOUND` — `parentCreationId` doesn't exist or isn't viewable
+- `409 ASSET_ALREADY_LINKED` — asset already attached to a different parent
+- `403 CONSENT_MISSING` — `videoAssetId` set without `video_recording` consent
+
+### GET /api/performances
+
+List performances. Three modes by query param:
+
+**Query Params:**
+- `mine=true` — current session's performances (My Performances tab)
+- `parentCreationId={id}` — performances for a specific creation (creation viewer rail)
+- `visibility=public&sort=trending|newest` — Explore Performances tab
+- `kind` — filter by performance kind
+- `parentCreationType` — filter by parent creation type (e.g. `music` to get only sing-alongs of songs)
+- `limit` (default 20, max 50)
+- `cursor` (pagination)
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": "perf_def456",
+        "kind": "sing_along",
+        "parentCreation": {
+          "id": "creation_xyz789",
+          "type": "music",
+          "title": "Diwali Dhamaka",
+          "thumbnail": "..."
+        },
+        "audioUrl": "https://cdn.gsi.studio/audio/asset_abc123.webm",
+        "videoUrl": null,
+        "durationSec": 32.4,
+        "kid": { "name": "Aarav", "avatar": "..." },
+        "caption": "My first song!",
+        "visibility": "public",
+        "likeCount": 12,
+        "reactionCounts": { "👍": 8, "🎉": 4 },
+        "createdAt": "2026-05-05T12:34:56Z"
+      }
+    ],
+    "nextCursor": "...",
+    "hasMore": true
+  }
+}
+```
+
+### GET /api/performances/:id
+
+Fetch a single performance (public endpoint for share links).
+
+### PATCH /api/performances/:id
+
+Update visibility or caption. Owner-only. Switching to `public` triggers pre-moderation if the kid has fewer than 3 prior public performances.
+
+**Request:**
+```json
+{ "visibility": "public" }
+```
+
+### DELETE /api/performances/:id
+
+Soft-delete. Owner-only. The referenced audio/video assets are also soft-deleted (assets are owned 1:1 by performances).
+
+### POST /api/performances/:id/react
+
+Add or remove an emoji reaction. Mirrors the ClassFeed reaction API.
+
+**Request:**
+```json
+{ "emoji": "🎉" }
+```
+
+Sending the same emoji twice removes it (toggle). Only emojis in `ALLOWED_REACTIONS` are accepted (see `lib/firebase/classFeedTypes.ts`).
+
+---
+
+## Consent Endpoints (DPDP — extended for PERF-001)
+
+The voice/video consent scopes piggyback on the existing DPDP consent endpoints from COMPLIANCE-002. New scopes added: `voice_recording`, `video_recording`. See `docs/security.md#voice-and-video-consent` for the on-demand consent flow.
+
+### POST /api/dpdp/consent/request
+
+Triggered by the on-demand consent flow when a kid attempts an action requiring consent the parent hasn't granted yet. Generates a short-lived consent link and dispatches it to the parent via their preferred channel (Telegram → WhatsApp → SMS).
+
+**Request:**
+```json
+{
+  "kidId": "kid_abc123",
+  "scope": "voice_recording",
+  "context": "sing_along"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "requestId": "req_def456",
+    "expiresAt": "2026-05-05T13:34:56Z",
+    "deliveredVia": "whatsapp",
+    "pollUrl": "/api/dpdp/consent/request/req_def456"
+  }
+}
+```
+
+The kid client polls `pollUrl` every 5s while the consent modal is open. When the parent grants consent, the poll returns `granted: true` and the kid client unlocks the recorder.
+
+### GET /api/dpdp/consent/request/:requestId
+
+Poll endpoint for the kid client. Returns `{ status: 'pending'|'granted'|'denied'|'expired' }`.
+
+---
+
 ## Session Endpoints (Phase 1)
 
 ### POST /api/sessions
