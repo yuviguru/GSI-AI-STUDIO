@@ -20,6 +20,11 @@ firestore/
 │       ├── [creation document]
 │       └── comments/       # Phase 2: community comments
 │           └── {commentId}
+├── books/                  # Book Studio: kid-authored books (multi-session authoring)
+│   └── {bookId}/
+│       ├── [book document]
+│       └── pages/          # Page documents (TipTap rich text + optional image)
+│           └── {pageId}
 ├── users/                  # Phase 2: parent accounts
 │   └── {userId}/
 │       ├── [user document]
@@ -211,6 +216,83 @@ Game:
 - `isPublic` + `likeCount` (desc) — popular public creations
 - `schoolId` + `createdAt` (desc) — school creations in Phase 3
 - `shareUrl` — lookup by share slug (unique)
+
+---
+
+### books
+
+Books authored by kids in **Book Studio**. Distinct from `creations` because books are multi-session authoring artifacts (not one-shot AI generations) with locked size/format and a `pages` subcollection.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | auto | Document ID (auto-generated) |
+| title | string | yes | Book title (max 100 chars) |
+| author | string | yes | Author display name (kid's name or pen name) |
+| status | string | yes | `draft` \| `complete` \| `published` |
+| type | string | yes | Book type card the kid picked, e.g. `storybook`, `picture_book`, `about_me`, `family`, `travel`, `recipe`, `field_guide`, `fact_book`, `how_to`, `science_log`, `poem`, `joke`, `diary`, `quote`, `letter`, `sketchbook`, `wordless`, `abc_counting` (18 launch types) |
+| bucket | string | yes | Underlying page-structure bucket: `narrative` \| `memoir_catalog` \| `entry_list` \| `collection` \| `concept` \| `visual` |
+| format | string | yes | `text` \| `image` \| `text_image` |
+| size | string | yes | **LOCKED at creation.** `square` (8"×8") \| `tall` (8.5"×11") \| `pocket` (5.5"×8.5") \| `landscape` (11"×8.5") |
+| dimensions | map | yes | `{widthMm, heightMm, widthPx, heightPx}` derived from `size` at creation. Frozen. |
+| typography | map | yes | `{titleFont, bodyFont, baseFontSize}`. Initial pick at creation; per-page overrides allowed via `pages.style`. |
+| cover | map | yes | `{title, subtitle, authorName, backgroundColor, imageUrl, imagePrompt, font}` — front cover composition |
+| backCover | map | no | `{text, imageUrl}` — optional back-cover blurb |
+| pageCount | number | yes | Denormalized count of pages in subcollection (default 0) |
+| pageLimit | number | yes | Tier cap: `5` (free) or `8` / `16` / `24` / `32` / `40` (paid kit choice) |
+| themeColor | string | no | Accent color picked from kid-safe palette |
+| sessionId | string | yes (P1) | Anonymous session ID |
+| userId | string | no (P2) | Parent user ID |
+| kidId | string | no (P2) | Kid profile ID |
+| coverThumbnail | string | no | Cached thumbnail of front cover for library view |
+| isPublic | boolean | yes | Whether published book is publicly viewable (default false) |
+| publishedAt | timestamp | no | When status moved to `published` |
+| pdfUrl | string | no | Cached PDF export URL (regenerated on publish) |
+| printOrderEligible | boolean | yes | Always `false` for v1 — UI placeholder for future print partner |
+| shareUrl | string | no | Public shareable URL slug (set on publish) |
+| createdAt | timestamp | yes | Creation timestamp |
+| updatedAt | timestamp | yes | Last modification |
+
+**Lifecycle**:
+- `draft` — created via wizard, kid is actively editing pages
+- `complete` — kid clicked "Finish book" but hasn't published
+- `published` — visible in library; PDF cached; share link enabled
+
+**Locked-after-creation fields**: `size`, `dimensions`, `format`, `bucket`. Reason: changing these mid-authoring would re-flow every page. The wizard collects them as a one-shot lock-in.
+
+**Indexes**:
+- `sessionId` + `updatedAt` (desc) — author's library, most recently edited first
+- `userId` + `updatedAt` (desc) — Phase 2 library
+- `kidId` + `status` + `updatedAt` (desc) — Phase 2 kid library filtered by status
+- `isPublic` + `publishedAt` (desc) — public book gallery (Phase 2+)
+- `shareUrl` — lookup by share slug (unique, single-field)
+
+**Page-count enforcement**: server validates `book.pageCount < book.pageLimit` before creating a new page document.
+
+---
+
+### books/{bookId}/pages
+
+Subcollection of pages for a book. One document per page. Order maintained by `pageNumber`.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | auto | Page ID (auto-generated) |
+| pageNumber | number | yes | 1-indexed position; gaps allowed transiently during reorder |
+| layout | string | yes | Layout variant for the bucket: `text_top_image_bottom` \| `image_top_text_bottom` \| `image_full_bleed` \| `text_only` \| `entry_centered` \| `recipe_split` \| `concept_letter` \| `gallery` |
+| richText | map | no | TipTap JSON document (preserves bold/italic/underline, H1/H2, bullet/numbered lists, alignment, font + size + color overrides). Required when `format` ∈ {`text`, `text_image`}. |
+| plainText | string | no | Flattened text auto-derived from `richText`. Used for grammar check + search. |
+| imageUrl | string | no | Generated or uploaded illustration. Required when layout uses image. |
+| imagePrompt | string | no | The prompt used to generate `imageUrl` (kid-supplied or auto-suggested). |
+| imageStyle | string | no | Style hint passed to image client (e.g. `watercolor`, `cartoon`, `sketch`, `photo_real`). |
+| voiceTranscriptRaw | string | no | Last raw voice-input transcript for audit (not displayed once kid accepts). |
+| grammarSuggestions | array\<map\> | no | Pending Groq suggestions: `[{id, type, original, suggested, explanation, startIndex, endIndex, status}]` where `type` ∈ `grammar` \| `spelling` \| `punctuation` and `status` ∈ `pending` \| `accepted` \| `rejected`. Cleared once all resolved. |
+| style | map | no | Per-page overrides: `{font, fontSize, alignment, textColor, backgroundColor}`. Falls back to book-level `typography`. |
+| createdAt | timestamp | yes | Page creation |
+| updatedAt | timestamp | yes | Last edit |
+
+**Reorder protocol**: client sends new `[{pageId, pageNumber}]` array; server applies all updates in a single Firestore transaction, then bumps `books.updatedAt`.
+
+**Indexes** (subcollection): single-field on `pageNumber` (asc) — load pages in order. No composite needed since subcollection is already scoped to one book.
 
 ---
 
