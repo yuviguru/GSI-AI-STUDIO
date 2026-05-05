@@ -170,10 +170,17 @@ export function BookEditorClient({ bookId }: BookEditorClientProps) {
               book={book}
               page={currentPage}
               onSave={async (patch) => {
-                await pagesHook.patchPage(
+                const result = await pagesHook.patchPage(
                   currentPage.id,
                   patch as unknown as PagePatchInput
                 );
+                // null = the run() helper swallowed the error; surface it back
+                // so the picture panel can show "Couldn't save" instead of
+                // silently keeping the old image up.
+                if (result === null) {
+                  return { ok: false, error: pagesHook.error ?? undefined };
+                }
+                return { ok: true };
               }}
               onBookChange={async () => {
                 await refresh();
