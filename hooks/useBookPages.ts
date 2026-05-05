@@ -22,7 +22,11 @@ export function useBookPages(bookId: string | null, onChange: () => Promise<unkn
       await onChange();
       return result;
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Page action failed');
+      const msg = e instanceof Error ? e.message : 'Page action failed';
+      setError(msg);
+      // Also log to the console so the kid (or us testing) can see WHY in
+      // devtools when the inline banner gets dismissed or missed.
+      console.error('[useBookPages] action failed:', msg, e);
       return null;
     } finally {
       setBusy(false);

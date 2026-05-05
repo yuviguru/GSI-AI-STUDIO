@@ -412,13 +412,16 @@ export const pageCreateSchema = z.object({
 });
 export type PageCreateInput = z.infer<typeof pageCreateSchema>;
 
-/** Update an existing page (any subset) */
+/** Update an existing page (any subset). imagePrompt is the FULL assembled
+ *  scene prompt (character look descriptions + scene action + style guide),
+ *  which grows with character count — cap at 5000 to leave headroom for the
+ *  3-character × 300-char-look case + the kid's 200-char action + style. */
 export const pagePatchSchema = z.object({
   layout: pageLayoutSchema.optional(),
   richText: z.record(z.string(), z.unknown()).optional(),
   plainText: z.string().max(10_000).optional(),
   imageUrl: z.string().url().nullable().optional(),
-  imagePrompt: z.string().max(500).nullable().optional(),
+  imagePrompt: z.string().max(5000).nullable().optional(),
   imageStyle: z.string().max(50).nullable().optional(),
   voiceTranscriptRaw: z.string().max(20_000).nullable().optional(),
   style: pageStyleOverrideSchema.nullable().optional(),

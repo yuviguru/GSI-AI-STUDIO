@@ -40,19 +40,23 @@ import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { useGrammarCheck } from '@/hooks/useGrammarCheck';
 import { usePageImage } from '@/hooks/usePageImage';
 import { useSceneImage } from '@/hooks/useSceneImage';
+import { useSession } from '@/hooks/useSession';
 import { GrammarSuggestionList } from './GrammarSuggestionPopover';
 import { StoryPlanCard } from './StoryPlanCard';
 
 interface PageEditorProps {
   book: Book;
   page: BookPage;
+  /** Persist a patch and return whether the save succeeded. Letting the
+   *  caller see success/failure means handleMake can show a "save failed"
+   *  message instead of silently leaving the old image up. */
   onSave: (patch: {
     richText?: TipTapDocument;
     plainText?: string;
     imageUrl?: string;
     imagePrompt?: string;
     imageStyle?: string;
-  }) => Promise<unknown>;
+  }) => Promise<{ ok: boolean; error?: string }>;
   /** Refresh the book document after character mutations from the Cast tab. */
   onBookChange: () => Promise<unknown>;
   saving: boolean;
@@ -507,7 +511,7 @@ interface PicturePanelProps {
     imageUrl?: string;
     imagePrompt?: string;
     imageStyle?: string;
-  }) => Promise<unknown>;
+  }) => Promise<{ ok: boolean; error?: string }>;
   onBookChange: () => Promise<unknown>;
 }
 
@@ -562,16 +566,18 @@ interface MakerProps {
     imageUrl?: string;
     imagePrompt?: string;
     imageStyle?: string;
-  }) => Promise<unknown>;
+  }) => Promise<{ ok: boolean; error?: string }>;
   onBookChange: () => Promise<unknown>;
 }
 
 /** Character-aware scene maker — chips for selecting + inline cast editor. */
 function SceneImageMaker({ book, page, onSave, onBookChange }: MakerProps) {
   const scene = useSceneImage();
+  const { creationsRemaining, cooldownSeconds } = useSession();
   const [selectedIds, setSelectedIds] = useState<string[]>(book.characters.map((c) => c.id));
   const [action, setAction] = useState('');
   const [castOpen, setCastOpen] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const toggleCharacter = (id: string) => {
     setSelectedIds((prev) =>
@@ -583,17 +589,20 @@ function SceneImageMaker({ book, page, onSave, onBookChange }: MakerProps) {
 
   const handleMake = async () => {
     if (!canMake) return;
+    setSaveError(null);
     const result = await scene.generate({
       bookId: book.id,
       pageId: page.id,
       characterIds: selectedIds,
       action: action.trim(),
     });
-    if (result) {
-      await onSave({
-        imageUrl: result.imageUrl,
-        imagePrompt: result.prompt,
-      });
+    if (!result) return; // scene.error is already set + visible
+    const saved = await onSave({
+      imageUrl: result.imageUrl,
+      imagePrompt: result.prompt,
+    });
+    if (!saved.ok) {
+      setSaveError(saved.error ?? 'Could not save the picture — try again.');
     }
   };
 
@@ -661,16 +670,53 @@ function SceneImageMaker({ book, page, onSave, onBookChange }: MakerProps) {
         <Sparkles className="h-4 w-4" />
         {scene.loading
           ? 'Drawing this scene…'
-          : page.imageUrl
-            ? 'Try another scene'
-            : '✨ Make this scene'}
+          : cooldownSeconds > 0
+            ? `Wait ${cooldownSeconds}s…`
+            : page.imageUrl
+              ? 'Try another scene'
+              : '✨ Make this scene'}
       </button>
 
-      {scene.error && (
-        <div className="rounded-lg bg-red-50 px-2 py-1.5 text-xs text-red-700">
-          {scene.error}
+      <DrawingsBalance remaining={creationsRemaining} cooldownSeconds={cooldownSeconds} />
+
+      {(scene.error || saveError) && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs text-red-800">
+          <div className="font-bold">Couldn&apos;t draw the scene</div>
+          <div className="mt-0.5">{scene.error ?? saveError}</div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Friendly balance + cooldown badge. Tells kids how many AI drawings they
+ *  have left today and ticks down the cooldown after a generation. */
+function DrawingsBalance({
+  remaining,
+  cooldownSeconds,
+}: {
+  remaining: number;
+  cooldownSeconds: number;
+}) {
+  if (cooldownSeconds > 0) {
+    return (
+      <div className="flex items-center justify-center gap-1.5 rounded-xl bg-amber-50 px-3 py-1.5 text-[11px] font-medium text-amber-800">
+        <span className="text-sm">⏳</span>
+        Get ready in {cooldownSeconds}s — {remaining} drawing{remaining === 1 ? '' : 's'} left today
+      </div>
+    );
+  }
+  if (remaining <= 0) {
+    return (
+      <div className="rounded-xl bg-rose-50 p-2 text-center text-[11px] font-medium text-rose-800">
+        No more drawings today — come back tomorrow! ✨
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center justify-center gap-1 rounded-xl bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-800">
+      <span>✨</span>
+      {remaining} drawing{remaining === 1 ? '' : 's'} left today
     </div>
   );
 }
@@ -713,7 +759,9 @@ function SimpleImageMaker({
   onSave,
 }: Omit<MakerProps, 'onBookChange'>) {
   const image = usePageImage();
+  const { creationsRemaining, cooldownSeconds } = useSession();
   const [prompt, setPrompt] = useState(page.imagePrompt ?? '');
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const aspect: 'square' | 'portrait' | 'landscape' =
     book.size === 'square'
@@ -726,17 +774,20 @@ function SimpleImageMaker({
 
   const handleMake = async () => {
     if (!canMake) return;
+    setSaveError(null);
     const result = await image.generate({
       prompt: prompt.trim(),
       aspect,
       bookId: book.id,
       pageId: page.id,
     });
-    if (result) {
-      await onSave({
-        imageUrl: result.imageUrl,
-        imagePrompt: prompt.trim(),
-      });
+    if (!result) return;
+    const saved = await onSave({
+      imageUrl: result.imageUrl,
+      imagePrompt: prompt.trim(),
+    });
+    if (!saved.ok) {
+      setSaveError(saved.error ?? 'Could not save the picture — try again.');
     }
   };
 
@@ -760,13 +811,17 @@ function SimpleImageMaker({
         <Sparkles className="h-4 w-4" />
         {image.loading
           ? 'Drawing…'
-          : page.imageUrl
-            ? 'Try another'
-            : '✨ Make a picture'}
+          : cooldownSeconds > 0
+            ? `Wait ${cooldownSeconds}s…`
+            : page.imageUrl
+              ? 'Try another'
+              : '✨ Make a picture'}
       </button>
-      {image.error && (
-        <div className="rounded-lg bg-red-50 px-2 py-1.5 text-xs text-red-700">
-          {image.error}
+      <DrawingsBalance remaining={creationsRemaining} cooldownSeconds={cooldownSeconds} />
+      {(image.error || saveError) && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs text-red-800">
+          <div className="font-bold">Couldn&apos;t make the picture</div>
+          <div className="mt-0.5">{image.error ?? saveError}</div>
         </div>
       )}
     </div>
