@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import type { Book, BookPage } from '@/types/book.types';
@@ -13,29 +13,74 @@ interface FlipbookPreviewProps {
   readOnly?: boolean;
 }
 
+/** A "spread" is what the kid sees when the book is open — either a single
+ *  hero page (cover, back, end-of-book card) or two facing pages. */
 type Spread =
   | { kind: 'cover' }
-  | { kind: 'page'; page: BookPage }
+  | { kind: 'pages'; left: BookPage | null; right: BookPage | null }
   | { kind: 'back' }
   | { kind: 'end' };
 
-function buildSpreads(book: Book, pages: BookPage[]): Spread[] {
+/** Pages spread breakpoint. Below this, render single-page mode (sane on
+ *  small phones where two pages would each be ~150px wide). */
+const TWO_PAGE_MIN_WIDTH = 768;
+
+function buildSpreads(book: Book, pages: BookPage[], twoPageMode: boolean): Spread[] {
   const sortedPages = [...pages].sort((a, b) => a.pageNumber - b.pageNumber);
-  const spreads: Spread[] = [{ kind: 'cover' }, ...sortedPages.map((p): Spread => ({ kind: 'page', page: p }))];
+
+  const spreads: Spread[] = [{ kind: 'cover' }];
+
+  if (twoPageMode) {
+    // Pair pages up: 1+2, 3+4, ... last odd page sits alone on its left.
+    for (let i = 0; i < sortedPages.length; i += 2) {
+      spreads.push({
+        kind: 'pages',
+        left: sortedPages[i] ?? null,
+        right: sortedPages[i + 1] ?? null,
+      });
+    }
+  } else {
+    // Single-page mode: each page is its own spread, on the right of an
+    // empty left half — so navigation/aspect feel consistent.
+    for (const page of sortedPages) {
+      spreads.push({ kind: 'pages', left: null, right: page });
+    }
+  }
+
   if (book.backCover && (book.backCover.text || book.backCover.imageUrl)) {
     spreads.push({ kind: 'back' });
   }
   spreads.push({ kind: 'end' });
+
   return spreads;
 }
 
 export function FlipbookPreview({ book, pages, onClose, readOnly = false }: FlipbookPreviewProps) {
   const [index, setIndex] = useState(0);
-  const spreads = buildSpreads(book, pages);
+  const [twoPageMode, setTwoPageMode] = useState(false);
+
+  // Detect viewport once on mount + listen for resize. SSR-safe by starting
+  // in single-page mode and switching after mount.
+  useEffect(() => {
+    const check = () => setTwoPageMode(window.innerWidth >= TWO_PAGE_MIN_WIDTH);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  const spreads = buildSpreads(book, pages, twoPageMode);
   const current = spreads[index];
 
   const dims = BOOK_SIZES[book.size];
-  const aspectRatio = dims.widthMm / dims.heightMm;
+  const bookAspect = dims.widthMm / dims.heightMm;
+
+  // Keep index sane when twoPageMode toggles (e.g. resize) — the spread
+  // count changes between modes.
+  useEffect(() => {
+    if (index >= spreads.length) {
+      setIndex(spreads.length - 1);
+    }
+  }, [spreads.length, index]);
 
   const next = () => setIndex((i) => Math.min(i + 1, spreads.length - 1));
   const prev = () => setIndex((i) => Math.max(i - 1, 0));
@@ -43,6 +88,15 @@ export function FlipbookPreview({ book, pages, onClose, readOnly = false }: Flip
   const isCover = current?.kind === 'cover';
   const isBack = current?.kind === 'back';
   const isEnd = current?.kind === 'end';
+  const isPages = current?.kind === 'pages';
+
+  // Container shape: cover/back/end are single-page (book aspect).
+  // Pages spread in two-page mode is wider (book aspect × 2). In
+  // single-page mode, pages are also single (book aspect).
+  const containerAspect =
+    isPages && twoPageMode ? bookAspect * 2 : bookAspect;
+  const containerMaxWidthClass =
+    isPages && twoPageMode ? 'max-w-3xl' : 'max-w-md';
 
   return (
     <div
@@ -64,80 +118,38 @@ export function FlipbookPreview({ book, pages, onClose, readOnly = false }: Flip
       )}
 
       <div
-        className="relative mx-auto w-full max-w-md"
-        style={{ aspectRatio: `${aspectRatio}` }}
+        className={`relative mx-auto w-full ${containerMaxWidthClass}`}
+        style={{ aspectRatio: `${containerAspect}` }}
       >
         <AnimatePresence mode="wait">
           {current && (
             <motion.div
-              key={index}
+              key={`${index}-${twoPageMode}`}
               initial={{ opacity: 0, rotateY: -8 }}
               animate={{ opacity: 1, rotateY: 0 }}
               exit={{ opacity: 0, rotateY: 8 }}
               transition={{ duration: 0.25 }}
-              className="absolute inset-0 overflow-hidden rounded-2xl bg-white shadow-elevated"
+              className={`absolute inset-0 overflow-hidden rounded-2xl shadow-elevated ${
+                isPages && twoPageMode ? '' : 'bg-white'
+              }`}
               style={{
-                backgroundColor: isCover || isBack ? book.cover.backgroundColor : '#ffffff',
+                backgroundColor:
+                  isCover || isBack ? book.cover.backgroundColor : undefined,
               }}
             >
-              {isCover && (
-                <div className="relative h-full w-full">
-                  {book.cover.imageUrl ? (
-                    <>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={book.cover.imageUrl}
-                        alt=""
-                        className="absolute inset-0 h-full w-full object-cover"
-                      />
-                      <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/75 via-black/40 to-transparent" />
-                    </>
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-7xl">📖</div>
-                  )}
-                  <div className="absolute inset-x-0 bottom-0 flex flex-col items-center p-6 text-center text-white">
-                    <h1
-                      className="font-display text-2xl font-bold leading-tight drop-shadow-md"
-                      style={{ fontFamily: book.cover.font }}
-                    >
-                      {book.cover.title || book.title}
-                    </h1>
-                    {book.cover.subtitle && (
-                      <p className="mt-1 text-sm opacity-90 drop-shadow">{book.cover.subtitle}</p>
-                    )}
-                    <p className="mt-3 text-sm drop-shadow">
-                      By {book.cover.authorName || book.author}
-                    </p>
-                  </div>
-                </div>
+              {isCover && <CoverView book={book} />}
+
+              {isPages && (
+                <PagesSpreadView
+                  left={current.left}
+                  right={current.right}
+                  twoPageMode={twoPageMode}
+                />
               )}
 
-              {current.kind === 'page' && <PageView page={current.page} />}
+              {isBack && book.backCover && <BackCoverView backCover={book.backCover} />}
 
-              {isBack && book.backCover && (
-                <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center text-white">
-                  {book.backCover.imageUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={book.backCover.imageUrl}
-                      alt=""
-                      className="mb-4 max-h-48 w-full rounded-xl object-cover"
-                    />
-                  )}
-                  <p className="text-sm">{book.backCover.text}</p>
-                </div>
-              )}
-
-              {isEnd && (
-                <div className="flex h-full w-full flex-col items-center justify-center bg-gray-50 p-6 text-center">
-                  <h3 className="text-lg font-semibold text-brand-purple">
-                    Made with GSI AI Studio
-                  </h3>
-                  <p className="mt-2 text-xs text-gray-500">
-                    The end — thanks for reading {book.title}!
-                  </p>
-                </div>
-              )}
+              {isEnd && <EndView title={book.title} />}
             </motion.div>
           )}
         </AnimatePresence>
@@ -166,6 +178,108 @@ export function FlipbookPreview({ book, pages, onClose, readOnly = false }: Flip
           <ChevronRight className="h-5 w-5 text-gray-700" />
         </button>
       </div>
+
+      {!readOnly && (
+        <div className="mt-2 text-[11px] text-white/60">
+          {twoPageMode ? 'Two-page spread' : 'Single page'} · resize window for the other view
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CoverView({ book }: { book: Book }) {
+  return (
+    <div className="relative h-full w-full">
+      {book.cover.imageUrl ? (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={book.cover.imageUrl}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/75 via-black/40 to-transparent" />
+        </>
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center text-7xl">📖</div>
+      )}
+      <div className="absolute inset-x-0 bottom-0 flex flex-col items-center p-6 text-center text-white">
+        <h1
+          className="font-display text-2xl font-bold leading-tight drop-shadow-md"
+          style={{ fontFamily: book.cover.font }}
+        >
+          {book.cover.title || book.title}
+        </h1>
+        {book.cover.subtitle && (
+          <p className="mt-1 text-sm opacity-90 drop-shadow">{book.cover.subtitle}</p>
+        )}
+        <p className="mt-3 text-sm drop-shadow">
+          By {book.cover.authorName || book.author}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+interface PagesSpreadViewProps {
+  left: BookPage | null;
+  right: BookPage | null;
+  twoPageMode: boolean;
+}
+
+function PagesSpreadView({ left, right, twoPageMode }: PagesSpreadViewProps) {
+  if (!twoPageMode) {
+    // Single-page mode: just render whichever side has the page (right side
+    // in our buildSpreads logic).
+    const page = right ?? left;
+    return (
+      <div className="h-full w-full bg-white">
+        {page ? <PageView page={page} /> : <BlankSide />}
+      </div>
+    );
+  }
+
+  // Two-page mode: side-by-side pages with a subtle spine separator.
+  return (
+    <div className="grid h-full w-full grid-cols-2 bg-white">
+      <div className="relative border-r border-gray-200">
+        {left ? <PageView page={left} /> : <BlankSide />}
+      </div>
+      <div className="relative">
+        {right ? <PageView page={right} /> : <BlankSide />}
+      </div>
+    </div>
+  );
+}
+
+function BlankSide() {
+  return (
+    <div className="h-full w-full bg-gradient-to-br from-gray-50 to-gray-100" aria-hidden />
+  );
+}
+
+function BackCoverView({ backCover }: { backCover: NonNullable<Book['backCover']> }) {
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center text-white">
+      {backCover.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={backCover.imageUrl}
+          alt=""
+          className="mb-4 max-h-48 w-full rounded-xl object-cover"
+        />
+      )}
+      <p className="text-sm">{backCover.text}</p>
+    </div>
+  );
+}
+
+function EndView({ title }: { title: string }) {
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center bg-gray-50 p-6 text-center">
+      <h3 className="text-lg font-semibold text-brand-purple">Made with GSI AI Studio</h3>
+      <p className="mt-2 text-xs text-gray-500">The end — thanks for reading {title}!</p>
     </div>
   );
 }
