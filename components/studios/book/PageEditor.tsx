@@ -28,11 +28,13 @@ import {
   Wand2,
 } from 'lucide-react';
 import { CastEditor } from './CastEditor';
+import { PageLayoutPicker } from './PageLayoutPicker';
 import type {
   Book,
   BookCharacter,
   BookPage,
   GrammarSuggestion,
+  PageLayout,
   TipTapDocument,
 } from '@/types/book.types';
 import { BOOK_FONTS } from '@/lib/templates/bookTemplates';
@@ -57,6 +59,7 @@ interface PageEditorProps {
     imageUrl?: string;
     imagePrompt?: string;
     imageStyle?: string;
+    layout?: PageLayout;
   }) => Promise<{ ok: boolean; error?: string }>;
   /** Refresh the book document after character mutations from the Cast tab. */
   onBookChange: () => Promise<unknown>;
@@ -204,6 +207,13 @@ export function PageEditor({ book, page, onSave, onBookChange, saving }: PageEdi
     grammar.dismissSuggestion(s.id);
   };
 
+  // Per-page layout switch — fires onSave with just the layout patch.
+  // Server (bookService.updatePage) validates against BUCKET_LAYOUTS.
+  const handleLayoutChange = async (nextLayout: PageLayout) => {
+    if (nextLayout === page.layout) return;
+    await onSave({ layout: nextLayout });
+  };
+
   // Right-panel tab — auto-switch to grammar when there are suggestions
   const [rightTab, setRightTab] = useState<RightTab>(showImage ? 'picture' : 'grammar');
   useEffect(() => {
@@ -221,9 +231,19 @@ export function PageEditor({ book, page, onSave, onBookChange, saving }: PageEdi
   }
 
   return (
-    <div
-      className="grid gap-3 lg:h-[calc(100vh-160px)] lg:grid-cols-[56px_minmax(0,1fr)_320px] lg:gap-4"
-    >
+    <div className="flex flex-col gap-3 lg:h-[calc(100vh-160px)]">
+      {/* Per-page layout picker — visible at the top so kids can switch
+       *  layouts (picture-only, words+pic, words-only, etc.) for each page
+       *  individually. Bucket-gated via BUCKET_LAYOUTS server-side. */}
+      <PageLayoutPicker
+        bucket={book.bucket}
+        current={page.layout}
+        onChange={handleLayoutChange}
+      />
+
+      <div
+        className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[56px_minmax(0,1fr)_320px] lg:gap-4"
+      >
       {/* Vertical toolbar (left rail) */}
       {showText && (
         <div className="flex flex-row flex-wrap gap-1 self-start rounded-2xl border border-gray-200 bg-white p-2 lg:flex-col lg:gap-1.5 lg:p-1.5">
@@ -445,6 +465,7 @@ export function PageEditor({ book, page, onSave, onBookChange, saving }: PageEdi
           )}
         </div>
       </aside>
+      </div>
     </div>
   );
 }
