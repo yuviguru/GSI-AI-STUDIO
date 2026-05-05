@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Check, Sparkles, Trash2, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Sparkles, Trash2 } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import {
   BOOK_FONTS,
@@ -73,13 +73,9 @@ interface StepTheme {
   label: string;
   heading: string;
   prompt: string;
-  /** Tailwind gradient classes for the panel background */
   panelGradient: string;
-  /** Tailwind classes for the active step pill */
   pillBg: string;
-  /** Mascot expression to show on this step */
   mascotExpression: MascotExpression;
-  /** Decorative scene emoji shown in the panel corner */
   sceneEmoji: string;
 }
 
@@ -100,47 +96,25 @@ const STEP_THEMES: StepTheme[] = [
     icon: '🎨',
     label: 'Look',
     heading: 'How will it look?',
-    prompt: 'Just words, just pictures, or both together?',
+    prompt: 'Pick the format and the shape — size locks in here.',
     panelGradient: 'from-orange-50 via-white to-amber-50',
     pillBg: 'bg-orange-500',
     mascotExpression: 'painting',
-    sceneEmoji: '🌈',
+    sceneEmoji: '🎨',
   },
   {
     id: 3,
-    icon: '📏',
-    label: 'Size',
-    heading: 'Pick a size',
-    prompt: 'This one locks in — the rest you can change later.',
-    panelGradient: 'from-teal-50 via-white to-emerald-50',
-    pillBg: 'bg-teal-500',
-    mascotExpression: 'happy',
-    sceneEmoji: '📐',
-  },
-  {
-    id: 4,
-    icon: '📚',
-    label: 'Length',
-    heading: 'How many pages?',
-    prompt: 'Start small — you can always make another book!',
-    panelGradient: 'from-pink-50 via-white to-rose-50',
-    pillBg: 'bg-pink-500',
-    mascotExpression: 'happy',
-    sceneEmoji: '📚',
-  },
-  {
-    id: 5,
     icon: '✍️',
-    label: 'Font',
-    heading: 'Pick a font',
-    prompt: 'You can change it on each page later.',
+    label: 'Style',
+    heading: 'Style your book',
+    prompt: 'How long, and what font?',
     panelGradient: 'from-amber-50 via-white to-yellow-50',
     pillBg: 'bg-amber-500',
     mascotExpression: 'happy',
     sceneEmoji: '✨',
   },
   {
-    id: 6,
+    id: 4,
     icon: '🦄',
     label: 'Cast',
     heading: "Who's in your book?",
@@ -151,7 +125,7 @@ const STEP_THEMES: StepTheme[] = [
     sceneEmoji: '🦄',
   },
   {
-    id: 7,
+    id: 5,
     icon: '📖',
     label: 'Plan',
     heading: 'Plan your story',
@@ -201,9 +175,9 @@ export function NewBookWizard({ onClose }: NewBookWizardProps) {
   const updatePlot = (patch: Partial<BookPlot>) =>
     setState((s) => ({ ...s, plot: { ...s.plot, ...patch } }));
 
-  // Compute total steps based on bucket
+  // Total steps adapts: 3 base + 1 (cast) + 1 (plan) at most
   const totalSteps =
-    5 +
+    3 +
     (bucketWantsCharacters(state.bucket) ? 1 : 0) +
     (bucketWantsPlot(state.bucket) ? 1 : 0);
 
@@ -212,12 +186,10 @@ export function NewBookWizard({ onClose }: NewBookWizardProps) {
 
   const canProceed =
     (step === 1 && state.type !== null) ||
-    (step === 2 && state.format !== null) ||
-    (step === 3 && state.size !== null) ||
-    (step === 4 && state.pageLimit !== null) ||
-    (step === 5 && state.font !== null) ||
-    step === 6 ||
-    step === 7;
+    (step === 2 && state.format !== null && state.size !== null) ||
+    (step === 3 && state.pageLimit !== null && state.font !== null) ||
+    step === 4 ||
+    step === 5;
 
   const isFinalStep = step === totalSteps;
   const theme = STEP_THEMES[step - 1] ?? STEP_THEMES[0]!;
@@ -339,157 +311,141 @@ export function NewBookWizard({ onClose }: NewBookWizardProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="wizard-title"
+      className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${theme.panelGradient} p-5 shadow-card transition-colors duration-500 sm:p-7`}
     >
-      <motion.div
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 50 }}
-        className={`relative w-full max-w-3xl overflow-hidden rounded-t-3xl bg-gradient-to-br ${theme.panelGradient} p-6 shadow-elevated transition-all duration-500 sm:rounded-3xl`}
-      >
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          type="button"
-          className="absolute right-4 top-4 z-10 rounded-full bg-white/80 p-1.5 text-gray-500 backdrop-blur hover:bg-white hover:text-gray-700"
-          aria-label="Close wizard"
-        >
-          <X className="h-5 w-5" />
-        </button>
+      {/* Decorative scene */}
+      <div className="pointer-events-none absolute right-6 top-6 select-none text-4xl opacity-25 sm:text-5xl">
+        {theme.sceneEmoji}
+      </div>
+      <div className="pointer-events-none absolute -left-2 top-20 select-none text-yellow-300 opacity-50">
+        <Sparkles className="h-5 w-5" />
+      </div>
+      <div className="pointer-events-none absolute right-32 top-24 hidden select-none text-pink-300 opacity-40 sm:block">
+        <Sparkles className="h-4 w-4" />
+      </div>
 
-        {/* Decorative scene */}
-        <div className="pointer-events-none absolute right-10 top-10 select-none text-5xl opacity-30">
-          {theme.sceneEmoji}
-        </div>
-        <div className="pointer-events-none absolute -left-2 top-20 select-none text-yellow-300 opacity-50">
-          <Sparkles className="h-6 w-6" />
-        </div>
-        <div className="pointer-events-none absolute right-32 top-24 select-none text-pink-300 opacity-40">
-          <Sparkles className="h-4 w-4" />
-        </div>
-
-        {/* Step timeline */}
-        <div className="mb-5 flex items-center justify-center gap-1.5 sm:gap-2">
-          {STEP_THEMES.slice(0, totalSteps).map((meta) => {
-            const isActive = meta.id === step;
-            const isDone = meta.id < step;
-            return (
-              <div key={meta.id} className="flex items-center gap-1 sm:gap-2">
-                <div
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base shadow-sm transition-all ${
-                    isActive
-                      ? `scale-110 ${meta.pillBg} text-white`
-                      : isDone
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-white/70 text-gray-400'
-                  }`}
-                  aria-current={isActive ? 'step' : undefined}
-                  aria-label={meta.label}
-                  title={meta.label}
-                >
-                  {isDone ? <Check className="h-4 w-4" /> : meta.icon}
-                </div>
-                {meta.id < totalSteps && (
-                  <div
-                    className={`h-0.5 w-2 sm:w-5 rounded-full ${
-                      isDone ? 'bg-emerald-300' : 'bg-white/60'
-                    }`}
-                  />
-                )}
+      {/* Step timeline */}
+      <div className="mb-4 flex items-center justify-center gap-1.5 sm:gap-2">
+        {STEP_THEMES.slice(0, totalSteps).map((meta) => {
+          const isActive = meta.id === step;
+          const isDone = meta.id < step;
+          return (
+            <div key={meta.id} className="flex items-center gap-1 sm:gap-2">
+              <div
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base shadow-sm transition-all ${
+                  isActive
+                    ? `scale-110 ${meta.pillBg} text-white`
+                    : isDone
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-white/70 text-gray-400'
+                }`}
+                aria-current={isActive ? 'step' : undefined}
+                aria-label={meta.label}
+                title={meta.label}
+              >
+                {isDone ? <Check className="h-4 w-4" /> : meta.icon}
               </div>
-            );
-          })}
-        </div>
+              {meta.id < totalSteps && (
+                <div
+                  className={`h-0.5 w-2 sm:w-5 rounded-full ${
+                    isDone ? 'bg-emerald-300' : 'bg-white/60'
+                  }`}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
 
-        {/* Heading + mascot */}
-        <div className="mb-4 flex items-start gap-3">
-          <div className="flex-1">
-            <h2
-              id="wizard-title"
-              className="font-display text-2xl font-bold text-gray-900 sm:text-3xl"
-            >
-              {theme.heading}
-            </h2>
-            <p className="mt-1 text-sm text-gray-600">{theme.prompt}</p>
-          </div>
-          <div className="hidden sm:block">
-            <Mascot expression={theme.mascotExpression} size="sm" bobbing />
-          </div>
+      {/* Heading + mascot */}
+      <div className="mb-4 flex items-start gap-3">
+        <div className="flex-1">
+          <h2 className="font-display text-2xl font-bold text-gray-900 sm:text-3xl">
+            {theme.heading}
+          </h2>
+          <p className="mt-1 text-sm text-gray-600">{theme.prompt}</p>
         </div>
+        <div className="hidden sm:block">
+          <Mascot expression={theme.mascotExpression} size="sm" bobbing />
+        </div>
+      </div>
 
-        {/* Step body */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, x: 12 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -12 }}
-            transition={{ duration: 0.18 }}
-            className="max-h-[55vh] overflow-y-auto"
+      {/* Step body */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={step}
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -12 }}
+          transition={{ duration: 0.18 }}
+          className="max-h-[calc(100vh-340px)] min-h-[300px] overflow-y-auto pr-1"
+        >
+          {step === 1 && <Step1Type state={state} update={update} />}
+          {step === 2 && <Step2Look state={state} update={update} />}
+          {step === 3 && <Step3Style state={state} update={update} />}
+          {step === 4 && bucketWantsCharacters(state.bucket) && (
+            <Step4Cast
+              state={state}
+              addCharacter={addCharacter}
+              updateCharacter={updateCharacter}
+              removeCharacter={removeCharacter}
+              generatePortrait={generateCharacterPortrait}
+            />
+          )}
+          {step === 5 && bucketWantsPlot(state.bucket) && (
+            <Step5Plot plot={state.plot} updatePlot={updatePlot} />
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      {createError && (
+        <div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+          {createError}
+        </div>
+      )}
+
+      <div className="mt-5 flex items-center justify-between gap-2">
+        {step === 1 ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl px-3 py-2 text-sm font-medium text-gray-600 hover:bg-white/60"
           >
-            {step === 1 && <Step1Type state={state} update={update} />}
-            {step === 2 && <Step2Format state={state} update={update} />}
-            {step === 3 && <Step3Size state={state} update={update} />}
-            {step === 4 && <Step4Pages state={state} update={update} />}
-            {step === 5 && <Step5Font state={state} update={update} />}
-            {step === 6 && bucketWantsCharacters(state.bucket) && (
-              <Step6Characters
-                state={state}
-                addCharacter={addCharacter}
-                updateCharacter={updateCharacter}
-                removeCharacter={removeCharacter}
-                generatePortrait={generateCharacterPortrait}
-              />
-            )}
-            {step === 7 && bucketWantsPlot(state.bucket) && (
-              <Step7Plot plot={state.plot} updatePlot={updatePlot} />
-            )}
-          </motion.div>
-        </AnimatePresence>
-
-        {createError && (
-          <div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
-            {createError}
-          </div>
-        )}
-
-        <div className="mt-5 flex items-center justify-between">
+            Cancel
+          </button>
+        ) : (
           <button
             type="button"
             onClick={prev}
-            disabled={step === 1}
-            className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-gray-600 hover:bg-white/60 disabled:opacity-30"
+            className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-gray-600 hover:bg-white/60"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
           </button>
+        )}
 
-          {!isFinalStep ? (
-            <button
-              type="button"
-              onClick={next}
-              disabled={!canProceed}
-              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-purple to-purple-600 px-5 py-2.5 text-sm font-semibold text-white shadow-button transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
-            >
-              Next
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleFinish}
-              disabled={!canProceed || creating}
-              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-purple to-purple-600 px-5 py-2.5 text-sm font-semibold text-white shadow-button transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
-            >
-              <Sparkles className="h-4 w-4" />
-              {creating ? 'Creating…' : 'Start writing →'}
-            </button>
-          )}
-        </div>
-      </motion.div>
+        {!isFinalStep ? (
+          <button
+            type="button"
+            onClick={next}
+            disabled={!canProceed}
+            className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-purple to-purple-600 px-5 py-2.5 text-sm font-semibold text-white shadow-button transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+          >
+            Next
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleFinish}
+            disabled={!canProceed || creating}
+            className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-purple to-purple-600 px-5 py-2.5 text-sm font-semibold text-white shadow-button transition-transform hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+          >
+            <Sparkles className="h-4 w-4" />
+            {creating ? 'Creating…' : 'Start writing →'}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -501,7 +457,7 @@ interface StepProps {
 
 function Step1Type({ state, update }: StepProps) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
       {BOOK_TYPE_CARDS.map((card) => {
         const selected = state.type === card.type;
         return (
@@ -536,150 +492,183 @@ function Step1Type({ state, update }: StepProps) {
   );
 }
 
-function Step2Format({ state, update }: StepProps) {
+// ── Step 2 — Look (format + size combined) ──────────────────────────────
+
+function Step2Look({ state, update }: StepProps) {
   return (
-    <div className="grid gap-2 sm:grid-cols-3">
-      {FORMAT_OPTIONS.map((opt) => {
-        const selected = state.format === opt.value;
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => update({ format: opt.value })}
-            className={`flex flex-col items-center gap-1 rounded-2xl border-2 p-5 text-center transition-all ${
-              selected
-                ? 'border-orange-500 bg-white shadow-card scale-[1.02]'
-                : 'border-white bg-white/70 hover:border-gray-300 hover:bg-white'
-            }`}
-          >
-            <span className="text-4xl">{opt.emoji}</span>
-            <span className="mt-1 text-sm font-bold text-gray-900">{opt.label}</span>
-            <span className="text-xs text-gray-600">{opt.description}</span>
-          </button>
-        );
-      })}
+    <div className="space-y-4">
+      <Section icon="🎨" title="Format" subtitle="What does each page show?">
+        <div className="grid gap-2 sm:grid-cols-3">
+          {FORMAT_OPTIONS.map((opt) => {
+            const selected = state.format === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => update({ format: opt.value })}
+                className={`flex flex-col items-center gap-1 rounded-2xl border-2 p-3 text-center transition-all ${
+                  selected
+                    ? 'border-orange-500 bg-white shadow-card scale-[1.02]'
+                    : 'border-white bg-white/70 hover:border-gray-300 hover:bg-white'
+                }`}
+              >
+                <span className="text-3xl">{opt.emoji}</span>
+                <span className="text-sm font-bold text-gray-900">{opt.label}</span>
+                <span className="text-[11px] text-gray-600">{opt.description}</span>
+              </button>
+            );
+          })}
+        </div>
+      </Section>
+
+      <Section
+        icon="📏"
+        title="Size"
+        subtitle="Locks in here — pick carefully"
+        accent="amber"
+      >
+        <div className="grid gap-2 sm:grid-cols-2">
+          {(Object.entries(BOOK_SIZES) as Array<[BookSize, (typeof BOOK_SIZES)[BookSize]]>).map(
+            ([key, size]) => {
+              const selected = state.size === key;
+              const aspectRatio = size.widthMm / size.heightMm;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => update({ size: key })}
+                  className={`flex w-full items-center gap-3 rounded-2xl border-2 p-3 text-left transition-all ${
+                    selected
+                      ? 'border-orange-500 bg-white shadow-card'
+                      : 'border-white bg-white/70 hover:border-gray-300 hover:bg-white'
+                  }`}
+                >
+                  <div
+                    className="rounded border-2 border-orange-300 bg-orange-50"
+                    style={{
+                      width: aspectRatio < 1 ? 28 : 36,
+                      height: aspectRatio < 1 ? 36 : aspectRatio === 1 ? 28 : 26,
+                    }}
+                  />
+                  <div className="flex-1">
+                    <div className="text-sm font-bold text-gray-900">{size.label}</div>
+                    <div className="text-[11px] text-gray-600">{size.description}</div>
+                  </div>
+                  {selected && <Check className="h-5 w-5 text-orange-500" />}
+                </button>
+              );
+            }
+          )}
+        </div>
+      </Section>
     </div>
   );
 }
 
-function Step3Size({ state, update }: StepProps) {
-  const sizes = Object.entries(BOOK_SIZES) as Array<
-    [BookSize, (typeof BOOK_SIZES)[BookSize]]
-  >;
+// ── Step 3 — Style (length + font combined) ─────────────────────────────
+
+function Step3Style({ state, update }: StepProps) {
   return (
-    <div className="space-y-2">
-      <p className="rounded-xl bg-amber-100/80 p-3 text-xs font-medium text-amber-900">
-        💡 Size locks in here — you can change everything else later, but not the size.
-      </p>
-      {sizes.map(([key, size]) => {
-        const selected = state.size === key;
-        const aspectRatio = size.widthMm / size.heightMm;
-        return (
-          <button
-            key={key}
-            type="button"
-            onClick={() => update({ size: key })}
-            className={`flex w-full items-center gap-3 rounded-2xl border-2 p-3 transition-all ${
-              selected
-                ? 'border-teal-500 bg-white shadow-card'
-                : 'border-white bg-white/70 hover:border-gray-300 hover:bg-white'
-            }`}
-          >
-            <div
-              className="rounded border-2 border-teal-300 bg-teal-50"
-              style={{
-                width: aspectRatio < 1 ? 32 : 40,
-                height: aspectRatio < 1 ? 40 : aspectRatio === 1 ? 32 : 30,
-              }}
-            />
-            <div className="flex-1 text-left">
-              <div className="text-sm font-bold text-gray-900">{size.label}</div>
-              <div className="text-xs text-gray-600">{size.description}</div>
-            </div>
-            {selected && <Check className="h-5 w-5 text-teal-600" />}
-          </button>
-        );
-      })}
+    <div className="space-y-4">
+      <Section icon="📚" title="Pages" subtitle="How long should it be?">
+        <div className="space-y-1.5">
+          {BOOK_KIT_PRESETS.map((kit) => {
+            const selected = state.pageLimit === kit.pageLimit;
+            const isFreeTierAllowed = kit.pageLimit <= FREE_TIER_PAGE_LIMIT;
+            return (
+              <button
+                key={kit.label}
+                type="button"
+                onClick={() => isFreeTierAllowed && update({ pageLimit: kit.pageLimit })}
+                disabled={!isFreeTierAllowed}
+                className={`flex w-full items-center justify-between rounded-2xl border-2 p-2.5 text-left transition-all ${
+                  selected
+                    ? 'border-amber-500 bg-white shadow-card'
+                    : 'border-white bg-white/70 hover:border-gray-300 hover:bg-white'
+                } ${!isFreeTierAllowed ? 'cursor-not-allowed opacity-60' : ''}`}
+              >
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm font-bold text-gray-900">{kit.label}</div>
+                    {kit.recommended && (
+                      <span className="rounded-full bg-amber-200 px-1.5 py-0.5 text-[10px] font-bold text-amber-900">
+                        ⭐ Pick
+                      </span>
+                    )}
+                    {!isFreeTierAllowed && (
+                      <span className="rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] font-bold text-gray-600">
+                        🔒 Pro
+                      </span>
+                    )}
+                  </div>
+                  {kit.description && (
+                    <div className="text-[11px] text-gray-600">{kit.description}</div>
+                  )}
+                </div>
+                {selected && <Check className="h-5 w-5 text-amber-500" />}
+              </button>
+            );
+          })}
+        </div>
+      </Section>
+
+      <Section icon="✍️" title="Font" subtitle="Change it on each page later if you want">
+        <div className="grid gap-1.5 sm:grid-cols-2">
+          {BOOK_FONTS.map((font) => {
+            const selected = state.font === font.id;
+            return (
+              <button
+                key={font.id}
+                type="button"
+                onClick={() => update({ font: font.id })}
+                className={`flex w-full items-center justify-between gap-2 rounded-2xl border-2 p-2.5 text-left transition-all ${
+                  selected
+                    ? 'border-amber-500 bg-white shadow-card'
+                    : 'border-white bg-white/70 hover:border-gray-300 hover:bg-white'
+                }`}
+              >
+                <div className="flex-1">
+                  <div className="text-sm font-bold text-gray-900">{font.name}</div>
+                  <div className="text-[11px] text-gray-600">{font.vibe}</div>
+                </div>
+                {selected && <Check className="h-4 w-4 text-amber-500" />}
+              </button>
+            );
+          })}
+        </div>
+      </Section>
     </div>
   );
 }
 
-function Step4Pages({ state, update }: StepProps) {
+// ── Section helper for combined steps ────────────────────────────────────
+
+interface SectionProps {
+  icon: string;
+  title: string;
+  subtitle?: string;
+  accent?: 'amber';
+  children: React.ReactNode;
+}
+
+function Section({ icon, title, subtitle, children }: SectionProps) {
   return (
-    <div className="space-y-2">
-      {BOOK_KIT_PRESETS.map((kit) => {
-        const selected = state.pageLimit === kit.pageLimit;
-        const isFreeTierAllowed = kit.pageLimit <= FREE_TIER_PAGE_LIMIT;
-        return (
-          <button
-            key={kit.label}
-            type="button"
-            onClick={() => isFreeTierAllowed && update({ pageLimit: kit.pageLimit })}
-            disabled={!isFreeTierAllowed}
-            className={`flex w-full items-center justify-between rounded-2xl border-2 p-3 text-left transition-all ${
-              selected
-                ? 'border-pink-500 bg-white shadow-card'
-                : 'border-white bg-white/70 hover:border-gray-300 hover:bg-white'
-            } ${!isFreeTierAllowed ? 'cursor-not-allowed opacity-60' : ''}`}
-          >
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <div className="text-sm font-bold text-gray-900">{kit.label}</div>
-                {kit.recommended && (
-                  <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-900">
-                    ⭐ Pick of the day
-                  </span>
-                )}
-                {!isFreeTierAllowed && (
-                  <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-bold text-gray-600">
-                    🔒 Pro
-                  </span>
-                )}
-              </div>
-              {kit.description && (
-                <div className="mt-0.5 text-xs text-gray-600">{kit.description}</div>
-              )}
-            </div>
-            {selected && <Check className="h-5 w-5 text-pink-500" />}
-          </button>
-        );
-      })}
-      <p className="px-1 pt-1 text-[11px] text-gray-500">
-        Free: 5-page mini book. Longer books unlock with Pro.
-      </p>
+    <div>
+      <div className="mb-2 flex items-center gap-2">
+        <span className="text-xl">{icon}</span>
+        <div>
+          <div className="text-sm font-bold text-gray-900">{title}</div>
+          {subtitle && <div className="text-[11px] text-gray-600">{subtitle}</div>}
+        </div>
+      </div>
+      {children}
     </div>
   );
 }
 
-function Step5Font({ state, update }: StepProps) {
-  return (
-    <div className="space-y-2">
-      {BOOK_FONTS.map((font) => {
-        const selected = state.font === font.id;
-        return (
-          <button
-            key={font.id}
-            type="button"
-            onClick={() => update({ font: font.id })}
-            className={`flex w-full items-center justify-between gap-3 rounded-2xl border-2 p-3 text-left transition-all ${
-              selected
-                ? 'border-amber-500 bg-white shadow-card'
-                : 'border-white bg-white/70 hover:border-gray-300 hover:bg-white'
-            }`}
-          >
-            <div className="flex-1">
-              <div className="text-base font-bold text-gray-900">{font.name}</div>
-              <div className="text-xs text-gray-600">{font.vibe}</div>
-            </div>
-            {selected && <Check className="h-5 w-5 text-amber-500" />}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
+// ── Step 4 — Cast (characters) ───────────────────────────────────────────
 
-interface Step6Props {
+interface Step4Props {
   state: WizardState;
   addCharacter: () => void;
   updateCharacter: (localId: string, patch: Partial<WizardCharacter>) => void;
@@ -687,13 +676,13 @@ interface Step6Props {
   generatePortrait: (localId: string) => Promise<void>;
 }
 
-function Step6Characters({
+function Step4Cast({
   state,
   addCharacter,
   updateCharacter,
   removeCharacter,
   generatePortrait,
-}: Step6Props) {
+}: Step4Props) {
   const remaining = 3 - state.characters.length;
 
   return (
@@ -828,9 +817,9 @@ function CharacterCardEditor({
   );
 }
 
-// ── Step 7 — Plan your story ────────────────────────────────────────────
+// ── Step 5 — Plan your story ────────────────────────────────────────────
 
-interface Step7Props {
+interface Step5Props {
   plot: BookPlot;
   updatePlot: (patch: Partial<BookPlot>) => void;
 }
@@ -877,12 +866,7 @@ const PLOT_BEATS: BeatMeta[] = [
     label: 'The Problem',
     prompt: 'What goes wrong?',
     placeholder: 'Suddenly…',
-    ideaChips: [
-      'Suddenly…',
-      '…went missing!',
-      'But then…',
-      'Out of nowhere…',
-    ],
+    ideaChips: ['Suddenly…', '…went missing!', 'But then…', 'Out of nowhere…'],
   },
   {
     key: 'adventure',
@@ -912,7 +896,7 @@ const PLOT_BEATS: BeatMeta[] = [
   },
 ];
 
-function Step7Plot({ plot, updatePlot }: Step7Props) {
+function Step5Plot({ plot, updatePlot }: Step5Props) {
   return (
     <div className="space-y-3">
       <p className="rounded-xl bg-sky-100/80 p-3 text-xs font-medium text-sky-900">

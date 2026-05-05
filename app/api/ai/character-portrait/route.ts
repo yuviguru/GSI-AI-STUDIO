@@ -62,14 +62,18 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/** Build a portrait prompt with character-reference sheet semantics —
- *  front-facing, plain background, focus on the character. */
+/** Build a portrait prompt that forces a SINGLE-subject head-and-shoulders
+ *  portrait. The earlier "reference sheet" phrasing made image models render
+ *  4-up character lineups (industry-standard reference sheets show multiple
+ *  poses) — that's not what kids expect when they ask for an avatar. */
 function buildPortraitPrompt(lookDescription: string, styleHint?: string): string {
-  const style = styleHint ?? 'soft watercolor children\'s book illustration';
+  const style = styleHint ?? 'soft children\'s book illustration, watercolor style';
   return [
-    `Character portrait reference sheet: ${lookDescription}.`,
-    'Front-facing pose, plain pastel background, full visible features,',
-    'consistent proportions and outfit details.',
-    `Style: ${style}. No text or watermarks.`,
+    'Single character portrait, head and shoulders, ONE person only.',
+    `${lookDescription}.`,
+    'Front-facing, looking at the camera, plain pastel background.',
+    'Solo subject — not a group, not a lineup, not a character sheet,',
+    'no multiple poses, no duplicate figures, no full-body, just one face.',
+    `Style: ${style}. No text, no watermarks, no captions.`,
   ].join(' ');
 }
