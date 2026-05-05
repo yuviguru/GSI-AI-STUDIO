@@ -274,7 +274,7 @@ export function SingAlongRecorder({
             Stop
           </button>
           <p className="text-center text-xs text-gray-500">
-            We'll auto-stop at 90 seconds.
+            We&apos;ll auto-stop at 90 seconds.
           </p>
         </div>
       )}

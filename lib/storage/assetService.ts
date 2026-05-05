@@ -125,9 +125,21 @@ export interface CreateUploadUrlResult {
 // Validation helpers
 // ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Strip codec parameters and other RFC 7231 media-type parameters,
+ * leaving just `type/subtype`. Browsers (notably Chromium) report
+ * MediaRecorder MIMEs as e.g. `audio/webm;codecs=opus` — those are
+ * the same media type as `audio/webm` for our allowlist's purposes.
+ */
+export function normalizeMimeType(mime: string): string {
+  const idx = mime.indexOf(';');
+  return (idx === -1 ? mime : mime.slice(0, idx)).trim().toLowerCase();
+}
+
 function assertValidUploadInput(input: CreateUploadUrlInput): void {
   const allowed = ASSET_ALLOWED_MIME[input.kind];
-  if (!allowed.includes(input.mimeType)) {
+  const baseMime = normalizeMimeType(input.mimeType);
+  if (!allowed.includes(baseMime)) {
     throw new AppException(
       'UNSUPPORTED_MIME',
       `MIME type '${input.mimeType}' not allowed for ${input.kind}`,

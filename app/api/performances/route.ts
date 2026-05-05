@@ -105,11 +105,32 @@ export async function GET(request: NextRequest) {
       sort: q.sort ?? 'newest',
     };
 
-    if (q.mine === 'true') {
+    // Scope enforcement: every list query MUST resolve to one of two
+    // safe scopes — the caller's own performances, or public+published.
+    // Bare queries (no `mine`, no `visibility`) default to public+published
+    // so we can never accidentally leak private/draft items.
+    const requestedMine = q.mine === 'true';
+    const requestedVisibility = q.visibility as PerformanceVisibility | undefined;
+
+    if (requestedMine) {
       if (!sessionId) {
         throw new AppException('UNAUTHORIZED', 'Missing session for mine=true', 401);
       }
       filters.ownerSessionId = sessionId;
+      // Owner-scoped queries can request any visibility/status.
+      if (requestedVisibility) filters.visibility = requestedVisibility;
+    } else {
+      // Anonymous / cross-session queries: hard-locked to public+published.
+      // Reject any non-public visibility request from non-owners.
+      if (requestedVisibility && requestedVisibility !== 'public') {
+        throw new AppException(
+          'FORBIDDEN',
+          'Only your own performances can be listed with non-public visibility. Pass mine=true.',
+          403,
+        );
+      }
+      filters.visibility = 'public';
+      filters.status = 'published';
     }
 
     if (q.parentCreationId) filters.parentCreationId = q.parentCreationId;
@@ -117,14 +138,8 @@ export async function GET(request: NextRequest) {
       filters.parentCreationType = q.parentCreationType as CreationType;
     }
     if (q.kind) filters.kind = q.kind as PerformanceKind;
-    if (q.visibility) filters.visibility = q.visibility as PerformanceVisibility;
     if (q.limit) filters.limit = parseInt(q.limit, 10);
     if (q.cursor) filters.cursor = q.cursor;
-
-    // Public-feed mode: only published items
-    if (filters.visibility === 'public' && !filters.ownerSessionId) {
-      filters.status = 'published';
-    }
 
     const result = await listPerformances(filters, sessionId);
     return apiSuccess(result);

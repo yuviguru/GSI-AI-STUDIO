@@ -194,7 +194,11 @@ export async function createPerformance(
       409,
     );
   }
-  if (audioAsset.parentRefType && audioAsset.parentRefType !== 'standalone') {
+  // Asset is "linked" only when parentRefId is set. The upload contract
+  // pre-declares parentRefType='performance' before the performance exists,
+  // so we accept that case (parentRefId === null/undefined). Reject only
+  // when the asset already references a concrete parent doc.
+  if (audioAsset.parentRefId) {
     throw new AppException(
       'ASSET_ALREADY_LINKED',
       'Audio asset is already attached to another parent',
@@ -213,6 +217,15 @@ export async function createPerformance(
         'INVALID_INPUT',
         'videoAssetId must reference a video asset',
         400,
+      );
+    }
+    // Same linkage rule as audio — only reject when already attached to
+    // a concrete parent doc.
+    if (videoAsset.parentRefId) {
+      throw new AppException(
+        'ASSET_ALREADY_LINKED',
+        'Video asset is already attached to another parent',
+        409,
       );
     }
   }

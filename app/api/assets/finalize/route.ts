@@ -10,7 +10,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
-import { finalizeAsset } from '@/lib/storage/assetService';
+import { finalizeAsset, getAsset } from '@/lib/storage/assetService';
 
 const bodySchema = z.object({
   assetId: z.string().min(1).max(80),
@@ -26,13 +26,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { assetId } = bodySchema.parse(body);
 
-    const asset = await finalizeAsset(assetId);
-
-    // Ownership check — only the uploader can finalize.
-    if (asset.ownerSessionId && asset.ownerSessionId !== sessionId) {
+    // Ownership check BEFORE mutation. finalizeAsset HEADs storage and
+    // flips status='ready' / sets publicUrl, so we can't let a non-owner
+    // trigger that just to discover it isn't theirs after the fact.
+    const existing = await getAsset(assetId);
+    if (existing.ownerSessionId && existing.ownerSessionId !== sessionId) {
       throw new AppException('FORBIDDEN', 'Not your asset', 403);
     }
 
+    const asset = await finalizeAsset(assetId);
     return apiSuccess({ asset });
   } catch (error) {
     if (error instanceof z.ZodError) {
