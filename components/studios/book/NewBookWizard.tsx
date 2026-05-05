@@ -14,10 +14,11 @@ import {
 } from '@/lib/templates/bookTemplates';
 import { useBookList } from '@/hooks/useBookList';
 import { useCharacterPortrait } from '@/hooks/useCharacterPortrait';
-import { Mascot } from '@/components/mascot/Mascot';
+import { Mascot, type MascotExpression } from '@/components/mascot/Mascot';
 import type {
   BookBucket,
   BookFormat,
+  BookPlot,
   BookSize,
   BookType,
 } from '@/types/book.types';
@@ -47,6 +48,7 @@ interface WizardState {
   title: string;
   author: string;
   characters: WizardCharacter[];
+  plot: BookPlot;
 }
 
 const FORMAT_OPTIONS: Array<{
@@ -65,33 +67,122 @@ const FORMAT_OPTIONS: Array<{
   },
 ];
 
-/** Step metadata — used by the progress timeline + heading. */
-const STEP_META: Array<{
+interface StepTheme {
   id: number;
   icon: string;
   label: string;
   heading: string;
-}> = [
-  { id: 1, icon: '💡', label: 'Type', heading: 'What kind of book?' },
-  { id: 2, icon: '🎨', label: 'Format', heading: 'How will it look?' },
-  { id: 3, icon: '📏', label: 'Size', heading: 'What size?' },
-  { id: 4, icon: '📚', label: 'Pages', heading: 'How long?' },
-  { id: 5, icon: '✍️', label: 'Font', heading: 'Pick a font' },
-  { id: 6, icon: '🦄', label: 'Cast', heading: "Who's in your book?" },
+  prompt: string;
+  /** Tailwind gradient classes for the panel background */
+  panelGradient: string;
+  /** Tailwind classes for the active step pill */
+  pillBg: string;
+  /** Mascot expression to show on this step */
+  mascotExpression: MascotExpression;
+  /** Decorative scene emoji shown in the panel corner */
+  sceneEmoji: string;
+}
+
+const STEP_THEMES: StepTheme[] = [
+  {
+    id: 1,
+    icon: '💡',
+    label: 'Idea',
+    heading: 'What kind of book?',
+    prompt: 'Pick the one that feels most like you today.',
+    panelGradient: 'from-indigo-50 via-white to-purple-50',
+    pillBg: 'bg-indigo-500',
+    mascotExpression: 'thinking',
+    sceneEmoji: '🌟',
+  },
+  {
+    id: 2,
+    icon: '🎨',
+    label: 'Look',
+    heading: 'How will it look?',
+    prompt: 'Just words, just pictures, or both together?',
+    panelGradient: 'from-orange-50 via-white to-amber-50',
+    pillBg: 'bg-orange-500',
+    mascotExpression: 'painting',
+    sceneEmoji: '🌈',
+  },
+  {
+    id: 3,
+    icon: '📏',
+    label: 'Size',
+    heading: 'Pick a size',
+    prompt: 'This one locks in — the rest you can change later.',
+    panelGradient: 'from-teal-50 via-white to-emerald-50',
+    pillBg: 'bg-teal-500',
+    mascotExpression: 'happy',
+    sceneEmoji: '📐',
+  },
+  {
+    id: 4,
+    icon: '📚',
+    label: 'Length',
+    heading: 'How many pages?',
+    prompt: 'Start small — you can always make another book!',
+    panelGradient: 'from-pink-50 via-white to-rose-50',
+    pillBg: 'bg-pink-500',
+    mascotExpression: 'happy',
+    sceneEmoji: '📚',
+  },
+  {
+    id: 5,
+    icon: '✍️',
+    label: 'Font',
+    heading: 'Pick a font',
+    prompt: 'You can change it on each page later.',
+    panelGradient: 'from-amber-50 via-white to-yellow-50',
+    pillBg: 'bg-amber-500',
+    mascotExpression: 'happy',
+    sceneEmoji: '✨',
+  },
+  {
+    id: 6,
+    icon: '🦄',
+    label: 'Cast',
+    heading: "Who's in your book?",
+    prompt: 'Up to 3 friends. They show up the same on every page.',
+    panelGradient: 'from-purple-50 via-white to-fuchsia-50',
+    pillBg: 'bg-purple-500',
+    mascotExpression: 'celebrating',
+    sceneEmoji: '🦄',
+  },
+  {
+    id: 7,
+    icon: '📖',
+    label: 'Plan',
+    heading: 'Plan your story',
+    prompt: 'Just a sentence per part. Keeps you on track when you write.',
+    panelGradient: 'from-sky-50 via-white to-blue-50',
+    pillBg: 'bg-sky-500',
+    mascotExpression: 'thinking',
+    sceneEmoji: '🗺️',
+  },
 ];
 
-/** Buckets that have a character setup step. */
 const CHARACTER_BUCKETS: ReadonlySet<BookBucket> = new Set(['narrative', 'visual']);
+const PLOT_BUCKETS: ReadonlySet<BookBucket> = new Set(['narrative']);
 
 function bucketWantsCharacters(bucket: BookBucket | null): boolean {
   return bucket !== null && CHARACTER_BUCKETS.has(bucket);
+}
+
+function bucketWantsPlot(bucket: BookBucket | null): boolean {
+  return bucket !== null && PLOT_BUCKETS.has(bucket);
+}
+
+function emptyPlot(): BookPlot {
+  return { idea: '', beginning: '', problem: '', adventure: '', ending: '' };
 }
 
 export function NewBookWizard({ onClose }: NewBookWizardProps) {
   const router = useRouter();
   const { createBook, creating, createError } = useBookList();
   const portrait = useCharacterPortrait();
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
+  const [step, setStep] = useState(1);
   const [state, setState] = useState<WizardState>({
     type: null,
     bucket: null,
@@ -103,15 +194,21 @@ export function NewBookWizard({ onClose }: NewBookWizardProps) {
     title: '',
     author: '',
     characters: [],
+    plot: emptyPlot(),
   });
 
   const update = (patch: Partial<WizardState>) => setState((s) => ({ ...s, ...patch }));
+  const updatePlot = (patch: Partial<BookPlot>) =>
+    setState((s) => ({ ...s, plot: { ...s.plot, ...patch } }));
 
-  const totalSteps = bucketWantsCharacters(state.bucket) ? 6 : 5;
+  // Compute total steps based on bucket
+  const totalSteps =
+    5 +
+    (bucketWantsCharacters(state.bucket) ? 1 : 0) +
+    (bucketWantsPlot(state.bucket) ? 1 : 0);
 
-  const next = () =>
-    setStep((s) => (s < totalSteps ? ((s + 1) as 1 | 2 | 3 | 4 | 5 | 6) : s));
-  const prev = () => setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3 | 4 | 5 | 6) : s));
+  const next = () => setStep((s) => (s < totalSteps ? s + 1 : s));
+  const prev = () => setStep((s) => (s > 1 ? s - 1 : s));
 
   const canProceed =
     (step === 1 && state.type !== null) ||
@@ -119,9 +216,11 @@ export function NewBookWizard({ onClose }: NewBookWizardProps) {
     (step === 3 && state.size !== null) ||
     (step === 4 && state.pageLimit !== null) ||
     (step === 5 && state.font !== null) ||
-    step === 6;
+    step === 6 ||
+    step === 7;
 
   const isFinalStep = step === totalSteps;
+  const theme = STEP_THEMES[step - 1] ?? STEP_THEMES[0]!;
 
   // Character actions
   const addCharacter = () => {
@@ -190,7 +289,6 @@ export function NewBookWizard({ onClose }: NewBookWizardProps) {
     const fontOption = BOOK_FONTS.find((f) => f.id === state.font);
     const titleFont = fontOption?.name ?? 'Quicksand';
 
-    // Filter out characters with no name/look (slots left blank)
     const validCharacters = state.characters
       .filter((c) => c.name.trim().length > 0 && c.lookDescription.trim().length >= 5)
       .map((c) => ({
@@ -199,6 +297,13 @@ export function NewBookWizard({ onClose }: NewBookWizardProps) {
         anchorImageUrl: c.anchorImageUrl,
         anchorPrompt: c.anchorPrompt,
       }));
+
+    const plotIsNonEmpty =
+      state.plot.idea.trim() ||
+      state.plot.beginning.trim() ||
+      state.plot.problem.trim() ||
+      state.plot.adventure.trim() ||
+      state.plot.ending.trim();
 
     const book = await createBook({
       title: state.title.trim() || 'Untitled book',
@@ -215,14 +320,22 @@ export function NewBookWizard({ onClose }: NewBookWizardProps) {
       },
       themeColor: state.themeColor ?? undefined,
       characters: validCharacters.length > 0 ? validCharacters : undefined,
+      plot:
+        plotIsNonEmpty && bucketWantsPlot(state.bucket)
+          ? {
+              idea: state.plot.idea.trim(),
+              beginning: state.plot.beginning.trim(),
+              problem: state.plot.problem.trim(),
+              adventure: state.plot.adventure.trim(),
+              ending: state.plot.ending.trim(),
+            }
+          : undefined,
     });
 
     if (book) {
       router.push(`/create/book/${book.id}`);
     }
   };
-
-  const stepMeta = STEP_META.find((s) => s.id === step) ?? STEP_META[0]!;
 
   return (
     <div
@@ -235,7 +348,7 @@ export function NewBookWizard({ onClose }: NewBookWizardProps) {
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 50 }}
-        className="relative w-full max-w-3xl overflow-hidden rounded-t-3xl bg-gradient-to-b from-indigo-50/70 via-white to-white p-6 shadow-elevated sm:rounded-3xl"
+        className={`relative w-full max-w-3xl overflow-hidden rounded-t-3xl bg-gradient-to-br ${theme.panelGradient} p-6 shadow-elevated transition-all duration-500 sm:rounded-3xl`}
       >
         {/* Close button */}
         <button
@@ -247,17 +360,20 @@ export function NewBookWizard({ onClose }: NewBookWizardProps) {
           <X className="h-5 w-5" />
         </button>
 
-        {/* Decorative sparkles */}
-        <div className="pointer-events-none absolute -left-4 -top-2 select-none text-yellow-300 opacity-50">
-          <Sparkles className="h-8 w-8" />
+        {/* Decorative scene */}
+        <div className="pointer-events-none absolute right-10 top-10 select-none text-5xl opacity-30">
+          {theme.sceneEmoji}
         </div>
-        <div className="pointer-events-none absolute right-16 top-12 select-none text-indigo-300 opacity-40">
-          <Sparkles className="h-5 w-5" />
+        <div className="pointer-events-none absolute -left-2 top-20 select-none text-yellow-300 opacity-50">
+          <Sparkles className="h-6 w-6" />
+        </div>
+        <div className="pointer-events-none absolute right-32 top-24 select-none text-pink-300 opacity-40">
+          <Sparkles className="h-4 w-4" />
         </div>
 
         {/* Step timeline */}
-        <div className="mb-4 flex items-center justify-center gap-2 sm:gap-3">
-          {STEP_META.slice(0, totalSteps).map((meta) => {
+        <div className="mb-5 flex items-center justify-center gap-1.5 sm:gap-2">
+          {STEP_THEMES.slice(0, totalSteps).map((meta) => {
             const isActive = meta.id === step;
             const isDone = meta.id < step;
             return (
@@ -265,20 +381,21 @@ export function NewBookWizard({ onClose }: NewBookWizardProps) {
                 <div
                   className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base shadow-sm transition-all ${
                     isActive
-                      ? 'scale-110 bg-brand-purple text-white'
+                      ? `scale-110 ${meta.pillBg} text-white`
                       : isDone
                         ? 'bg-emerald-500 text-white'
-                        : 'bg-gray-200 text-gray-500'
+                        : 'bg-white/70 text-gray-400'
                   }`}
                   aria-current={isActive ? 'step' : undefined}
                   aria-label={meta.label}
+                  title={meta.label}
                 >
                   {isDone ? <Check className="h-4 w-4" /> : meta.icon}
                 </div>
                 {meta.id < totalSteps && (
                   <div
-                    className={`h-0.5 w-3 sm:w-6 rounded-full ${
-                      isDone ? 'bg-emerald-300' : 'bg-gray-200'
+                    className={`h-0.5 w-2 sm:w-5 rounded-full ${
+                      isDone ? 'bg-emerald-300' : 'bg-white/60'
                     }`}
                   />
                 )}
@@ -287,21 +404,19 @@ export function NewBookWizard({ onClose }: NewBookWizardProps) {
           })}
         </div>
 
-        {/* Heading */}
-        <div className="mb-2 flex items-start gap-3">
+        {/* Heading + mascot */}
+        <div className="mb-4 flex items-start gap-3">
           <div className="flex-1">
             <h2
               id="wizard-title"
               className="font-display text-2xl font-bold text-gray-900 sm:text-3xl"
             >
-              {stepMeta.heading}
+              {theme.heading}
             </h2>
-            <p className="mt-0.5 text-xs text-gray-500">
-              Step {step} of {totalSteps}
-            </p>
+            <p className="mt-1 text-sm text-gray-600">{theme.prompt}</p>
           </div>
           <div className="hidden sm:block">
-            <Mascot expression={step === totalSteps ? 'celebrating' : 'happy'} size="sm" />
+            <Mascot expression={theme.mascotExpression} size="sm" bobbing />
           </div>
         </div>
 
@@ -313,14 +428,14 @@ export function NewBookWizard({ onClose }: NewBookWizardProps) {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -12 }}
             transition={{ duration: 0.18 }}
-            className="mt-4 max-h-[55vh] overflow-y-auto"
+            className="max-h-[55vh] overflow-y-auto"
           >
             {step === 1 && <Step1Type state={state} update={update} />}
             {step === 2 && <Step2Format state={state} update={update} />}
             {step === 3 && <Step3Size state={state} update={update} />}
             {step === 4 && <Step4Pages state={state} update={update} />}
             {step === 5 && <Step5Font state={state} update={update} />}
-            {step === 6 && (
+            {step === 6 && bucketWantsCharacters(state.bucket) && (
               <Step6Characters
                 state={state}
                 addCharacter={addCharacter}
@@ -328,6 +443,9 @@ export function NewBookWizard({ onClose }: NewBookWizardProps) {
                 removeCharacter={removeCharacter}
                 generatePortrait={generateCharacterPortrait}
               />
+            )}
+            {step === 7 && bucketWantsPlot(state.bucket) && (
+              <Step7Plot plot={state.plot} updatePlot={updatePlot} />
             )}
           </motion.div>
         </AnimatePresence>
@@ -343,7 +461,7 @@ export function NewBookWizard({ onClose }: NewBookWizardProps) {
             type="button"
             onClick={prev}
             disabled={step === 1}
-            className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-30"
+            className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-gray-600 hover:bg-white/60 disabled:opacity-30"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
@@ -400,8 +518,8 @@ function Step1Type({ state, update }: StepProps) {
             }
             className={`flex flex-col items-center gap-1 rounded-2xl border-2 p-3 text-center transition-all ${
               selected
-                ? 'border-brand-purple bg-brand-purple/5 shadow-card'
-                : 'border-gray-200 bg-white hover:border-gray-300'
+                ? 'border-brand-purple bg-white shadow-card scale-[1.02]'
+                : 'border-white bg-white/70 hover:border-gray-300 hover:bg-white'
             }`}
           >
             <span className="text-3xl">{card.emoji}</span>
@@ -428,15 +546,15 @@ function Step2Format({ state, update }: StepProps) {
             key={opt.value}
             type="button"
             onClick={() => update({ format: opt.value })}
-            className={`flex flex-col items-center gap-1 rounded-2xl border-2 p-4 text-center transition-all ${
+            className={`flex flex-col items-center gap-1 rounded-2xl border-2 p-5 text-center transition-all ${
               selected
-                ? 'border-brand-purple bg-brand-purple/5 shadow-card'
-                : 'border-gray-200 bg-white hover:border-gray-300'
+                ? 'border-orange-500 bg-white shadow-card scale-[1.02]'
+                : 'border-white bg-white/70 hover:border-gray-300 hover:bg-white'
             }`}
           >
-            <span className="text-3xl">{opt.emoji}</span>
-            <span className="text-sm font-semibold text-gray-900">{opt.label}</span>
-            <span className="text-xs text-gray-500">{opt.description}</span>
+            <span className="text-4xl">{opt.emoji}</span>
+            <span className="mt-1 text-sm font-bold text-gray-900">{opt.label}</span>
+            <span className="text-xs text-gray-600">{opt.description}</span>
           </button>
         );
       })}
@@ -450,8 +568,8 @@ function Step3Size({ state, update }: StepProps) {
   >;
   return (
     <div className="space-y-2">
-      <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800">
-        💡 Size locks in now — you can change everything else later, but not the size.
+      <p className="rounded-xl bg-amber-100/80 p-3 text-xs font-medium text-amber-900">
+        💡 Size locks in here — you can change everything else later, but not the size.
       </p>
       {sizes.map(([key, size]) => {
         const selected = state.size === key;
@@ -463,22 +581,22 @@ function Step3Size({ state, update }: StepProps) {
             onClick={() => update({ size: key })}
             className={`flex w-full items-center gap-3 rounded-2xl border-2 p-3 transition-all ${
               selected
-                ? 'border-brand-purple bg-brand-purple/5'
-                : 'border-gray-200 bg-white hover:border-gray-300'
+                ? 'border-teal-500 bg-white shadow-card'
+                : 'border-white bg-white/70 hover:border-gray-300 hover:bg-white'
             }`}
           >
             <div
-              className="rounded border border-gray-300 bg-gray-100"
+              className="rounded border-2 border-teal-300 bg-teal-50"
               style={{
-                width: aspectRatio < 1 ? 28 : 36,
-                height: aspectRatio < 1 ? 36 : aspectRatio === 1 ? 28 : 28,
+                width: aspectRatio < 1 ? 32 : 40,
+                height: aspectRatio < 1 ? 40 : aspectRatio === 1 ? 32 : 30,
               }}
             />
             <div className="flex-1 text-left">
-              <div className="text-sm font-semibold text-gray-900">{size.label}</div>
-              <div className="text-xs text-gray-500">{size.description}</div>
+              <div className="text-sm font-bold text-gray-900">{size.label}</div>
+              <div className="text-xs text-gray-600">{size.description}</div>
             </div>
-            {selected && <Check className="h-5 w-5 text-brand-purple" />}
+            {selected && <Check className="h-5 w-5 text-teal-600" />}
           </button>
         );
       })}
@@ -500,34 +618,34 @@ function Step4Pages({ state, update }: StepProps) {
             disabled={!isFreeTierAllowed}
             className={`flex w-full items-center justify-between rounded-2xl border-2 p-3 text-left transition-all ${
               selected
-                ? 'border-brand-purple bg-brand-purple/5'
-                : 'border-gray-200 bg-white hover:border-gray-300'
+                ? 'border-pink-500 bg-white shadow-card'
+                : 'border-white bg-white/70 hover:border-gray-300 hover:bg-white'
             } ${!isFreeTierAllowed ? 'cursor-not-allowed opacity-60' : ''}`}
           >
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <div className="text-sm font-semibold text-gray-900">{kit.label}</div>
+                <div className="text-sm font-bold text-gray-900">{kit.label}</div>
                 {kit.recommended && (
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
-                    Recommended
+                  <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+                    ⭐ Pick of the day
                   </span>
                 )}
                 {!isFreeTierAllowed && (
-                  <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-semibold text-gray-600">
-                    Pro
+                  <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-bold text-gray-600">
+                    🔒 Pro
                   </span>
                 )}
               </div>
               {kit.description && (
-                <div className="mt-0.5 text-xs text-gray-500">{kit.description}</div>
+                <div className="mt-0.5 text-xs text-gray-600">{kit.description}</div>
               )}
             </div>
-            {selected && <Check className="h-5 w-5 text-brand-purple" />}
+            {selected && <Check className="h-5 w-5 text-pink-500" />}
           </button>
         );
       })}
       <p className="px-1 pt-1 text-[11px] text-gray-500">
-        Free tier: 5-page mini book. Longer books unlock with Pro.
+        Free: 5-page mini book. Longer books unlock with Pro.
       </p>
     </div>
   );
@@ -536,9 +654,6 @@ function Step4Pages({ state, update }: StepProps) {
 function Step5Font({ state, update }: StepProps) {
   return (
     <div className="space-y-2">
-      <p className="text-xs text-gray-600">
-        Pick the default font — you can change individual pages later.
-      </p>
       {BOOK_FONTS.map((font) => {
         const selected = state.font === font.id;
         return (
@@ -548,15 +663,15 @@ function Step5Font({ state, update }: StepProps) {
             onClick={() => update({ font: font.id })}
             className={`flex w-full items-center justify-between gap-3 rounded-2xl border-2 p-3 text-left transition-all ${
               selected
-                ? 'border-brand-purple bg-brand-purple/5'
-                : 'border-gray-200 bg-white hover:border-gray-300'
+                ? 'border-amber-500 bg-white shadow-card'
+                : 'border-white bg-white/70 hover:border-gray-300 hover:bg-white'
             }`}
           >
             <div className="flex-1">
-              <div className="text-base font-semibold text-gray-900">{font.name}</div>
-              <div className="text-xs text-gray-500">{font.vibe}</div>
+              <div className="text-base font-bold text-gray-900">{font.name}</div>
+              <div className="text-xs text-gray-600">{font.vibe}</div>
             </div>
-            {selected && <Check className="h-5 w-5 text-brand-purple" />}
+            {selected && <Check className="h-5 w-5 text-amber-500" />}
           </button>
         );
       })}
@@ -572,16 +687,6 @@ interface Step6Props {
   generatePortrait: (localId: string) => Promise<void>;
 }
 
-const SAMPLE_CHARACTERS: Array<{ name: string; look: string }> = [
-  {
-    name: 'Aanya',
-    look: '10yr girl, curly black hair, yellow kurta, red sneakers, brown eyes',
-  },
-  { name: 'Miko', look: 'small grey tabby cat, green collar with silver bell, white chest tuft' },
-  { name: 'Rohan', look: '8yr boy, short hair, blue cap, striped t-shirt, scuffed white shoes' },
-  { name: 'Zara', look: 'friendly dragon, teal scales, tiny wings, big amber eyes, smiling' },
-];
-
 function Step6Characters({
   state,
   addCharacter,
@@ -593,16 +698,16 @@ function Step6Characters({
 
   return (
     <div className="space-y-3">
-      <p className="rounded-xl bg-indigo-50 p-3 text-xs text-indigo-900">
-        ✨ Make up to <strong>3 characters</strong>. They&apos;ll show up the same way on every
-        page — same face, same clothes. Skip this step if you don&apos;t have characters yet.
+      <p className="rounded-xl bg-purple-100/80 p-3 text-xs font-medium text-purple-900">
+        ✨ Up to <strong>3 friends</strong>. They&apos;ll show up the same way on every page —
+        same face, same clothes. Skip if you don&apos;t have characters yet.
       </p>
 
       {state.characters.length === 0 && (
-        <div className="rounded-2xl border-2 border-dashed border-gray-300 bg-white/60 p-6 text-center">
-          <div className="text-3xl">🦄</div>
-          <p className="mt-2 text-sm font-semibold text-gray-900">No characters yet</p>
-          <p className="mt-1 text-xs text-gray-500">Tap below to add your first one</p>
+        <div className="rounded-2xl border-2 border-dashed border-purple-300 bg-white/60 p-6 text-center">
+          <div className="text-4xl">🦄</div>
+          <p className="mt-2 text-sm font-bold text-gray-900">No friends yet</p>
+          <p className="mt-1 text-xs text-gray-600">Tap below to add your first one</p>
         </div>
       )}
 
@@ -621,39 +726,11 @@ function Step6Characters({
         <button
           type="button"
           onClick={addCharacter}
-          className="w-full rounded-2xl border-2 border-dashed border-brand-purple/50 bg-brand-purple/5 px-3 py-3 text-sm font-semibold text-brand-purple transition-colors hover:bg-brand-purple/10"
+          className="w-full rounded-2xl border-2 border-dashed border-purple-400 bg-purple-50/70 px-3 py-3 text-sm font-bold text-purple-700 transition-colors hover:bg-purple-100"
         >
-          + Add a character{state.characters.length > 0 ? ` (${remaining} left)` : ''}
+          + Add a friend{state.characters.length > 0 ? ` (${remaining} left)` : ''}
         </button>
       )}
-
-      <div className="rounded-xl bg-gray-50 p-3">
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-          Need ideas? Try one of these:
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          {SAMPLE_CHARACTERS.map((s) => (
-            <button
-              key={s.name}
-              type="button"
-              onClick={() => {
-                if (state.characters.length >= 3) return;
-                addCharacter();
-                // Defer setting fields to next tick so the new char exists in state
-                setTimeout(() => {
-                  // We can't easily target the latest by index here due to async
-                  // setState, so leave the kid to copy/paste. Showing the sample
-                  // text is the main affordance.
-                }, 0);
-              }}
-              className="rounded-full bg-white px-3 py-1 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-100"
-              title={s.look}
-            >
-              {s.name}
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
@@ -677,12 +754,11 @@ function CharacterCardEditor({
     character.lookDescription.trim().length >= 5 && !character.generating;
 
   return (
-    <div className="rounded-2xl border-2 border-gray-200 bg-white p-3 shadow-sm">
+    <div className="rounded-2xl border-2 border-white bg-white p-3 shadow-sm">
       <div className="flex items-start gap-3">
-        {/* Anchor portrait or placeholder */}
         <div
-          className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-purple-100 to-indigo-100"
-          aria-label={`Portrait of ${character.name || `character ${index + 1}`}`}
+          className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-purple-100 to-fuchsia-100"
+          aria-label={`Portrait of ${character.name || `friend ${index + 1}`}`}
         >
           {character.anchorImageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -698,29 +774,26 @@ function CharacterCardEditor({
           )}
           {character.generating && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/70">
-              <span className="text-xs font-medium text-brand-purple">
-                Drawing…
-              </span>
+              <span className="text-xs font-bold text-purple-600">Drawing…</span>
             </div>
           )}
         </div>
 
-        {/* Inputs */}
         <div className="flex-1 space-y-1.5">
           <div className="flex items-center gap-2">
             <input
               value={character.name}
               onChange={(e) => onUpdate({ name: e.target.value })}
               maxLength={40}
-              placeholder={`Character ${index + 1} name`}
-              className="flex-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+              placeholder={`Friend ${index + 1} name`}
+              className="flex-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
             />
             <button
               type="button"
               onClick={onRemove}
               className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
-              aria-label="Remove character"
-              title="Remove character"
+              aria-label="Remove friend"
+              title="Remove"
             >
               <Trash2 className="h-4 w-4" />
             </button>
@@ -730,14 +803,14 @@ function CharacterCardEditor({
             onChange={(e) => onUpdate({ lookDescription: e.target.value })}
             maxLength={300}
             rows={2}
-            placeholder="What do they look like? E.g. curly hair, yellow kurta, blue eyes…"
-            className="w-full resize-none rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+            placeholder="What do they look like? curly hair, yellow kurta, blue eyes…"
+            className="w-full resize-none rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
           />
           <button
             type="button"
             onClick={onGenerate}
             disabled={!canGenerate}
-            className="flex items-center gap-1 rounded-lg bg-amber-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
+            className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-2.5 py-1 text-xs font-bold text-white hover:from-amber-600 hover:to-orange-600 disabled:opacity-50"
           >
             <Sparkles className="h-3 w-3" />
             {character.generating
@@ -751,6 +824,162 @@ function CharacterCardEditor({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Step 7 — Plan your story ────────────────────────────────────────────
+
+interface Step7Props {
+  plot: BookPlot;
+  updatePlot: (patch: Partial<BookPlot>) => void;
+}
+
+interface BeatMeta {
+  key: keyof BookPlot;
+  emoji: string;
+  label: string;
+  prompt: string;
+  placeholder: string;
+  ideaChips: string[];
+}
+
+const PLOT_BEATS: BeatMeta[] = [
+  {
+    key: 'idea',
+    emoji: '💡',
+    label: 'The Big Idea',
+    prompt: 'What is your story about?',
+    placeholder: 'A brave kid who…',
+    ideaChips: [
+      'A brave kid who…',
+      'A magical place where…',
+      'Two best friends who…',
+      'A talking animal who…',
+    ],
+  },
+  {
+    key: 'beginning',
+    emoji: '🌟',
+    label: 'The Beginning',
+    prompt: 'How does it start?',
+    placeholder: 'It was a sunny morning when…',
+    ideaChips: [
+      'It was a sunny morning when…',
+      'Once upon a time…',
+      'On the way to school…',
+      'Last summer at Nani’s…',
+    ],
+  },
+  {
+    key: 'problem',
+    emoji: '⚡',
+    label: 'The Problem',
+    prompt: 'What goes wrong?',
+    placeholder: 'Suddenly…',
+    ideaChips: [
+      'Suddenly…',
+      '…went missing!',
+      'But then…',
+      'Out of nowhere…',
+    ],
+  },
+  {
+    key: 'adventure',
+    emoji: '🚀',
+    label: 'The Adventure',
+    prompt: 'What happens next?',
+    placeholder: 'They had to figure out…',
+    ideaChips: [
+      'They had to figure out…',
+      'With their friends…',
+      'The journey took them…',
+      'Bravely, they…',
+    ],
+  },
+  {
+    key: 'ending',
+    emoji: '🎉',
+    label: 'The Ending',
+    prompt: 'How does it end?',
+    placeholder: 'And that’s how…',
+    ideaChips: [
+      'And that’s how…',
+      'From that day on…',
+      'They learned that…',
+      'Everyone smiled because…',
+    ],
+  },
+];
+
+function Step7Plot({ plot, updatePlot }: Step7Props) {
+  return (
+    <div className="space-y-3">
+      <p className="rounded-xl bg-sky-100/80 p-3 text-xs font-medium text-sky-900">
+        🗺️ A quick plan keeps you on track when you write. Skip any part you&apos;re not
+        sure about — you can always come back to it.
+      </p>
+
+      {PLOT_BEATS.map((beat) => (
+        <BeatField
+          key={beat.key}
+          beat={beat}
+          value={plot[beat.key]}
+          onChange={(value) => updatePlot({ [beat.key]: value } as Partial<BookPlot>)}
+        />
+      ))}
+    </div>
+  );
+}
+
+interface BeatFieldProps {
+  beat: BeatMeta;
+  value: string;
+  onChange: (next: string) => void;
+}
+
+function BeatField({ beat, value, onChange }: BeatFieldProps) {
+  const isFilled = value.trim().length > 0;
+  return (
+    <div
+      className={`rounded-2xl border-2 p-3 transition-all ${
+        isFilled ? 'border-sky-300 bg-white shadow-sm' : 'border-white bg-white/80'
+      }`}
+    >
+      <div className="mb-1.5 flex items-center gap-2">
+        <span className="text-xl">{beat.emoji}</span>
+        <div className="flex-1">
+          <div className="text-sm font-bold text-gray-900">{beat.label}</div>
+          <div className="text-[11px] text-gray-600">{beat.prompt}</div>
+        </div>
+        {isFilled && (
+          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+            ✓
+          </span>
+        )}
+      </div>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        maxLength={300}
+        rows={2}
+        placeholder={beat.placeholder}
+        className="w-full resize-none rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+      />
+      {!isFilled && beat.ideaChips.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {beat.ideaChips.map((chip) => (
+            <button
+              key={chip}
+              type="button"
+              onClick={() => onChange(chip)}
+              className="rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-medium text-sky-700 ring-1 ring-sky-200 transition-colors hover:bg-sky-100"
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

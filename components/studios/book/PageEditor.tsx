@@ -39,6 +39,7 @@ import { useGrammarCheck } from '@/hooks/useGrammarCheck';
 import { usePageImage } from '@/hooks/usePageImage';
 import { useSceneImage } from '@/hooks/useSceneImage';
 import { GrammarSuggestionList } from './GrammarSuggestionPopover';
+import { StoryPlanCard } from './StoryPlanCard';
 
 interface PageEditorProps {
   book: Book;
@@ -393,9 +394,11 @@ export function PageEditor({ book, page, onSave, saving }: PageEditorProps) {
         )}
       </div>
 
-      {/* Right panel — tabs (Picture | Grammar) */}
-      <aside className="flex min-w-0 flex-col gap-2">
-        <div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1">
+      {/* Right panel — story plan (if any) + tabs (Picture | Grammar) */}
+      <aside className="flex min-w-0 flex-col gap-2 overflow-y-auto">
+        {book.plot && <StoryPlanCard plot={book.plot} />}
+
+        <div className="flex shrink-0 items-center gap-1 rounded-xl bg-gray-100 p-1">
           {showImage && (
             <TabButton
               label="🖼 Picture"
@@ -411,7 +414,7 @@ export function PageEditor({ book, page, onSave, saving }: PageEditorProps) {
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div>
           {rightTab === 'picture' && showImage && (
             <PicturePanel
               book={book}

@@ -15,6 +15,7 @@ import type {
   BookCover,
   BookListItem,
   BookPage,
+  BookPlot,
   BookStatus,
   PageLayout,
   TipTapDocument,
@@ -79,6 +80,23 @@ function defaultCover(input: BookCreateInput): BookCover {
   };
 }
 
+/** Convert plot from Firestore. Returns null if the field is missing or empty. */
+function revivePlot(raw: unknown): BookPlot | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const plot: BookPlot = {
+    idea: typeof r.idea === 'string' ? r.idea : '',
+    beginning: typeof r.beginning === 'string' ? r.beginning : '',
+    problem: typeof r.problem === 'string' ? r.problem : '',
+    adventure: typeof r.adventure === 'string' ? r.adventure : '',
+    ending: typeof r.ending === 'string' ? r.ending : '',
+  };
+  // Treat all-empty as no-plot — keeps the editor sidebar quiet for non-plot books
+  const allEmpty =
+    !plot.idea && !plot.beginning && !plot.problem && !plot.adventure && !plot.ending;
+  return allEmpty ? null : plot;
+}
+
 /** Convert character data from Firestore (timestamps -> Date). */
 function reviveCharacters(raw: unknown): BookCharacter[] {
   if (!Array.isArray(raw)) return [];
@@ -127,6 +145,7 @@ function docToBook(doc: FirebaseFirestore.DocumentSnapshot): Book {
     cover: data.cover,
     backCover: data.backCover ?? null,
     characters: reviveCharacters(data.characters),
+    plot: revivePlot(data.plot),
     pageCount: data.pageCount ?? 0,
     pageLimit: data.pageLimit,
     themeColor: data.themeColor ?? null,
@@ -257,6 +276,15 @@ export async function createBook(
     cover: defaultCover(input),
     backCover: null,
     characters: initialCharacters.map(charToStored),
+    plot: input.plot
+      ? {
+          idea: input.plot.idea,
+          beginning: input.plot.beginning,
+          problem: input.plot.problem,
+          adventure: input.plot.adventure,
+          ending: input.plot.ending,
+        }
+      : null,
     pageCount: 0,
     pageLimit: input.pageLimit,
     themeColor: input.themeColor ?? null,
