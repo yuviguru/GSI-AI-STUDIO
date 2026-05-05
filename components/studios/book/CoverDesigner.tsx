@@ -35,7 +35,7 @@ const COLOR_PALETTE = [
 ];
 
 export function CoverDesigner({ bookId, onClose }: CoverDesignerProps) {
-  const { book, updateCover, actionLoading } = useBook(bookId);
+  const { book, updateCover, patchBook, actionLoading } = useBook(bookId);
   const pageImage = usePageImage();
   const sceneImage = useSceneImage();
   const { creationsRemaining, cooldownSeconds } = useSession();
@@ -49,6 +49,13 @@ export function CoverDesigner({ bookId, onClose }: CoverDesignerProps) {
   const [imagePrompt, setImagePrompt] = useState(book?.cover.imagePrompt ?? '');
   const [imageUrl, setImageUrl] = useState<string | null>(book?.cover.imageUrl ?? null);
   const [genError, setGenError] = useState<string | null>(null);
+
+  // Back cover content (rendered on the LEFT of the cover spread)
+  const [authorBio, setAuthorBio] = useState(book?.backCover?.authorBio ?? '');
+  const [bookBlurb, setBookBlurb] = useState(book?.backCover?.text ?? '');
+  const [authorPhotoUrl, setAuthorPhotoUrl] = useState<string | null>(
+    book?.backCover?.authorPhotoUrl ?? null
+  );
 
   // Default cover characters = all of them (the cover usually shows everyone)
   const [selectedIds, setSelectedIds] = useState<string[]>(
@@ -101,6 +108,7 @@ export function CoverDesigner({ bookId, onClose }: CoverDesignerProps) {
   };
 
   const handleSave = async () => {
+    // Save the front cover via the dedicated endpoint
     await updateCover({
       title,
       subtitle,
@@ -110,6 +118,27 @@ export function CoverDesigner({ bookId, onClose }: CoverDesignerProps) {
       imagePrompt: imagePrompt.trim() || null,
       font: book.cover.font,
     });
+
+    // Save the back cover via the generic book PATCH (bookPatchSchema accepts
+    // backCover). Only send if the kid changed something or there's existing
+    // back-cover content to preserve.
+    const trimmedBio = authorBio.trim();
+    const trimmedBlurb = bookBlurb.trim();
+    const hasContent = !!trimmedBio || !!trimmedBlurb || !!authorPhotoUrl;
+    if (
+      hasContent ||
+      book.backCover !== null
+    ) {
+      await patchBook({
+        backCover: {
+          text: trimmedBlurb,
+          imageUrl: book.backCover?.imageUrl ?? null,
+          authorBio: trimmedBio || null,
+          authorPhotoUrl: authorPhotoUrl,
+        },
+      });
+    }
+
     onClose();
   };
 
@@ -283,6 +312,60 @@ export function CoverDesigner({ bookId, onClose }: CoverDesignerProps) {
               </div>
             )}
           </Field>
+
+          {/* ─── Back cover ─── */}
+          <div className="mt-3 border-t-2 border-dashed border-amber-200 pt-3">
+            <div className="mb-2 flex items-center gap-1.5">
+              <span className="text-base">📖</span>
+              <div>
+                <div className="text-xs font-bold text-gray-900">Back cover</div>
+                <div className="text-[10px] text-gray-500">
+                  Shown on the left when your book is open. We always add the date
+                  + GSI logo for you.
+                </div>
+              </div>
+            </div>
+
+            <Field label="About the author (you!)">
+              <textarea
+                value={authorBio}
+                onChange={(e) => setAuthorBio(e.target.value)}
+                maxLength={300}
+                rows={2}
+                placeholder="I love writing stories about my dog Jerry and our adventures together."
+                className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+              />
+            </Field>
+
+            <Field label="About this book">
+              <textarea
+                value={bookBlurb}
+                onChange={(e) => setBookBlurb(e.target.value)}
+                maxLength={500}
+                rows={3}
+                placeholder="Jerry the dog wasn't sure about Jaisha at first. This is the story of how they became best friends."
+                className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+              />
+            </Field>
+
+            {authorPhotoUrl && (
+              <div className="mb-2 flex items-center gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={authorPhotoUrl}
+                  alt=""
+                  className="h-10 w-10 rounded-full object-cover ring-2 ring-purple-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => setAuthorPhotoUrl(null)}
+                  className="text-[11px] text-gray-500 underline hover:text-red-600"
+                >
+                  Remove author photo
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="mt-auto flex gap-2 pt-2">
             <button
