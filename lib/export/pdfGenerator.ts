@@ -21,17 +21,38 @@ const BRANDING_TEXT = 'Made with GSI AI Studio';
 /**
  * Load an image URL as a base64 data URL for embedding in the PDF.
  * Returns null if the image cannot be loaded.
+ *
+ * Isomorphic: uses Buffer (Node.js) when available — generateBookPdf is
+ * called from the export-pdf API route which runs server-side. Falls back
+ * to btoa for the browser path (Story/Quiz PDFs that some flows still
+ * invoke client-side).
+ *
+ * Skips data URLs (already base64) and bails on non-OK responses to avoid
+ * embedding 404 HTML as image bytes.
  */
 async function loadImageAsDataUrl(url: string): Promise<string | null> {
   try {
+    if (url.startsWith('data:')) return url;
+
     const res = await fetch(url);
-    const blob = await res.blob();
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
+    if (!res.ok) return null;
+
+    const arrayBuffer = await res.arrayBuffer();
+    const contentType = res.headers.get('content-type') ?? 'image/jpeg';
+
+    let base64: string;
+    if (typeof Buffer !== 'undefined') {
+      base64 = Buffer.from(arrayBuffer).toString('base64');
+    } else {
+      // Browser fallback — used by the legacy story/quiz PDF flows.
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]!);
+      }
+      base64 = btoa(binary);
+    }
+    return `data:${contentType};base64,${base64}`;
   } catch {
     return null;
   }
