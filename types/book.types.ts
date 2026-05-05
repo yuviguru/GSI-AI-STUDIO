@@ -94,6 +94,23 @@ export interface PageStyleOverride {
   backgroundColor?: string;
 }
 
+/** Optional story plan — collected in the wizard for narrative books. Each
+ *  beat is the kid's own short sentence (1-3 sentences). Used as a sidebar
+ *  reference in the editor so the kid can see their plan while writing
+ *  pages. NOT AI-generated. NOT auto-inserted into pages. */
+export interface BookPlot {
+  /** "What is your story about?" — the seed idea, often 1 sentence. */
+  idea: string;
+  /** "How does your story start?" */
+  beginning: string;
+  /** "What goes wrong?" */
+  problem: string;
+  /** "What happens next?" — the journey/adventure */
+  adventure: string;
+  /** "How does it end?" */
+  ending: string;
+}
+
 /** A character that can recur across pages. Anchor image is generated once at
  *  setup and reused (verbatim look description) on every per-page scene
  *  generation so the character looks the same throughout the book. */
@@ -164,6 +181,10 @@ export interface Book {
    *  Empty for diary/recipe/joke/etc. Their lookDescription is reused verbatim
    *  when generating per-page scene images so faces/clothes stay consistent. */
   characters: BookCharacter[];
+  /** Optional story plan (idea + 4 beats). Narrative books only. Shown in
+   *  the editor as a reference sidebar so the kid can write pages knowing
+   *  where they're going. Empty fields = "kid skipped this beat". */
+  plot: BookPlot | null;
   pageCount: number;
   pageLimit: number;
   themeColor: string | null;

@@ -329,6 +329,16 @@ const pageStyleOverrideSchema = z.object({
   backgroundColor: z.string().max(20).optional(),
 });
 
+/** Story plan beats — collected in the wizard's "Plan your story" step.
+ *  Optional throughout (kid can skip the whole step or any individual beat). */
+const plotSchema = z.object({
+  idea: z.string().max(300).optional().default(''),
+  beginning: z.string().max(300).optional().default(''),
+  problem: z.string().max(300).optional().default(''),
+  adventure: z.string().max(300).optional().default(''),
+  ending: z.string().max(300).optional().default(''),
+});
+
 /** A pre-baked character coming from the wizard — anchor image already
  *  generated client-side and ready to persist on book creation. */
 const initialCharacterSchema = z.object({
@@ -353,6 +363,8 @@ export const bookCreateSchema = z.object({
   /** Optional initial characters from the wizard's character step.
    *  Capped at 3 to match the BookCharacter limit. */
   characters: z.array(initialCharacterSchema).max(3).optional(),
+  /** Optional story plan from the wizard's plan step (narrative books). */
+  plot: plotSchema.optional(),
 });
 export type BookCreateInput = z.infer<typeof bookCreateSchema>;
 export type InitialCharacterInput = z.infer<typeof initialCharacterSchema>;
