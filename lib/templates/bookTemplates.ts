@@ -253,9 +253,13 @@ export const BOOK_TYPE_CARDS: BookTypeCard[] = [
   },
 ];
 
-/** Layouts allowed per bucket. Page-level `layout` field must be in this list for the book's bucket. */
+/** Layouts allowed per bucket. The FIRST entry is the default for new pages
+ *  (used by `BUCKET_LAYOUTS[book.bucket][0]` in BookEditorClient). Narrative
+ *  books default to `image_full_bleed` so the kid's character-aware images
+ *  fill the page picture-book style without getting cropped by a half-height
+ *  slot — the kid wants "my book is square, so my picture fills the square". */
 export const BUCKET_LAYOUTS: Record<BookBucket, PageLayout[]> = {
-  narrative: ['text_top_image_bottom', 'image_top_text_bottom', 'image_full_bleed', 'text_only'],
+  narrative: ['image_full_bleed', 'image_top_text_bottom', 'text_top_image_bottom', 'text_only'],
   memoir_catalog: ['text_top_image_bottom', 'image_top_text_bottom', 'text_only'],
   entry_list: ['text_top_image_bottom', 'image_top_text_bottom', 'recipe_split'],
   collection: ['entry_centered', 'text_only'],
