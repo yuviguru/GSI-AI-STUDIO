@@ -379,7 +379,8 @@ export async function updateBook(
   patch: BookPatchInput,
   scope: OwnerScope
 ): Promise<Book> {
-  const lockedKeys = ['size', 'format', 'bucket', 'dimensions', 'pageLimit', 'sessionId'];
+  // Truly locked at creation — never editable from the editor (re-flow problem)
+  const lockedKeys = ['size', 'bucket', 'type', 'dimensions', 'sessionId'];
   for (const key of lockedKeys) {
     if (key in patch) {
       throw new AppException(

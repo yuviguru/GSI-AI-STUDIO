@@ -377,7 +377,12 @@ export const characterPortraitSchema = z.object({
 });
 export type CharacterPortraitInput = z.infer<typeof characterPortraitSchema>;
 
-/** Patch metadata only — never size/format/bucket/dimensions. `.strict()` rejects unknown keys. */
+/** Patch metadata. LOCKED fields (rejected even if sent): size, dimensions,
+ *  bucket, type, sessionId — these were the user's lock-in decisions in the
+ *  wizard and changing them mid-book would re-flow every page. Everything
+ *  else (typography, font, format, pageLimit, theme, characters, etc.) can
+ *  be edited from the editor. `.strict()` rejects unknown keys including
+ *  the locked ones. */
 export const bookPatchSchema = z
   .object({
     title: z.string().min(1).max(100).optional(),
@@ -392,6 +397,8 @@ export const bookPatchSchema = z
       })
       .nullable()
       .optional(),
+    format: bookFormatSchema.optional(),
+    pageLimit: z.number().int().min(4).max(40).optional(),
     isPublic: z.boolean().optional(),
   })
   .strict();

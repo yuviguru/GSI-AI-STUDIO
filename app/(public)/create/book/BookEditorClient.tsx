@@ -175,6 +175,9 @@ export function BookEditorClient({ bookId }: BookEditorClientProps) {
                   patch as unknown as PagePatchInput
                 );
               }}
+              onBookChange={async () => {
+                await refresh();
+              }}
               saving={pagesHook.busy}
             />
 
