@@ -22,10 +22,12 @@ import {
   ListOrdered,
   Mic,
   MicOff,
+  Plus,
   Sparkles,
   Underline as UnderlineIcon,
   Wand2,
 } from 'lucide-react';
+import { CastEditor } from './CastEditor';
 import type {
   Book,
   BookCharacter,
@@ -51,6 +53,8 @@ interface PageEditorProps {
     imagePrompt?: string;
     imageStyle?: string;
   }) => Promise<unknown>;
+  /** Refresh the book document after character mutations from the Cast tab. */
+  onBookChange: () => Promise<unknown>;
   saving: boolean;
 }
 
@@ -89,7 +93,7 @@ function plainTextFromDoc(doc: unknown): string {
 
 type RightTab = 'picture' | 'grammar';
 
-export function PageEditor({ book, page, onSave, saving }: PageEditorProps) {
+export function PageEditor({ book, page, onSave, onBookChange, saving }: PageEditorProps) {
   const showText = book.format === 'text' || book.format === 'text_image';
   const showImage = book.format === 'image' || book.format === 'text_image';
   const hasCharacters = book.characters.length > 0;
@@ -421,6 +425,7 @@ export function PageEditor({ book, page, onSave, saving }: PageEditorProps) {
               page={page}
               hasCharacters={hasCharacters}
               onSave={onSave}
+              onBookChange={onBookChange}
             />
           )}
           {rightTab === 'grammar' && (
@@ -503,9 +508,16 @@ interface PicturePanelProps {
     imagePrompt?: string;
     imageStyle?: string;
   }) => Promise<unknown>;
+  onBookChange: () => Promise<unknown>;
 }
 
-function PicturePanel({ book, page, hasCharacters, onSave }: PicturePanelProps) {
+function PicturePanel({
+  book,
+  page,
+  hasCharacters,
+  onSave,
+  onBookChange,
+}: PicturePanelProps) {
   return (
     <div className="space-y-3 rounded-3xl border border-gray-200 bg-white p-3 shadow-card">
       {/* Current image preview */}
@@ -525,9 +537,19 @@ function PicturePanel({ book, page, hasCharacters, onSave }: PicturePanelProps) 
       </div>
 
       {hasCharacters ? (
-        <SceneImageMaker book={book} page={page} onSave={onSave} />
+        <SceneImageMaker
+          book={book}
+          page={page}
+          onSave={onSave}
+          onBookChange={onBookChange}
+        />
       ) : (
-        <SimpleImageMaker book={book} page={page} onSave={onSave} />
+        <NoCastImageMaker
+          book={book}
+          page={page}
+          onSave={onSave}
+          onBookChange={onBookChange}
+        />
       )}
     </div>
   );
@@ -541,13 +563,15 @@ interface MakerProps {
     imagePrompt?: string;
     imageStyle?: string;
   }) => Promise<unknown>;
+  onBookChange: () => Promise<unknown>;
 }
 
-/** Character-aware scene maker (used when book has characters). */
-function SceneImageMaker({ book, page, onSave }: MakerProps) {
+/** Character-aware scene maker — chips for selecting + inline cast editor. */
+function SceneImageMaker({ book, page, onSave, onBookChange }: MakerProps) {
   const scene = useSceneImage();
   const [selectedIds, setSelectedIds] = useState<string[]>(book.characters.map((c) => c.id));
   const [action, setAction] = useState('');
+  const [castOpen, setCastOpen] = useState(false);
 
   const toggleCharacter = (id: string) => {
     setSelectedIds((prev) =>
@@ -573,10 +597,21 @@ function SceneImageMaker({ book, page, onSave }: MakerProps) {
     }
   };
 
+  const canAddMore = book.characters.length < 3;
+
   return (
     <div className="space-y-2.5">
       <div>
-        <p className="mb-1.5 text-xs font-semibold text-gray-700">Who&apos;s in this picture?</p>
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold text-gray-700">Who&apos;s in this picture?</p>
+          <button
+            type="button"
+            onClick={() => setCastOpen((v) => !v)}
+            className="text-[11px] font-semibold text-brand-purple hover:underline"
+          >
+            {castOpen ? 'Done editing' : 'Edit cast ✏'}
+          </button>
+        </div>
         <div className="flex flex-wrap gap-1.5">
           {book.characters.map((c) => (
             <CharacterChip
@@ -586,8 +621,21 @@ function SceneImageMaker({ book, page, onSave }: MakerProps) {
               onToggle={() => toggleCharacter(c.id)}
             />
           ))}
+          {canAddMore && (
+            <button
+              type="button"
+              onClick={() => setCastOpen(true)}
+              className="flex items-center gap-1 rounded-full bg-purple-50 px-3 py-1 text-xs font-bold text-purple-700 ring-1 ring-purple-300 hover:bg-purple-100"
+              aria-label="Add a friend"
+            >
+              <Plus className="h-3 w-3" />
+              Add
+            </button>
+          )}
         </div>
       </div>
+
+      {castOpen && <CastEditor book={book} onChange={onBookChange} />}
 
       <div>
         <p className="mb-1.5 text-xs font-semibold text-gray-700">What are they doing?</p>
@@ -627,8 +675,43 @@ function SceneImageMaker({ book, page, onSave }: MakerProps) {
   );
 }
 
+/** Empty-cast state: lets the kid add a first character right here, OR fall
+ *  through to the simple free-prompt maker for non-character books. */
+function NoCastImageMaker({ book, page, onSave, onBookChange }: MakerProps) {
+  const [castOpen, setCastOpen] = useState(false);
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-xl border border-purple-200 bg-purple-50/60 p-3">
+        <p className="text-xs font-semibold text-purple-900">
+          ✨ Want recurring friends in your pictures?
+        </p>
+        <p className="mt-1 text-[11px] text-purple-800">
+          Add up to 3 characters once — they show up the same on every page.
+        </p>
+        <button
+          type="button"
+          onClick={() => setCastOpen((v) => !v)}
+          className="mt-2 inline-flex items-center gap-1 rounded-lg bg-brand-purple px-2.5 py-1 text-[11px] font-bold text-white hover:bg-brand-purple/90"
+        >
+          <Plus className="h-3 w-3" />
+          {castOpen ? 'Hide cast editor' : 'Add a friend'}
+        </button>
+      </div>
+
+      {castOpen && <CastEditor book={book} onChange={onBookChange} />}
+
+      <SimpleImageMaker book={book} page={page} onSave={onSave} />
+    </div>
+  );
+}
+
 /** Simple action-based maker (used when book has no characters). */
-function SimpleImageMaker({ book, page, onSave }: MakerProps) {
+function SimpleImageMaker({
+  book,
+  page,
+  onSave,
+}: Omit<MakerProps, 'onBookChange'>) {
   const image = usePageImage();
   const [prompt, setPrompt] = useState(page.imagePrompt ?? '');
 
