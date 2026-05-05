@@ -80,9 +80,19 @@ export interface BookCover {
 }
 
 /** Optional back cover blurb */
+/** Back cover content. Always rendered (even if all fields are empty) so the
+ *  book has a real "back of book" feel — at minimum it shows the author name,
+ *  the creation date, and GSI branding. Kid can fill in the other fields via
+ *  the Cover designer. */
 export interface BookBackCover {
+  /** Book blurb / "About this book" — what the story is about. */
   text: string;
+  /** Optional decorative image (e.g., a scene from the book). */
   imageUrl: string | null;
+  /** "About the author" — short bio in the kid's own words. */
+  authorBio: string | null;
+  /** Author photo or avatar URL. Falls back to the first letter of author name. */
+  authorPhotoUrl: string | null;
 }
 
 /** Per-page style override — falls back to book-level `typography`. */

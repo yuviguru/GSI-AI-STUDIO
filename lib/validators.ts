@@ -394,6 +394,8 @@ export const bookPatchSchema = z
       .object({
         text: z.string().max(500),
         imageUrl: z.string().url().nullable(),
+        authorBio: z.string().max(300).nullable().optional(),
+        authorPhotoUrl: z.string().url().nullable().optional(),
       })
       .nullable()
       .optional(),
