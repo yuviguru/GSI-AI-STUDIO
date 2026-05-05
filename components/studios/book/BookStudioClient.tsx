@@ -8,8 +8,10 @@ import { Mascot } from '@/components/mascot/Mascot';
 import { BookCard } from './BookCard';
 import { NewBookWizard } from './NewBookWizard';
 
+type View = 'library' | 'wizard';
+
 export function BookStudioClient() {
-  const [wizardOpen, setWizardOpen] = useState(false);
+  const [view, setView] = useState<View>('library');
   const { items, isLoading, error } = useBookList();
 
   const drafts = items.filter((b) => b.status === 'draft' || b.status === 'complete');
@@ -30,82 +32,99 @@ export function BookStudioClient() {
 
       <div className="relative mx-auto max-w-5xl">
         <div className="mb-3">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-brand-purple"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to home
-          </Link>
+          {view === 'library' ? (
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-brand-purple"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to home
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setView('library')}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-brand-purple"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              My Books
+            </button>
+          )}
         </div>
 
-        {/* Hero header with Koko */}
-        <div className="mb-6 flex items-end justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Mascot expression="celebrating" size="md" bobbing />
-            <div>
-              <h1 className="font-display text-3xl font-bold text-gray-900 sm:text-4xl">
-                Book Studio
-              </h1>
-              <p className="mt-0.5 text-sm text-gray-600">
-                Turn your imagination into a real storybook
-              </p>
+        {view === 'library' ? (
+          <>
+            {/* Hero header with Koko */}
+            <div className="mb-6 flex items-end justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Mascot expression="celebrating" size="md" bobbing />
+                <div>
+                  <h1 className="font-display text-3xl font-bold text-gray-900 sm:text-4xl">
+                    Book Studio
+                  </h1>
+                  <p className="mt-0.5 text-sm text-gray-600">
+                    Turn your imagination into a real storybook
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setView('wizard')}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-2xl bg-gradient-to-r from-brand-purple to-purple-600 px-5 py-3 text-sm font-semibold text-white shadow-button transition-transform hover:scale-105"
+              >
+                <Plus className="h-4 w-4" />
+                New Book
+              </button>
             </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setWizardOpen(true)}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-2xl bg-gradient-to-r from-brand-purple to-purple-600 px-5 py-3 text-sm font-semibold text-white shadow-button transition-transform hover:scale-105"
-          >
-            <Plus className="h-4 w-4" />
-            New Book
-          </button>
-        </div>
 
-        {error && (
-          <div className="mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+            {error && (
+              <div className="mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
 
-        {isLoading && items.length === 0 && (
-          <div className="py-16 text-center text-sm text-gray-500">Loading your library…</div>
-        )}
+            {isLoading && items.length === 0 && (
+              <div className="py-16 text-center text-sm text-gray-500">
+                Loading your library…
+              </div>
+            )}
 
-        {!isLoading && items.length === 0 && (
-          <EmptyState onStart={() => setWizardOpen(true)} />
-        )}
+            {!isLoading && items.length === 0 && (
+              <EmptyState onStart={() => setView('wizard')} />
+            )}
 
-        {drafts.length > 0 && (
-          <section className="mb-6">
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-gray-700">
-              <span className="text-base">✏️</span>
-              In progress
-            </h2>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-              {drafts.map((book) => (
-                <BookCard key={book.id} book={book} />
-              ))}
-            </div>
-          </section>
-        )}
+            {drafts.length > 0 && (
+              <section className="mb-6">
+                <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-gray-700">
+                  <span className="text-base">✏️</span>
+                  In progress
+                </h2>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                  {drafts.map((book) => (
+                    <BookCard key={book.id} book={book} />
+                  ))}
+                </div>
+              </section>
+            )}
 
-        {published.length > 0 && (
-          <section className="mb-6">
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-gray-700">
-              <span className="text-base">🎉</span>
-              Published
-            </h2>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-              {published.map((book) => (
-                <BookCard key={book.id} book={book} />
-              ))}
-            </div>
-          </section>
+            {published.length > 0 && (
+              <section className="mb-6">
+                <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-gray-700">
+                  <span className="text-base">🎉</span>
+                  Published
+                </h2>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                  {published.map((book) => (
+                    <BookCard key={book.id} book={book} />
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
+        ) : (
+          <NewBookWizard onClose={() => setView('library')} />
         )}
       </div>
-
-      {wizardOpen && <NewBookWizard onClose={() => setWizardOpen(false)} />}
     </div>
   );
 }
