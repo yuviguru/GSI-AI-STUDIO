@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, X } from 'lucide-react';
-import type { BookSize } from '@/types/book.types';
+import type { BookCharacter, BookSize } from '@/types/book.types';
 import { BOOK_SIZES } from '@/lib/templates/bookTemplates';
 import { useBook } from '@/hooks/useBook';
 import { usePageImage } from '@/hooks/usePageImage';
+import { useSceneImage } from '@/hooks/useSceneImage';
+import { useSession } from '@/hooks/useSession';
 
 function aspectForSize(size: BookSize): 'square' | 'portrait' | 'landscape' {
   if (size === 'square') return 'square';
@@ -34,7 +36,9 @@ const COLOR_PALETTE = [
 
 export function CoverDesigner({ bookId, onClose }: CoverDesignerProps) {
   const { book, updateCover, actionLoading } = useBook(bookId);
-  const { generate, loading: generatingImage } = usePageImage();
+  const pageImage = usePageImage();
+  const sceneImage = useSceneImage();
+  const { creationsRemaining, cooldownSeconds } = useSession();
 
   const [title, setTitle] = useState(book?.cover.title ?? '');
   const [subtitle, setSubtitle] = useState(book?.cover.subtitle ?? '');
@@ -44,20 +48,55 @@ export function CoverDesigner({ bookId, onClose }: CoverDesignerProps) {
   );
   const [imagePrompt, setImagePrompt] = useState(book?.cover.imagePrompt ?? '');
   const [imageUrl, setImageUrl] = useState<string | null>(book?.cover.imageUrl ?? null);
+  const [genError, setGenError] = useState<string | null>(null);
+
+  // Default cover characters = all of them (the cover usually shows everyone)
+  const [selectedIds, setSelectedIds] = useState<string[]>(
+    book?.characters.map((c) => c.id) ?? []
+  );
 
   if (!book) return null;
+  const hasCharacters = book.characters.length > 0;
   const dims = BOOK_SIZES[book.size];
   const aspectRatio = dims.widthMm / dims.heightMm;
+  const generating = pageImage.loading || sceneImage.loading;
+
+  const toggleCharacter = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
 
   const handleGenerateImage = async () => {
+    setGenError(null);
     if (!imagePrompt.trim()) return;
-    const result = await generate({
+
+    if (hasCharacters) {
+      // Character-aware: use scene-image so the cover features the same
+      // friends with the same look as every page in the book.
+      const result = await sceneImage.generate({
+        bookId,
+        characterIds: selectedIds,
+        action: imagePrompt.trim(),
+      });
+      if (result) {
+        setImageUrl(result.imageUrl);
+      } else {
+        setGenError(sceneImage.error ?? 'Could not draw the cover — try again');
+      }
+      return;
+    }
+
+    // No characters: fall back to free-prompt page image
+    const result = await pageImage.generate({
       prompt: imagePrompt,
       aspect: aspectForSize(book.size),
       bookId,
     });
     if (result) {
       setImageUrl(result.imageUrl);
+    } else {
+      setGenError(pageImage.error ?? 'Could not draw the cover — try again');
     }
   };
 
@@ -83,7 +122,7 @@ export function CoverDesigner({ bookId, onClose }: CoverDesignerProps) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative grid w-full max-w-3xl gap-4 rounded-3xl bg-white p-5 shadow-elevated sm:grid-cols-2"
+        className="relative grid max-h-[90vh] w-full max-w-3xl gap-4 overflow-y-auto rounded-3xl bg-white p-5 shadow-elevated sm:grid-cols-2"
       >
         <button
           onClick={onClose}
@@ -111,7 +150,6 @@ export function CoverDesigner({ bookId, onClose }: CoverDesignerProps) {
                   alt=""
                   className="absolute inset-0 h-full w-full object-cover"
                 />
-                {/* Gradient backdrop for text legibility */}
                 <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/75 via-black/40 to-transparent" />
               </>
             ) : (
@@ -183,24 +221,67 @@ export function CoverDesigner({ bookId, onClose }: CoverDesignerProps) {
             </div>
           </Field>
 
-          <Field label="Cover image (optional)">
+          {hasCharacters && (
+            <Field label="Who's on the cover?">
+              <div className="flex flex-wrap gap-1.5">
+                {book.characters.map((c) => (
+                  <CoverCharacterChip
+                    key={c.id}
+                    character={c}
+                    selected={selectedIds.includes(c.id)}
+                    onToggle={() => toggleCharacter(c.id)}
+                  />
+                ))}
+              </div>
+              <p className="mt-1 text-[10px] text-gray-500">
+                Tap to include / leave out. Default = everyone.
+              </p>
+            </Field>
+          )}
+
+          <Field
+            label={
+              hasCharacters ? "What's happening on the cover?" : 'Cover image (optional)'
+            }
+          >
             <textarea
               value={imagePrompt}
               onChange={(e) => setImagePrompt(e.target.value)}
               maxLength={500}
               rows={2}
-              placeholder="A sunny beach with palm trees, watercolor style"
+              placeholder={
+                hasCharacters
+                  ? 'all smiling on a picnic blanket in a sunny park'
+                  : 'A sunny beach with palm trees, watercolor style'
+              }
               className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
             />
-            <button
-              type="button"
-              onClick={handleGenerateImage}
-              disabled={!imagePrompt.trim() || generatingImage}
-              className="mt-1 flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600 disabled:opacity-50"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              {generatingImage ? 'Generating…' : 'Generate cover image'}
-            </button>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleGenerateImage}
+                disabled={!imagePrompt.trim() || generating || cooldownSeconds > 0}
+                className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-1.5 text-xs font-bold text-white hover:from-amber-600 hover:to-orange-600 disabled:opacity-50"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {generating
+                  ? 'Drawing…'
+                  : cooldownSeconds > 0
+                    ? `Wait ${cooldownSeconds}s…`
+                    : imageUrl
+                      ? 'Try another'
+                      : '✨ Make cover'}
+              </button>
+              <CoverBalance remaining={creationsRemaining} cooldownSeconds={cooldownSeconds} />
+            </div>
+            {(genError || sceneImage.error || pageImage.error) && (
+              <div className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-800">
+                <div className="font-bold">Couldn&apos;t make the cover</div>
+                <div className="mt-0.5">
+                  {genError ?? sceneImage.error ?? pageImage.error}
+                </div>
+              </div>
+            )}
           </Field>
 
           <div className="mt-auto flex gap-2 pt-2">
@@ -223,6 +304,73 @@ export function CoverDesigner({ bookId, onClose }: CoverDesignerProps) {
         </div>
       </motion.div>
     </div>
+  );
+}
+
+interface CoverCharacterChipProps {
+  character: BookCharacter;
+  selected: boolean;
+  onToggle: () => void;
+}
+
+function CoverCharacterChip({ character, selected, onToggle }: CoverCharacterChipProps) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={selected}
+      className={`flex items-center gap-1.5 rounded-full pl-1 pr-3 py-1 text-xs font-medium transition-all ${
+        selected
+          ? 'bg-brand-purple text-white shadow-sm'
+          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 grayscale'
+      }`}
+    >
+      <span
+        className={`flex h-7 w-7 items-center justify-center overflow-hidden rounded-full ring-2 ${
+          selected ? 'ring-white' : 'ring-gray-200'
+        }`}
+      >
+        {character.anchorImageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={character.anchorImageUrl}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <span className="text-sm">🦄</span>
+        )}
+      </span>
+      {character.name || 'Unnamed'}
+    </button>
+  );
+}
+
+function CoverBalance({
+  remaining,
+  cooldownSeconds,
+}: {
+  remaining: number;
+  cooldownSeconds: number;
+}) {
+  if (cooldownSeconds > 0) {
+    return (
+      <span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-800">
+        ⏳ {cooldownSeconds}s · {remaining} left today
+      </span>
+    );
+  }
+  if (remaining <= 0) {
+    return (
+      <span className="rounded-full bg-rose-50 px-2 py-1 text-[10px] font-medium text-rose-800">
+        Out for today — back tomorrow! ✨
+      </span>
+    );
+  }
+  return (
+    <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-medium text-emerald-800">
+      ✨ {remaining} left today
+    </span>
   );
 }
 
