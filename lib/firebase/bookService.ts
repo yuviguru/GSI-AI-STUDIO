@@ -8,8 +8,10 @@ import {
   isValidTypeBucket,
   isLayoutAllowedForBucket,
 } from '@/lib/templates/bookTemplates';
+import { nanoid } from 'nanoid';
 import type {
   Book,
+  BookCharacter,
   BookCover,
   BookListItem,
   BookPage,
@@ -20,6 +22,8 @@ import type {
 import type {
   BookCreateInput,
   BookPatchInput,
+  CharacterCreateInput,
+  CharacterPatchInput,
   CoverPatchInput,
   PageCreateInput,
   PagePatchInput,
@@ -75,6 +79,34 @@ function defaultCover(input: BookCreateInput): BookCover {
   };
 }
 
+/** Convert character data from Firestore (timestamps -> Date). */
+function reviveCharacters(raw: unknown): BookCharacter[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((c): c is Record<string, unknown> => c !== null && typeof c === 'object')
+    .map((c) => {
+      const createdAtRaw = c.createdAt;
+      let createdAt: Date;
+      if (createdAtRaw instanceof Timestamp) {
+        createdAt = createdAtRaw.toDate();
+      } else if (createdAtRaw instanceof Date) {
+        createdAt = createdAtRaw;
+      } else if (typeof createdAtRaw === 'string') {
+        createdAt = new Date(createdAtRaw);
+      } else {
+        createdAt = new Date();
+      }
+      return {
+        id: String(c.id ?? ''),
+        name: String(c.name ?? ''),
+        lookDescription: String(c.lookDescription ?? ''),
+        anchorImageUrl: (c.anchorImageUrl as string | null | undefined) ?? null,
+        anchorPrompt: (c.anchorPrompt as string | null | undefined) ?? null,
+        createdAt,
+      };
+    });
+}
+
 /** Convert a Firestore document snapshot into a Book object. */
 function docToBook(doc: FirebaseFirestore.DocumentSnapshot): Book {
   const data = doc.data();
@@ -94,6 +126,7 @@ function docToBook(doc: FirebaseFirestore.DocumentSnapshot): Book {
     typography: data.typography,
     cover: data.cover,
     backCover: data.backCover ?? null,
+    characters: reviveCharacters(data.characters),
     pageCount: data.pageCount ?? 0,
     pageLimit: data.pageLimit,
     themeColor: data.themeColor ?? null,
@@ -213,6 +246,7 @@ export async function createBook(
     typography: input.typography,
     cover: defaultCover(input),
     backCover: null,
+    characters: [] as BookCharacter[],
     pageCount: 0,
     pageLimit: input.pageLimit,
     themeColor: input.themeColor ?? null,
@@ -618,6 +652,105 @@ export async function publishBook(
 
   const snapshot = await ref.get();
   return docToBook(snapshot);
+}
+
+// ── Characters ──────────────────────────────────────────────────
+
+const MAX_CHARACTERS_PER_BOOK = 3;
+
+/** Append a new character to the book. Enforces the 3-character cap. */
+export async function addCharacter(
+  bookId: string,
+  input: CharacterCreateInput,
+  scope: OwnerScope
+): Promise<BookCharacter> {
+  const { ref, book } = await loadOwnedBook(bookId, scope);
+  if (book.characters.length >= MAX_CHARACTERS_PER_BOOK) {
+    throw new AppException(
+      'CHARACTER_LIMIT_REACHED',
+      `Books can have up to ${MAX_CHARACTERS_PER_BOOK} characters`,
+      400
+    );
+  }
+
+  const character: BookCharacter = {
+    id: nanoid(10),
+    name: input.name,
+    lookDescription: input.lookDescription,
+    anchorImageUrl: null,
+    anchorPrompt: null,
+    createdAt: new Date(),
+  };
+
+  const stored = {
+    ...character,
+    createdAt: Timestamp.fromDate(character.createdAt),
+  };
+
+  await ref.update({
+    characters: [...book.characters.map(charToStored), stored],
+    updatedAt: Timestamp.now(),
+  });
+
+  return character;
+}
+
+/** Convert a runtime BookCharacter to the Firestore-storable shape. */
+function charToStored(c: BookCharacter): Record<string, unknown> {
+  return {
+    id: c.id,
+    name: c.name,
+    lookDescription: c.lookDescription,
+    anchorImageUrl: c.anchorImageUrl,
+    anchorPrompt: c.anchorPrompt,
+    createdAt:
+      c.createdAt instanceof Date ? Timestamp.fromDate(c.createdAt) : c.createdAt,
+  };
+}
+
+/** Update a character (name, look, anchor URL/prompt). */
+export async function updateCharacter(
+  bookId: string,
+  characterId: string,
+  patch: CharacterPatchInput,
+  scope: OwnerScope
+): Promise<BookCharacter> {
+  const { ref, book } = await loadOwnedBook(bookId, scope);
+  const idx = book.characters.findIndex((c) => c.id === characterId);
+  if (idx === -1) {
+    throw new AppException('NOT_FOUND', 'Character not found', 404);
+  }
+  const existing = book.characters[idx]!;
+  const merged: BookCharacter = {
+    ...existing,
+    ...patch,
+  };
+  const next = [...book.characters];
+  next[idx] = merged;
+
+  await ref.update({
+    characters: next.map(charToStored),
+    updatedAt: Timestamp.now(),
+  });
+
+  return merged;
+}
+
+/** Remove a character from the book. */
+export async function removeCharacter(
+  bookId: string,
+  characterId: string,
+  scope: OwnerScope
+): Promise<void> {
+  const { ref, book } = await loadOwnedBook(bookId, scope);
+  const filtered = book.characters.filter((c) => c.id !== characterId);
+  if (filtered.length === book.characters.length) {
+    throw new AppException('NOT_FOUND', 'Character not found', 404);
+  }
+  await ref.update({
+    characters: filtered.map(charToStored),
+    updatedAt: Timestamp.now(),
+  });
 }
 
 /** Set the cached PDF URL for a published book. Caller generated the PDF. */
