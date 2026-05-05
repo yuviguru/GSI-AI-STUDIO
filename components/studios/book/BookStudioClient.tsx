@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, Plus } from 'lucide-react';
+import { ArrowLeft, Plus, Sparkles } from 'lucide-react';
 import { useBookList } from '@/hooks/useBookList';
+import { Mascot } from '@/components/mascot/Mascot';
 import { BookCard } from './BookCard';
 import { NewBookWizard } from './NewBookWizard';
 
@@ -15,8 +16,19 @@ export function BookStudioClient() {
   const published = items.filter((b) => b.status === 'published');
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-50 via-white to-purple-50 px-4 py-4">
-      <div className="mx-auto max-w-5xl">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-indigo-50 via-white to-purple-50 px-4 py-4">
+      {/* Decorative sparkles in background */}
+      <div className="pointer-events-none absolute right-8 top-12 select-none text-yellow-300 opacity-40">
+        <Sparkles className="h-6 w-6" />
+      </div>
+      <div className="pointer-events-none absolute left-12 top-32 select-none text-purple-300 opacity-30">
+        <Sparkles className="h-4 w-4" />
+      </div>
+      <div className="pointer-events-none absolute right-20 top-44 select-none text-pink-300 opacity-30">
+        <Sparkles className="h-5 w-5" />
+      </div>
+
+      <div className="relative mx-auto max-w-5xl">
         <div className="mb-3">
           <Link
             href="/"
@@ -27,18 +39,23 @@ export function BookStudioClient() {
           </Link>
         </div>
 
-        <div className="mb-6 flex items-center justify-between gap-3">
+        {/* Hero header with Koko */}
+        <div className="mb-6 flex items-end justify-between gap-3">
           <div className="flex items-center gap-3">
-            <BookOpen className="h-8 w-8 text-brand-purple" />
+            <Mascot expression="celebrating" size="md" bobbing />
             <div>
-              <h1 className="font-display text-2xl font-bold text-gray-900">Book Studio</h1>
-              <p className="text-sm text-gray-500">Write your own books — AI helps with grammar &amp; pictures</p>
+              <h1 className="font-display text-3xl font-bold text-gray-900 sm:text-4xl">
+                Book Studio
+              </h1>
+              <p className="mt-0.5 text-sm text-gray-600">
+                Turn your imagination into a real storybook
+              </p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => setWizardOpen(true)}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-brand-purple px-4 py-2.5 text-sm font-semibold text-white shadow-button hover:bg-brand-purple/90"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-2xl bg-gradient-to-r from-brand-purple to-purple-600 px-5 py-3 text-sm font-semibold text-white shadow-button transition-transform hover:scale-105"
           >
             <Plus className="h-4 w-4" />
             New Book
@@ -61,7 +78,8 @@ export function BookStudioClient() {
 
         {drafts.length > 0 && (
           <section className="mb-6">
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-600">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-gray-700">
+              <span className="text-base">✏️</span>
               In progress
             </h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
@@ -74,7 +92,8 @@ export function BookStudioClient() {
 
         {published.length > 0 && (
           <section className="mb-6">
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-600">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-gray-700">
+              <span className="text-base">🎉</span>
               Published
             </h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
@@ -93,20 +112,28 @@ export function BookStudioClient() {
 
 function EmptyState({ onStart }: { onStart: () => void }) {
   return (
-    <div className="rounded-3xl bg-white p-10 text-center shadow-card">
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-brand-purple/10 text-3xl">
+    <div className="relative rounded-3xl bg-white p-10 text-center shadow-card">
+      {/* Decorative elements */}
+      <div className="absolute left-6 top-6 text-2xl opacity-50">⭐</div>
+      <div className="absolute right-8 top-8 text-xl opacity-40">✨</div>
+      <div className="absolute bottom-6 left-10 text-xl opacity-40">🌟</div>
+
+      <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 text-4xl shadow-inner">
         📖
       </div>
-      <h2 className="mt-4 text-xl font-bold text-gray-900">Your book begins here</h2>
-      <p className="mt-2 text-sm text-gray-600">
-        Pick a type, write your story, generate illustrations, and download your finished book as a PDF.
+      <h2 className="mt-4 font-display text-2xl font-bold text-gray-900">
+        Your book begins here
+      </h2>
+      <p className="mx-auto mt-2 max-w-md text-sm text-gray-600">
+        Pick a kind of book, make up to 3 characters that&apos;ll show up the same on
+        every page, write your story (or speak it!), and download your finished book.
       </p>
       <button
         type="button"
         onClick={onStart}
-        className="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-brand-purple px-5 py-2.5 text-sm font-semibold text-white shadow-button hover:bg-brand-purple/90"
+        className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-brand-purple to-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-button transition-transform hover:scale-105"
       >
-        <Plus className="h-4 w-4" />
+        <Sparkles className="h-4 w-4" />
         Start your first book
       </button>
     </div>
