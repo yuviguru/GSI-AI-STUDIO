@@ -13,12 +13,15 @@ interface FlipbookPreviewProps {
   readOnly?: boolean;
 }
 
-/** A "spread" is what the kid sees when the book is open — either a single
- *  hero page (cover, back, end-of-book card) or two facing pages. */
+/** A "spread" is what the kid sees when the book is open. In two-page mode
+ *  the cover is a real spread (back-cover left, front-cover right) so it
+ *  matches the inner-pages dimensions and feels like a real book lying flat
+ *  in front of you. */
 type Spread =
-  | { kind: 'cover' }
+  | { kind: 'cover' }              // single-page mode: front cover alone
+  | { kind: 'cover-spread' }       // two-page mode: back left + front right
   | { kind: 'pages'; left: BookPage | null; right: BookPage | null }
-  | { kind: 'back' }
+  | { kind: 'back' }                // single-page mode: back cover alone (end of book)
   | { kind: 'end' };
 
 /** Pages spread breakpoint. Below this, render single-page mode (sane on
@@ -28,9 +31,11 @@ const TWO_PAGE_MIN_WIDTH = 768;
 function buildSpreads(book: Book, pages: BookPage[], twoPageMode: boolean): Spread[] {
   const sortedPages = [...pages].sort((a, b) => a.pageNumber - b.pageNumber);
 
-  const spreads: Spread[] = [{ kind: 'cover' }];
+  const spreads: Spread[] = [];
 
   if (twoPageMode) {
+    // Cover spread: back left + front right. Same dimensions as inner spreads.
+    spreads.push({ kind: 'cover-spread' });
     // Pair pages up: 1+2, 3+4, ... last odd page sits alone on its left.
     for (let i = 0; i < sortedPages.length; i += 2) {
       spreads.push({
@@ -40,16 +45,16 @@ function buildSpreads(book: Book, pages: BookPage[], twoPageMode: boolean): Spre
       });
     }
   } else {
-    // Single-page mode: each page is its own spread, on the right of an
-    // empty left half — so navigation/aspect feel consistent.
+    // Single-page mode: front cover alone first.
+    spreads.push({ kind: 'cover' });
     for (const page of sortedPages) {
       spreads.push({ kind: 'pages', left: null, right: page });
     }
-  }
-
-  if (book.backCover && (book.backCover.text || book.backCover.imageUrl)) {
+    // Back cover always shown at end (it always has at least the GSI footer +
+    // creation date, even if the kid hasn't customised it).
     spreads.push({ kind: 'back' });
   }
+
   spreads.push({ kind: 'end' });
 
   return spreads;
@@ -86,17 +91,17 @@ export function FlipbookPreview({ book, pages, onClose, readOnly = false }: Flip
   const prev = () => setIndex((i) => Math.max(i - 1, 0));
 
   const isCover = current?.kind === 'cover';
+  const isCoverSpread = current?.kind === 'cover-spread';
   const isBack = current?.kind === 'back';
   const isEnd = current?.kind === 'end';
   const isPages = current?.kind === 'pages';
 
-  // Container shape: cover/back/end are single-page (book aspect).
-  // Pages spread in two-page mode is wider (book aspect × 2). In
-  // single-page mode, pages are also single (book aspect).
-  const containerAspect =
-    isPages && twoPageMode ? bookAspect * 2 : bookAspect;
-  const containerMaxWidthClass =
-    isPages && twoPageMode ? 'max-w-3xl' : 'max-w-md';
+  // Container shape: spreads (cover-spread + pages in 2-page mode) use
+  // book × 2 aspect for the side-by-side layout. Singles (cover, back,
+  // end, single-page-mode pages) use book aspect.
+  const isWideSpread = isCoverSpread || (isPages && twoPageMode);
+  const containerAspect = isWideSpread ? bookAspect * 2 : bookAspect;
+  const containerMaxWidthClass = isWideSpread ? 'max-w-3xl' : 'max-w-md';
 
   return (
     <div
@@ -139,6 +144,17 @@ export function FlipbookPreview({ book, pages, onClose, readOnly = false }: Flip
             >
               {isCover && <CoverView book={book} />}
 
+              {isCoverSpread && (
+                <div className="grid h-full w-full grid-cols-2">
+                  <div className="relative border-r border-gray-200">
+                    <BackCoverDesignView book={book} />
+                  </div>
+                  <div className="relative">
+                    <CoverView book={book} />
+                  </div>
+                </div>
+              )}
+
               {isPages && (
                 <PagesSpreadView
                   left={current.left}
@@ -147,7 +163,7 @@ export function FlipbookPreview({ book, pages, onClose, readOnly = false }: Flip
                 />
               )}
 
-              {isBack && book.backCover && <BackCoverView backCover={book.backCover} />}
+              {isBack && <BackCoverDesignView book={book} />}
 
               {isEnd && <EndView title={book.title} />}
             </motion.div>
@@ -259,18 +275,80 @@ function BlankSide() {
   );
 }
 
-function BackCoverView({ backCover }: { backCover: NonNullable<Book['backCover']> }) {
+/** Format a Date or ISO string into a kid-friendly "May 6, 2026" string.
+ *  SWR-deserialized Books have createdAt as a string; bookService-fresh
+ *  Books have it as a Date. Handle both. */
+function formatDate(value: Date | string | null | undefined): string {
+  if (!value) return '';
+  const d = typeof value === 'string' ? new Date(value) : value;
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+/** "About the book" back cover. Always renders (at minimum: author name,
+ *  creation date, and GSI branding). Optional sections: author photo,
+ *  author bio, book blurb. */
+function BackCoverDesignView({ book }: { book: Book }) {
+  const back = book.backCover;
+  const authorName = book.author || 'Anonymous Author';
+  const photoUrl = back?.authorPhotoUrl ?? null;
+  const initials = authorName.charAt(0).toUpperCase();
+  const hasAuthorBio = !!back?.authorBio;
+  const hasBlurb = !!back?.text;
+  const dateStr = formatDate(book.createdAt);
+
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center text-white">
-      {backCover.imageUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={backCover.imageUrl}
-          alt=""
-          className="mb-4 max-h-48 w-full rounded-xl object-cover"
-        />
+    <div className="flex h-full w-full flex-col bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-5 text-gray-800">
+      {/* Author section — always shows at least name */}
+      <div className="flex items-start gap-3">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-purple-300 to-pink-300 text-xl font-bold text-white shadow-sm ring-2 ring-white">
+          {photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={photoUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            initials
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-amber-700">
+            About the author
+          </div>
+          <div className="mt-0.5 font-display text-base font-bold text-gray-900">
+            {authorName}
+          </div>
+          {hasAuthorBio && (
+            <p className="mt-1 text-xs leading-snug text-gray-700">
+              &ldquo;{back!.authorBio}&rdquo;
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Book blurb — only if set */}
+      {hasBlurb && (
+        <div className="mt-4">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-amber-700">
+            About this book
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-gray-700">{back!.text}</p>
+        </div>
       )}
-      <p className="text-sm">{backCover.text}</p>
+
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* GSI branding footer — always present */}
+      <div className="mt-3 border-t-2 border-amber-200 pt-2 text-center">
+        <div className="font-display text-sm font-bold text-brand-purple">
+          ✨ GSI AI Studio
+        </div>
+        {dateStr && (
+          <div className="mt-0.5 text-[10px] text-gray-500">Made on {dateStr}</div>
+        )}
+        <div className="mt-0.5 text-[10px] text-gray-400">
+          gsi-ai-studio.netlify.app
+        </div>
+      </div>
     </div>
   );
 }

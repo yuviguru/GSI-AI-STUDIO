@@ -11,6 +11,7 @@ import {
 import { nanoid } from 'nanoid';
 import type {
   Book,
+  BookBackCover,
   BookCharacter,
   BookCover,
   BookListItem,
@@ -81,6 +82,20 @@ function defaultCover(input: BookCreateInput): BookCover {
 }
 
 /** Convert plot from Firestore. Returns null if the field is missing or empty. */
+/** Normalize a Firestore back-cover map into a runtime BookBackCover.
+ *  Handles old books that predate authorBio/authorPhotoUrl by defaulting
+ *  them to null so the Book type stays consistent. */
+function reviveBackCover(raw: unknown): BookBackCover | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  return {
+    text: typeof r.text === 'string' ? r.text : '',
+    imageUrl: typeof r.imageUrl === 'string' ? r.imageUrl : null,
+    authorBio: typeof r.authorBio === 'string' ? r.authorBio : null,
+    authorPhotoUrl: typeof r.authorPhotoUrl === 'string' ? r.authorPhotoUrl : null,
+  };
+}
+
 function revivePlot(raw: unknown): BookPlot | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
@@ -143,7 +158,7 @@ function docToBook(doc: FirebaseFirestore.DocumentSnapshot): Book {
     dimensions: data.dimensions,
     typography: data.typography,
     cover: data.cover,
-    backCover: data.backCover ?? null,
+    backCover: reviveBackCover(data.backCover),
     characters: reviveCharacters(data.characters),
     plot: revivePlot(data.plot),
     pageCount: data.pageCount ?? 0,
