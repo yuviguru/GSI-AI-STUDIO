@@ -5,10 +5,23 @@ import { checkBadgeUnlocks, type HomeworkStatsSnapshot } from '@/lib/badges';
 
 const SESSIONS_COLLECTION = 'sessions';
 const IP_RATE_LIMITS_COLLECTION = 'ipRateLimits';
-const MAX_CREATIONS_PER_DAY = 10;
-const MAX_CREATIONS_PER_IP_PER_DAY = 20;
-const COOLDOWN_SECONDS = 120; // 2 minutes
+// Bumped from 10 → 25 to support Book Studio's per-page AI calls (grammar
+// + scene image regen + character anchors + cover image easily reach 15+
+// AI calls for a 5-page book with retries).
+const MAX_CREATIONS_PER_DAY = 25;
+const MAX_CREATIONS_PER_IP_PER_DAY = 50;
+// Dropped from 120s → 10s so kids can re-roll image generation without a
+// 2-minute wall after each click. Daily cap still bounds abuse.
+const COOLDOWN_SECONDS = 10;
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+/** Server-side kill switch for rate limiting. Set RATE_LIMIT_DISABLED=true
+ *  in `.env.local` for testing — bypasses cooldown, daily cap, and IP cap.
+ *  When true, buildSessionResult returns 999 remaining + 0 cooldown so the
+ *  client UI shows "999 drawings left today" — the obvious testing-mode
+ *  tell. NEVER enable in production. */
+const RATE_LIMIT_DISABLED = process.env.RATE_LIMIT_DISABLED === 'true';
+const UNLIMITED_REMAINING = 999;
 
 interface SessionDoc {
   id: string;
@@ -258,21 +271,24 @@ export async function trackCreation(sessionId: string): Promise<SessionResult> {
       throw new AppException('SESSION_EXPIRED', 'Session has expired. Please refresh.', 401);
     }
 
-    // Check daily limit
-    if (data.creationCount >= MAX_CREATIONS_PER_DAY) {
-      throw new AppException('RATE_LIMITED', 'Daily creation limit reached. Come back tomorrow!', 429);
-    }
+    // Bypass daily-limit + cooldown when the kill switch is on (testing only).
+    if (!RATE_LIMIT_DISABLED) {
+      // Check daily limit
+      if (data.creationCount >= MAX_CREATIONS_PER_DAY) {
+        throw new AppException('RATE_LIMITED', 'Daily creation limit reached. Come back tomorrow!', 429);
+      }
 
-    // Check cooldown
-    if (data.lastCreationAt) {
-      const elapsed = (now - data.lastCreationAt.toMillis()) / 1000;
-      if (elapsed < COOLDOWN_SECONDS) {
-        const remaining = Math.ceil(COOLDOWN_SECONDS - elapsed);
-        throw new AppException(
-          'COOLDOWN',
-          `Please wait ${remaining} seconds before creating again.`,
-          429
-        );
+      // Check cooldown
+      if (data.lastCreationAt) {
+        const elapsed = (now - data.lastCreationAt.toMillis()) / 1000;
+        if (elapsed < COOLDOWN_SECONDS) {
+          const remaining = Math.ceil(COOLDOWN_SECONDS - elapsed);
+          throw new AppException(
+            'COOLDOWN',
+            `Please wait ${remaining} seconds before creating again.`,
+            429
+          );
+        }
       }
     }
 
@@ -312,19 +328,22 @@ export async function checkRateLimit(sessionId: string): Promise<SessionResult> 
     throw new AppException('SESSION_EXPIRED', 'Session has expired. Please refresh.', 401);
   }
 
-  if (data.creationCount >= MAX_CREATIONS_PER_DAY) {
-    throw new AppException('RATE_LIMITED', 'Daily creation limit reached. Come back tomorrow!', 429);
-  }
+  // Skip cap + cooldown checks when RATE_LIMIT_DISABLED. Session expiry still applies.
+  if (!RATE_LIMIT_DISABLED) {
+    if (data.creationCount >= MAX_CREATIONS_PER_DAY) {
+      throw new AppException('RATE_LIMITED', 'Daily creation limit reached. Come back tomorrow!', 429);
+    }
 
-  if (data.lastCreationAt) {
-    const elapsed = (now - data.lastCreationAt.toMillis()) / 1000;
-    if (elapsed < COOLDOWN_SECONDS) {
-      const remaining = Math.ceil(COOLDOWN_SECONDS - elapsed);
-      throw new AppException(
-        'COOLDOWN',
-        `Please wait ${remaining} seconds before creating again.`,
-        429
-      );
+    if (data.lastCreationAt) {
+      const elapsed = (now - data.lastCreationAt.toMillis()) / 1000;
+      if (elapsed < COOLDOWN_SECONDS) {
+        const remaining = Math.ceil(COOLDOWN_SECONDS - elapsed);
+        throw new AppException(
+          'COOLDOWN',
+          `Please wait ${remaining} seconds before creating again.`,
+          429
+        );
+      }
     }
   }
 
@@ -534,6 +553,17 @@ function buildNewSessionDoc(
 }
 
 function buildSessionResult(sessionId: string, data: SessionDoc): SessionResult {
+  // Kill-switch path — surface a sentinel high count so the kid sees the
+  // pill say "999 drawings left today" (the obvious testing-mode tell).
+  if (RATE_LIMIT_DISABLED) {
+    return {
+      sessionId,
+      creationsRemaining: UNLIMITED_REMAINING,
+      cooldownSeconds: 0,
+      expiresAt: data.expiresAt.toDate().toISOString(),
+    };
+  }
+
   const now = Date.now();
   const remaining = MAX_CREATIONS_PER_DAY - data.creationCount;
 
@@ -576,6 +606,7 @@ async function sha256Hex(input: string): Promise<string> {
  */
 export async function enforceIpRateLimit(ipAddress: string | null): Promise<void> {
   if (!ipAddress) return; // local dev or missing header — skip
+  if (RATE_LIMIT_DISABLED) return; // testing kill switch
 
   const ipHash = await sha256Hex(ipAddress);
   const docId = `${ipHash}_${dayKeyUtc()}`;
