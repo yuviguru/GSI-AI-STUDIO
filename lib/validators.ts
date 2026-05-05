@@ -405,10 +405,46 @@ export const coverPatchSchema = z.object({
   subtitle: z.string().max(150).optional(),
   authorName: z.string().max(60).optional(),
   backgroundColor: colorHexSchema.optional(),
-  imagePrompt: z.string().max(500).optional(),
+  imageUrl: z.string().url().nullable().optional(),
+  imagePrompt: z.string().max(500).nullable().optional(),
   font: z.string().max(50).optional(),
 });
 export type CoverPatchInput = z.infer<typeof coverPatchSchema>;
+
+/** Add a character to a book (max 3 per book enforced server-side). */
+export const characterCreateSchema = z.object({
+  name: z.string().min(1).max(40),
+  lookDescription: z.string().min(5).max(300),
+});
+export type CharacterCreateInput = z.infer<typeof characterCreateSchema>;
+
+/** Update a character (name, look, anchor). */
+export const characterPatchSchema = z.object({
+  name: z.string().min(1).max(40).optional(),
+  lookDescription: z.string().min(5).max(300).optional(),
+  anchorImageUrl: z.string().url().nullable().optional(),
+  anchorPrompt: z.string().max(500).nullable().optional(),
+});
+export type CharacterPatchInput = z.infer<typeof characterPatchSchema>;
+
+/** Generate an anchor portrait for a single character. */
+export const characterAnchorSchema = z.object({
+  bookId: z.string().min(1).max(128),
+  characterId: z.string().min(1).max(128),
+});
+export type CharacterAnchorInput = z.infer<typeof characterAnchorSchema>;
+
+/** Generate a scene image: combines selected characters' anchor descriptions
+ *  with the kid's short action description. Replaces the old free-prompt
+ *  pageImage flow for narrative books. */
+export const sceneImageSchema = z.object({
+  bookId: z.string().min(1).max(128),
+  pageId: z.string().min(1).max(128).optional(),
+  characterIds: z.array(z.string().max(128)).max(3).default([]),
+  action: z.string().min(3).max(200),
+  styleHint: z.string().max(50).optional(),
+});
+export type SceneImageInput = z.infer<typeof sceneImageSchema>;
 
 /** Grammar check — Groq returns suggestions for grammar/spelling/punctuation only. */
 export const grammarCheckSchema = z.object({

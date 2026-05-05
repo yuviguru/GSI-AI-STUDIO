@@ -81,25 +81,31 @@ export function FlipbookPreview({ book, pages, onClose, readOnly = false }: Flip
               }}
             >
               {isCover && (
-                <div className="flex h-full w-full flex-col">
+                <div className="relative h-full w-full">
                   {book.cover.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={book.cover.imageUrl}
-                      alt=""
-                      className="h-3/5 w-full object-cover"
-                    />
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={book.cover.imageUrl}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                      <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/75 via-black/40 to-transparent" />
+                    </>
                   ) : (
-                    <div className="flex h-3/5 w-full items-center justify-center text-7xl">📖</div>
+                    <div className="absolute inset-0 flex items-center justify-center text-7xl">📖</div>
                   )}
-                  <div className="flex flex-1 flex-col items-center justify-center p-6 text-center text-white">
-                    <h1 className="text-2xl font-bold leading-tight">
+                  <div className="absolute inset-x-0 bottom-0 flex flex-col items-center p-6 text-center text-white">
+                    <h1
+                      className="font-display text-2xl font-bold leading-tight drop-shadow-md"
+                      style={{ fontFamily: book.cover.font }}
+                    >
                       {book.cover.title || book.title}
                     </h1>
                     {book.cover.subtitle && (
-                      <p className="mt-1 text-sm opacity-90">{book.cover.subtitle}</p>
+                      <p className="mt-1 text-sm opacity-90 drop-shadow">{book.cover.subtitle}</p>
                     )}
-                    <p className="mt-3 text-sm">
+                    <p className="mt-3 text-sm drop-shadow">
                       By {book.cover.authorName || book.author}
                     </p>
                   </div>

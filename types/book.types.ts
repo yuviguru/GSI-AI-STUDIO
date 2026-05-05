@@ -94,6 +94,22 @@ export interface PageStyleOverride {
   backgroundColor?: string;
 }
 
+/** A character that can recur across pages. Anchor image is generated once at
+ *  setup and reused (verbatim look description) on every per-page scene
+ *  generation so the character looks the same throughout the book. */
+export interface BookCharacter {
+  id: string;
+  name: string;
+  /** Verbatim physical description prepended to scene-image prompts.
+   *  Locks down hair, clothing, age, distinguishing features. */
+  lookDescription: string;
+  /** Anchor portrait — generated once at character setup. */
+  anchorImageUrl: string | null;
+  /** Prompt used to generate the anchor (kept for re-roll & audit). */
+  anchorPrompt: string | null;
+  createdAt: Date;
+}
+
 /** A grammar suggestion from Groq for a chunk of page text. */
 export interface GrammarSuggestion {
   id: string;
@@ -144,6 +160,10 @@ export interface Book {
   typography: BookTypography;
   cover: BookCover;
   backCover: BookBackCover | null;
+  /** Up to 3 characters that appear across pages (narrative books only).
+   *  Empty for diary/recipe/joke/etc. Their lookDescription is reused verbatim
+   *  when generating per-page scene images so faces/clothes stay consistent. */
+  characters: BookCharacter[];
   pageCount: number;
   pageLimit: number;
   themeColor: string | null;

@@ -3,10 +3,16 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, X } from 'lucide-react';
-import type { Book } from '@/types/book.types';
+import type { BookSize } from '@/types/book.types';
 import { BOOK_SIZES } from '@/lib/templates/bookTemplates';
 import { useBook } from '@/hooks/useBook';
 import { usePageImage } from '@/hooks/usePageImage';
+
+function aspectForSize(size: BookSize): 'square' | 'portrait' | 'landscape' {
+  if (size === 'square') return 'square';
+  if (size === 'landscape') return 'landscape';
+  return 'portrait';
+}
 
 interface CoverDesignerProps {
   bookId: string;
@@ -47,7 +53,7 @@ export function CoverDesigner({ bookId, onClose }: CoverDesignerProps) {
     if (!imagePrompt.trim()) return;
     const result = await generate({
       prompt: imagePrompt,
-      aspect: 'cover',
+      aspect: aspectForSize(book.size),
       bookId,
     });
     if (result) {
@@ -61,7 +67,8 @@ export function CoverDesigner({ bookId, onClose }: CoverDesignerProps) {
       subtitle,
       authorName,
       backgroundColor,
-      imagePrompt: imagePrompt.trim() || undefined,
+      imageUrl: imageUrl ?? null,
+      imagePrompt: imagePrompt.trim() || null,
       font: book.cover.font,
     });
     onClose();
@@ -96,18 +103,29 @@ export function CoverDesigner({ bookId, onClose }: CoverDesignerProps) {
             className="relative mx-auto w-full max-w-xs overflow-hidden rounded-xl shadow-elevated"
             style={{ aspectRatio: `${aspectRatio}`, backgroundColor }}
           >
-            {imageUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={imageUrl}
-                alt=""
-                className="absolute inset-0 h-3/5 w-full object-cover"
-              />
+            {imageUrl ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imageUrl}
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+                {/* Gradient backdrop for text legibility */}
+                <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/75 via-black/40 to-transparent" />
+              </>
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-7xl">📖</div>
             )}
-            <div className="absolute inset-x-0 bottom-0 flex flex-col items-center justify-center p-4 text-center text-white">
-              <h1 className="text-xl font-bold leading-tight">{title || 'Your title'}</h1>
-              {subtitle && <p className="mt-1 text-xs opacity-90">{subtitle}</p>}
-              <p className="mt-2 text-xs">By {authorName || 'You'}</p>
+            <div className="absolute inset-x-0 bottom-0 flex flex-col items-center p-4 text-center text-white">
+              <h1
+                className="font-display text-xl font-bold leading-tight drop-shadow-md"
+                style={{ fontFamily: book.cover.font }}
+              >
+                {title || 'Your title'}
+              </h1>
+              {subtitle && <p className="mt-1 text-xs opacity-90 drop-shadow">{subtitle}</p>}
+              <p className="mt-2 text-xs drop-shadow">By {authorName || 'You'}</p>
             </div>
           </div>
         </div>
