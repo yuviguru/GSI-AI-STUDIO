@@ -329,6 +329,15 @@ const pageStyleOverrideSchema = z.object({
   backgroundColor: z.string().max(20).optional(),
 });
 
+/** A pre-baked character coming from the wizard — anchor image already
+ *  generated client-side and ready to persist on book creation. */
+const initialCharacterSchema = z.object({
+  name: z.string().min(1).max(40),
+  lookDescription: z.string().min(5).max(300),
+  anchorImageUrl: z.string().url().nullable().optional(),
+  anchorPrompt: z.string().max(500).nullable().optional(),
+});
+
 /** Wizard input for creating a new book — fields LOCKED after creation:
  *  type, bucket, format, size. */
 export const bookCreateSchema = z.object({
@@ -341,8 +350,20 @@ export const bookCreateSchema = z.object({
   pageLimit: z.number().int().min(4).max(40),
   typography: typographyInputSchema,
   themeColor: colorHexSchema.optional(),
+  /** Optional initial characters from the wizard's character step.
+   *  Capped at 3 to match the BookCharacter limit. */
+  characters: z.array(initialCharacterSchema).max(3).optional(),
 });
 export type BookCreateInput = z.infer<typeof bookCreateSchema>;
+export type InitialCharacterInput = z.infer<typeof initialCharacterSchema>;
+
+/** Generic character portrait generation — no book context.
+ *  Used by the wizard before the book exists. */
+export const characterPortraitSchema = z.object({
+  lookDescription: z.string().min(5).max(300),
+  styleHint: z.string().max(50).optional(),
+});
+export type CharacterPortraitInput = z.infer<typeof characterPortraitSchema>;
 
 /** Patch metadata only — never size/format/bucket/dimensions. `.strict()` rejects unknown keys. */
 export const bookPatchSchema = z

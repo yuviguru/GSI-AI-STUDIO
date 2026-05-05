@@ -228,6 +228,16 @@ export async function createBook(
   const id = docRef.id;
   const now = Timestamp.now();
 
+  // Build initial character list from wizard input, if present
+  const initialCharacters: BookCharacter[] = (input.characters ?? []).map((c) => ({
+    id: nanoid(10),
+    name: c.name,
+    lookDescription: c.lookDescription,
+    anchorImageUrl: c.anchorImageUrl ?? null,
+    anchorPrompt: c.anchorPrompt ?? null,
+    createdAt: new Date(),
+  }));
+
   const bookDoc = {
     id,
     title: input.title,
@@ -246,7 +256,7 @@ export async function createBook(
     typography: input.typography,
     cover: defaultCover(input),
     backCover: null,
-    characters: [] as BookCharacter[],
+    characters: initialCharacters.map(charToStored),
     pageCount: 0,
     pageLimit: input.pageLimit,
     themeColor: input.themeColor ?? null,
