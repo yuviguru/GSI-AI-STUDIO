@@ -36,6 +36,7 @@ import type {
   TipTapDocument,
 } from '@/types/book.types';
 import { BOOK_FONTS } from '@/lib/templates/bookTemplates';
+import { slotAspectRatioForCss } from '@/lib/ai/imageDims';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { useGrammarCheck } from '@/hooks/useGrammarCheck';
 import { usePageImage } from '@/hooks/usePageImage';
@@ -522,6 +523,10 @@ function PicturePanel({
   onSave,
   onBookChange,
 }: PicturePanelProps) {
+  // Match the editor preview to the actual page slot aspect so an empty
+  // box is the same shape as the generated image — and the generated
+  // image isn't object-cover-cropped during preview.
+  const slotAspect = slotAspectRatioForCss(book.size, page.layout);
   return (
     <div className="space-y-3 rounded-3xl border border-gray-200 bg-white p-3 shadow-card">
       {/* Current image preview */}
@@ -531,10 +536,14 @@ function PicturePanel({
           <img
             src={page.imageUrl}
             alt=""
-            className="aspect-square w-full rounded-2xl object-cover"
+            className="w-full rounded-2xl object-cover"
+            style={{ aspectRatio: slotAspect }}
           />
         ) : (
-          <div className="flex aspect-square w-full items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 text-gray-400">
+          <div
+            className="flex w-full items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 text-gray-400"
+            style={{ aspectRatio: slotAspect }}
+          >
             <ImagePlus className="h-12 w-12" />
           </div>
         )}

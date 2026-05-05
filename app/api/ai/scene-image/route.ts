@@ -5,7 +5,8 @@ import { filterImagePrompt } from '@/lib/safety/inputFilter';
 import { checkRateLimit, trackCreation } from '@/lib/firebase/sessionService';
 import { getBook } from '@/lib/firebase/bookService';
 import { getImageProvider, type ImageStyle } from '@/lib/ai/imageProvider';
-import type { BookCharacter, BookSize } from '@/types/book.types';
+import { dimsForBookAndLayout } from '@/lib/ai/imageDims';
+import type { BookCharacter } from '@/types/book.types';
 
 const STYLE_HINT_MAP: Record<string, ImageStyle> = {
   watercolor: 'watercolor',
@@ -16,19 +17,6 @@ const STYLE_HINT_MAP: Record<string, ImageStyle> = {
   pixel: 'pixel-art',
   'pixel-art': 'pixel-art',
 };
-
-function dimsForBookSize(size: BookSize): { width: number; height: number } {
-  switch (size) {
-    case 'square':
-      return { width: 1024, height: 1024 };
-    case 'landscape':
-      return { width: 1024, height: 768 };
-    case 'tall':
-    case 'pocket':
-    default:
-      return { width: 768, height: 1024 };
-  }
-}
 
 /**
  * POST /api/ai/scene-image — Generate a per-page scene image with character
@@ -52,8 +40,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const input = sceneImageSchema.parse(body);
 
-    // Load the book to resolve character IDs and pull style + size context
-    const { book } = await getBook(input.bookId, { sessionId });
+    // Load the book to resolve character IDs and pull style + size context.
+    // Pages are loaded too so we can derive the actual slot aspect from the
+    // page's layout (image_top vs full_bleed vs split etc.) — this prevents
+    // characters being cropped when a square book has a half-height slot.
+    const { book, pages } = await getBook(input.bookId, { sessionId });
 
     const selectedCharacters: BookCharacter[] = input.characterIds
       .map((id) => book.characters.find((c) => c.id === id))
@@ -68,7 +59,12 @@ export async function POST(request: NextRequest) {
     filterImagePrompt(fullPrompt);
     await checkRateLimit(sessionId);
 
-    const dims = dimsForBookSize(book.size);
+    // Per-page slot aspect when pageId is provided; book aspect (cover) otherwise
+    const pageLayout = input.pageId
+      ? pages.find((p) => p.id === input.pageId)?.layout
+      : undefined;
+    const dims = dimsForBookAndLayout(book.size, pageLayout);
+
     const styleKey = (input.styleHint ?? '').toLowerCase();
     const style: ImageStyle = STYLE_HINT_MAP[styleKey] ?? 'cartoon';
 
