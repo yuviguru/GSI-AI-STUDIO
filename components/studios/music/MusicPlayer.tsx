@@ -42,14 +42,20 @@ export function MusicPlayer({ music, aiXray, onCreateAnother, creationId, readOn
   const lyricsContainerRef = useRef<HTMLDivElement>(null);
   const activeLineRef = useRef<HTMLParagraphElement>(null);
 
-  // Auto-scroll active lyric line into view while playing
+  // "Audio is currently moving" — true when Howler is playing OR the
+  // sing-along recorder is driving playback through its Web Audio mix
+  // (Howler is paused in that case but currentTime is still ticking
+  // forward via SingAlongRecorder.onPlaybackTime).
+  const isAudioActive = isPlaying || (isSingAlong && currentTime > 0);
+
+  // Auto-scroll active lyric line into view while audio is moving
   useEffect(() => {
-    if (!isPlaying || activeLineIndex < 0) return;
+    if (!isAudioActive || activeLineIndex < 0) return;
     const node = activeLineRef.current;
     if (node) {
       node.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-  }, [activeLineIndex, isPlaying]);
+  }, [activeLineIndex, isAudioActive]);
 
   // Auto-show X-Ray on first creation per session (skip in readOnly mode)
   useEffect(() => {
@@ -314,7 +320,7 @@ export function MusicPlayer({ music, aiXray, onCreateAnother, creationId, readOn
             className="max-h-48 space-y-2 overflow-y-auto scroll-smooth px-2 text-base leading-relaxed"
           >
             {lyricLines.map((line, i) => {
-              const isActive = i === activeLineIndex && isPlaying;
+              const isActive = i === activeLineIndex && isAudioActive;
               return (
                 <p
                   key={i}
@@ -323,7 +329,7 @@ export function MusicPlayer({ music, aiXray, onCreateAnother, creationId, readOn
                     'origin-left transition-all duration-300',
                     isActive
                       ? 'text-xl font-bold text-brand-purple'
-                      : i < activeLineIndex && isPlaying
+                      : i < activeLineIndex && isAudioActive
                         ? 'text-gray-400'
                         : 'text-gray-600',
                   )}
