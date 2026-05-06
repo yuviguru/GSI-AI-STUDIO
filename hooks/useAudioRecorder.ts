@@ -83,6 +83,13 @@ export interface UseAudioRecorderResult {
   playbackTimeSec: number;
   /** Live amplitude 0..1 — drive a waveform bar. Falls back to 0 when not recording. */
   liveAmplitude: number;
+  /**
+   * Peak mic amplitude (0..1) seen across the most recent recording.
+   * Reset on every start/reset. Useful for post-record silence detection
+   * — if this stays near 0, the kid's mic was effectively dead the whole
+   * take and we should warn before they save.
+   */
+  maxAmplitudeSeen: number;
   /** Final Blob after stop; null while recording or before first stop. */
   blob: Blob | null;
   /** Final blob URL (object URL) for instant preview playback. */
@@ -133,6 +140,7 @@ export function useAudioRecorder(
   const [elapsedSec, setElapsedSec] = useState(0);
   const [playbackTimeSec, setPlaybackTimeSec] = useState(0);
   const [liveAmplitude, setLiveAmplitude] = useState(0);
+  const [maxAmplitudeSeen, setMaxAmplitudeSeen] = useState(0);
   const [blob, setBlob] = useState<Blob | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string | null>(null);
@@ -415,6 +423,10 @@ export function useAudioRecorder(
       };
 
       // ─── 6. Live UI ticks ─────────────────────────────────────
+      // Reset max-amplitude tracking for this take so retakes don't
+      // inherit the previous run's peak.
+      let runMaxAmp = 0;
+      setMaxAmplitudeSeen(0);
       const ampBuf = new Uint8Array(analyser.frequencyBinCount);
       const tickAmp = () => {
         if (!analyserRef.current) return;
@@ -425,7 +437,12 @@ export function useAudioRecorder(
           sumSquares += normalized * normalized;
         }
         const rms = Math.sqrt(sumSquares / ampBuf.length);
-        setLiveAmplitude(Math.min(1, rms * 2));
+        const amp = Math.min(1, rms * 2);
+        setLiveAmplitude(amp);
+        if (amp > runMaxAmp) {
+          runMaxAmp = amp;
+          setMaxAmplitudeSeen(amp);
+        }
         ampHandleRef.current = requestAnimationFrame(tickAmp);
       };
       ampHandleRef.current = requestAnimationFrame(tickAmp);
@@ -501,6 +518,7 @@ export function useAudioRecorder(
     setElapsedSec(0);
     setPlaybackTimeSec(0);
     setLiveAmplitude(0);
+    setMaxAmplitudeSeen(0);
     setError(null);
     setState('idle');
   }, [blobUrl]);
@@ -510,6 +528,7 @@ export function useAudioRecorder(
     elapsedSec,
     playbackTimeSec,
     liveAmplitude,
+    maxAmplitudeSeen,
     blob,
     blobUrl,
     mimeType,

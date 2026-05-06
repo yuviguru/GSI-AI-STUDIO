@@ -14,10 +14,19 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Mic, Square, RotateCcw, Save, Loader2, Music2 } from 'lucide-react';
+import {
+  Mic,
+  Square,
+  RotateCcw,
+  Save,
+  Loader2,
+  Music2,
+  AlertTriangle,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fetchWithSession } from '@/lib/fetchWithSession';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
+import { MicLevelMeter } from './MicLevelMeter';
 import type {
   AssetUploadUrlRequest,
   AssetUploadUrlResponse,
@@ -27,6 +36,13 @@ import type {
   Performance,
   PerformanceVisibility,
 } from '@/types/performance.types';
+
+/**
+ * Peak mic amplitude below which a recording is treated as effectively
+ * silent (mic muted/unplugged the whole take). Tuned so quiet voice
+ * still registers — quiet kid voice typically peaks around 0.08-0.15.
+ */
+const SILENT_TAKE_THRESHOLD = 0.04;
 
 export interface SingAlongRecorderProps {
   /** Parent music creation ID — performances tie back here. */
@@ -47,7 +63,14 @@ export interface SingAlongRecorderProps {
   onClose?: () => void;
 }
 
-type Stage = 'idle' | 'countdown' | 'recording' | 'preview' | 'uploading' | 'done';
+type Stage =
+  | 'idle'
+  | 'mic_check'
+  | 'countdown'
+  | 'recording'
+  | 'preview'
+  | 'uploading'
+  | 'done';
 
 export function SingAlongRecorder({
   parentCreationId,
@@ -71,7 +94,7 @@ export function SingAlongRecorder({
     if (!onPlaybackTime) return;
     if (recorder.state === 'recording') {
       onPlaybackTime(recorder.playbackTimeSec);
-    } else if (stage === 'idle' || stage === 'countdown') {
+    } else if (stage === 'idle' || stage === 'countdown' || stage === 'mic_check') {
       onPlaybackTime(0);
     }
   }, [recorder.state, recorder.playbackTimeSec, stage, onPlaybackTime]);
@@ -267,20 +290,63 @@ export function SingAlongRecorder({
         </div>
       )}
 
-      {/* Recording controls */}
+      {/* Recording controls (idle) */}
       {stage === 'idle' && (
-        <button
-          type="button"
-          onClick={handleStartRecording}
-          disabled={!isParentReady || !recorder.isSupported}
-          className={cn(
-            'flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-orange py-4 font-bold text-white transition-all active:scale-95',
-            (!isParentReady || !recorder.isSupported) && 'cursor-not-allowed opacity-50',
-          )}
-        >
-          <Mic className="h-5 w-5" />
-          Record your voice
-        </button>
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={handleStartRecording}
+            disabled={!isParentReady || !recorder.isSupported}
+            className={cn(
+              'flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-orange py-4 font-bold text-white transition-all active:scale-95',
+              (!isParentReady || !recorder.isSupported) && 'cursor-not-allowed opacity-50',
+            )}
+          >
+            <Mic className="h-5 w-5" />
+            Record your voice
+          </button>
+
+          {/* Advisory tips — kept short, kid-friendly */}
+          <div className="rounded-xl bg-white/60 px-3 py-2 text-xs leading-relaxed text-gray-600">
+            <p>
+              <span aria-hidden>🤫</span>{' '}
+              <strong>Find a quiet spot</strong> — turn off the TV, close the
+              door, and ask folks to give you a minute.
+            </p>
+            <p className="mt-1">
+              <span aria-hidden>🔊</span>{' '}
+              <strong>Speak up nice and clearly</strong> so we can hear you over
+              the music.
+            </p>
+          </div>
+
+          {/* Test-mic shortcut */}
+          <button
+            type="button"
+            onClick={() => setStage('mic_check')}
+            disabled={!recorder.isSupported}
+            className="flex w-full items-center justify-center gap-1.5 text-xs font-semibold text-brand-purple underline-offset-2 hover:underline disabled:opacity-50"
+          >
+            <Mic className="h-3.5 w-3.5" />
+            Test my mic first
+          </button>
+        </div>
+      )}
+
+      {/* Mic check stage */}
+      {stage === 'mic_check' && (
+        <MicLevelMeter
+          onDone={() => setStage('idle')}
+          onContinue={() => {
+            setStage('idle');
+            // Defer countdown start to next tick so the meter unmounts
+            // (releases its mic stream) before the recorder grabs the
+            // mic again. Two MediaStream owners on one device confuse
+            // some browsers.
+            setTimeout(() => handleStartRecording(), 50);
+          }}
+          continueLabel="Record now"
+        />
       )}
 
       {stage === 'recording' && (
@@ -305,6 +371,31 @@ export function SingAlongRecorder({
       {/* Preview */}
       {stage === 'preview' && recorder.blobUrl && (
         <div className="space-y-4">
+          {/* Silence safety net — peak amplitude over the whole take.
+              If we never saw the mic move, the kid almost certainly had
+              a muted/unplugged mic and we should warn before they save. */}
+          {recorder.maxAmplitudeSeen < SILENT_TAKE_THRESHOLD && (
+            <div className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-semibold">
+                  We couldn&apos;t hear you in this recording.
+                </p>
+                <p className="mt-0.5 text-xs leading-relaxed">
+                  Check that your mic isn&apos;t muted or unplugged, then{' '}
+                  <button
+                    type="button"
+                    onClick={() => setStage('mic_check')}
+                    className="font-semibold underline underline-offset-2 hover:text-amber-800"
+                  >
+                    test your mic
+                  </button>{' '}
+                  before you retake.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="rounded-xl bg-white p-4">
             <p className="mb-2 text-sm font-semibold text-gray-700">
               Listen to your sing-along
