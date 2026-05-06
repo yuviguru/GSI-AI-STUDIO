@@ -793,6 +793,18 @@ function SimpleImageMaker({
   const [prompt, setPrompt] = useState(page.imagePrompt ?? '');
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // Reset prompt + error state when switching to a different page so the
+  // kid doesn't accidentally save the previous page's prompt onto this
+  // one. (Codex P2: imagePrompt was initialised once and stale across
+  // page navigation.)
+  useEffect(() => {
+    setPrompt(page.imagePrompt ?? '');
+    setSaveError(null);
+    image.reset();
+    // image.reset is stable, prompt source is page-derived.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page.id]);
+
   const aspect: 'square' | 'portrait' | 'landscape' =
     book.size === 'square'
       ? 'square'
