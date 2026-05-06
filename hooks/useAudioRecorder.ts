@@ -56,9 +56,17 @@ export interface UseAudioRecorderOptions {
    * along. Must be CORS-accessible to the current origin.
    */
   backingTrackUrl?: string;
-  /** Backing-track gain (0..1). Default 0.85. Lower if the song drowns out the kid's voice. */
+  /**
+   * Backing-track gain (0..1). Default 0.55. Music tracks are mastered
+   * loud; voice sounds tiny next to them. We sit the music well below
+   * unity so the kid's voice can sit on top.
+   */
   backingTrackGain?: number;
-  /** Mic gain (0..1). Default 1.0. */
+  /**
+   * Mic gain (>= 0). Default 1.8. Consumer mics + ambient kid voice
+   * tend to come in well below mastered music, so we boost. Combined
+   * with the compressor this still won't clip.
+   */
   micGain?: number;
 }
 
@@ -116,8 +124,10 @@ export function useAudioRecorder(
   // Higher default than voice-only because we're now mixing music in.
   const audioBitsPerSecond = options.audioBitsPerSecond ?? 96_000;
   const backingTrackUrl = options.backingTrackUrl;
-  const backingTrackGainValue = options.backingTrackGain ?? 0.85;
-  const micGainValue = options.micGain ?? 1.0;
+  // Karaoke-style mix: voice sits clearly on top of the song.
+  // Music dropped well below unity, mic boosted, compressor smooths peaks.
+  const backingTrackGainValue = options.backingTrackGain ?? 0.55;
+  const micGainValue = options.micGain ?? 1.8;
 
   const [state, setState] = useState<RecorderState>('idle');
   const [elapsedSec, setElapsedSec] = useState(0);
@@ -232,13 +242,17 @@ export function useAudioRecorder(
       // ─── 1. Mic permission ────────────────────────────────────
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          // With backing-track mixing we *don't* want browser-applied
-          // echo cancellation — it can chew up the song's quiet parts
-          // thinking they're echoes of the mic. Only enable echo
-          // suppression for voice-only mode.
+          // With backing-track mixing:
+          //  - echoCancellation OFF: would treat speaker-bleed as echo
+          //    and chew into the kid's voice along with the music
+          //  - noiseSuppression OFF: too aggressive for kid voice; can
+          //    drop quiet vowels and breathy parts
+          //  - autoGainControl ON: this is the one we *want* — it boosts
+          //    quiet voices toward a target level, which is the main
+          //    reason kids' voices were sitting too low in the mix
           echoCancellation: !backingTrackUrl,
           noiseSuppression: !backingTrackUrl,
-          autoGainControl: !backingTrackUrl,
+          autoGainControl: true,
           channelCount: 1,
         },
       });
@@ -266,11 +280,28 @@ export function useAudioRecorder(
       const recordingMixer = ctx.createGain();
       recordingMixer.gain.value = 1.0;
 
-      // Mic side — capture into mixer + analyser (for live amplitude)
+      // Mic side — capture into mixer + analyser (for live amplitude).
+      //
+      // Chain: mic → compressor → micGain → mixer
+      //
+      // The compressor smooths volume swings (yelling vs whispering) so
+      // the kid's voice sits at a consistent level relative to the
+      // backing track. Settings are conservative — gentle 4:1 ratio,
+      // medium-soft knee, attack/release tuned for voice (not music).
       const micSource = ctx.createMediaStreamSource(stream);
+
+      const compressor = ctx.createDynamicsCompressor();
+      compressor.threshold.value = -28; // dB — start compressing above this
+      compressor.knee.value = 18;       // soft knee for natural vocals
+      compressor.ratio.value = 4;       // 4:1 — typical voice setting
+      compressor.attack.value = 0.005;  // 5ms — catch transients
+      compressor.release.value = 0.1;   // 100ms — let it breathe
+
       const micGain = ctx.createGain();
       micGain.gain.value = micGainValue;
-      micSource.connect(micGain);
+
+      micSource.connect(compressor);
+      compressor.connect(micGain);
       micGain.connect(recordingMixer);
 
       const analyser = ctx.createAnalyser();
