@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Sparkles,
   BookOpen,
+  BookMarked,
   Music,
   Gamepad2,
   Palette,
@@ -33,6 +34,7 @@ import { ProfilePicker } from '@/components/profile/ProfilePicker';
 
 const STUDIO_ITEMS = [
   { href: '/create/story', label: 'Story Studio', icon: BookOpen },
+  { href: '/create/book',  label: 'Book Studio',  icon: BookMarked },
   { href: '/create/music', label: 'Music Lab',    icon: Music },
   { href: '/create/quiz',  label: 'Quiz Maker',   icon: HelpCircle },
   { href: '/create/game',  label: 'Game Studio',  icon: Gamepad2 },
