@@ -300,6 +300,7 @@ export function MusicPlayer({ music, aiXray, onCreateAnother, creationId, readOn
           parentCreationId={creationId}
           backingTrackUrl={music.audioUrl}
           isParentReady={isLoaded}
+          onPlaybackTime={setCurrentTime}
           onClose={() => setIsSingAlong(false)}
         />
       )}

@@ -64,8 +64,15 @@ export interface UseAudioRecorderOptions {
 
 export interface UseAudioRecorderResult {
   state: RecorderState;
-  /** Elapsed seconds since record started — updates ~10x/sec while recording. */
+  /** Elapsed seconds since record started — updates ~60x/sec while recording. */
   elapsedSec: number;
+  /**
+   * Current backing-track playback position in seconds. Equals `elapsedSec`
+   * in voice-only mode. Use this to drive things like lyric highlighting
+   * that previously read from a separate audio element's currentTime.
+   * Updates ~60x/sec while recording.
+   */
+  playbackTimeSec: number;
   /** Live amplitude 0..1 — drive a waveform bar. Falls back to 0 when not recording. */
   liveAmplitude: number;
   /** Final Blob after stop; null while recording or before first stop. */
@@ -114,6 +121,7 @@ export function useAudioRecorder(
 
   const [state, setState] = useState<RecorderState>('idle');
   const [elapsedSec, setElapsedSec] = useState(0);
+  const [playbackTimeSec, setPlaybackTimeSec] = useState(0);
   const [liveAmplitude, setLiveAmplitude] = useState(0);
   const [blob, setBlob] = useState<Blob | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
@@ -129,6 +137,8 @@ export function useAudioRecorder(
   const backingSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const destinationNodeRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   const startedAtRef = useRef<number>(0);
+  /** AudioContext.currentTime captured the moment the backing source started. */
+  const backingStartCtxTimeRef = useRef<number | null>(null);
   const tickHandleRef = useRef<number | null>(null);
   const ampHandleRef = useRef<number | null>(null);
   const autoStopHandleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -164,6 +174,7 @@ export function useAudioRecorder(
       backingSourceRef.current.disconnect();
       backingSourceRef.current = null;
     }
+    backingStartCtxTimeRef.current = null;
     if (destinationNodeRef.current) {
       destinationNodeRef.current.disconnect();
       destinationNodeRef.current = null;
@@ -315,7 +326,10 @@ export function useAudioRecorder(
           };
 
           // Start the source at currentTime — we'll start MediaRecorder
-          // immediately after the recorder.start() call below.
+          // immediately after the recorder.start() call below. Capture
+          // the start moment so the elapsed-time tick can compute
+          // playback position accurately.
+          backingStartCtxTimeRef.current = ctx.currentTime;
           backingSource.start(0);
         } catch (err) {
           cleanup();
@@ -389,6 +403,18 @@ export function useAudioRecorder(
       const tickElapsed = () => {
         const sec = (performance.now() - startedAtRef.current) / 1000;
         setElapsedSec(sec);
+
+        // playbackTimeSec — when a backing track is playing, prefer the
+        // audio clock (drift-free, doesn't pause when the tab does);
+        // otherwise track wall time so callers don't have to special-case.
+        const ctxNow = audioCtxRef.current?.currentTime;
+        const startedAt = backingStartCtxTimeRef.current;
+        if (ctxNow !== undefined && startedAt !== null) {
+          setPlaybackTimeSec(Math.max(0, ctxNow - startedAt));
+        } else {
+          setPlaybackTimeSec(sec);
+        }
+
         tickHandleRef.current = requestAnimationFrame(tickElapsed);
       };
       tickHandleRef.current = requestAnimationFrame(tickElapsed);
@@ -442,6 +468,7 @@ export function useAudioRecorder(
     setBlobUrl(null);
     setMimeType(null);
     setElapsedSec(0);
+    setPlaybackTimeSec(0);
     setLiveAmplitude(0);
     setError(null);
     setState('idle');
@@ -450,6 +477,7 @@ export function useAudioRecorder(
   return {
     state,
     elapsedSec,
+    playbackTimeSec,
     liveAmplitude,
     blob,
     blobUrl,

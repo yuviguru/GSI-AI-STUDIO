@@ -35,6 +35,12 @@ export interface SingAlongRecorderProps {
   backingTrackUrl?: string;
   /** Whether the parent is loaded. Disables recorder until true. */
   isParentReady: boolean;
+  /**
+   * Backing-track playback position in seconds. Forwarded so the
+   * parent can drive lyric highlighting / progress UI from the same
+   * audio clock that's actually playing during the recording.
+   */
+  onPlaybackTime?: (sec: number) => void;
   /** Called once a performance is created. Caller can route to it / show toast. */
   onCreated?: (performance: Performance) => void;
   /** Close the recorder (e.g. user taps a Cancel ✕). */
@@ -47,6 +53,7 @@ export function SingAlongRecorder({
   parentCreationId,
   backingTrackUrl,
   isParentReady,
+  onPlaybackTime,
   onCreated,
   onClose,
 }: SingAlongRecorderProps) {
@@ -56,6 +63,18 @@ export function SingAlongRecorder({
   const [caption, setCaption] = useState('');
   const [visibility, setVisibility] = useState<PerformanceVisibility>('private');
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Forward backing-track playback time to the parent (for lyric sync).
+  // We reset to 0 once we leave the recording stage so the parent's
+  // progress UI doesn't get stuck on the last value.
+  useEffect(() => {
+    if (!onPlaybackTime) return;
+    if (recorder.state === 'recording') {
+      onPlaybackTime(recorder.playbackTimeSec);
+    } else if (stage === 'idle' || stage === 'countdown') {
+      onPlaybackTime(0);
+    }
+  }, [recorder.state, recorder.playbackTimeSec, stage, onPlaybackTime]);
 
   // Sync recorder state into stage transitions
   useEffect(() => {
