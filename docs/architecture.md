@@ -193,6 +193,21 @@ app/
 - `softDeleteAsset(assetId)` — flips status; nightly worker hard-deletes from R2
 - Provider-pluggable behind a `StorageProvider` interface (`R2Provider` default; `FirebaseProvider` for legacy reads)
 
+**CORS — required for the sing-along recorder** (PERF-001):
+
+The sing-along recorder fetches the music track client-side via `fetch + decodeAudioData` so it can mix the backing track with the kid's mic input in a Web Audio graph (single mixed audio file as output). This requires the storage origin to send `Access-Control-Allow-Origin` for our app domains.
+
+- **Firebase Cloud Storage**: apply the bucket-level CORS config in `firebase-storage-cors.json` once, via:
+  ```bash
+  gsutil cors set firebase-storage-cors.json gs://<your-firebase-bucket>
+  ```
+  Verify with `gsutil cors get gs://<bucket>`. Audio served from `https://storage.googleapis.com/<bucket>/...` will then include the right ACAO header.
+- **Cloudflare R2**: configure CORS on the bucket via the Cloudflare dashboard (Bucket → Settings → CORS) or `wrangler r2 bucket cors put <bucket> --rules ...` — same allowed origins, methods `GET, HEAD`.
+- **Replicate URLs**: don't add CORS by default. The music API rehosts Replicate output through the assets layer (R2/Firebase), so this is only an issue for legacy creations whose `audioUrl` is still a raw Replicate URL — they fall back to voice-only recording with a friendly error.
+- **Data URIs** (Lyria fallback when asset upload fails): no CORS needed; the recorder handles them directly.
+
+If CORS isn't set, the recorder surfaces a kid-friendly error ("We couldn't load the song...") rather than silently producing voice-only recordings.
+
 ### Kid CEO (Business Simulation)
 
 **What it is**: A 30/60/90-day kid-friendly business simulation ported from the internal FoundersDNA/SimPrenuer project (`C:\Yuvi\Development\SimPrenuer`). The kid picks a business type, runs it through 5 phases, responds to events (school fair, local trend, cash crunch, etc.), and ends with a shareable CEO profile card scored across 6 dimensions. Target age **10+**. Delivery is **dual-channel**: in-app route group plus a dedicated Telegram bot `@GSIKidCeoAssistantBot`. Same Firestore state backs both — the kid can start on web and continue in chat.

@@ -3,15 +3,41 @@
 /**
  * useAudioRecorder — MediaRecorder wrapper for kid voice capture (PERF-001).
  *
- * Captures Opus audio (preferred) or whatever the browser supports as a
- * fallback. Reports waveform amplitude in real time so the recorder UI
- * can show visual feedback while the kid sings.
+ * When a backing track URL is provided, the recorder builds a Web Audio
+ * graph that mixes the track with the kid's mic in real time, so the
+ * resulting blob contains BOTH the song and the kid's voice (single
+ * mixed audio file — what you'd want for a sing-along).
+ *
+ * Audio graph:
+ *
+ *   [backingBufferSource] ── AudioContext.destination  (kid hears the song)
+ *           │
+ *           └──► [recordingMixer (GainNode)] ──► [destinationNode] ──► MediaRecorder
+ *                          ▲
+ *   [micSource] ──► [micGain] ──► [analyser]   (live amplitude UI)
+ *                          │
+ *                          └──► (same recordingMixer above)
+ *
+ * The mic does NOT route to AudioContext.destination — that would cause
+ * feedback echo (kid hears their own voice through the air; speakers
+ * piping it back is the loop). MediaRecorder is fed the destinationNode's
+ * stream, NOT the raw mic stream.
+ *
+ * Without a backing track, the recorder falls back to mic-only behavior
+ * (graph is just mic → destinationNode).
  *
  * Design notes:
- *   - 90s hard cap (auto-stops with `auto_stopped` reason)
+ *   - Hard auto-stop at maxDurationSec OR when the backing track ends
  *   - Returns a Blob you can upload directly to a pre-signed PUT URL
  *   - Caller handles the rest (pre-signed URL fetch, upload, finalize)
- *   - Mic stream is fully cleaned up on unmount or stop
+ *   - All Web Audio nodes + the mic stream are torn down on stop/unmount
+ *
+ * CORS note: when backingTrackUrl is an https URL (Firebase Storage,
+ * R2 CDN, Replicate, etc.), the bucket / CDN MUST set
+ * `Access-Control-Allow-Origin` for our origin so `decodeAudioData` can
+ * read it. Data URIs are CORS-free. If decode fails, the recorder
+ * surfaces a friendly error instead of falling back silently — we want
+ * the kid to know the song isn't being captured.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -21,8 +47,19 @@ export type RecorderState = 'idle' | 'requesting' | 'recording' | 'stopped' | 'e
 export interface UseAudioRecorderOptions {
   /** Max recording duration in seconds. Default 90. */
   maxDurationSec?: number;
-  /** Bits per second for encoder. Default 32_000 (Opus mono, voice-quality). */
+  /** Bits per second for encoder. Default 96_000 (Opus stereo, music + voice). */
   audioBitsPerSecond?: number;
+  /**
+   * Optional backing-track URL. When provided, the track is decoded and
+   * mixed with the mic input — the resulting blob includes both. The
+   * track is also played back through the speakers so the kid can sing
+   * along. Must be CORS-accessible to the current origin.
+   */
+  backingTrackUrl?: string;
+  /** Backing-track gain (0..1). Default 0.85. Lower if the song drowns out the kid's voice. */
+  backingTrackGain?: number;
+  /** Mic gain (0..1). Default 1.0. */
+  micGain?: number;
 }
 
 export interface UseAudioRecorderResult {
@@ -41,6 +78,8 @@ export interface UseAudioRecorderResult {
   isSupported: boolean;
   /** Any captured error (mic denied, MediaRecorder unsupported, etc.). */
   error: string | null;
+  /** True while the backing track is loading; lets the UI gate the start button. */
+  isPreparing: boolean;
 
   start: () => Promise<void>;
   stop: () => void;
@@ -60,14 +99,18 @@ function pickMimeType(): string | null {
   for (const m of PREFERRED_MIME_TYPES) {
     if (MediaRecorder.isTypeSupported(m)) return m;
   }
-  return null; // browser will pick default
+  return null;
 }
 
 export function useAudioRecorder(
   options: UseAudioRecorderOptions = {},
 ): UseAudioRecorderResult {
   const maxDurationSec = options.maxDurationSec ?? 90;
-  const audioBitsPerSecond = options.audioBitsPerSecond ?? 32_000;
+  // Higher default than voice-only because we're now mixing music in.
+  const audioBitsPerSecond = options.audioBitsPerSecond ?? 96_000;
+  const backingTrackUrl = options.backingTrackUrl;
+  const backingTrackGainValue = options.backingTrackGain ?? 0.85;
+  const micGainValue = options.micGain ?? 1.0;
 
   const [state, setState] = useState<RecorderState>('idle');
   const [elapsedSec, setElapsedSec] = useState(0);
@@ -76,16 +119,22 @@ export function useAudioRecorder(
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isPreparing, setIsPreparing] = useState(false);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const backingSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const destinationNodeRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   const startedAtRef = useRef<number>(0);
   const tickHandleRef = useRef<number | null>(null);
   const ampHandleRef = useRef<number | null>(null);
   const autoStopHandleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Cache decoded backing-track buffer per URL — re-decoding is expensive
+  // and fetching may hit the network again.
+  const decodedBufferRef = useRef<{ url: string; buffer: AudioBuffer } | null>(null);
 
   const isSupported =
     typeof window !== 'undefined' &&
@@ -105,6 +154,19 @@ export function useAudioRecorder(
     if (autoStopHandleRef.current !== null) {
       clearTimeout(autoStopHandleRef.current);
       autoStopHandleRef.current = null;
+    }
+    if (backingSourceRef.current) {
+      try {
+        backingSourceRef.current.stop();
+      } catch {
+        // already stopped
+      }
+      backingSourceRef.current.disconnect();
+      backingSourceRef.current = null;
+    }
+    if (destinationNodeRef.current) {
+      destinationNodeRef.current.disconnect();
+      destinationNodeRef.current = null;
     }
     if (analyserRef.current) {
       analyserRef.current.disconnect();
@@ -135,8 +197,6 @@ export function useAudioRecorder(
         URL.revokeObjectURL(blobUrl);
       }
     };
-    // We deliberately omit blobUrl from deps — we want cleanup *only* on unmount.
-    // The blobUrl is also revoked separately in `reset` and on next start.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -158,48 +218,131 @@ export function useAudioRecorder(
     setState('requesting');
 
     try {
+      // ─── 1. Mic permission ────────────────────────────────────
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
+          // With backing-track mixing we *don't* want browser-applied
+          // echo cancellation — it can chew up the song's quiet parts
+          // thinking they're echoes of the mic. Only enable echo
+          // suppression for voice-only mode.
+          echoCancellation: !backingTrackUrl,
+          noiseSuppression: !backingTrackUrl,
+          autoGainControl: !backingTrackUrl,
           channelCount: 1,
         },
       });
       streamRef.current = stream;
 
-      // Set up amplitude analysis for the live waveform.
+      // ─── 2. Audio context ─────────────────────────────────────
       const AudioContextCtor =
-        window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (AudioContextCtor) {
-        const ctx = new AudioContextCtor();
-        const source = ctx.createMediaStreamSource(stream);
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 512;
-        source.connect(analyser);
-        audioCtxRef.current = ctx;
-        analyserRef.current = analyser;
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
+      if (!AudioContextCtor) {
+        throw new Error('Web Audio API not supported in this browser.');
+      }
+      const ctx = new AudioContextCtor();
+      audioCtxRef.current = ctx;
 
-        const buffer = new Uint8Array(analyser.frequencyBinCount);
-        const tickAmp = () => {
-          if (!analyserRef.current) return;
-          analyserRef.current.getByteTimeDomainData(buffer);
-          // RMS amplitude, scaled to 0..1
-          let sumSquares = 0;
-          for (let i = 0; i < buffer.length; i++) {
-            const normalized = ((buffer[i] ?? 128) - 128) / 128;
-            sumSquares += normalized * normalized;
-          }
-          const rms = Math.sqrt(sumSquares / buffer.length);
-          setLiveAmplitude(Math.min(1, rms * 2)); // boost for UI
-          ampHandleRef.current = requestAnimationFrame(tickAmp);
-        };
-        ampHandleRef.current = requestAnimationFrame(tickAmp);
+      // Some browsers create the context in 'suspended' state until a
+      // user gesture resumes it. start() is itself triggered by a click
+      // (kid taps Record), which counts — but resume() is a safe net.
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
       }
 
+      // ─── 3. Build the graph ───────────────────────────────────
+      const recordingMixer = ctx.createGain();
+      recordingMixer.gain.value = 1.0;
+
+      // Mic side — capture into mixer + analyser (for live amplitude)
+      const micSource = ctx.createMediaStreamSource(stream);
+      const micGain = ctx.createGain();
+      micGain.gain.value = micGainValue;
+      micSource.connect(micGain);
+      micGain.connect(recordingMixer);
+
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      micGain.connect(analyser);
+      analyserRef.current = analyser;
+
+      // Destination node — what MediaRecorder records.
+      const destinationNode = ctx.createMediaStreamDestination();
+      recordingMixer.connect(destinationNode);
+      destinationNodeRef.current = destinationNode;
+
+      // ─── 4. Backing track (if provided) ───────────────────────
+      let backingDurationSec = Infinity;
+      if (backingTrackUrl) {
+        setIsPreparing(true);
+        try {
+          // Reuse cached decoded buffer when the URL hasn't changed —
+          // saves a decode on retake.
+          let buffer: AudioBuffer;
+          if (decodedBufferRef.current?.url === backingTrackUrl) {
+            buffer = decodedBufferRef.current.buffer;
+          } else {
+            const res = await fetch(backingTrackUrl, { mode: 'cors' });
+            if (!res.ok) {
+              throw new Error(`Failed to fetch backing track: ${res.status}`);
+            }
+            const arrayBuffer = await res.arrayBuffer();
+            buffer = await ctx.decodeAudioData(arrayBuffer);
+            decodedBufferRef.current = { url: backingTrackUrl, buffer };
+          }
+
+          backingDurationSec = buffer.duration;
+
+          const backingSource = ctx.createBufferSource();
+          backingSource.buffer = buffer;
+
+          const backingGain = ctx.createGain();
+          backingGain.gain.value = backingTrackGainValue;
+
+          backingSource.connect(backingGain);
+          // Backing track goes BOTH to the recording mix AND to speakers
+          backingGain.connect(recordingMixer);
+          backingGain.connect(ctx.destination);
+
+          backingSourceRef.current = backingSource;
+
+          // Auto-stop when the backing track ends (kid finished the song)
+          backingSource.onended = () => {
+            if (recorderRef.current && recorderRef.current.state === 'recording') {
+              recorderRef.current.stop();
+            }
+          };
+
+          // Start the source at currentTime — we'll start MediaRecorder
+          // immediately after the recorder.start() call below.
+          backingSource.start(0);
+        } catch (err) {
+          cleanup();
+          setIsPreparing(false);
+          setState('error');
+          const msg = err instanceof Error ? err.message : String(err);
+          if (
+            msg.includes('Failed to fetch') ||
+            msg.includes('CORS') ||
+            err instanceof DOMException
+          ) {
+            setError(
+              "We couldn't load the song. The audio source may not allow cross-origin reads. " +
+              'Ask an adult to check the storage CORS settings.',
+            );
+          } else {
+            setError("Couldn't load the song to sing along to. Try again?");
+          }
+          return;
+        }
+        setIsPreparing(false);
+      }
+
+      // ─── 5. Wire up MediaRecorder on the mixed stream ─────────
       const chosenMime = pickMimeType();
       const recorder = new MediaRecorder(
-        stream,
+        destinationNode.stream,
         chosenMime ? { mimeType: chosenMime, audioBitsPerSecond } : { audioBitsPerSecond },
       );
       recorderRef.current = recorder;
@@ -226,7 +369,22 @@ export function useAudioRecorder(
         cleanup();
       };
 
-      // Tick elapsed time
+      // ─── 6. Live UI ticks ─────────────────────────────────────
+      const ampBuf = new Uint8Array(analyser.frequencyBinCount);
+      const tickAmp = () => {
+        if (!analyserRef.current) return;
+        analyserRef.current.getByteTimeDomainData(ampBuf);
+        let sumSquares = 0;
+        for (let i = 0; i < ampBuf.length; i++) {
+          const normalized = ((ampBuf[i] ?? 128) - 128) / 128;
+          sumSquares += normalized * normalized;
+        }
+        const rms = Math.sqrt(sumSquares / ampBuf.length);
+        setLiveAmplitude(Math.min(1, rms * 2));
+        ampHandleRef.current = requestAnimationFrame(tickAmp);
+      };
+      ampHandleRef.current = requestAnimationFrame(tickAmp);
+
       startedAtRef.current = performance.now();
       const tickElapsed = () => {
         const sec = (performance.now() - startedAtRef.current) / 1000;
@@ -235,17 +393,19 @@ export function useAudioRecorder(
       };
       tickHandleRef.current = requestAnimationFrame(tickElapsed);
 
-      // Hard auto-stop at maxDurationSec
+      // ─── 7. Hard auto-stop ────────────────────────────────────
+      const stopAfterMs = Math.min(maxDurationSec, backingDurationSec) * 1000;
       autoStopHandleRef.current = setTimeout(() => {
         if (recorderRef.current && recorderRef.current.state === 'recording') {
           recorderRef.current.stop();
         }
-      }, maxDurationSec * 1000);
+      }, stopAfterMs);
 
-      recorder.start(250); // emit chunks every 250ms
+      recorder.start(250);
       setState('recording');
     } catch (err) {
       cleanup();
+      setIsPreparing(false);
       setState('error');
       const name = err instanceof Error ? err.name : 'Error';
       if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
@@ -256,7 +416,17 @@ export function useAudioRecorder(
         setError(err instanceof Error ? err.message : 'Could not access microphone');
       }
     }
-  }, [audioBitsPerSecond, blobUrl, cleanup, isSupported, maxDurationSec, state]);
+  }, [
+    audioBitsPerSecond,
+    backingTrackGainValue,
+    backingTrackUrl,
+    blobUrl,
+    cleanup,
+    isSupported,
+    maxDurationSec,
+    micGainValue,
+    state,
+  ]);
 
   const stop = useCallback(() => {
     if (recorderRef.current && recorderRef.current.state === 'recording') {
@@ -286,6 +456,7 @@ export function useAudioRecorder(
     mimeType,
     isSupported,
     error,
+    isPreparing,
     start,
     stop,
     reset,

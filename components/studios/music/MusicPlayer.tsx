@@ -187,23 +187,17 @@ export function MusicPlayer({ music, aiXray, onCreateAnother, creationId, readOn
     }
   };
 
-  const playBackingTrack = useCallback(() => {
-    const howl = howlRef.current;
-    if (!howl) return;
-    if (!howl.playing()) {
-      howl.seek(0);
-      howl.play();
-      setIsPlaying(true);
-    }
-  }, []);
-
-  const pauseBackingTrack = useCallback(() => {
+  // PERF-001: when the recorder mounts, the SingAlongRecorder owns
+  // playback (it builds its own Web Audio mix of backing track + mic).
+  // We pause Howler so the song doesn't play from two sources at once.
+  useEffect(() => {
+    if (!isSingAlong) return;
     const howl = howlRef.current;
     if (howl && howl.playing()) {
       howl.pause();
       setIsPlaying(false);
     }
-  }, []);
+  }, [isSingAlong]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -304,9 +298,8 @@ export function MusicPlayer({ music, aiXray, onCreateAnother, creationId, readOn
       {music.lyrics && !readOnly && creationId && isSingAlong && (
         <SingAlongRecorder
           parentCreationId={creationId}
+          backingTrackUrl={music.audioUrl}
           isParentReady={isLoaded}
-          onPlayBackingTrack={playBackingTrack}
-          onPauseBackingTrack={pauseBackingTrack}
           onClose={() => setIsSingAlong(false)}
         />
       )}

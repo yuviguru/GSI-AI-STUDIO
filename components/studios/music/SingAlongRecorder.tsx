@@ -7,12 +7,13 @@
  *   idle → tap Record → countdown(3..2..1) → recording → tap Stop or auto-stop @ 90s
  *     → preview → tap Retake (back to idle) OR tap Save → uploading → done
  *
- * Backing track plays via the parent Howler instance (passed in via callbacks).
- * Two waveforms stacked: live mic amplitude on top (orange), backing-track waveform
- * on the bottom (gray). Karaoke lyrics keep highlighting via the parent player.
+ * The recorder owns the backing track during recording (it builds the
+ * Web Audio mix in `useAudioRecorder`). The parent should pause its
+ * own player while the recorder is mounted/recording — otherwise the
+ * track plays from two sources at once.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Mic, Square, RotateCcw, Save, Loader2, Music2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fetchWithSession } from '@/lib/fetchWithSession';
@@ -30,12 +31,10 @@ import type {
 export interface SingAlongRecorderProps {
   /** Parent music creation ID — performances tie back here. */
   parentCreationId: string;
-  /** Whether the parent is loaded and audible. Disables recorder until true. */
+  /** Backing-track URL — mixed with mic into the final recording. */
+  backingTrackUrl?: string;
+  /** Whether the parent is loaded. Disables recorder until true. */
   isParentReady: boolean;
-  /** Start the backing track when recording begins. */
-  onPlayBackingTrack: () => void;
-  /** Pause the backing track when stopped. */
-  onPauseBackingTrack: () => void;
   /** Called once a performance is created. Caller can route to it / show toast. */
   onCreated?: (performance: Performance) => void;
   /** Close the recorder (e.g. user taps a Cancel ✕). */
@@ -46,13 +45,12 @@ type Stage = 'idle' | 'countdown' | 'recording' | 'preview' | 'uploading' | 'don
 
 export function SingAlongRecorder({
   parentCreationId,
+  backingTrackUrl,
   isParentReady,
-  onPlayBackingTrack,
-  onPauseBackingTrack,
   onCreated,
   onClose,
 }: SingAlongRecorderProps) {
-  const recorder = useAudioRecorder({ maxDurationSec: 90 });
+  const recorder = useAudioRecorder({ maxDurationSec: 90, backingTrackUrl });
   const [stage, setStage] = useState<Stage>('idle');
   const [countdownNum, setCountdownNum] = useState(3);
   const [caption, setCaption] = useState('');
@@ -62,27 +60,24 @@ export function SingAlongRecorder({
   // Sync recorder state into stage transitions
   useEffect(() => {
     if (stage === 'recording' && recorder.state === 'stopped') {
-      onPauseBackingTrack();
       setStage('preview');
     }
     if (recorder.state === 'error' && stage !== 'idle') {
       setStage('idle');
-      onPauseBackingTrack();
     }
-  }, [recorder.state, stage, onPauseBackingTrack]);
+  }, [recorder.state, stage]);
 
   // Countdown effect
   useEffect(() => {
     if (stage !== 'countdown') return;
     if (countdownNum <= 0) {
       setStage('recording');
-      onPlayBackingTrack();
       void recorder.start();
       return;
     }
     const t = setTimeout(() => setCountdownNum((n) => n - 1), 800);
     return () => clearTimeout(t);
-  }, [stage, countdownNum, onPlayBackingTrack, recorder]);
+  }, [stage, countdownNum, recorder]);
 
   const handleStartRecording = useCallback(() => {
     if (!isParentReady) return;
@@ -97,8 +92,7 @@ export function SingAlongRecorder({
 
   const handleStopRecording = useCallback(() => {
     recorder.stop();
-    onPauseBackingTrack();
-  }, [recorder, onPauseBackingTrack]);
+  }, [recorder]);
 
   const handleRetake = useCallback(() => {
     recorder.reset();
@@ -217,8 +211,18 @@ export function SingAlongRecorder({
         )}
       </div>
 
-      {/* Live waveform — only shown while recording */}
-      {stage === 'recording' && (
+      {/* Loading state — backing track is being fetched/decoded */}
+      {stage === 'recording' && recorder.state !== 'recording' && (
+        <div className="mb-4 flex h-20 items-center justify-center gap-2 rounded-xl bg-white px-4 text-brand-purple">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span className="text-sm font-semibold">
+            {backingTrackUrl ? 'Loading the song...' : 'Starting...'}
+          </span>
+        </div>
+      )}
+
+      {/* Live waveform — only shown while actually recording */}
+      {stage === 'recording' && recorder.state === 'recording' && (
         <div className="mb-4 flex h-20 items-center justify-center gap-1 rounded-xl bg-white px-4">
           {Array.from({ length: 24 }).map((_, i) => {
             const offset = Math.abs((i - 12) / 12);
