@@ -58,21 +58,25 @@ export function BookEditorClient({ bookId }: BookEditorClientProps) {
     }
   }, [notFound, router]);
 
-  if (isLoading || !book) {
+  // Error first — when SWR's fetch fails, isLoading flips back to false and
+  // book is null. The previous order (loading-or-no-book → loading) trapped
+  // session/auth/network failures on an infinite "Loading…" screen.
+  if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-gray-500">
-        Loading your book…
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
+        <div className="text-4xl">📕</div>
+        <p className="text-sm font-semibold text-red-700">{error}</p>
+        <Link href="/create/book" className="text-sm text-brand-purple underline">
+          ← Back to library
+        </Link>
       </div>
     );
   }
 
-  if (error) {
+  if (isLoading || !book) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3">
-        <p className="text-sm text-red-700">{error}</p>
-        <Link href="/create/book" className="text-sm text-brand-purple underline">
-          Back to library
-        </Link>
+      <div className="flex min-h-screen items-center justify-center text-sm text-gray-500">
+        Loading your book…
       </div>
     );
   }
