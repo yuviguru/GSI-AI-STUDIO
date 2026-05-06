@@ -5,3 +5,4 @@ export * from './ceo.types';
 export * from './bot.types';
 export * from './asset.types';
 export * from './performance.types';
+export * from './book.types';

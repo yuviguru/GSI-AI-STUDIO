@@ -8,6 +8,7 @@ import { GAME_TEMPLATES, GAME_CATEGORIES } from './gameTemplates';
 
 export type { Template } from './types';
 export { getDailySpark } from './dailySpark';
+export * from './bookTemplates';
 
 const TEMPLATES_BY_TYPE: Record<string, Template[]> = {
   story: STORY_TEMPLATES,

@@ -72,6 +72,105 @@ All five studios (Story, Music, Quiz, Game, Comic) follow the same 3-step patter
 └─────────────────────────────────────────┘
 ```
 
+### Book Studio (Multi-Session Authoring)
+
+**Distinct from the 3-step pattern above.** Book Studio is for kids who want to *write a book* — not generate one. The kid is the author; AI helps with grammar and illustrations only. Books are persistent across sessions and can be resumed any time.
+
+**Lifecycle**: `Library → Wizard → Editor (loops per page) → Cover → Preview → Publish`. The kid can leave at any point and resume from the library card.
+
+#### Library (Book Studio home)
+
+Grid of book cards grouped by status: **In progress** (drafts with a `pageCount / pageLimit` indicator) and **Published**. `[+ New Book]` opens the wizard. Tap a card to resume.
+
+#### Wizard — locks the layout in 5 steps
+
+The wizard collects four irreversible decisions in a friendly progression:
+
+1. **Type** — 18 friendly cards (Storybook, Picture book, About Me, Family, Travel, Recipe, Field guide, Fact book, How-to, Science log, Poem, Joke, Diary, Quote, Letter, Sketchbook, Wordless, ABC). Each card maps to one of 6 page-structure buckets under the hood — the kid never sees the bucket name.
+2. **Format** — Text only / Image only / Text + Image.
+3. **Size** (LOCKED after this) — Square 8×8 / Tall 8.5×11 / Pocket 5.5×8.5 / Landscape 11×8.5.
+4. **Kit / page count** — Free: 5. Paid: 8 / 16 / 24 / 32 / custom 4–40.
+5. **Default font** — pick from 6 curated fonts (Quicksand, Lexend, Lora, Patrick Hand, Fredoka, Comic Neue). Per-page overrides allowed in the editor.
+
+End-of-wizard tap: `[Start Writing →]`. Server creates the book and routes to the editor.
+
+#### Editor
+
+The workhorse screen. Three regions:
+
+```
+┌────────────────────────────────────────────────────────┐
+│ ← My Books   "Goa Trip"          [Cover] [Preview] [⋯] │  ← top bar
+├────────────────────────────────────────────────────────┤
+│ 📄 1  📄 2  📄 3  📄 4  📄 5  ➕         (Page 3/16) │  ← page navigator
+├──────────┬─────────────────────────────────────────────┤
+│ 🅰 B I U │                                             │
+│ ¶ • 1.   │            [page canvas]                    │
+│ ⬅ ☰ ➡   │      TipTap text + image slot at the        │
+│ Font ▾   │      book's locked dimensions               │
+│ Size ▾   │                                             │
+│ Color ▾  │                                             │
+│ 🎤 Speak │                                             │
+│ ✨ Check │                                             │
+│  grammar │                                             │
+└──────────┴─────────────────────────────────────────────┘
+```
+
+- **Top bar**: book title, jump to cover or preview, overflow menu (delete, duplicate)
+- **Page navigator**: page thumbnails. Drag to reorder, tap to jump. `+` greyed out at `pageLimit` with a kid-friendly upsell.
+- **Left toolbar**: rich-text formatting, voice input, grammar check
+- **Canvas**: page at the book's locked size with the layout for the chosen format. Auto-saves on edit (debounced PATCH).
+
+#### Grammar suggestion UX — inline, kid-led, voice-preserving
+
+When the kid taps **✨ Check grammar**, suggestions overlay the text as strikethrough + replacement. Each suggestion has:
+
+- Original phrase struck through, suggested replacement bold next to it
+- A kid-friendly explanation in a popover ("‘Cat’ is one cat, so it goes with ‘is’")
+- Two buttons: **[✓ Accept]** applies the change, **[✕ Keep mine]** dismisses
+
+**Critical rules**:
+- Suggestions only flag grammar / spelling / punctuation — never style
+- Kid retains agency on every change
+- No silent rewrites, no "improve" mode
+- Empty suggestions = "Looks great!" mascot moment, not an error state
+
+#### Voice input
+
+Tap 🎤 → mic pulses → kid speaks → live interim transcript appears at the cursor → tap stop to commit. Uses existing `useVoiceInput` hook (Web Speech API, `lang=en-IN`). Unsupported browsers hide the button silently and fall back to type-only.
+
+#### Cover designer
+
+Separate screen. Composition: title + subtitle + author name + cover image (AI-generated via `/api/ai/page-image` or kid-supplied prompt) + background color. Live preview at the locked book size. Saving regenerates `coverThumbnail` for the library card.
+
+#### Preview (flipbook)
+
+Read-only flipbook of cover + all pages. Mobile-friendly swipe. Used for QA before publishing.
+
+#### Publish
+
+Friendly confirmation:
+
+```
+🎉 Ready to publish?
+   ✅ Cover set
+   ✅ 7 pages written
+   [ Publish my book → ]
+```
+
+After publish: PDF download enabled, share link minted, book moves to **Published** in library. **Print button is disabled in v1** with a "Notify me when print opens" CTA — keep the visual placeholder so kids see it's coming.
+
+#### Page-count tier hint
+
+When the kid hits the page cap, show a gentle, non-blocking nudge:
+
+```
+You've filled up your 5-page book! 🎉
+Want longer books? [Get more pages]
+```
+
+Never block the kid mid-flow with a hard paywall — the cap is the cap, the upsell is contextual.
+
 ### AI X-Ray Popup
 
 Appears after every creation. Dismissable but incentivized with AI Points.

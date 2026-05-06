@@ -5,7 +5,10 @@ import { generateSessionId } from '@/lib/utils';
 import type { SessionResponse } from '@/types';
 
 const SESSION_KEY = 'gsi-session-id';
-const MAX_CREATIONS_PER_DAY = 5;
+// Mirrors the server-side cap in lib/firebase/sessionService.ts. This is
+// only the optimistic initial value — the real remaining count comes back
+// from POST /api/sessions on syncSession.
+const MAX_CREATIONS_PER_DAY = 25;
 
 interface SessionState {
   sessionId: string;

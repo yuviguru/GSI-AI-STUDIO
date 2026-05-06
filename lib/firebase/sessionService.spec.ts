@@ -80,7 +80,9 @@ describe('sessionService', () => {
 
       expect(mockRunTransaction).toHaveBeenCalledOnce();
       expect(result.sessionId).toBe('new-session');
-      expect(result.creationsRemaining).toBe(10);
+      // MAX_CREATIONS_PER_DAY bumped 10 → 25 to support Book Studio's
+      // per-page AI calls. See sessionService.ts constants.
+      expect(result.creationsRemaining).toBe(25);
       expect(result.cooldownSeconds).toBe(0);
       expect(result.expiresAt).toBeTruthy();
     });
@@ -91,7 +93,7 @@ describe('sessionService', () => {
       const result = await getOrCreateSession('test-session');
 
       expect(mockRunTransaction).toHaveBeenCalledOnce();
-      expect(result.creationsRemaining).toBe(8);
+      expect(result.creationsRemaining).toBe(23); // 25 - 2
     });
 
     it('creates a fresh session when expired', async () => {
@@ -100,7 +102,7 @@ describe('sessionService', () => {
       const result = await getOrCreateSession('expired-session');
 
       expect(mockRunTransaction).toHaveBeenCalledOnce();
-      expect(result.creationsRemaining).toBe(10);
+      expect(result.creationsRemaining).toBe(25);
     });
   });
 
@@ -112,17 +114,19 @@ describe('sessionService', () => {
 
       expect(mockRunTransaction).toHaveBeenCalledOnce();
       expect(mockTxUpdate).toHaveBeenCalledOnce();
-      expect(result.creationsRemaining).toBe(7); // 10 - 3
+      expect(result.creationsRemaining).toBe(22); // 25 - 3
     });
 
     it('throws RATE_LIMITED when at max creations', async () => {
-      mockTxGet.mockResolvedValue(makeSessionDoc({ creationCount: 10 }));
+      // At MAX_CREATIONS_PER_DAY (25) the next call throws.
+      mockTxGet.mockResolvedValue(makeSessionDoc({ creationCount: 25 }));
 
       await expect(trackCreation('test-session')).rejects.toThrow('Daily creation limit reached');
     });
 
-    it('throws COOLDOWN when within 2-minute window', async () => {
-      const recentMs = Date.now() - 30 * 1000; // 30 seconds ago
+    it('throws COOLDOWN when within the cooldown window', async () => {
+      // COOLDOWN_SECONDS dropped 120 → 10. 5s ago is well inside the new window.
+      const recentMs = Date.now() - 5 * 1000;
       mockTxGet.mockResolvedValue(
         makeSessionDoc({ lastCreationAt: Timestamp.fromMillis(recentMs) })
       );
@@ -131,7 +135,8 @@ describe('sessionService', () => {
     });
 
     it('allows creation after cooldown period', async () => {
-      const oldMs = Date.now() - 3 * 60 * 1000; // 3 minutes ago
+      // 30s ago is well outside the 10s cooldown.
+      const oldMs = Date.now() - 30 * 1000;
       mockTxGet.mockResolvedValue(
         makeSessionDoc({
           creationCount: 1,
@@ -142,7 +147,7 @@ describe('sessionService', () => {
       const result = await trackCreation('test-session');
 
       expect(mockTxUpdate).toHaveBeenCalledOnce();
-      expect(result.creationsRemaining).toBe(8); // 10 - 2
+      expect(result.creationsRemaining).toBe(23); // 25 - 2
     });
 
     it('throws SESSION_NOT_FOUND for missing session', async () => {
@@ -164,18 +169,19 @@ describe('sessionService', () => {
 
       const result = await checkRateLimit('test-session');
 
-      expect(result.creationsRemaining).toBe(10);
+      expect(result.creationsRemaining).toBe(25);
       expect(result.cooldownSeconds).toBe(0);
     });
 
     it('throws when rate limited', async () => {
-      mockGet.mockResolvedValue(makeSessionDoc({ creationCount: 10 }));
+      mockGet.mockResolvedValue(makeSessionDoc({ creationCount: 25 }));
 
       await expect(checkRateLimit('test-session')).rejects.toThrow('Daily creation limit reached');
     });
 
     it('throws when in cooldown', async () => {
-      const recentMs = Date.now() - 60 * 1000; // 1 minute ago
+      // 5s ago is inside the 10s cooldown window.
+      const recentMs = Date.now() - 5 * 1000;
       mockGet.mockResolvedValue(
         makeSessionDoc({ lastCreationAt: Timestamp.fromMillis(recentMs) })
       );
@@ -184,7 +190,7 @@ describe('sessionService', () => {
     });
 
     it('reports cooldown seconds accurately', async () => {
-      const recentMs = Date.now() - 60 * 1000; // 1 minute ago
+      const recentMs = Date.now() - 5 * 1000; // 5s ago — inside the 10s cooldown
       mockGet.mockResolvedValue(
         makeSessionDoc({
           creationCount: 1,

@@ -269,3 +269,243 @@ export type CeoAgentRunInput = z.infer<typeof ceoAgentRunSchema>;
 export type CeoAgentAcceptInput = z.infer<typeof ceoAgentAcceptSchema>;
 export type CeoAgentRejectInput = z.infer<typeof ceoAgentRejectSchema>;
 export type BotLinkCreateInput = z.infer<typeof botLinkCreateSchema>;
+
+// ─── Book Studio ────────────────────────────────────────────
+
+const bookFormatSchema = z.enum(['text', 'image', 'text_image']);
+const bookSizeSchema = z.enum(['square', 'tall', 'pocket', 'landscape']);
+const bookBucketSchema = z.enum([
+  'narrative',
+  'memoir_catalog',
+  'entry_list',
+  'collection',
+  'concept',
+  'visual',
+]);
+const bookTypeSchema = z.enum([
+  'storybook',
+  'picture_book',
+  'about_me',
+  'family',
+  'travel',
+  'recipe',
+  'field_guide',
+  'fact_book',
+  'how_to',
+  'science_log',
+  'poem',
+  'joke',
+  'diary',
+  'quote',
+  'letter',
+  'sketchbook',
+  'wordless',
+  'abc_counting',
+]);
+const pageLayoutSchema = z.enum([
+  'text_top_image_bottom',
+  'image_top_text_bottom',
+  'image_full_bleed',
+  'text_only',
+  'entry_centered',
+  'recipe_split',
+  'concept_letter',
+  'gallery',
+]);
+
+const colorHexSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color hex (use #RRGGBB)');
+
+const typographyInputSchema = z.object({
+  titleFont: z.string().min(1).max(50),
+  bodyFont: z.string().min(1).max(50),
+  baseFontSize: z.number().int().min(10).max(28),
+});
+
+const pageStyleOverrideSchema = z.object({
+  font: z.string().min(1).max(50).optional(),
+  fontSize: z.number().int().min(8).max(72).optional(),
+  alignment: z.enum(['left', 'center', 'right']).optional(),
+  textColor: z.string().max(20).optional(),
+  backgroundColor: z.string().max(20).optional(),
+});
+
+/** Story plan beats — collected in the wizard's "Plan your story" step.
+ *  Optional throughout (kid can skip the whole step or any individual beat). */
+const plotSchema = z.object({
+  idea: z.string().max(300).optional().default(''),
+  beginning: z.string().max(300).optional().default(''),
+  problem: z.string().max(300).optional().default(''),
+  adventure: z.string().max(300).optional().default(''),
+  ending: z.string().max(300).optional().default(''),
+});
+
+/** A pre-baked character coming from the wizard — anchor image already
+ *  generated client-side and ready to persist on book creation. */
+const initialCharacterSchema = z.object({
+  name: z.string().min(1).max(40),
+  lookDescription: z.string().min(5).max(300),
+  anchorImageUrl: z.string().url().nullable().optional(),
+  anchorPrompt: z.string().max(500).nullable().optional(),
+});
+
+/** Wizard input for creating a new book — fields LOCKED after creation:
+ *  type, bucket, format, size. */
+export const bookCreateSchema = z.object({
+  title: z.string().min(1).max(100).default('Untitled book'),
+  author: z.string().min(1).max(60).default('Anonymous Author'),
+  type: bookTypeSchema,
+  bucket: bookBucketSchema,
+  format: bookFormatSchema,
+  size: bookSizeSchema,
+  pageLimit: z.number().int().min(4).max(40),
+  typography: typographyInputSchema,
+  themeColor: colorHexSchema.optional(),
+  /** Optional initial characters from the wizard's character step.
+   *  Capped at 3 to match the BookCharacter limit. */
+  characters: z.array(initialCharacterSchema).max(3).optional(),
+  /** Optional story plan from the wizard's plan step (narrative books). */
+  plot: plotSchema.optional(),
+});
+export type BookCreateInput = z.infer<typeof bookCreateSchema>;
+export type InitialCharacterInput = z.infer<typeof initialCharacterSchema>;
+
+/** Generic character portrait generation — no book context.
+ *  Used by the wizard before the book exists. */
+export const characterPortraitSchema = z.object({
+  lookDescription: z.string().min(5).max(300),
+  styleHint: z.string().max(50).optional(),
+});
+export type CharacterPortraitInput = z.infer<typeof characterPortraitSchema>;
+
+/** Patch metadata. LOCKED fields (rejected even if sent): size, dimensions,
+ *  bucket, type, sessionId — these were the user's lock-in decisions in the
+ *  wizard and changing them mid-book would re-flow every page. Everything
+ *  else (typography, font, format, pageLimit, theme, characters, etc.) can
+ *  be edited from the editor. `.strict()` rejects unknown keys including
+ *  the locked ones. */
+export const bookPatchSchema = z
+  .object({
+    title: z.string().min(1).max(100).optional(),
+    author: z.string().min(1).max(60).optional(),
+    themeColor: colorHexSchema.optional(),
+    typography: typographyInputSchema.partial().optional(),
+    cover: z.record(z.string(), z.unknown()).optional(),
+    backCover: z
+      .object({
+        text: z.string().max(500),
+        imageUrl: z.string().url().nullable(),
+        authorBio: z.string().max(300).nullable().optional(),
+        authorPhotoUrl: z.string().url().nullable().optional(),
+      })
+      .nullable()
+      .optional(),
+    format: bookFormatSchema.optional(),
+    pageLimit: z.number().int().min(4).max(40).optional(),
+    isPublic: z.boolean().optional(),
+  })
+  .strict();
+export type BookPatchInput = z.infer<typeof bookPatchSchema>;
+
+/** Append a new page */
+export const pageCreateSchema = z.object({
+  layout: pageLayoutSchema,
+  richText: z.record(z.string(), z.unknown()).optional(),
+  imagePrompt: z.string().max(500).optional(),
+});
+export type PageCreateInput = z.infer<typeof pageCreateSchema>;
+
+/** Update an existing page (any subset). imagePrompt is the FULL assembled
+ *  scene prompt (character look descriptions + scene action + style guide),
+ *  which grows with character count — cap at 5000 to leave headroom for the
+ *  3-character × 300-char-look case + the kid's 200-char action + style. */
+export const pagePatchSchema = z.object({
+  layout: pageLayoutSchema.optional(),
+  richText: z.record(z.string(), z.unknown()).optional(),
+  plainText: z.string().max(10_000).optional(),
+  imageUrl: z.string().url().nullable().optional(),
+  imagePrompt: z.string().max(5000).nullable().optional(),
+  imageStyle: z.string().max(50).nullable().optional(),
+  voiceTranscriptRaw: z.string().max(20_000).nullable().optional(),
+  style: pageStyleOverrideSchema.nullable().optional(),
+});
+export type PagePatchInput = z.infer<typeof pagePatchSchema>;
+
+/** Reorder pages */
+export const pageReorderSchema = z.object({
+  order: z
+    .array(
+      z.object({
+        pageId: z.string().min(1).max(128),
+        pageNumber: z.number().int().min(1).max(40),
+      })
+    )
+    .min(1)
+    .max(40),
+});
+export type PageReorderInput = z.infer<typeof pageReorderSchema>;
+
+/** Update cover composition (partial) */
+export const coverPatchSchema = z.object({
+  title: z.string().max(100).optional(),
+  subtitle: z.string().max(150).optional(),
+  authorName: z.string().max(60).optional(),
+  backgroundColor: colorHexSchema.optional(),
+  imageUrl: z.string().url().nullable().optional(),
+  imagePrompt: z.string().max(500).nullable().optional(),
+  font: z.string().max(50).optional(),
+});
+export type CoverPatchInput = z.infer<typeof coverPatchSchema>;
+
+/** Add a character to a book (max 3 per book enforced server-side). */
+export const characterCreateSchema = z.object({
+  name: z.string().min(1).max(40),
+  lookDescription: z.string().min(5).max(300),
+});
+export type CharacterCreateInput = z.infer<typeof characterCreateSchema>;
+
+/** Update a character (name, look, anchor). */
+export const characterPatchSchema = z.object({
+  name: z.string().min(1).max(40).optional(),
+  lookDescription: z.string().min(5).max(300).optional(),
+  anchorImageUrl: z.string().url().nullable().optional(),
+  anchorPrompt: z.string().max(500).nullable().optional(),
+});
+export type CharacterPatchInput = z.infer<typeof characterPatchSchema>;
+
+/** Generate an anchor portrait for a single character. */
+export const characterAnchorSchema = z.object({
+  bookId: z.string().min(1).max(128),
+  characterId: z.string().min(1).max(128),
+});
+export type CharacterAnchorInput = z.infer<typeof characterAnchorSchema>;
+
+/** Generate a scene image: combines selected characters' anchor descriptions
+ *  with the kid's short action description. Replaces the old free-prompt
+ *  pageImage flow for narrative books. */
+export const sceneImageSchema = z.object({
+  bookId: z.string().min(1).max(128),
+  pageId: z.string().min(1).max(128).optional(),
+  characterIds: z.array(z.string().max(128)).max(3).default([]),
+  action: z.string().min(3).max(200),
+  styleHint: z.string().max(50).optional(),
+});
+export type SceneImageInput = z.infer<typeof sceneImageSchema>;
+
+/** Grammar check — Groq returns suggestions for grammar/spelling/punctuation only. */
+export const grammarCheckSchema = z.object({
+  text: z.string().min(1).max(10_000),
+  ageHint: z.number().int().min(5).max(18).optional(),
+  bookId: z.string().max(128).optional(),
+  pageId: z.string().max(128).optional(),
+});
+export type GrammarCheckInput = z.infer<typeof grammarCheckSchema>;
+
+/** Page image generation — uses existing image cascade */
+export const pageImageSchema = z.object({
+  prompt: z.string().min(3).max(500),
+  style: z.string().max(50).optional(),
+  aspect: z.enum(['square', 'portrait', 'landscape', 'cover']).default('square'),
+  bookId: z.string().max(128).optional(),
+  pageId: z.string().max(128).optional(),
+});
+export type PageImageInput = z.infer<typeof pageImageSchema>;

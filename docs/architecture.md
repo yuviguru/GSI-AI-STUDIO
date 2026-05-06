@@ -224,6 +224,32 @@ app/(public)/ceo/
 - **Shareable profile cards**: The CEO Profile Card is published through the existing `/view/[id]` SSR viewer, using the same OG-tag and thumbnail pipeline as story/comic creations.
 - **Safety pipeline**: All user-entered strings (business name, decision answers) and LLM output (event text) run through the existing `lib/safety/` pipeline — the same profanity/PII/age-appropriate filters used by the creation studios. CEO events are kid-safe by design (no finance realism, no adult scenarios).
 
+### Book Studio (Multi-Session Authoring)
+
+**Distinct from the 5 one-shot creation studios.** Book Studio is a long-running authoring tool: kids write or dictate text, AI assists (grammar only), they generate illustrations per page, and the result is a printable PDF book. Persistent state across sessions.
+
+**Tech**:
+- **Rich-text editor**: TipTap (ProseMirror-based, headless) with toolbar for B/I/U, H1/H2, bullet/numbered lists, alignment, font + size + color overrides
+- **Voice input**: existing `hooks/useVoiceInput.ts` (Web Speech API, `lang=en-IN`)
+- **Grammar AI**: **Groq** via `lib/ai/groqClient.ts` (`llama-3.3-70b-versatile`) with a strict system prompt — flag mistakes only, never rewrite for style, preserve the kid's voice
+- **Image gen**: existing `lib/ai/imageProvider.ts` cascade (Pixazo → Replicate → Pollinations)
+- **PDF export**: extends `lib/export/pdfGenerator.ts`; renders TipTap JSON + images at the book's locked dimensions
+
+**Storage**: separate `books` collection + `pages` subcollection (NOT the `creations` collection). Reason: books have multi-document structure, locked layout fields, and a different lifecycle (`draft` → `complete` → `published`). See `data-model.md#books`.
+
+**Lock-in design**: book `size`, `format`, and page-structure `bucket` are collected in the wizard and **frozen** thereafter. Server rejects PATCH attempts on those fields with `400 LOCKED_FIELD`. Reason: changing layout mid-authoring would re-flow every page.
+
+**Routes**:
+- `app/(public)/create/book/page.tsx` — entry (server component wrapper)
+- `app/(public)/create/book/BookStudioClient.tsx` — wizard + library
+- `app/(public)/create/book/[bookId]/page.tsx` — editor (per-book route)
+
+**API**: see `api-contracts.md#book-studio-endpoints` (14 endpoints).
+
+**Safety**: page text and image prompts run through `lib/safety/` filters on every PATCH. Grammar suggestions are filtered through `outputFilter` before sending to the client.
+
+**No 3-step flow**: Book Studio does NOT follow INSPIRE/CREATE/SHARE — it has its own pattern documented in `ux-patterns.md#book-studio-multi-session-authoring`.
+
 ### Unified Telegram Bot Layer
 
 **Two bots, one codebase**: GSI AI Studio ships two Telegram bot instances that share a single `lib/bot/` infrastructure (adapter, router, context, services, feature modules). Each bot instance registers only the modules it needs.
@@ -358,6 +384,58 @@ Tokens are stored in the `botLinkCodes` collection (server-write-only, 10-minute
 8. All subsequent bot messages from chatId carry the linked userId via
    botSessions, so CEO state and AI Points stay in sync across web + chat.
 ```
+
+### Book Authoring Flow (Phase 1 — Anonymous)
+
+```
+1. Wizard collects: type, format, size, pageLimit, typography, themeColor
+   ↓
+2. POST /api/books → creates book doc (status=draft, pageCount=0)
+   - Server validates {type, format, size, bucket} combo
+   - Server enforces pageLimit ≤ 5 (free tier) or ≤ 40 (paid)
+   ↓
+3. Editor opens. For each page:
+   ├── Kid writes via TipTap editor OR speaks via useVoiceInput
+   │     ↓
+   │   plainText derived from TipTap JSON on the client
+   │     ↓
+   │   POST /api/ai/grammar-check → Groq returns suggestions[]
+   │     ↓
+   │   Kid accepts/rejects per suggestion (inline UI)
+   │     ↓
+   │   PATCH /api/books/:id/pages/:pageId → save richText + plainText
+   │
+   ├── (text_image format) Kid writes imagePrompt
+   │     ↓
+   │   POST /api/ai/page-image → cascading image gen
+   │     ↓
+   │   PATCH /api/books/:id/pages/:pageId → save imageUrl + imagePrompt
+   │
+   └── Kid clicks "+ Add page" → POST /api/books/:id/pages
+       (server checks pageCount < pageLimit)
+   ↓
+4. Cover designer: kid sets title/subtitle/author + cover image
+   ↓
+   POST /api/books/:id/cover → updates cover map, regenerates coverThumbnail
+   ↓
+5. Preview: client renders flipbook from book + pages
+   ↓
+6. Publish:
+   POST /api/books/:id/publish
+   - Validates pageCount ≥ 1
+   - Mints shareUrl slug
+   - Generates PDF via lib/export/pdfGenerator
+   - Sets status=published, publishedAt, pdfUrl
+   ↓
+7. Library: GET /api/books → list of all books for this session
+```
+
+**Key differences from the one-shot Creation Flow**:
+- Multi-call lifecycle — every page edit is its own PATCH
+- Persistent state across sessions (no in-memory generation pipeline)
+- Server doesn't generate content from prompts — it validates, stores, and surfaces grammar suggestions
+- Image gen is per-page on-demand, not bulk-parallel
+- Grammar AI offers suggestions; the kid retains agency over accept/reject
 
 ### AI Safety Pipeline
 ```

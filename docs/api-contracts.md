@@ -348,6 +348,266 @@ Generate a multi-panel illustrated comic strip with dialogue bubbles.
 
 ---
 
+## Book Studio Endpoints
+
+Book Studio uses a different lifecycle than one-shot AI generation: persistent multi-session state with a `books` collection + `pages` subcollection. See `data-model.md#books` for schemas. Grammar AI is **Groq** (not Claude) — uses existing `lib/ai/groqClient.ts`.
+
+### POST /api/books
+
+Create a new book from the wizard. Fields `size`, `format`, `bucket` are **LOCKED at creation** — cannot be changed after.
+
+**Request:**
+```json
+{
+  "title": "My Trip to Goa",
+  "author": "Aanya",
+  "type": "travel",
+  "bucket": "memoir_catalog",
+  "format": "text_image",
+  "size": "square",
+  "pageLimit": 16,
+  "typography": {
+    "titleFont": "Fredoka",
+    "bodyFont": "Quicksand",
+    "baseFontSize": 16
+  },
+  "themeColor": "#FF9F43"
+}
+```
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "book": { "id": "...", "title": "...", "...": "..." }
+  }
+}
+```
+
+**Errors:**
+- `400 INVALID_INPUT` — Unknown `type` / `format` / `size` / `bucket` combo, missing required fields
+- `400 PAGE_LIMIT_EXCEEDS_TIER` — `pageLimit` > 5 on free tier, > 40 on paid
+- `429 RATE_LIMITED` — Too many books per session
+
+---
+
+### GET /api/books
+
+List the current session's (or user's) books, most-recently-edited first.
+
+**Query params:** `status` (optional: `draft` | `complete` | `published`), `limit` (default 20), `cursor`
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": "...",
+        "title": "My Trip to Goa",
+        "type": "travel",
+        "size": "square",
+        "pageCount": 7,
+        "pageLimit": 16,
+        "status": "draft",
+        "coverThumbnail": "...",
+        "updatedAt": "..."
+      }
+    ],
+    "nextCursor": null,
+    "hasMore": false
+  }
+}
+```
+
+---
+
+### GET /api/books/:id
+
+Fetch a book + its pages (ordered by `pageNumber`).
+
+**Response (200):** `{ book: {...}, pages: [{...}, ...] }`
+
+**Errors:** `404 NOT_FOUND` if book doesn't exist or isn't owned by current session/user.
+
+---
+
+### PATCH /api/books/:id
+
+Update book metadata. **Cannot change** `size`, `format`, `bucket`, `dimensions`. Server rejects with `400 LOCKED_FIELD`.
+
+**Allowed fields:** `title`, `author`, `themeColor`, `typography` (defaults — already-set page overrides keep their values), `cover`, `backCover`, `isPublic`.
+
+---
+
+### DELETE /api/books/:id
+
+Delete book and all pages (Firestore batch cascade).
+
+**Response:** `204 No Content`
+
+---
+
+### POST /api/books/:id/pages
+
+Append a new page. Server checks `book.pageCount < book.pageLimit`.
+
+**Request:**
+```json
+{
+  "layout": "text_top_image_bottom",
+  "richText": null,
+  "imagePrompt": null
+}
+```
+
+**Response (201):** `{ page: {...}, pageNumber: 8 }`
+
+**Errors:** `400 PAGE_LIMIT_REACHED` if at cap.
+
+---
+
+### PATCH /api/books/:id/pages/:pageId
+
+Update a page. All fields optional.
+
+**Request:**
+```json
+{
+  "richText": { "type": "doc", "content": [ ] },
+  "plainText": "Once upon a time...",
+  "imageUrl": "...",
+  "imagePrompt": "...",
+  "imageStyle": "watercolor",
+  "style": { "font": "Patrick Hand", "fontSize": 18, "alignment": "left" }
+}
+```
+
+Server input-filters `plainText` and `imagePrompt` through safety pipeline before write. Auto-derives `plainText` from `richText` if both present and inconsistent.
+
+---
+
+### DELETE /api/books/:id/pages/:pageId
+
+Remove page. Server transactionally renumbers remaining pages.
+
+---
+
+### POST /api/books/:id/pages/reorder
+
+Reorder pages.
+
+**Request:**
+```json
+{ "order": [{ "pageId": "p1", "pageNumber": 1 }, { "pageId": "p3", "pageNumber": 2 }] }
+```
+
+Server runs the renumber inside a Firestore transaction so failed midway leaves no gaps.
+
+---
+
+### POST /api/books/:id/cover
+
+Update cover composition. Triggers regeneration of `coverThumbnail`.
+
+**Request:** any subset of `{ title, subtitle, authorName, backgroundColor, imagePrompt, font }`
+
+---
+
+### POST /api/books/:id/publish
+
+Move book to `published`. Server:
+1. Validates `book.pageCount >= 1`
+2. Mints `shareUrl` slug
+3. Generates PDF (or reuses cached `pdfUrl`)
+4. Sets `publishedAt`, `isPublic` (per request)
+
+**Response (200):** `{ shareUrl, pdfUrl }`
+
+---
+
+### POST /api/books/:id/export-pdf
+
+Generate PDF on-demand. Idempotent — returns cached `pdfUrl` if `updatedAt` hasn't moved since last export.
+
+**Response (200):** `{ pdfUrl, generatedAt }`
+
+---
+
+### POST /api/ai/grammar-check
+
+Get grammar / spelling / punctuation suggestions for a piece of text. Uses **Groq** (`llama-3.3-70b-versatile`) via `lib/ai/groqClient.ts`. **Preserves the kid's voice** — only flags clear mistakes, never rephrases for style.
+
+**Request:**
+```json
+{
+  "text": "The cat are jumping on the bed yesterday.",
+  "ageHint": 10,
+  "bookId": "...",
+  "pageId": "..."
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "suggestions": [
+      {
+        "id": "s1",
+        "type": "grammar",
+        "original": "The cat are",
+        "suggested": "The cat is",
+        "explanation": "‘Cat’ is one cat, so it goes with ‘is’.",
+        "startIndex": 0,
+        "endIndex": 11
+      },
+      {
+        "id": "s2",
+        "type": "grammar",
+        "original": "are jumping",
+        "suggested": "was jumping",
+        "explanation": "‘Yesterday’ is in the past, so use past tense.",
+        "startIndex": 8,
+        "endIndex": 19
+      }
+    ]
+  }
+}
+```
+
+**Guardrails (system prompt):**
+- Flag ONLY: grammar errors, spelling errors, punctuation errors
+- NEVER: rephrase for style, "improve" wording, change kid-isms, alter creative phrasing
+- Each suggestion includes a kid-friendly `explanation` (no jargon)
+- Empty array is normal and expected
+
+---
+
+### POST /api/ai/page-image
+
+Generate an illustration for a book page. Reuses the existing cascade (`lib/ai/imageProvider.ts`: Pixazo → Replicate → Pollinations).
+
+**Request:**
+```json
+{
+  "prompt": "watercolor of a kitten on a windowsill at sunset",
+  "style": "watercolor",
+  "aspect": "square",
+  "bookId": "...",
+  "pageId": "..."
+}
+```
+
+**Response (200):** `{ imageUrl, model, latencyMs }`
+
+**Errors:** `400 UNSAFE_CONTENT` (input prompt filtered), `502 AI_GENERATION_FAILED`.
+
+---
+
 ## Creation Management Endpoints
 
 ### POST /api/creations
