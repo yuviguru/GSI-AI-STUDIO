@@ -53,7 +53,9 @@ describe('useSession', () => {
   it('initializes with default state', () => {
     mockFetchSuccess();
     const { result } = renderHook(() => useSession());
-    expect(result.current.creationsRemaining).toBe(5);
+    // Initial display value before server sync. Bumped 5→25 to match
+    // the new MAX_CREATIONS_PER_DAY in sessionService.ts.
+    expect(result.current.creationsRemaining).toBe(25);
     expect(result.current.cooldownSeconds).toBe(0);
   });
 
@@ -98,7 +100,8 @@ describe('useSession', () => {
     await flush();
 
     expect(result.current.isReady).toBe(true);
-    expect(result.current.creationsRemaining).toBe(5);
+    // Falls back to the optimistic default cap (25) when the sync fails.
+    expect(result.current.creationsRemaining).toBe(25);
     expect(result.current.error).toBeNull();
   });
 
