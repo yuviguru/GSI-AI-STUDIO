@@ -33,11 +33,38 @@ function getServiceAccount(): ServiceAccount {
   );
 }
 
+/**
+ * Resolve the Firebase Storage bucket name.
+ *
+ * Priority:
+ * 1. FIREBASE_STORAGE_BUCKET (server-only override)
+ * 2. NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET (matches client SDK config)
+ * 3. `<projectId>.appspot.com` (legacy default — works for most projects
+ *    created before the .firebasestorage.app domain rollout)
+ *
+ * Required for `adminStorage.bucket()` (no-arg) to resolve a default
+ * bucket. Without this, schoolAssets and the PERF-001 asset service
+ * both throw `storage/invalid-argument`.
+ */
+function getStorageBucket(): string | undefined {
+  const explicit =
+    process.env.FIREBASE_STORAGE_BUCKET ||
+    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+  if (explicit) return explicit;
+
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  return projectId ? `${projectId}.appspot.com` : undefined;
+}
+
 function getApp(): App {
   if (getApps().length > 0) {
     return getApps()[0]!;
   }
-  return initializeApp({ credential: cert(getServiceAccount()) });
+  const storageBucket = getStorageBucket();
+  return initializeApp({
+    credential: cert(getServiceAccount()),
+    ...(storageBucket ? { storageBucket } : {}),
+  });
 }
 
 // Lazy singletons — avoids crashes during Next.js build when env vars aren't set
