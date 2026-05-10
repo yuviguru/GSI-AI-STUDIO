@@ -12,10 +12,11 @@ import {
   buildComicUserPrompt,
 } from '@/lib/ai/prompts/comicPrompt';
 import { usageTracker } from '@/lib/cost/usageTracker';
+import { persistImages } from './imageStorage';
 import type { CostTier } from '@/lib/ai/ports';
 import type { AiXrayData, ComicContent, ComicDialogue } from '@/types';
 
-const IMAGE_CONCURRENCY = 3;
+const IMAGE_CONCURRENCY = 5;
 const PLACEHOLDER_IMAGE = '/images/placeholder-story.svg';
 
 export interface CreateComicInput {
@@ -81,7 +82,10 @@ export async function createComic(
       }));
 
       const stylePrefix = COMIC_STYLE_PREFIXES[input.style] ?? COMIC_STYLE_PREFIXES.cartoon!;
-      const imageUrls = await generatePanelsParallel(safePanels, stylePrefix);
+      const generatedUrls = await generatePanelsParallel(safePanels, stylePrefix);
+      // Persist base64/expiring URLs — comics are the worst offender for
+      // Firestore doc bloat (4 panels × 200KB inline = ~800KB/doc).
+      const imageUrls = await persistImages(generatedUrls, 'comic', input.sessionId);
 
       const comicContent: ComicContent = {
         title: llmResponse.title,
