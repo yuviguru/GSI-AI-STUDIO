@@ -62,20 +62,28 @@ export class HealthMonitor {
   }
 
   /**
-   * Get the cached health status for a provider. Triggers a background
-   * refresh if the entry is stale.
+   * Get the cached health status for a provider.
    *
-   * Returns `unknown` (healthy=false) for providers that haven't been
-   * probed yet — callers should typically call `start()` at boot.
+   * Fail-open semantics for cold start: in serverless, every cold lambda
+   * sees an empty cache. If we returned `healthy: false` here the very
+   * first request after a cold start would throw "no healthy providers"
+   * before the background probe completes. Instead we OPTIMISTICALLY
+   * report healthy on first miss — the reactive `markUnhealthyFromError`
+   * path catches real failures via the request itself, and the background
+   * loop converges to actual health within one tick.
+   *
+   * If the entry IS cached but stale, we return the cached value (still
+   * usable) and trigger a background refresh.
    */
   status(name: string): HealthStatus {
     const cached = this.cache.get(name);
     if (!cached) {
-      return { healthy: false, checkedAt: 0, reason: 'not yet probed' };
+      // Fire-and-forget probe so we converge quickly. Don't block the request.
+      void this.refresh(name);
+      return { healthy: true, checkedAt: 0, reason: 'optimistic — not yet probed' };
     }
     const age = Date.now() - cached.checkedAt;
     if (age > this.opts.staleAfterMs) {
-      // Trigger background refresh but return cached value with a warning.
       void this.refresh(name);
       return { ...cached, reason: cached.reason ?? 'stale' };
     }

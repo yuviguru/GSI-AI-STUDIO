@@ -217,6 +217,39 @@ export class FirebaseDataStore implements DataStore {
     });
   }
 
+  async arrayUnion<T>(
+    collection: string,
+    id: string,
+    field: string,
+    values: T[],
+  ): Promise<void> {
+    if (values.length === 0) return;
+    await this.collection(collection).doc(id).update({
+      [field]: FieldValue.arrayUnion(...(values as unknown[])),
+      updatedAt: Timestamp.now(),
+    });
+  }
+
+  async arrayRemove<T>(
+    collection: string,
+    id: string,
+    field: string,
+    values: T[],
+  ): Promise<void> {
+    if (values.length === 0) return;
+    await this.collection(collection).doc(id).update({
+      [field]: FieldValue.arrayRemove(...(values as unknown[])),
+      updatedAt: Timestamp.now(),
+    });
+  }
+
+  async deleteField(collection: string, id: string, field: string): Promise<void> {
+    await this.collection(collection).doc(id).update({
+      [field]: FieldValue.delete(),
+      updatedAt: Timestamp.now(),
+    });
+  }
+
   async transaction<T>(fn: (tx: Transaction) => Promise<T>): Promise<T> {
     return adminDb.runTransaction(async (firestoreTx) => {
       const tx = wrapTransaction(firestoreTx, this);

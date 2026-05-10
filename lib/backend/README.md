@@ -108,19 +108,28 @@ Add this to `.eslintrc.json` to enforce the abstraction (the config-protection h
 
 | Service | Status | Notes |
 |---|---|---|
-| `creationService` → `creationRepository` | ✅ Migrated | Re-export shim preserves callers |
-| `sessionService` | ⏳ Deferred | Uses `FieldValue.arrayUnion`, batched writes — needs port extensions |
-| `userService` | ⏳ Deferred | Uses `FieldValue.delete`, `FieldValue.arrayUnion` — needs port extensions |
-| `bookService`, `performanceService`, ~20 others | ⏳ Deferred | Migrate as touched, or in batch when swapping backends |
+| `creationService` → `creationRepository` | ✅ Fully migrated | Re-export shim preserves callers; full test coverage |
+| `userService` (simple ops) → `userRepository` | ✅ Partial | `createUser`, `getUser`, `clearOrphanedClaimSnapshot` migrated |
+| `userService.claimSession` | ⏳ Pending | Multi-collection transaction with batched writes — port primitives now exist; refactor blocked on careful auth-flow regression testing |
+| `sessionService` | ⏳ Pending | 600+ LOC; uses arrayUnion + complex transactions for points/badges/streaks. Port primitives ready; do this with the next backend-aware change |
+| `bookService`, `performanceService`, ~20 others | ⏳ Pending | Migrate lazily when touched, or in batch when swapping backends |
 
-**Why deferred**: the architecture works today (creationRepository proves the pattern). The deferred services use Firestore-specific operations that need either (a) port extensions like `arrayUnion()`, `arrayRemove()`, `deleteField()`, or (b) read-modify-write rewrites inside transactions. We'll migrate them when we actually swap backends — at which point we know exactly which Firestore operations to port.
+**The architecture is unblocked**: port extensions (`arrayUnion`, `arrayRemove`, `deleteField`) are now available. Future migrations are mechanical refactors — no architecture work required.
 
-**Future port additions (when needed)**:
+**Available port primitives**:
 ```ts
-arrayUnion<T>(collection: string, id: string, field: string, values: T[]): Promise<void>;
-arrayRemove<T>(collection: string, id: string, field: string, values: T[]): Promise<void>;
-deleteField(collection: string, id: string, field: string): Promise<void>;
-batch(): WriteBatch;
+backend.data.get<T>(collection, id)
+backend.data.create<T>(collection, id | null, data)
+backend.data.update<T>(collection, id, partial)
+backend.data.delete(collection, id)
+backend.data.query<T>(collection, opts)         // paginated, opaque cursors
+backend.data.count(collection, { where })
+backend.data.increment(collection, id, field, by)
+backend.data.arrayUnion<T>(collection, id, field, values)
+backend.data.arrayRemove<T>(collection, id, field, values)
+backend.data.deleteField(collection, id, field)
+backend.data.transaction(fn)                    // tx with all the above
+backend.data.subcollection(parent, id, child)   // SQL adapters flatten this
 ```
 
 ## Cursor Strategy

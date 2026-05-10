@@ -27,7 +27,10 @@ export interface AnthropicAdapterConfig {
 }
 
 export function makeAnthropicProvider(cfg: AnthropicAdapterConfig): LlmProvider {
-  const client = new Anthropic({ apiKey: cfg.apiKey });
+  // 60s timeout matches the OpenAI-compat adapter and protects the lambda
+  // from hanging on a stalled Anthropic response. Without this the SDK
+  // default is no timeout — a single bad upstream blocks the whole route.
+  const client = new Anthropic({ apiKey: cfg.apiKey, timeout: 60_000 });
 
   const provider: LlmProvider = {
     name: cfg.name,

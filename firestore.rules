@@ -183,6 +183,19 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // WhatsApp per-phone rate limits — server-side only.
+    // Document IDs are SHA-256 hashes of the phone number (no raw PII).
+    match /whatsappRateLimits/{key} {
+      allow read, write: if false;
+    }
+
+    // AI provider usage telemetry — server-side only.
+    // Tags every router attempt with sessionId/studio/cost/provider.
+    // Read via Admin SDK in /admin/usage page; never client-readable.
+    match /aiUsage/{eventId} {
+      allow read, write: if false;
+    }
+
     // ─── Assets (PERF-001) ───────────────────────────────────
     // Unified binary-media metadata — payloads in object storage.
     // Public-readable when visibility=public + status=ready, otherwise

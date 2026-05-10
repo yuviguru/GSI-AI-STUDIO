@@ -9,6 +9,7 @@
  */
 
 import { nanoid } from 'nanoid';
+import { z } from 'zod';
 import {
   createStory,
   createQuiz,
@@ -17,6 +18,56 @@ import {
   createMusic,
 } from '@/lib/capabilities';
 import type { McpTool, McpToolResult } from './protocol';
+
+// ── Runtime arg validation (mirrors the JSON Schema declared on each tool) ─
+
+/**
+ * The JSON Schema in TOOLS is for client documentation. These Zod schemas
+ * ENFORCE the same constraints at runtime, which the JSON Schema cannot.
+ * A 500K-char `premise` would otherwise sail through `String(args.premise)`
+ * and inflate LLM cost.
+ */
+const ARG_SCHEMAS = {
+  create_story: z.object({
+    premise: z.string().min(5).max(500),
+    ageGroup: z.enum(['5-7', '8-10', '11-13', '14-17']).optional(),
+    pages: z.number().int().min(3).max(8).optional(),
+    characters: z.array(z.string().max(50)).max(5).optional(),
+    setting: z.string().max(100).optional(),
+    genre: z.string().max(50).optional(),
+    style: z.enum(['watercolor', 'cartoon', 'pixel-art', 'comic']).optional(),
+  }),
+  create_quiz: z.object({
+    topic: z.string().min(2).max(200),
+    format: z.enum(['trivia', 'true_false', 'fill_blank', 'adventure']).optional(),
+    difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
+    questionCount: z.number().int().min(3).max(20).optional(),
+    ageGroup: z.string().max(20).optional(),
+  }),
+  create_comic: z.object({
+    premise: z.string().min(5).max(500),
+    style: z.enum(['manga', 'cartoon', 'superhero', 'indie', 'chibi']),
+    panelCount: z.number().int().min(3).max(8).optional(),
+    characters: z.array(z.string().max(50)).max(5).optional(),
+    ageGroup: z.string().max(20).optional(),
+  }),
+  create_game: z.object({
+    premise: z.string().min(5).max(500),
+    setting: z.string().max(200).optional(),
+    characterName: z.string().max(30).optional(),
+    difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+    ageGroup: z.string().max(20).optional(),
+  }),
+  create_music: z.object({
+    mood: z.string().min(1).max(50),
+    genre: z.string().min(1).max(50),
+    theme: z.string().max(200).optional(),
+    duration: z.number().int().min(15).max(60).optional(),
+    instruments: z.array(z.string().max(30)).max(4).optional(),
+    lyricsPrompt: z.string().max(500).optional(),
+    ageGroup: z.string().max(20).optional(),
+  }),
+} as const;
 
 // ── Tool catalog ──────────────────────────────────────────────
 
@@ -187,150 +238,117 @@ export interface McpAuthContext {
 
 export async function executeTool(
   name: string,
-  args: Record<string, unknown>,
+  rawArgs: Record<string, unknown>,
   auth: McpAuthContext = {},
 ): Promise<McpToolResult> {
   const sessionId = getMcpSessionId(auth);
   const baseUrl = process.env.MCP_PUBLIC_BASE_URL ?? 'https://gsi.ai';
+  const tier = auth.maxCostTier ?? 'cheap';
 
+  // 1. Tool name allowlist.
+  const schema = ARG_SCHEMAS[name as keyof typeof ARG_SCHEMAS];
+  if (!schema) {
+    return {
+      content: [{ type: 'text', text: `Unknown tool: ${name}` }],
+      isError: true,
+    };
+  }
+
+  // 2. Runtime arg validation (length, type, enum constraints).
+  let args: z.infer<typeof schema>;
+  try {
+    args = schema.parse(rawArgs) as z.infer<typeof schema>;
+  } catch (err) {
+    const issues =
+      err instanceof z.ZodError
+        ? err.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; ')
+        : 'unknown validation error';
+    return {
+      content: [{ type: 'text', text: `Invalid arguments for ${name}: ${issues}` }],
+      isError: true,
+    };
+  }
+
+  // 3. Dispatch — executions are typed via the Zod-parsed args.
   try {
     switch (name) {
       case 'create_story': {
-        const result = await createStory({
-          sessionId,
-          premise: String(args.premise),
-          characters: args.characters as string[] | undefined,
-          setting: args.setting as string | undefined,
-          genre: args.genre as string | undefined,
-          pages: args.pages as number | undefined,
-          ageGroup: args.ageGroup as string | undefined,
-          style: args.style as 'watercolor' | 'cartoon' | 'pixel-art' | 'comic' | undefined,
-          maxCostTier: auth.maxCostTier ?? 'cheap',
-        });
+        const a = args as z.infer<typeof ARG_SCHEMAS.create_story>;
+        const result = await createStory({ sessionId, ...a, maxCostTier: tier });
         return {
           content: [
             {
               type: 'text',
               text: `Created story "${result.story.title}" — ${result.story.pages.length} pages.\nView: ${baseUrl}${result.shareUrl}`,
             },
-            {
-              type: 'resource',
-              resource: { uri: `gsi://creation/${result.creationId}` },
-            },
+            { type: 'resource', resource: { uri: `gsi://creation/${result.creationId}` } },
           ],
         };
       }
-
       case 'create_quiz': {
-        const result = await createQuiz({
-          sessionId,
-          topic: String(args.topic),
-          format: args.format as 'trivia' | 'true_false' | 'fill_blank' | 'adventure' | undefined,
-          difficulty: args.difficulty as 'beginner' | 'intermediate' | 'advanced' | undefined,
-          questionCount: args.questionCount as number | undefined,
-          ageGroup: args.ageGroup as string | undefined,
-          maxCostTier: auth.maxCostTier ?? 'cheap',
-        });
+        const a = args as z.infer<typeof ARG_SCHEMAS.create_quiz>;
+        const result = await createQuiz({ sessionId, ...a, maxCostTier: tier });
         return {
           content: [
             {
               type: 'text',
               text: `Created quiz "${result.quiz.title}" — ${result.quiz.totalQuestions} questions.\nView: ${baseUrl}${result.shareUrl}`,
             },
-            {
-              type: 'resource',
-              resource: { uri: `gsi://creation/${result.creationId}` },
-            },
+            { type: 'resource', resource: { uri: `gsi://creation/${result.creationId}` } },
           ],
         };
       }
-
       case 'create_comic': {
-        const result = await createComic({
-          sessionId,
-          premise: String(args.premise),
-          style: args.style as 'manga' | 'cartoon' | 'superhero' | 'indie' | 'chibi',
-          panelCount: args.panelCount as number | undefined,
-          characters: args.characters as string[] | undefined,
-          ageGroup: args.ageGroup as string | undefined,
-          maxCostTier: auth.maxCostTier ?? 'cheap',
-        });
+        const a = args as z.infer<typeof ARG_SCHEMAS.create_comic>;
+        const result = await createComic({ sessionId, ...a, maxCostTier: tier });
         return {
           content: [
             {
               type: 'text',
               text: `Created comic "${result.comic.title}" — ${result.comic.totalPanels} panels.\nView: ${baseUrl}${result.shareUrl}`,
             },
-            {
-              type: 'resource',
-              resource: { uri: `gsi://creation/${result.creationId}` },
-            },
+            { type: 'resource', resource: { uri: `gsi://creation/${result.creationId}` } },
           ],
         };
       }
-
       case 'create_game': {
-        const result = await createGame({
-          sessionId,
-          premise: String(args.premise),
-          setting: args.setting as string | undefined,
-          characterName: args.characterName as string | undefined,
-          difficulty: args.difficulty as 'easy' | 'medium' | 'hard' | undefined,
-          ageGroup: args.ageGroup as string | undefined,
-          maxCostTier: auth.maxCostTier ?? 'cheap',
-        });
+        const a = args as z.infer<typeof ARG_SCHEMAS.create_game>;
+        const result = await createGame({ sessionId, ...a, maxCostTier: tier });
         return {
           content: [
             {
               type: 'text',
               text: `Created game "${result.game.title}" — ${result.game.totalScenes} scenes, ${result.game.totalEndings} endings.\nPlay: ${baseUrl}${result.shareUrl}`,
             },
-            {
-              type: 'resource',
-              resource: { uri: `gsi://creation/${result.creationId}` },
-            },
+            { type: 'resource', resource: { uri: `gsi://creation/${result.creationId}` } },
           ],
         };
       }
-
       case 'create_music': {
-        const result = await createMusic({
-          sessionId,
-          mood: String(args.mood),
-          genre: String(args.genre),
-          theme: args.theme as string | undefined,
-          duration: args.duration as number | undefined,
-          instruments: args.instruments as string[] | undefined,
-          lyricsPrompt: args.lyricsPrompt as string | undefined,
-          ageGroup: args.ageGroup as string | undefined,
-          maxCostTier: auth.maxCostTier ?? 'cheap',
-        });
+        const a = args as z.infer<typeof ARG_SCHEMAS.create_music>;
+        const result = await createMusic({ sessionId, ...a, maxCostTier: tier });
         return {
           content: [
             {
               type: 'text',
               text: `Created song "${result.music.title}" — ${result.music.duration}s.\nListen: ${baseUrl}${result.shareUrl}`,
             },
-            {
-              type: 'resource',
-              resource: { uri: `gsi://creation/${result.creationId}` },
-            },
+            { type: 'resource', resource: { uri: `gsi://creation/${result.creationId}` } },
           ],
         };
       }
-
-      default:
-        return {
-          content: [{ type: 'text', text: `Unknown tool: ${name}` }],
-          isError: true,
-        };
     }
+    return { content: [{ type: 'text', text: `Unknown tool: ${name}` }], isError: true };
   } catch (err) {
+    // Server-side: full error for debugging.
+    console.error(`[mcp/executeTool] ${name} failed:`, err);
+    // Client-side: generic message — don't leak provider details, internal
+    // paths, API responses, or stack traces.
     return {
       content: [
         {
           type: 'text',
-          text: `Tool ${name} failed: ${err instanceof Error ? err.message : String(err)}`,
+          text: `Couldn't create your ${name.replace('create_', '')} right now. Please try again in a moment.`,
         },
       ],
       isError: true,

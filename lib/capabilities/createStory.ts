@@ -13,10 +13,14 @@ import { trackCreation } from '@/lib/firebase/sessionService';
 import { filterInput, filterOutput, filterImagePrompt } from '@/lib/safety/inputFilter';
 import { STORY_SYSTEM_PROMPT, buildStoryUserPrompt } from '@/lib/ai/prompts/storyPrompt';
 import { usageTracker } from '@/lib/cost/usageTracker';
+import { persistImages } from './imageStorage';
 import type { CostTier } from '@/lib/ai/ports';
 import type { AiXrayData, StoryContent } from '@/types';
 
-const IMAGE_CONCURRENCY = 3;
+// 5-page stories typically generate 5 images; running them in a single
+// Promise.allSettled is fine at pilot scale and saves 5-8s vs sequential
+// batches. Revisit when Pixazo rate limits start to bite (~10K MAU).
+const IMAGE_CONCURRENCY = 5;
 const PLACEHOLDER_IMAGE = '/images/placeholder-story.svg';
 
 export interface CreateStoryInput {
@@ -95,13 +99,17 @@ export async function createStory(
       const promptPrefix = [styleGuide, characterSheet].filter(Boolean).join(' | ');
 
       const imageStyle = input.style ?? 'cartoon';
-      const imageUrls = await generateImagesParallel(
+      const generatedUrls = await generateImagesParallel(
         safePages.map((p) => ({
           imagePrompt: promptPrefix ? `${promptPrefix} | SCENE: ${p.imagePrompt}` : p.imagePrompt,
         })),
         imageStyle,
         seed,
       );
+
+      // Persist any base64 / expiring URLs to object storage so the Firestore
+      // doc stays small and the share link works after Replicate URLs expire.
+      const imageUrls = await persistImages(generatedUrls, 'story', input.sessionId);
 
       // 5. Build story content
       const storyContent: StoryContent & { title: string; moral: string } = {

@@ -142,116 +142,108 @@ export async function archiveCreation(
 }
 
 /**
- * List creations for a session, filtering archived in memory across multiple
- * batched queries (avoids needing a composite index on status).
+ * List creations for a session.
  *
- * The legacy service used Firestore document IDs as cursors. The new
- * DataStore uses opaque base64 cursors. Since this is pre-launch, no live
- * cursors need to migrate.
+ * Filters archived in the query (composite index covers it) so a single
+ * Firestore round-trip returns exactly `limit + 1` rows — no in-memory
+ * scan-and-discard, no batched re-fetching. The previous batched-loop
+ * implementation could read 200 docs per page worst-case at scale.
  */
 export async function listCreations(
   sessionId: string,
   filters: ListCreationsFilters = {},
 ): Promise<ListCreationsResult> {
   const limit = Math.min(filters.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
-  const batchSize = Math.max(limit * 2, 20);
-  const maxBatches = 5;
 
-  const where: Array<{ field: string; op: 'eq'; value: unknown }> = [
+  const where: Array<{ field: string; op: 'eq' | 'ne'; value: unknown }> = [
     { field: 'sessionId', op: 'eq', value: sessionId },
+    { field: 'status', op: 'ne', value: 'archived' },
   ];
   if (filters.type) where.push({ field: 'type', op: 'eq', value: filters.type });
 
-  const collected: Creation[] = [];
-  let cursor: string | undefined = filters.cursor;
+  const page = await backend.data.query<Creation>(CREATIONS, {
+    where,
+    orderBy: [{ field: 'createdAt', direction: 'desc' }],
+    limit,
+    cursor: filters.cursor,
+  });
 
-  for (let i = 0; i < maxBatches; i++) {
-    const page = await backend.data.query<Creation>(CREATIONS, {
-      where,
-      orderBy: [{ field: 'createdAt', direction: 'desc' }],
-      limit: batchSize,
-      cursor,
-    });
-
-    const active = page.items.filter((c) => c.status !== 'archived');
-    collected.push(...active);
-
-    if (collected.length > limit || !page.hasMore) break;
-    cursor = page.nextCursor ?? undefined;
-  }
-
-  const hasMore = collected.length > limit;
-  const items = collected.slice(0, limit);
-  const nextCursor =
-    hasMore && items.length > 0
-      ? // Re-encode cursor based on the last item's createdAt
-        encodeIdCursor(items[items.length - 1]!.createdAt)
-      : null;
-
-  return { items, nextCursor, hasMore };
+  return {
+    items: page.items,
+    nextCursor: page.nextCursor,
+    hasMore: page.hasMore,
+  };
 }
 
 export async function listPublicCreations(
   filters: PublicListFilters,
 ): Promise<ListCreationsResult> {
   const limit = Math.min(filters.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
-  const sortField = filters.sort === 'trending' ? 'likeCount' : 'createdAt';
-  const batchSize = Math.max(limit * 2, 20);
-  const maxBatches = 5;
+  const isTrending = filters.sort === 'trending';
+  // Trending: primary sort by likeCount desc; tie-break by createdAt desc.
+  // Composite index in firestore.indexes.json covers the full filter+sort
+  // combination so we get `limit + 1` reads per page (no in-memory filter).
+  const orderBy: Array<{ field: string; direction: 'desc' }> = isTrending
+    ? [
+        { field: 'likeCount', direction: 'desc' },
+        { field: 'createdAt', direction: 'desc' },
+      ]
+    : [{ field: 'createdAt', direction: 'desc' }];
 
-  const where: Array<{ field: string; op: 'eq'; value: unknown }> = [
+  const where: Array<{ field: string; op: 'eq' | 'ne'; value: unknown }> = [
     { field: 'isPublic', op: 'eq', value: true },
+    { field: 'status', op: 'ne', value: 'archived' },
   ];
   if (filters.type) where.push({ field: 'type', op: 'eq', value: filters.type });
 
-  const collected: Creation[] = [];
-  let cursor: string | undefined = filters.cursor;
+  const page = await backend.data.query<Creation>(CREATIONS, {
+    where,
+    orderBy,
+    limit,
+    cursor: filters.cursor,
+  });
 
-  for (let i = 0; i < maxBatches; i++) {
-    const page = await backend.data.query<Creation>(CREATIONS, {
-      where,
-      orderBy: [{ field: sortField, direction: 'desc' }],
-      limit: batchSize,
-      cursor,
-    });
-
-    const active = page.items.filter((c) => c.status !== 'archived');
-    collected.push(...active);
-
-    if (collected.length > limit || !page.hasMore) break;
-    cursor = page.nextCursor ?? undefined;
-  }
-
-  const hasMore = collected.length > limit;
-  const items = collected.slice(0, limit);
-  const nextCursor =
-    hasMore && items.length > 0
-      ? encodeIdCursor(
-          (items[items.length - 1]! as unknown as Record<string, unknown>)[
-            sortField
-          ] as Date | string,
-        )
-      : null;
-
-  return { items, nextCursor, hasMore };
+  return {
+    items: page.items,
+    nextCursor: page.nextCursor,
+    hasMore: page.hasMore,
+  };
 }
 
 /**
  * Top creators by recent public published creation count.
- * Reads up to 200 recent public creations and aggregates client-side.
+ *
+ * Reads from the `leaderboards/topCreators` cache populated hourly by the
+ * `leaderboard-refresh` scheduled function. Falls back to a live scan if
+ * the cache is missing (first deploy, or cache wiped). Live scan reads
+ * up to 200 recent creations — keep the fallback path bounded.
  */
 export async function getTopCreators(
   topN: number = 5,
 ): Promise<Array<{ sessionId: string; creationCount: number }>> {
+  const cached = await backend.data
+    .get<{ entries: Array<{ sessionId: string; creationCount: number }> }>(
+      'leaderboards',
+      'topCreators',
+    )
+    .catch(() => null);
+
+  if (cached?.entries?.length) {
+    return cached.entries.slice(0, topN);
+  }
+
+  // Cache miss — live scan. The hourly cron will populate the cache shortly.
   const page = await backend.data.query<Creation>(CREATIONS, {
-    where: [{ field: 'isPublic', op: 'eq', value: true }],
+    where: [
+      { field: 'isPublic', op: 'eq', value: true },
+      { field: 'status', op: 'ne', value: 'archived' },
+    ],
     orderBy: [{ field: 'createdAt', direction: 'desc' }],
     limit: 200,
   });
 
   const counts = new Map<string, number>();
   for (const c of page.items) {
-    if (c.status === 'archived') continue;
     counts.set(c.sessionId, (counts.get(c.sessionId) ?? 0) + 1);
   }
   return Array.from(counts.entries())
@@ -260,9 +252,3 @@ export async function getTopCreators(
     .map(([sessionId, creationCount]) => ({ sessionId, creationCount }));
 }
 
-// ── Helpers ────────────────────────────────────────────────────────
-
-function encodeIdCursor(value: Date | string): string {
-  const v = value instanceof Date ? value.toISOString() : value;
-  return Buffer.from(JSON.stringify({ v: [v] }), 'utf-8').toString('base64');
-}

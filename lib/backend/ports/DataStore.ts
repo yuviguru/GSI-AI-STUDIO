@@ -88,6 +88,25 @@ export interface DataStore {
     by: number,
   ): Promise<void>;
 
+  /** Atomically add elements to an array field, preserving uniqueness. */
+  arrayUnion<T>(
+    collection: string,
+    id: string,
+    field: string,
+    values: T[],
+  ): Promise<void>;
+
+  /** Atomically remove elements from an array field. */
+  arrayRemove<T>(
+    collection: string,
+    id: string,
+    field: string,
+    values: T[],
+  ): Promise<void>;
+
+  /** Atomically delete a field from a document (sentinel-based in Firestore). */
+  deleteField(collection: string, id: string, field: string): Promise<void>;
+
   /** Run a function inside a transaction. Adapter retries on conflict. */
   transaction<T>(fn: (tx: Transaction) => Promise<T>): Promise<T>;
 
