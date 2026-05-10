@@ -78,18 +78,42 @@ class FirestoreMetricsSink implements RouterMetricsSink {
 /** Process-wide singleton. */
 export const usageTracker = new FirestoreMetricsSink();
 
-/**
- * Aggregate recent usage for a quick admin view. Reads up to 1000 events.
- */
-export async function getUsageSummary(
-  windowDays: number = 7,
-): Promise<{
+interface UsageSummary {
   totalCostUsd: number;
   totalCreations: number;
   costByProvider: Record<string, number>;
   failuresByProvider: Record<string, number>;
-}> {
-  const cutoff = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000).toISOString();
+}
+
+interface CachedSummary {
+  windowDays: number;
+  summary: UsageSummary;
+  computedAtMs: number;
+}
+
+const SUMMARY_TTL_MS = 5 * 60 * 1000;
+let cachedSummary: CachedSummary | null = null;
+
+/**
+ * Aggregate recent usage for the admin view. Reads up to 1000 events.
+ *
+ * Cached for 5 minutes per windowDays — at 100K MAU with a busy ops team
+ * (1000 admin views/day) this turns 1M Firestore reads into ~290 reads/day
+ * (1 read per cache miss × 12 misses/hour × 24 hours).
+ */
+export async function getUsageSummary(
+  windowDays: number = 7,
+): Promise<UsageSummary> {
+  const now = Date.now();
+  if (
+    cachedSummary &&
+    cachedSummary.windowDays === windowDays &&
+    now - cachedSummary.computedAtMs < SUMMARY_TTL_MS
+  ) {
+    return cachedSummary.summary;
+  }
+
+  const cutoff = new Date(now - windowDays * 24 * 60 * 60 * 1000).toISOString();
   const page = await backend.data.query<UsageDoc>(COLLECTION, {
     where: [{ field: 'timestamp', op: 'gte', value: cutoff }],
     orderBy: [{ field: 'timestamp', direction: 'desc' }],
@@ -111,10 +135,12 @@ export async function getUsageSummary(
     }
   }
 
-  return {
+  const summary: UsageSummary = {
     totalCostUsd,
     totalCreations: page.items.length,
     costByProvider,
     failuresByProvider,
   };
+  cachedSummary = { windowDays, summary, computedAtMs: now };
+  return summary;
 }

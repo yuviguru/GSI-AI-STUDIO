@@ -11,6 +11,21 @@
  */
 
 import type { Context } from '@netlify/functions';
+import crypto from 'crypto';
+
+/** Constant-time token comparison — string `!==` would leak character match
+ *  via timing, even though Netlify function URLs aren't trivially guessable. */
+function tokensMatch(provided: string | null, expected: string): boolean {
+  if (!provided) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  try {
+    return crypto.timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
 
 interface JobPayload {
   fromPhone: string;
@@ -18,12 +33,13 @@ interface JobPayload {
 }
 
 export default async function handler(req: Request, _context: Context): Promise<Response> {
-  // Internal-only — verify the shared token to prevent third-party invocation.
+  // Internal-only — verify the shared token (constant-time) to prevent
+  // third-party invocation. URL is publicly routable on Netlify.
   const expectedToken = process.env.INTERNAL_FUNCTION_TOKEN;
-  if (!expectedToken) {
+  if (!expectedToken || expectedToken.length < 16) {
     return new Response('Internal function token not configured', { status: 500 });
   }
-  if (req.headers.get('x-internal-token') !== expectedToken) {
+  if (!tokensMatch(req.headers.get('x-internal-token'), expectedToken)) {
     return new Response('Forbidden', { status: 403 });
   }
 

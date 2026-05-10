@@ -77,21 +77,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'invalid json' }, { status: 400 });
   }
 
-  // 4. For each text message, enqueue a background job.
+  // 4. Collect all text messages, enqueue them in parallel.
   //    Meta's webhook spec requires a 200 response within 5s. Story creation
   //    takes 20-40s, so we cannot do it in this lambda — Netlify will tear
   //    down the function as soon as we return, killing the in-flight work.
+  //
+  //    Sequential `await enqueueWhatsAppJob(...)` could blow Meta's ack
+  //    window when WhatsApp batches multiple messages in one webhook
+  //    delivery (3 messages × 5s timeout = 15s before 200 returns).
+  const jobs: Array<{ fromPhone: string; text: string }> = [];
   for (const entry of body.entry ?? []) {
     for (const change of entry.changes ?? []) {
       for (const msg of change.value.messages ?? []) {
         if (msg.type === 'text' && msg.text?.body) {
-          await enqueueWhatsAppJob({
-            fromPhone: msg.from,
-            text: msg.text.body,
-          });
+          jobs.push({ fromPhone: msg.from, text: msg.text.body });
         }
       }
     }
+  }
+  if (jobs.length > 0) {
+    await Promise.all(jobs.map((j) => enqueueWhatsAppJob(j)));
   }
 
   return NextResponse.json({ ok: true });

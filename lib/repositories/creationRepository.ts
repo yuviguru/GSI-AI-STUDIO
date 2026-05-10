@@ -215,21 +215,29 @@ export async function listPublicCreations(
  *
  * Reads from the `leaderboards/topCreators` cache populated hourly by the
  * `leaderboard-refresh` scheduled function. Falls back to a live scan if
- * the cache is missing (first deploy, or cache wiped). Live scan reads
- * up to 200 recent creations — keep the fallback path bounded.
+ * the cache is missing OR stale (>2 hours old) — protects against the
+ * cron failing silently and serving frozen leaderboard data forever.
  */
+const LEADERBOARD_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours = 2× cron interval
+
 export async function getTopCreators(
   topN: number = 5,
 ): Promise<Array<{ sessionId: string; creationCount: number }>> {
   const cached = await backend.data
-    .get<{ entries: Array<{ sessionId: string; creationCount: number }> }>(
-      'leaderboards',
-      'topCreators',
-    )
+    .get<{
+      entries: Array<{ sessionId: string; creationCount: number }>;
+      refreshedAt?: string;
+    }>('leaderboards', 'topCreators')
     .catch(() => null);
 
   if (cached?.entries?.length) {
-    return cached.entries.slice(0, topN);
+    const refreshedMs = cached.refreshedAt ? Date.parse(cached.refreshedAt) : 0;
+    const age = Date.now() - refreshedMs;
+    if (age >= 0 && age < LEADERBOARD_TTL_MS) {
+      return cached.entries.slice(0, topN);
+    }
+    // Stale: fall through to live scan + repopulate path. Don't trust the
+    // cache silently if the cron has been failing.
   }
 
   // Cache miss — live scan. The hourly cron will populate the cache shortly.
