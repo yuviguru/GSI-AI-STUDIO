@@ -20,6 +20,13 @@ firestore/
 │       ├── [creation document]
 │       └── comments/       # Phase 2: community comments
 │           └── {commentId}
+├── assets/                 # Unified binary-media metadata (audio/video/image/pdf) — payloads in object storage
+│   └── {assetId}
+├── performances/           # Kid-recorded responses to creations (sing-alongs, readings, voice memos)
+│   └── {performanceId}/
+│       ├── [performance document]
+│       └── reactions/      # Emoji reactions (positive-only whitelist, mirrors classFeed)
+│           └── {kidId}
 ├── books/                  # Book Studio: kid-authored books (multi-session authoring)
 │   └── {bookId}/
 │       ├── [book document]
@@ -163,15 +170,18 @@ Comic:
 Music:
 ```json
 {
-  "audioUrl": "...",
+  "audioAssetId": "asset_abc123",
   "duration": 120,
   "genre": "pop",
   "mood": "happy",
   "lyrics": "...",
   "instruments": ["piano", "drums"],
-  "bpm": 120
+  "bpm": 120,
+  "waveformData": [0.1, 0.4, 0.7, "..."]
 }
 ```
+
+> **Music persistence note (PERF-001 onward)**: prior to PERF-001, `audioUrl` was a base64 data URI returned in-memory and never persisted (Firestore 1MB limit). PERF-001 introduces the `assets` collection; music creations now reference an `audioAssetId` and the audio binary lives in Cloudflare R2. Old `audioUrl`-only documents are migrated lazily — if a creation has no `audioAssetId`, the player falls back to regenerating the track on view.
 
 Quiz:
 ```json
@@ -216,6 +226,113 @@ Game:
 - `isPublic` + `likeCount` (desc) — popular public creations
 - `schoolId` + `createdAt` (desc) — school creations in Phase 3
 - `shareUrl` — lookup by share slug (unique)
+
+---
+
+### assets
+
+Unified metadata layer for binary media (audio, video, image, pdf) across every studio. Payloads live in Cloudflare R2 (object storage); Firestore stores the metadata + access URL only. Introduced by PERF-001 to fix the music persistence gap and to give every studio (story hero images, comic panels, music tracks, book PDFs, sing-along recordings) a single storage path with consistent quotas, moderation, and retention.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | auto | Document ID (auto-generated, also used as R2 storage key prefix) |
+| kind | string | yes | `audio` \| `video` \| `image` \| `pdf` |
+| storageProvider | string | yes | `r2` (default for new uploads) \| `firebase` (legacy) \| `replicate` (external URL passthrough) |
+| storageKey | string | yes | Provider-specific key, e.g. `assets/audio/{assetId}.webm` |
+| publicUrl | string | yes | CDN-fronted URL for `r2` (custom domain via Cloudflare); direct URL for `firebase`/`replicate` |
+| thumbnailUrl | string | no | Auto-generated for video/image/pdf; optional for audio (waveform PNG) |
+| mimeType | string | yes | e.g. `audio/webm`, `audio/mpeg`, `video/webm`, `image/png`, `application/pdf` |
+| sizeBytes | number | yes | File size — used for per-kid quota enforcement |
+| durationSec | number | no | Audio/video only |
+| width | number | no | Image/video only |
+| height | number | no | Image/video only |
+| ownerSessionId | string | yes (P1) | Anonymous session that uploaded the asset |
+| ownerKidId | string | no (P2) | Kid profile (Phase 2+) |
+| ownerUserId | string | no (P2) | Parent user (Phase 2+) |
+| parentRefType | string | no | `creation` \| `performance` \| `standalone` — what this asset belongs to |
+| parentRefId | string | no | ID of the parent doc; null for standalone uploads |
+| sourceType | string | yes | `ai_generated` (Lyria, MusicGen, Replicate image, Claude PDF) \| `user_recording` (kid's voice/video) \| `user_upload` (future) |
+| visibility | string | yes | `private` \| `public` \| `class` — mirrors parent doc; queried independently for moderation jobs |
+| status | string | yes | `uploading` \| `ready` \| `flagged` \| `deleted` |
+| moderation | map | yes | `{ state: 'pending'\|'auto_approved'\|'approved'\|'flagged', reason?: string, reviewedBy?: string, reviewedAt?: timestamp }` |
+| createdAt | timestamp | yes | Upload finalization timestamp |
+| expiresAt | timestamp | no | Optional TTL — set for ephemeral previews; absent = retain indefinitely |
+
+**Indexes**:
+- `ownerSessionId` + `createdAt` (desc) — kid's asset library, quota checks
+- `ownerKidId` + `createdAt` (desc) — Phase 2+ kid library
+- `parentRefType` + `parentRefId` — fetch all assets for a creation/performance
+- `status` + `createdAt` (asc) — moderation worker queue (`status='flagged'` or `moderation.state='pending'`)
+- `expiresAt` (asc) — cleanup worker for ephemeral previews
+
+**Storage layout (R2)**:
+```
+gsi-assets/                              # bucket
+├── audio/{assetId}.{webm|mp3|wav}       # music tracks, sing-alongs, voice memos
+├── video/{assetId}.webm                 # video performances (gated by consent)
+├── image/{assetId}.{png|jpg|webp}       # comic panels, story illustrations, thumbnails
+├── pdf/{assetId}.pdf                    # book studio output
+└── thumb/{assetId}.{png|webp}           # generated thumbnails
+```
+
+**Quota (per kid, MVP)**:
+- Audio: 100 recordings or 50 MB, whichever first
+- Video: 20 recordings or 200 MB, whichever first
+- Asset deletion frees quota; assets are reference-counted via `parentRefId` (a single asset is owned by exactly one parent doc).
+
+**Lifecycle**:
+1. Client requests pre-signed PUT URL via `POST /api/assets/upload-url`. Server creates `assets/{id}` with `status='uploading'`.
+2. Client uploads directly to R2 (server bandwidth = 0).
+3. Client calls `POST /api/assets/finalize`. Server HEADs the R2 object to verify upload, sets `status='ready'`, runs auto-moderation, sets `moderation.state` accordingly.
+4. Asset is referenced by parent (`creation`, `performance`, or remains `standalone`).
+5. On parent delete, asset is soft-deleted (`status='deleted'`); R2 cleanup runs nightly.
+
+---
+
+### performances
+
+Kid-recorded responses tied (usually) to a creation — sing-alongs, book readings, voice memos, reactions. Lives parallel to `creations`: same UI affordances (cards, share, like, public/private), but a different data shape because the artifact is the kid's voice (UGC), not AI output.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | auto | Document ID (auto-generated) |
+| kind | string | yes | `sing_along` \| `reading` \| `voice_memo` \| `reaction` |
+| parentCreationId | string | no | Creation this performance responds to (sing-along source, book being read). Null = standalone voice memo |
+| parentCreationType | string | no | Denormalized `creation.type` for index queries (`music`, `story`, `book`, etc.) |
+| audioAssetId | string | yes | FK to `assets` doc (`kind='audio'`) |
+| videoAssetId | string | no | FK to `assets` doc (`kind='video'`) — only set when video consent is granted |
+| ownerSessionId | string | yes (P1) | Anonymous session |
+| ownerKidId | string | no (P2) | Kid profile (Phase 2+) |
+| ownerKidName | string | no | Denormalized first-name only (DPDP — no last names public) |
+| ownerKidAvatar | string | no | Denormalized avatar URL |
+| durationSec | number | yes | Recording duration |
+| caption | string | no | Optional kid-written caption (max 280 chars, safety-filtered) |
+| visibility | string | yes | `private` (default) \| `public` \| `class` |
+| status | string | yes | `draft` \| `published` \| `flagged` \| `archived` |
+| moderation | map | yes | Same shape as `assets.moderation` — performance-level review on top of asset-level |
+| viewCount | number | yes | Default 0 |
+| likeCount | number | yes | Default 0 |
+| reactionCounts | map | yes | `{ '👍': 0, '🎉': 0, ... }` — reuses `ALLOWED_REACTIONS` from classFeedTypes |
+| shareUrl | string | yes | Public slug `/perform/{id}` |
+| createdAt | timestamp | yes | Creation timestamp |
+| updatedAt | timestamp | yes | Last modification |
+
+**Indexes**:
+- `parentCreationId` + `visibility` + `createdAt` (desc) — show performances on a creation's view page
+- `ownerSessionId` + `createdAt` (desc) — "My Performances" tab (Phase 1)
+- `ownerKidId` + `createdAt` (desc) — Phase 2+
+- `visibility=public` + `status=published` + `likeCount` (desc) — Explore Performances trending
+- `visibility=public` + `status=published` + `createdAt` (desc) — Explore Performances newest
+- `parentCreationType` + `visibility=public` + `status=published` + `createdAt` (desc) — type-filtered Explore (Performances tab > Sing-Alongs filter)
+- `shareUrl` — public lookup
+
+**Reactions subcollection**: `performances/{id}/reactions/{reactorKidId}` — same shape as ClassFeed reactions (`{ emoji: ReactionEmoji, createdAt }`); positive-only whitelist; one reaction per reactor.
+
+**Relationship to creations**:
+- A creation can have 0..N performances (e.g. one song, many kids singing it).
+- A performance can reference 0..1 creations (`parentCreationId` optional — standalone voice memos are valid).
+- The creation viewer (`/view/{id}`) shows a "Performances" rail when 1+ public performances exist for it; the kid can tap into any.
+- Performance card is a sibling type to creation card on `/creations` (My Creations) and `/explore` (Explore) — see ux-patterns.md `#performances-tab`.
 
 ---
 

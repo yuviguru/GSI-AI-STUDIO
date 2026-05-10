@@ -1123,6 +1123,156 @@ Remix button on shared/public creations:
 
 ---
 
+## Performances Tab (PERF-001)
+
+**Goal**: kid voice recordings (sing-alongs, book readings, voice memos) live as first-class content alongside AI creations — same affordances, separate tab. See `docs/data-model.md#performances`.
+
+### Two-tab structure on /creations and /explore
+
+Both pages get a top-level segmented control:
+
+```
+┌──────────────────────────────────┐
+│  [ Creations ]   Performances    │  ← active tab indicator
+└──────────────────────────────────┘
+```
+
+- **Creations tab** — existing `CreationGrid` (story, music, quiz, game, comic, book). No regression to the current UX.
+- **Performances tab** — same grid layout, different card component (`PerformanceCard`).
+- Tab state persists in URL query (`?tab=performances`) so deep links work.
+- Both tabs share the **same filter chip strip** (filter by parent creation type) and **sort toggle** (Trending/Newest, Explore only).
+- Empty state on Performances tab shows Koko (singing expression) + a "Try Sing-Along on a song!" CTA that links to `/explore?tab=creations&type=music`.
+
+### PerformanceCard
+
+Mirrors `CreationCard` visually so the grid stays consistent. Key differences:
+
+- **Audio waveform thumbnail** instead of image — generated from the asset's waveform data, brand-orange tint
+- **Inline play button** — taps to expand into a sticky mini-player at the bottom of the screen (so the kid can keep browsing while listening)
+- **Parent creation chip** — small pill "🎵 Sang along to: Diwali Dhamaka" that taps through to `/view/{parentCreationId}`
+- **Kid badge** — first name + avatar (Phase 2+); "You" if it's the viewer's own
+- **Duration** — `0:32` lower-right corner
+- **Reaction strip** — same emoji set as ClassFeed (`👍🎉🌟🔥💯`); tap to react
+
+### Linking creation ↔ performance
+
+- On a creation's view page (`/view/{creationId}`), if 1+ public performances exist, render a horizontal "Performances" rail under the player: small cards, each shows kid avatar + first name + waveform + tap-to-play. "See all (N)" tap jumps to `/explore?tab=performances&parentCreationId={id}`.
+- On a performance's view page (`/perform/{id}`), the parent creation appears as a contextual card above the player ("You're listening to a sing-along of:"). Tap opens the original.
+
+---
+
+## Sing-Along Recorder (PERF-001)
+
+**Component**: `components/studios/music/SingAlongRecorder.tsx` (replaces the stub button at `MusicPlayer.tsx:276`).
+
+### States
+
+```
+idle ─tap Record─▶ countdown(3..2..1) ─▶ recording ─tap Stop─▶ preview
+                                              │                    │
+                                              └─90s auto-stop──────┤
+                                                                   ├─tap Retake─▶ idle
+                                                                   └─tap Save───▶ uploading ─▶ done
+```
+
+### Visual layout
+
+```
+┌─────────────────────────────────────┐
+│   ▓▓▒▒░░░░  live waveform           │  ← mic input
+│   ▓▒▒▒░░    backing track waveform  │  ← song
+│                                      │
+│         00:23 / 01:30                │
+│   ─────●────────────────────         │  ← progress
+│                                      │
+│        ┌──────────────────┐          │
+│        │  ⏺  Stop          │          │  ← big tap target
+│        └──────────────────┘          │
+└─────────────────────────────────────┘
+```
+
+- **Backing track** plays through the same Howler instance the kid was using to listen. Mic input plays back at 0 volume during recording (no echo); both tracks are mixed during preview.
+- **Two waveforms stacked** so kid sees their voice (top, brand-orange) vs the backing track (bottom, gray) — visual feedback that they're being heard.
+- **Lyrics karaoke** continues from `MusicPlayer` — current line highlighted in `brand-purple` and bold; the recorder is a sibling of the lyrics panel, both visible.
+- **90-second cap** enforced client-side with a visible countdown; auto-stops with a friendly "Got it!" toast.
+
+### Preview state
+
+```
+┌─────────────────────────────────────┐
+│   ▓▓▒░▓▒░░ mixed waveform            │  ← combined preview
+│   ▶ Play preview                     │
+│                                      │
+│   Caption (optional)                 │
+│   ┌──────────────────────────────┐   │
+│   │  My first song! 🎤            │   │
+│   └──────────────────────────────┘   │
+│                                      │
+│   Who can see this?                  │
+│   ◉ Just me     ○ My class    ○ Public│
+│                                      │
+│   [ Retake ]   [ Save & Post ]       │
+└─────────────────────────────────────┘
+```
+
+- Visibility defaults to "Just me" (DPDP-safe by default).
+- "My class" appears only for kids in a school class (Phase 3).
+- "Public" — for first-time public posters, a friendly note: "Your first few posts will be reviewed by a grown-up before they show up in Explore. Usually takes less than a day! ✨"
+
+### Failure modes
+
+- **Mic permission denied** → friendly error with "How to enable mic" deep link, no console error spam
+- **MediaRecorder not supported** → fallback "Sorry, your browser can't record audio yet 😢" + suggested action
+- **Upload fails** → blob held in memory; "Try again" button retries the same blob; if user navigates away, blob is lost (warned via `beforeunload`)
+
+---
+
+## Consent Gate Modal (PERF-001)
+
+**Component**: `components/parent/ConsentGate.tsx`. Used wherever a kid action requires a consent the parent hasn't granted yet (currently `voice_recording` and `video_recording`; pattern is reusable).
+
+### Default state — kid asking for permission
+
+```
+┌──────────────────────────────────────┐
+│           🎤                          │
+│   Quick OK from your parent           │
+│                                       │
+│   To record your voice, we need a     │
+│   thumbs up from your grown-up.       │
+│   We'll send them a quick message.    │
+│                                       │
+│   [ Ask my parent ]   [ Maybe later ] │
+└──────────────────────────────────────┘
+```
+
+### Waiting state — parent has been notified
+
+```
+┌──────────────────────────────────────┐
+│         📨                            │
+│   Sent to your parent on WhatsApp     │
+│                                       │
+│   Waiting for them to OK...           │
+│         (●)  (●)  (●)                  │  ← pulsing dots
+│                                       │
+│   [ I'll come back later ]            │
+│                                       │
+│   small print: link expires in 60 min │
+└──────────────────────────────────────┘
+```
+
+- Polls `GET /api/dpdp/consent/request/:requestId` every 5s.
+- When granted → swaps to a celebration animation (Koko, mascot system) → auto-dismisses → recorder unlocks and the original action resumes.
+- On denial → kid sees "Your parent said let's do this another time. No worries — you can still create songs! 🎵". Keeps recorder locked.
+- On expiry (60 min) → "The link timed out. Want to try again?" → fresh request.
+
+### Why two checkboxes at signup, not one
+
+Voice and video are **separately gated** so a parent can grant audio without granting video (the common comfortable middle ground). Bundling them would force an all-or-nothing decision and reduce voice-recording adoption.
+
+---
+
 ## Accessibility
 
 - All interactive elements keyboard accessible
