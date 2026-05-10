@@ -55,12 +55,21 @@ export async function persistImage(
     // Direct upload via the bucket (the StorageProvider port doesn't
     // currently expose an "upload buffer" method; signed-URL flow assumes
     // a client-side PUT). Server-side direct upload is appropriate here.
+    //
+    // Race the upload against a 15s budget so a slow/hung GCS bucket can't
+    // block the lambda all the way to the 60s function ceiling. On timeout
+    // we fall through to the original URL (best-effort persistence).
     const file = adminStorage.bucket().file(path);
-    await file.save(buffer, {
-      contentType,
-      resumable: false,
-      metadata: { cacheControl: 'public, max-age=31536000, immutable' },
-    });
+    await Promise.race([
+      file.save(buffer, {
+        contentType,
+        resumable: false,
+        metadata: { cacheControl: 'public, max-age=31536000, immutable' },
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('storage upload timeout (15s)')), 15_000),
+      ),
+    ]);
     await file.makePublic().catch(() => {
       // Some buckets disable public access globally — caller can still
       // generate signed URLs from the path. Don't fail the persist.

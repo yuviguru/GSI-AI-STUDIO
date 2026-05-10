@@ -20,6 +20,13 @@ export interface DeliverCreationOptions {
 export async function deliverCreation(
   opts: DeliverCreationOptions,
 ): Promise<{ messageId: string }> {
+  // Validate `to` upfront — if a future LLM-driven channel calls this with
+  // attacker-controlled input (prompt injection), bad addresses must be
+  // rejected before they reach the email provider.
+  if (!isValidEmail(opts.to)) {
+    throw new Error(`Invalid email address: ${opts.to.slice(0, 80)}`);
+  }
+
   const creation = await getCreation(opts.creationId);
   const baseUrl = opts.baseUrl ?? process.env.PUBLIC_BASE_URL ?? 'https://gsi.ai';
   const shareLink = `${baseUrl}${creation.shareUrl ?? `/view/${creation.id}`}`;
@@ -78,4 +85,16 @@ function escapeHtml(s: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+/**
+ * Conservative email validator. RFC 5321 / 5322 are wider than this on
+ * purpose; we reject patterns that don't match a typical user-facing address
+ * to keep the surface tight. Length cap defends against DoS.
+ */
+function isValidEmail(email: string): boolean {
+  if (typeof email !== 'string') return false;
+  if (email.length === 0 || email.length > 254) return false;
+  // Single @, no whitespace, basic local + domain shape, TLD ≥ 2 chars.
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
 }
