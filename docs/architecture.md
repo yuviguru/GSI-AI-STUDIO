@@ -1,5 +1,61 @@
 # GSI AI Studio — Architecture
 
+## Layered Architecture (multi-channel, plug-in backends)
+
+The codebase is structured in five horizontal layers so the same business logic powers every channel (web UI, MCP server, WhatsApp bot, email, future voice agent) and runs against any backend (Firebase today, Supabase/Postgres tomorrow).
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  CHANNELS  (one file/folder each, no business logic)                 │
+│  ─────────────────────────────────────────────────────────────────   │
+│  Web UI (app/api/*)  │  MCP Server (lib/mcp/*, /api/mcp)            │
+│  WhatsApp Bot         │  Email (lib/channels/email/*)                │
+│  (lib/channels/whatsapp/*, /api/whatsapp/webhook)                    │
+└──────────────────┬───────────────────────────────────────────────────┘
+                   │ each channel calls
+                   ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  CAPABILITIES  (lib/capabilities/*)                                  │
+│  Pure orchestration — createStory, createMusic, createComic,         │
+│  createGame, createQuiz. No HTTP. Wraps execution in usageTracker.   │
+└──────────────────┬───────────────────────────────────────────────────┘
+                   │ uses
+                   ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  REPOSITORIES + AI ROUTERS                                           │
+│  lib/repositories/* (creationRepository, ...)                        │
+│  lib/ai/router/* (llmRouter, imageRouter, audioRouter, HealthMonitor)│
+└──────────────────┬───────────────────────────────────────────────────┘
+                   │ port-driven
+                   ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  PORTS  (interfaces only — no implementation)                        │
+│  lib/backend/ports/  (DataStore, AuthProvider, StorageProvider)      │
+│  lib/ai/ports/       (LlmProvider, ImageProvider, AudioProvider)     │
+└──────────────────┬───────────────────────────────────────────────────┘
+                   │ implemented by
+                   ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  ADAPTERS  (one file per backend / per AI provider)                  │
+│  lib/backend/adapters/  firebase.ts (Supabase, Postgres in future)   │
+│  lib/ai/adapters/llm/   anthropic.ts, openaiCompatible.ts            │
+│                          (covers Groq, OpenAI, DeepSeek, Ollama, …)  │
+│  lib/ai/adapters/image/ pixazo.ts, replicate.ts, pollinations.ts,    │
+│                          comfyui.ts                                  │
+│  lib/ai/adapters/audio/ gemini.ts                                    │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**Swapping a backend** = add a new file in `lib/backend/adapters/`, set `BACKEND=<name>` in `.env`. No business logic changes.
+
+**Swapping an LLM provider** = add to `LLM_PROVIDERS` env var (or rely on auto-detection). The router picks based on `priority + health + costTier`. Free users get Groq; Pro users get Claude. If Groq is rate-limited, the router falls through to the next-best healthy provider — without burning tokens on health probes (background loop, 5-min cache).
+
+**Adding a new channel** = drop a file in `lib/channels/` that calls into `lib/capabilities/`. ~3 days for MCP, ~3 days for WhatsApp, ~1 day for email. Voice agent is just an LLM-driven MCP client.
+
+See: `docs/backend-abstraction-plan.md`, `docs/ai-provider-abstraction-plan.md`, `docs/multi-channel-architecture-plan.md`, `lib/backend/README.md`.
+
+---
+
 ## System Overview
 
 GSI AI Studio is a serverless PWA built on Next.js (Netlify) + Firebase, designed for zero-ops overhead as a solo developer project. The frontend handles all UI and creation workflows, Firebase provides auth/Firestore/functions, **Cloudflare R2 stores binary media** (assets layer, PERF-001+), and external AI APIs (Groq, Claude, Replicate, Lyria) power the creation engines. **AI vocal generation is intentionally not used** — kids record their own voices for sing-alongs and book readings (better pedagogy, lower cost, dodges deepfake/voice-clone safety risk). The architecture prioritizes fast iteration, low cost, and progressive enhancement from anonymous playground to authenticated creator platform.
