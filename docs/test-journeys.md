@@ -676,9 +676,60 @@ pnpm dev           # Next.js only, against live Firebase
 Open `http://localhost:3000`. Emulator UI at `http://localhost:4000` if you
 used `dev:full`.
 
-### A.2 Provision test accounts
+### A.2 Provision test accounts — automated
 
-You'll want one user per role.
+Use the seeder. It creates the full graph (school, classes, teachers, parents,
+kids, consents, channel prefs, assignments, submissions, notifications, PTM
+notes, comms history, SIS config, sample creations) with deterministic IDs so
+re-runs upsert instead of duplicating.
+
+```bash
+# Against the Firebase emulator (recommended for local testing)
+pnpm seed:test:emulator
+
+# Preview without writing
+pnpm seed:test:emulator -- --dry-run --verbose
+
+# Wipe everything seeded and re-create
+pnpm seed:test:emulator -- --reset
+
+# Against a live Firebase project (requires SEED_ALLOW_LIVE=1)
+SEED_ALLOW_LIVE=1 pnpm seed:test
+```
+
+Seeded test accounts (phone OTP — the emulator accepts any 6-digit code):
+
+| Role | Phone | Lands on |
+|---|---|---|
+| **School admin** (Priya) | `+919000000001` | `/school` |
+| **Teacher — Class 6A** (Anand) | `+919000000002` | `/teacher` |
+| **Teacher — Class 7B** (Meera) | `+919000000003` | `/teacher` |
+| **Parent — Aarav** (Rajesh) | `+919000000010` | `/parent/settings/data-rights` |
+| **Parent — Diya+Krish** (Lakshmi) | `+919000000011` | `/parent/settings/data-rights` |
+
+Kid profiles (use the profile picker once signed in as a parent, or visit
+anonymously for Sneha):
+
+- **Aarav** — Class 6A, parent Rajesh, full DPDP consent. 5 creations,
+  120 AI points.
+- **Diya** — Class 6A, parent Lakshmi, full DPDP consent. 3 creations,
+  85 AI points.
+- **Krish** — Class 7B, parent Lakshmi, consent granted except
+  `peer_sharing` (revoked — for testing the negative path). 8 creations,
+  200 AI points.
+- **Sneha** — Class 7B, no linked parent (open-beta path), teacher-
+  verified. 1 creation, 40 AI points.
+
+Plus master data: 1 school (`GSI Test School`, CBSE, Chennai), 2 classes
+(6A / 7B), 2 assignments (one Story, one Quiz), 2 submissions (one pending,
+one approved with feedback), 4 notifications (one per role), 2 PTM notes
+(draft + sent), 4 commsLog entries covering delivered / pending / failed
+digest paths and one ad-hoc message, 1 SIS integration config (Local
+provider, enabled).
+
+If you'd rather provision manually, see § A.2.alt below.
+
+### A.2.alt Manual provisioning (fallback)
 
 | Role | How to create |
 |---|---|
@@ -687,9 +738,6 @@ You'll want one user per role.
 | Parent | Phone OTP at `/`, then set `role: parent` in Firestore (one-time) or via the parent signup flow. |
 | Teacher | `/teacher/login` → phone OTP + school code. First teacher per school becomes schoolAdmin. |
 | School admin | Promote a teacher's `role` to `schoolAdmin` in Firestore, or use the first-teacher path. |
-
-Seed minimum: 1 school, 1 admin, 1 teacher, 1 class with 2–3 kids, 1 parent
-linked to one kid, DPDP consents granted for `parent_messaging` on that kid.
 
 ### A.3 Walk every journey
 
