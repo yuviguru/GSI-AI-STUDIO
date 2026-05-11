@@ -95,6 +95,38 @@ export async function getErpIntegrationConfig(
   };
 }
 
+export interface SaveErpIntegrationInput {
+  schoolId: string;
+  provider: SchoolDataProviderId;
+  credentialsRef?: string;
+  enabled: boolean;
+}
+
+/**
+ * Persist an integration config for a school. Does not store raw credentials —
+ * only the opaque reference to the encrypted bundle in secure storage.
+ */
+export async function saveErpIntegrationConfig(
+  input: SaveErpIntegrationInput,
+): Promise<ErpIntegrationConfig> {
+  const ref = adminDb.collection(INTEGRATIONS_COLLECTION).doc(input.schoolId);
+  const now = new Date();
+  await ref.set(
+    {
+      provider: input.provider,
+      credentialsRef: input.credentialsRef ?? null,
+      enabled: input.enabled,
+      updatedAt: now,
+    },
+    { merge: true },
+  );
+  const after = await getErpIntegrationConfig(input.schoolId);
+  if (!after) {
+    throw new AppException('INTEGRATION_SAVE_FAILED', 'Could not read back integration config.', 500);
+  }
+  return after;
+}
+
 // ─── resolveProvider: the public entry point ──────────────────────────────
 
 const adapterRegistry = new Map<
