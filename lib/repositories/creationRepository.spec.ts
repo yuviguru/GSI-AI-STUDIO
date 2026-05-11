@@ -204,11 +204,20 @@ describe('creationRepository', () => {
       expect(result.items.map((i) => i.id)).toEqual(['a', 'c']);
     });
 
-    it('caps fetch limit at MAX_PAGE_SIZE (50) — overscan included', async () => {
+    it('caps limit at MAX_PAGE_SIZE (50) — exact-limit, no overscan', async () => {
       mockQuery.mockResolvedValue({ items: [], nextCursor: null, hasMore: false });
       await listCreations('s1', { limit: 1000 });
       const opts = mockQuery.mock.calls[0]![1] as { limit: number };
       expect(opts.limit).toBe(50);
+    });
+
+    it('does NOT overscan — adapter is asked for exactly `limit` docs', async () => {
+      mockQuery.mockResolvedValue({ items: [], nextCursor: null, hasMore: false });
+      await listCreations('s1', { limit: 20 });
+      const opts = mockQuery.mock.calls[0]![1] as { limit: number };
+      // Exact-limit prevents the cursor-pointing-past-unreturned-docs bug
+      // that overscan-based "fetch limit + 10, slice to limit" caused.
+      expect(opts.limit).toBe(20);
     });
 
     it('forwards cursor to the data store unchanged (opaque)', async () => {
@@ -218,11 +227,12 @@ describe('creationRepository', () => {
       expect(opts.cursor).toBe('opaque-base64');
     });
 
-    it('passes through the data-store cursor when more pages exist', async () => {
-      // Generate enough active items to fill the page + signal hasMore.
-      const items = Array.from({ length: 25 }, (_, i) => ({ id: `c${i}`, status: 'published' }));
+    it('uses adapter cursor verbatim when more pages exist', async () => {
+      const items = Array.from({ length: 20 }, (_, i) => ({ id: `c${i}`, status: 'published' }));
       mockQuery.mockResolvedValue({ items, nextCursor: 'next-page-cursor', hasMore: true });
       const result = await listCreations('s1', { limit: 20 });
+      // Adapter cursor points after the LAST FETCHED doc — same as the last
+      // RETURNED doc when we don't overscan, so it's safe to forward.
       expect(result.nextCursor).toBe('next-page-cursor');
       expect(result.hasMore).toBe(true);
     });

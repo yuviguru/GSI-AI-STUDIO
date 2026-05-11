@@ -7,8 +7,16 @@
  *
  * Writes are fire-and-forget (don't block the request). Errors are swallowed
  * — telemetry must never break a creation flow.
+ *
+ * Concurrency safety: context is stored per-async-flow via
+ * AsyncLocalStorage. Two overlapping creations (e.g. two web requests
+ * hitting the same lambda) cannot overwrite each other's context, even
+ * across `await` boundaries. The previous singleton-field implementation
+ * had a race that mis-attributed telemetry to whichever request set the
+ * context most recently.
  */
 
+import { AsyncLocalStorage } from 'async_hooks';
 import { backend } from '@/lib/backend';
 import type { RouterMetricsSink } from '@/lib/ai/router/LlmRouter';
 
@@ -36,20 +44,25 @@ export interface UsageContext {
 }
 
 class FirestoreMetricsSink implements RouterMetricsSink {
-  private context: UsageContext = {};
+  /**
+   * Per-async-flow context. AsyncLocalStorage keeps each request's
+   * context isolated even when the lambda handles multiple overlapping
+   * createStory() calls (which is normal under web load).
+   */
+  private readonly contextStorage = new AsyncLocalStorage<UsageContext>();
 
   /**
    * Wrap a function with usage context — every recordAttempt() called
-   * inside `fn` is tagged with this context.
+   * inside `fn` (or any descendent async chain rooted at `fn`) is tagged
+   * with this context. Contexts nest correctly: an inner withContext()
+   * inherits the outer one and overrides specific fields.
    */
   async withContext<T>(ctx: UsageContext, fn: () => Promise<T>): Promise<T> {
-    const previous = this.context;
-    this.context = { ...previous, ...ctx };
-    try {
-      return await fn();
-    } finally {
-      this.context = previous;
-    }
+    const merged: UsageContext = {
+      ...(this.contextStorage.getStore() ?? {}),
+      ...ctx,
+    };
+    return this.contextStorage.run(merged, fn);
   }
 
   recordAttempt(event: {
@@ -61,9 +74,10 @@ class FirestoreMetricsSink implements RouterMetricsSink {
     costUsd?: number;
     error?: string;
   }): void {
+    const ctx = this.contextStorage.getStore() ?? {};
     const doc: UsageDoc = {
       ...event,
-      ...this.context,
+      ...ctx,
       timestamp: new Date().toISOString(),
     };
     // Fire-and-forget. Errors swallowed — telemetry must never break creation.

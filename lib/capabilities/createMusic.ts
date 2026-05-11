@@ -15,7 +15,8 @@ import { filterInput, filterOutput } from '@/lib/safety/inputFilter';
 import { uploadBuffer, attachAssetToParent } from '@/lib/storage/assetService';
 import { MUSIC_SYSTEM_PROMPT, buildMusicUserPrompt } from '@/lib/ai/prompts/musicPrompt';
 import { usageTracker } from '@/lib/cost/usageTracker';
-import type { CostTier } from '@/lib/ai/ports';
+import { generateMusic } from '@/lib/ai/musicClient';
+import type { AudioGenerateResult, CostTier } from '@/lib/ai/ports';
 import type { AiXrayData, MusicContent } from '@/types';
 
 export interface CreateMusicInput {
@@ -76,13 +77,17 @@ export async function createMusic(
       const filteredLyrics = filterOutput(llmResponse.lyrics);
       const filteredStyle = filterOutput(llmResponse.styleDescription);
 
-      // 2. Audio — via the audio router.
-      const audioResult = await audioRouter.generate({
-        kind: 'music',
+      // 2. Audio — try the router first; fall back to the legacy
+      //    generateMusic() chain (Lyria → Replicate → mock) when the
+      //    router has no eligible adapter (e.g. deployment with only
+      //    REPLICATE_API_TOKEN, or local dev with no audio key at all).
+      //    The legacy client has multi-provider fallbacks the audio
+      //    adapter layer doesn't currently expose.
+      const audioResult = await generateAudioWithFallback({
         prompt: filteredStyle,
         durationSec: input.duration ?? 30,
+        mood: input.mood,
         genre: input.genre,
-        instruments: input.instruments,
       });
 
       // 3. Persist audio to assets layer (rehosts so external URLs don't expire).
@@ -180,6 +185,54 @@ export async function createMusic(
 }
 
 // ── Helpers ──────────────────────────────────────────────────────
+
+/**
+ * Generate music via the audio router, falling back to the legacy
+ * generateMusic() chain when no router providers are available.
+ *
+ * The audio router only registers `gemini-lyria` today (in
+ * lib/ai/router/config.ts). Without GEMINI_API_KEY the router throws
+ * "no healthy audio provider available", but `generateMusic` still has
+ * a working Replicate path AND a built-in mock for dev. We keep using
+ * the router when Gemini is present so cost telemetry tags Lyria
+ * usage, and fall back transparently otherwise.
+ */
+async function generateAudioWithFallback(opts: {
+  prompt: string;
+  durationSec: number;
+  mood: string;
+  genre: string;
+}): Promise<AudioGenerateResult> {
+  try {
+    return await audioRouter.generate({
+      kind: 'music',
+      prompt: opts.prompt,
+      durationSec: opts.durationSec,
+      genre: opts.genre,
+    });
+  } catch (err) {
+    // Router has no eligible provider (or all unhealthy). Fall back to
+    // the legacy multi-provider client.
+    console.warn(
+      '[createMusic] audio router unavailable, falling back to legacy generateMusic:',
+      err instanceof Error ? err.message : err,
+    );
+    const start = Date.now();
+    const legacy = await generateMusic({
+      styleDescription: opts.prompt,
+      duration: opts.durationSec,
+      mood: opts.mood,
+      genre: opts.genre,
+    });
+    return {
+      url: legacy.audioUrl,
+      durationSec: legacy.duration,
+      costUsd: 0, // unknown — legacy client doesn't surface cost
+      providerName: `legacy-${legacy.provider}`,
+      latencyMs: Date.now() - start,
+    };
+  }
+}
 
 async function audioUrlToBuffer(url: string): Promise<Buffer> {
   if (url.startsWith('data:')) {
