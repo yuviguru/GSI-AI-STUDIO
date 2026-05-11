@@ -1,0 +1,158 @@
+import {
+  LayoutDashboard,
+  BarChart3,
+  Users,
+  ShieldCheck,
+  Settings,
+  UserCheck,
+  MessageSquare,
+  Inbox,
+  Plug,
+} from 'lucide-react';
+import type { DashboardConfig } from '@/types/dashboard.types';
+import { SubstituteAlertWidget } from '@/components/dashboard/widgets/SubstituteAlertWidget';
+import { ComplianceStatusWidget } from '@/components/dashboard/widgets/ComplianceStatusWidget';
+
+export const schoolAdminDashboardConfig: DashboardConfig = {
+  role: 'schoolAdmin',
+  brand: {
+    name: 'GSI for Schools',
+    href: '/school',
+    logoSrc: '/images/gsi-logo.svg',
+  },
+  sidebar: {
+    primary: [
+      {
+        id: 'home',
+        label: 'Dashboard',
+        href: '/school',
+        icon: LayoutDashboard,
+        match: (p) => p === '/school',
+      },
+      {
+        id: 'analytics',
+        label: 'Analytics',
+        href: '/school',
+        icon: BarChart3,
+        match: (p) => p === '/school/analytics',
+      },
+      {
+        id: 'teachers',
+        label: 'Teachers',
+        href: '/teacher',
+        icon: Users,
+        match: (p) => p.startsWith('/teacher'),
+      },
+      {
+        id: 'compliance',
+        label: 'Compliance',
+        href: '/school/compliance',
+        icon: ShieldCheck,
+        match: (p) => p.startsWith('/school/compliance'),
+      },
+      {
+        id: 'substitutes',
+        label: 'Substitutes',
+        href: '/school/substitutes',
+        icon: UserCheck,
+        match: (p) => p.startsWith('/school/substitutes'),
+      },
+      {
+        id: 'comms',
+        label: 'Comms',
+        href: '/school/comms/digests',
+        icon: MessageSquare,
+        match: (p) => p.startsWith('/school/comms'),
+      },
+      {
+        id: 'integrations',
+        label: 'Integrations',
+        href: '/school/settings/integrations',
+        icon: Plug,
+        match: (p) => p.startsWith('/school/settings/integrations'),
+      },
+      {
+        id: 'notifications',
+        label: 'Notifications',
+        href: '/notifications',
+        icon: Inbox,
+        match: (p) => p === '/notifications',
+      },
+    ],
+    secondary: [
+      { id: 'settings', label: 'School Settings', href: '/school/settings', icon: Settings },
+    ],
+  },
+  sections: [
+    {
+      id: 'overview',
+      title: 'Activity Overview',
+      subtitle: 'School-wide creations, engagement, leaderboard',
+      illustration: '/illustrations/sections/learn.svg',
+      illustrationAlt: 'Charts and dashboards',
+      gradient: 'analyze',
+      studios: [],
+      href: '/school',
+    },
+    {
+      id: 'compliance',
+      title: 'Compliance & Safety',
+      subtitle: 'DPDP, consent register, data rights',
+      illustration: '/illustrations/sections/play.svg',
+      illustrationAlt: 'Shield with checkmarks',
+      gradient: 'review',
+      studios: [],
+      href: '/school/compliance',
+    },
+    {
+      id: 'operations',
+      title: 'Operations',
+      subtitle: 'Substitute finder, integrations, school settings',
+      illustration: '/illustrations/sections/create.svg',
+      illustrationAlt: 'School building with cogs',
+      gradient: 'manage',
+      studios: [
+        {
+          name: 'Substitutes',
+          href: '/school/substitutes',
+          illustration: '/illustrations/studios/quiz.svg',
+          illustrationAlt: 'Teacher swap',
+          bg: 'bg-gradient-to-br from-emerald-100 to-teal-200',
+          variant: 'small',
+          caption: 'Find a sub fast',
+        },
+        {
+          name: 'Integrations',
+          href: '/school/settings/integrations',
+          illustration: '/illustrations/studios/game.svg',
+          illustrationAlt: 'Plugs connecting',
+          bg: 'bg-gradient-to-br from-indigo-100 to-blue-200',
+          variant: 'small',
+          caption: 'SIS provider config',
+        },
+        {
+          name: 'School Settings',
+          href: '/school/settings',
+          illustration: '/illustrations/studios/books.svg',
+          illustrationAlt: 'Settings cog over a school crest',
+          bg: 'bg-gradient-to-br from-amber-100 to-orange-200',
+          variant: 'small',
+          caption: 'Branding & metadata',
+        },
+        {
+          name: 'Comms Digests',
+          href: '/school/comms/digests',
+          illustration: '/illustrations/studios/comic.svg',
+          illustrationAlt: 'Envelope with chat bubbles',
+          bg: 'bg-gradient-to-br from-rose-100 to-pink-200',
+          variant: 'small',
+          caption: 'Schedule parent digests',
+        },
+      ],
+    },
+  ],
+  rightRailWidgets: [
+    { id: 'substitute-alert', component: SubstituteAlertWidget },
+    { id: 'compliance-status', component: ComplianceStatusWidget },
+  ],
+};

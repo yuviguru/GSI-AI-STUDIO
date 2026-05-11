@@ -1508,3 +1508,56 @@ Interactive demos run client-side when possible (Transformers.js for small model
 - **Total page weight**: < 500KB initial load
 - **Image optimization**: WebP format, lazy loading, responsive sizes
 - **Service Worker**: Cache static assets, offline landing page
+
+---
+
+## Responsive Layout Contract
+
+GSI AI Studio runs on every form factor — pocket phone in landscape on the bus, classroom tablet flipped sideways, parent's laptop, school office desktop, and projector during a school assembly. Layout adapts without breaking any feature.
+
+### Breakpoint system
+
+`tailwind.config.ts` extends the default screens with `xs` (360px), `3xl` (1920px), and orientation modifiers `landscape` / `portrait` / `short` (max-height 480px).
+
+| Token | Width | Typical device |
+|---|---|---|
+| `xs` | ≥ 360px | Small phone portrait |
+| `sm` | ≥ 640px | Large phone, phone landscape |
+| `md` | ≥ 768px | Tablet portrait |
+| `lg` | ≥ 1024px | Tablet landscape, small laptop |
+| `xl` | ≥ 1280px | Desktop |
+| `2xl` | ≥ 1536px | Large desktop |
+| `3xl` | ≥ 1920px | 4K monitor, projector wall |
+| `landscape:` | any width, landscape orientation | Used for short-viewport refinements |
+| `portrait:` | any width, portrait orientation | Stacks columns when phone is held normally |
+| `short:` | viewport height ≤ 480px | Compress vertical chrome (typical phone landscape) |
+
+### Layout zones at each breakpoint
+
+| Viewport | Sidebar | Center column | Right rail |
+|---|---|---|---|
+| `< xs` (≤360px) | Hidden, BottomNav owns nav | Single col, expandable cards | Folded into BottomNav drawer |
+| `xs`–`sm` portrait | Hidden, BottomNav | Single col | Hidden |
+| `sm` landscape / `short:` | Hidden, BottomNav (compact) | Studio grids inside expanded cards use 3 cols | Hidden |
+| `md` portrait | Icon-only rail (72px) | Single col main | Stacked below center |
+| `md` landscape / `lg` | Icon-only rail | Single col main | Visible (300px) |
+| `xl` | Full rail (240px) | Single col main | Visible (340px) |
+| `2xl`–`3xl` | Full rail | Centered, capped at `max-w-[1600px]` | Visible (380px) |
+
+Section pages always reuse the same shell — only the center column changes. Sidebar and right rail persist across kid Create / Play / Learn navigation and across school admin / teacher / parent surfaces (Workstream 5).
+
+### Universal rules (apply at every breakpoint)
+
+- **Touch targets ≥ 44×44 px.** Use the `TOUCH_TARGET` constant from `lib/responsive/tokens.ts`.
+- **No fixed body heights.** Each column scrolls independently inside the shell.
+- **`prefers-reduced-motion` respected.** Framer Motion components must accept this hint and skip transitions for users who request it.
+- **Safe-area aware.** Bottom-anchored UI uses the `SAFE_BOTTOM` helper; modals overflow under iOS notch when full-screen.
+- **`next/image` sizes set.** Hero illustrations use `HERO_IMAGE_SIZES`; mosaic/picker tiles use `TILE_IMAGE_SIZES`. Projectors don't get phone-sized PNGs.
+
+### Expandable Section Card pattern
+
+The Create / Play / Learn cards on the home are accordion-style. Click to expand inline; only one card open at a time. Inside the expanded body, the studio grid uses `grid-template-columns: repeat(auto-fit, minmax(140px, 1fr))` so it self-adjusts to the card's actual width — landscape phone gets 3 columns, narrow portrait gets 2, sidebar-flanked desktop gets 2–3 depending on right-rail width.
+
+The card header is the click target (≥ 56px tall). Body uses Framer Motion `<motion.div animate={{ height: 'auto' }}>`; respects `prefers-reduced-motion`.
+
+See `components/navigation/ExpandableSectionCard.tsx`.
