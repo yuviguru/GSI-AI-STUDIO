@@ -5,6 +5,7 @@ import {
   Inbox,
   MessageSquare,
   Settings,
+  HelpCircle,
 } from 'lucide-react';
 import type { DashboardConfig } from '@/types/dashboard.types';
 
@@ -54,6 +55,7 @@ export const parentDashboardConfig: DashboardConfig = {
       },
     ],
     secondary: [
+      { id: 'help', label: 'Help', href: '/help', icon: HelpCircle },
       { id: 'settings', label: 'Settings', href: '/parent/settings/data-rights', icon: Settings },
     ],
   },

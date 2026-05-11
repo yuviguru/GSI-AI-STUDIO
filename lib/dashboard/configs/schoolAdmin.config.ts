@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Inbox,
   Plug,
+  HelpCircle,
 } from 'lucide-react';
 import type { DashboardConfig } from '@/types/dashboard.types';
 import { SubstituteAlertWidget } from '@/components/dashboard/widgets/SubstituteAlertWidget';
@@ -80,6 +81,7 @@ export const schoolAdminDashboardConfig: DashboardConfig = {
       },
     ],
     secondary: [
+      { id: 'help', label: 'Help', href: '/help', icon: HelpCircle },
       { id: 'settings', label: 'School Settings', href: '/school/settings', icon: Settings },
     ],
   },

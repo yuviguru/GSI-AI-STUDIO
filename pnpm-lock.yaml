@@ -83,6 +83,9 @@ importers:
       lucide-react:
         specifier: ^0.378.0
         version: 0.378.0(react@18.3.1)
+      marked:
+        specifier: ^18.0.3
+        version: 18.0.3
       nanoid:
         specifier: ^5.0.0
         version: 5.1.6
@@ -4669,6 +4672,11 @@ packages:
   marked@13.0.3:
     resolution: {integrity: sha512-rqRix3/TWzE9rIoFGIn8JmsVfhiuC8VIQ8IdX5TfzmeBucdY05/0UlzKaw0eVtpcN/OdVFpBk7CjKGo9iHJ/zA==}
     engines: {node: '>= 18'}
+    hasBin: true
+
+  marked@18.0.3:
+    resolution: {integrity: sha512-7VT90JOkDeaRWpfjOReRGPEKn0ecdARBkDGL+tT1wZY0efPPqkUxLUSmzy/C7TIylQYJC9STISEsCHrqb/7VIA==}
+    engines: {node: '>= 20'}
     hasBin: true
 
   math-intrinsics@1.1.0:
@@ -12116,6 +12124,8 @@ snapshots:
       supports-hyperlinks: 3.2.0
 
   marked@13.0.3: {}
+
+  marked@18.0.3: {}
 
   math-intrinsics@1.1.0: {}
 
