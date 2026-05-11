@@ -142,37 +142,47 @@ export async function archiveCreation(
 }
 
 /**
- * List creations for a session.
+ * List creations for a session, filtering archived in memory.
  *
- * Filters archived in the query (composite index covers it) so a single
- * Firestore round-trip returns exactly `limit + 1` rows — no in-memory
- * scan-and-discard, no batched re-fetching. The previous batched-loop
- * implementation could read 200 docs per page worst-case at scale.
+ * Why in-memory and not `where status != 'archived'` in the query?
+ * Firestore requires the inequality field to be the FIRST orderBy. Adding
+ * `status != 'archived'` while ordering by `createdAt` is rejected at
+ * query time ("inequality filter property and first sort order must be
+ * the same"). Using `status` as the first orderBy would group results by
+ * status (cosmetically wrong for "my creations"). In-memory filtering is
+ * cheap because archived docs are rare; we overscan slightly to keep
+ * `hasMore` accurate even when a page-worth lands at the head.
  */
 export async function listCreations(
   sessionId: string,
   filters: ListCreationsFilters = {},
 ): Promise<ListCreationsResult> {
   const limit = Math.min(filters.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
+  // Bounded overscan — archived rate in practice is low, so one fetch is
+  // almost always enough. Cap at MAX_PAGE_SIZE so a single query never
+  // blows the read budget.
+  const fetchLimit = Math.min(limit + 10, MAX_PAGE_SIZE);
 
-  const where: Array<{ field: string; op: 'eq' | 'ne'; value: unknown }> = [
+  const where: Array<{ field: string; op: 'eq'; value: unknown }> = [
     { field: 'sessionId', op: 'eq', value: sessionId },
-    { field: 'status', op: 'ne', value: 'archived' },
   ];
   if (filters.type) where.push({ field: 'type', op: 'eq', value: filters.type });
 
   const page = await backend.data.query<Creation>(CREATIONS, {
     where,
     orderBy: [{ field: 'createdAt', direction: 'desc' }],
-    limit,
+    limit: fetchLimit,
     cursor: filters.cursor,
   });
 
-  return {
-    items: page.items,
-    nextCursor: page.nextCursor,
-    hasMore: page.hasMore,
-  };
+  const active = page.items.filter((c) => c.status !== 'archived');
+  const items = active.slice(0, limit);
+  const hasMore = active.length > limit || page.hasMore;
+  // Reuse the underlying adapter cursor — it correctly encodes the
+  // orderBy field values for the underlying page boundary.
+  const nextCursor = hasMore ? page.nextCursor : null;
+
+  return { items, nextCursor, hasMore };
 }
 
 export async function listPublicCreations(
@@ -180,9 +190,11 @@ export async function listPublicCreations(
 ): Promise<ListCreationsResult> {
   const limit = Math.min(filters.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
   const isTrending = filters.sort === 'trending';
-  // Trending: primary sort by likeCount desc; tie-break by createdAt desc.
-  // Composite index in firestore.indexes.json covers the full filter+sort
-  // combination so we get `limit + 1` reads per page (no in-memory filter).
+  // Trending: primary sort by likeCount desc; tie-break by createdAt desc
+  // so docs sharing a likeCount don't produce duplicate rows under
+  // Firestore's startAfter pagination. Same in-memory archive filter as
+  // listCreations (Firestore inequality+orderBy constraint — see comment
+  // above).
   const orderBy: Array<{ field: string; direction: 'desc' }> = isTrending
     ? [
         { field: 'likeCount', direction: 'desc' },
@@ -190,24 +202,25 @@ export async function listPublicCreations(
       ]
     : [{ field: 'createdAt', direction: 'desc' }];
 
-  const where: Array<{ field: string; op: 'eq' | 'ne'; value: unknown }> = [
+  const fetchLimit = Math.min(limit + 10, MAX_PAGE_SIZE);
+  const where: Array<{ field: string; op: 'eq'; value: unknown }> = [
     { field: 'isPublic', op: 'eq', value: true },
-    { field: 'status', op: 'ne', value: 'archived' },
   ];
   if (filters.type) where.push({ field: 'type', op: 'eq', value: filters.type });
 
   const page = await backend.data.query<Creation>(CREATIONS, {
     where,
     orderBy,
-    limit,
+    limit: fetchLimit,
     cursor: filters.cursor,
   });
 
-  return {
-    items: page.items,
-    nextCursor: page.nextCursor,
-    hasMore: page.hasMore,
-  };
+  const active = page.items.filter((c) => c.status !== 'archived');
+  const items = active.slice(0, limit);
+  const hasMore = active.length > limit || page.hasMore;
+  const nextCursor = hasMore ? page.nextCursor : null;
+
+  return { items, nextCursor, hasMore };
 }
 
 /**
@@ -242,16 +255,14 @@ export async function getTopCreators(
 
   // Cache miss — live scan. The hourly cron will populate the cache shortly.
   const page = await backend.data.query<Creation>(CREATIONS, {
-    where: [
-      { field: 'isPublic', op: 'eq', value: true },
-      { field: 'status', op: 'ne', value: 'archived' },
-    ],
+    where: [{ field: 'isPublic', op: 'eq', value: true }],
     orderBy: [{ field: 'createdAt', direction: 'desc' }],
     limit: 200,
   });
 
   const counts = new Map<string, number>();
   for (const c of page.items) {
+    if (c.status === 'archived') continue;
     counts.set(c.sessionId, (counts.get(c.sessionId) ?? 0) + 1);
   }
   return Array.from(counts.entries())

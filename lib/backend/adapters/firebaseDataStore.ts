@@ -46,14 +46,68 @@ const FILTER_OP_MAP: Record<FilterOp, WhereFilterOp> = {
   'array-contains-any': 'array-contains-any',
 };
 
+/**
+ * Encode cursor values to a JSON-safe form.
+ *
+ * Firestore native types (Timestamp, GeoPoint, DocumentReference) don't
+ * round-trip through JSON.stringify cleanly — JSON.parse returns plain
+ * objects that startAfter() doesn't recognize, and pagination silently
+ * resumes from the wrong position. Each value gets a tagged envelope
+ * `{ t: <type>, v: <serialized> }` so decode can reconstruct the exact
+ * native type the original orderBy field was indexed under.
+ */
+type EncodedValue =
+  | { t: 'ts'; v: { s: number; n: number } } // Firestore Timestamp
+  | { t: 'str'; v: string }
+  | { t: 'num'; v: number }
+  | { t: 'bool'; v: boolean }
+  | { t: 'null' }
+  | { t: 'json'; v: unknown }; // fallback for arrays/objects
+
+function encodeOne(value: unknown): EncodedValue {
+  if (value === null || value === undefined) return { t: 'null' };
+  if (value instanceof Timestamp) {
+    return { t: 'ts', v: { s: value.seconds, n: value.nanoseconds } };
+  }
+  // Some Firestore SDKs hand back Date objects from snapshot.get() when
+  // the field was originally a server timestamp written by another
+  // client. Normalize to Timestamp so decode round-trips identically.
+  if (value instanceof Date) {
+    const ts = Timestamp.fromDate(value);
+    return { t: 'ts', v: { s: ts.seconds, n: ts.nanoseconds } };
+  }
+  if (typeof value === 'string') return { t: 'str', v: value };
+  if (typeof value === 'number') return { t: 'num', v: value };
+  if (typeof value === 'boolean') return { t: 'bool', v: value };
+  // Last resort — JSON-serializable. We accept the round-trip fidelity
+  // loss for edge cases (e.g. ordering by a custom array field).
+  return { t: 'json', v: value };
+}
+
+function decodeOne(encoded: EncodedValue): unknown {
+  switch (encoded.t) {
+    case 'ts':
+      return new Timestamp(encoded.v.s, encoded.v.n);
+    case 'str':
+    case 'num':
+    case 'bool':
+    case 'json':
+      return encoded.v;
+    case 'null':
+      return null;
+  }
+}
+
 function encodeCursor(values: unknown[]): string {
-  return Buffer.from(JSON.stringify({ v: values }), 'utf-8').toString('base64');
+  const encoded = values.map(encodeOne);
+  return Buffer.from(JSON.stringify({ v: encoded }), 'utf-8').toString('base64');
 }
 
 function decodeCursor(cursor: string): unknown[] {
   try {
     const parsed = JSON.parse(Buffer.from(cursor, 'base64').toString('utf-8'));
-    return Array.isArray(parsed?.v) ? parsed.v : [];
+    if (!Array.isArray(parsed?.v)) return [];
+    return (parsed.v as EncodedValue[]).map(decodeOne);
   } catch {
     return [];
   }

@@ -70,7 +70,7 @@ export async function createMusic(
           ageGroup: input.ageGroup ?? '8-12',
         }),
         maxTokens: 2048,
-        routing: { maxCostTier: input.maxCostTier ?? 'cheap' },
+        routing: input.maxCostTier ? { maxCostTier: input.maxCostTier } : undefined,
       });
 
       const filteredLyrics = filterOutput(llmResponse.lyrics);

@@ -175,22 +175,36 @@ describe('creationRepository', () => {
   });
 
   describe('listCreations', () => {
-    it('queries with status != archived in the where clause', async () => {
+    it('queries by sessionId + orderBy createdAt; archived filtered in memory', async () => {
+      // Firestore inequality + orderBy constraint: we cannot put status
+      // in the where clause. Adding a `type` filter is fine (equality).
       mockQuery.mockResolvedValue({ items: [], nextCursor: null, hasMore: false });
       await listCreations('s1');
-      expect(mockQuery).toHaveBeenCalledWith(
-        'creations',
-        expect.objectContaining({
-          where: expect.arrayContaining([
-            { field: 'sessionId', op: 'eq', value: 's1' },
-            { field: 'status', op: 'ne', value: 'archived' },
-          ]),
-          orderBy: [{ field: 'createdAt', direction: 'desc' }],
-        }),
-      );
+      const opts = mockQuery.mock.calls[0]![1] as {
+        where: Array<{ field: string; op: string; value: unknown }>;
+        orderBy: Array<{ field: string; direction: string }>;
+      };
+      expect(opts.where).toEqual([{ field: 'sessionId', op: 'eq', value: 's1' }]);
+      expect(opts.orderBy).toEqual([{ field: 'createdAt', direction: 'desc' }]);
+      // No status inequality — would violate Firestore's inequality+orderBy rule.
+      expect(opts.where.find((w) => w.field === 'status')).toBeUndefined();
     });
 
-    it('caps limit at MAX_PAGE_SIZE (50)', async () => {
+    it('filters archived results in memory', async () => {
+      mockQuery.mockResolvedValue({
+        items: [
+          { id: 'a', status: 'published' },
+          { id: 'b', status: 'archived' },
+          { id: 'c', status: 'draft' },
+        ],
+        nextCursor: null,
+        hasMore: false,
+      });
+      const result = await listCreations('s1');
+      expect(result.items.map((i) => i.id)).toEqual(['a', 'c']);
+    });
+
+    it('caps fetch limit at MAX_PAGE_SIZE (50) — overscan included', async () => {
       mockQuery.mockResolvedValue({ items: [], nextCursor: null, hasMore: false });
       await listCreations('s1', { limit: 1000 });
       const opts = mockQuery.mock.calls[0]![1] as { limit: number };
@@ -204,13 +218,11 @@ describe('creationRepository', () => {
       expect(opts.cursor).toBe('opaque-base64');
     });
 
-    it('passes through the data-store cursor on the way out', async () => {
-      mockQuery.mockResolvedValue({
-        items: [{ id: 'a' }],
-        nextCursor: 'next-page-cursor',
-        hasMore: true,
-      });
-      const result = await listCreations('s1');
+    it('passes through the data-store cursor when more pages exist', async () => {
+      // Generate enough active items to fill the page + signal hasMore.
+      const items = Array.from({ length: 25 }, (_, i) => ({ id: `c${i}`, status: 'published' }));
+      mockQuery.mockResolvedValue({ items, nextCursor: 'next-page-cursor', hasMore: true });
+      const result = await listCreations('s1', { limit: 20 });
       expect(result.nextCursor).toBe('next-page-cursor');
       expect(result.hasMore).toBe(true);
     });

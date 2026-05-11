@@ -71,7 +71,7 @@ export async function createComic(
           ageGroup: input.ageGroup ?? '8-12',
         }),
         maxTokens: 4096,
-        routing: { maxCostTier: input.maxCostTier ?? 'cheap' },
+        routing: input.maxCostTier ? { maxCostTier: input.maxCostTier } : undefined,
       });
 
       const safePanels = llmResponse.panels.map((p) => ({
