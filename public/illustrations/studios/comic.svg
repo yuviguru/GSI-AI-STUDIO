@@ -1,12 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
-  <ellipse cx="100" cy="180" rx="50" ry="6" fill="#000" opacity=".10"/>
-  <rect x="36" y="50" width="58" height="58" rx="10" fill="#fff" stroke="#F59E0B" stroke-width="4"/>
-  <rect x="106" y="50" width="58" height="42" rx="10" fill="#FFF8E7" stroke="#F59E0B" stroke-width="4"/>
-  <rect x="106" y="100" width="58" height="58" rx="10" fill="#fff" stroke="#F59E0B" stroke-width="4"/>
-  <rect x="36" y="116" width="58" height="42" rx="10" fill="#FFF8E7" stroke="#F59E0B" stroke-width="4"/>
-  <path d="M62 76 l4 4 -4 4 -4 -4 z" fill="#F97316"/>
-  <path d="M134 70 l-4 -8 -4 8 z" fill="#7C3AED"/>
-  <path d="M132 130 l6 -10 6 10 -6 4 z" fill="#10B981"/>
-  <text x="58" y="148" font-family="Arial" font-size="22" font-weight="700" fill="#F97316">!</text>
-  <text x="124" y="84" font-family="Arial" font-size="14" font-weight="700" fill="#7C3AED">POW</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" role="img" aria-labelledby="comicTitle comicDesc">
+  <title id="comicTitle">Comic Studio illustration</title>
+  <desc id="comicDesc">Four comic panels with an action burst, kid hero, and speech bubbles.</desc>
+  <defs>
+    <linearGradient id="comicPage" x1="31" y1="43" x2="169" y2="163" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FEF3C7"/>
+      <stop offset="1" stop-color="#F59E0B"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="100" cy="181" rx="55" ry="7" fill="#111827" opacity=".12"/>
+  <rect x="31" y="43" width="138" height="120" rx="18" fill="url(#comicPage)" stroke="#fff" stroke-width="4"/>
+  <rect x="43" y="55" width="49" height="43" rx="10" fill="#FFFBEB"/>
+  <rect x="104" y="55" width="53" height="43" rx="10" fill="#FFF7ED"/>
+  <rect x="43" y="110" width="55" height="41" rx="10" fill="#FFF7ED"/>
+  <rect x="110" y="110" width="47" height="41" rx="10" fill="#FFFBEB"/>
+  <path d="M99 52v101M39 104h122" stroke="#F59E0B" stroke-width="6"/>
+  <path d="M64 63l6 14 14 4-12 8 1 14-11-9-13 5 5-13-9-11 14 1 5-13Z" fill="#FB7185" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M125 62l5 10 12-7-4 13 14 2-13 6 8 11-13-5-7 12-1-14-14-1 12-8-8-11 13 4-4-12Z" fill="#A78BFA" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="71" cy="130" r="12" fill="#FED7AA" stroke="#fff" stroke-width="3"/>
+  <path d="M59 128c2-11 14-16 22-8-2 8-9 11-22 8Z" fill="#92400E"/>
+  <circle cx="67" cy="132" r="2" fill="#111827"/>
+  <circle cx="75" cy="132" r="2" fill="#111827"/>
+  <path d="M66 138c4 3 8 3 11 0" stroke="#111827" stroke-width="2" stroke-linecap="round"/>
+  <path d="M126 125h18c6 0 10 4 10 9s-4 9-10 9h-8l-9 8 2-8h-3c-6 0-10-4-10-9s4-9 10-9Z" fill="#A7F3D0"/>
+  <circle cx="132" cy="134" r="2" fill="#0F766E"/>
+  <circle cx="140" cy="134" r="2" fill="#0F766E"/>
+  <circle cx="148" cy="134" r="2" fill="#0F766E"/>
+  <path d="M168 50l4 9 9 4-9 4-4 9-4-9-9-4 9-4 4-9Z" fill="#FDE68A"/>
 </svg>

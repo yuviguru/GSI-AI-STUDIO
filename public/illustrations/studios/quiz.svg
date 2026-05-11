@@ -1,12 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
-  <ellipse cx="100" cy="180" rx="46" ry="6" fill="#000" opacity=".10"/>
-  <circle cx="100" cy="100" r="58" fill="#10B981" stroke="#fff" stroke-width="4"/>
-  <circle cx="100" cy="100" r="44" fill="#A7F3D0"/>
-  <text x="100" y="120" font-family="Arial" font-size="56" font-weight="800" fill="#065F46" text-anchor="middle">?</text>
-  <circle cx="60" cy="58" r="9" fill="#FBBF24" stroke="#fff" stroke-width="3"/>
-  <circle cx="148" cy="50" r="7" fill="#F97316" stroke="#fff" stroke-width="3"/>
-  <circle cx="44" cy="140" r="7" fill="#7C3AED" stroke="#fff" stroke-width="3"/>
-  <text x="60" y="63" font-family="Arial" font-size="11" font-weight="700" fill="#0F172A" text-anchor="middle">A</text>
-  <text x="148" y="55" font-family="Arial" font-size="9" font-weight="700" fill="#fff" text-anchor="middle">B</text>
-  <text x="44" y="144" font-family="Arial" font-size="9" font-weight="700" fill="#fff" text-anchor="middle">C</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" role="img" aria-labelledby="quizTitle quizDesc">
+  <title id="quizTitle">Quiz Maker illustration</title>
+  <desc id="quizDesc">A big question bubble, answer cards, check mark, and game buzzer.</desc>
+  <defs>
+    <linearGradient id="quizBubble" x1="49" y1="42" x2="157" y2="151" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D1FAE5"/>
+      <stop offset="1" stop-color="#34D399"/>
+    </linearGradient>
+    <linearGradient id="quizBuzzer" x1="64" y1="118" x2="137" y2="158" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FDE68A"/>
+      <stop offset="1" stop-color="#F97316"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="100" cy="181" rx="53" ry="7" fill="#111827" opacity=".12"/>
+  <path d="M51 93c0-29 24-52 53-52s53 23 53 52-24 52-53 52c-8 0-15-2-22-5l-25 13 8-25c-9-9-14-21-14-35Z" fill="url(#quizBubble)" stroke="#fff" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M91 83c1-10 9-17 22-17 12 0 21 7 21 18 0 9-5 14-14 18-7 3-10 7-10 14" stroke="#065F46" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="110" cy="130" r="6" fill="#065F46"/>
+  <rect x="63" y="132" width="75" height="26" rx="13" fill="url(#quizBuzzer)" stroke="#fff" stroke-width="4"/>
+  <ellipse cx="100" cy="129" rx="25" ry="13" fill="#FB7185" stroke="#fff" stroke-width="4"/>
+  <rect x="33" y="57" width="31" height="31" rx="10" fill="#FEF3C7" stroke="#fff" stroke-width="3"/>
+  <path d="M45 77h8M49 66v11" stroke="#92400E" stroke-width="4" stroke-linecap="round"/>
+  <rect x="143" y="48" width="31" height="31" rx="10" fill="#EEF2FF" stroke="#fff" stroke-width="3"/>
+  <circle cx="158.5" cy="63.5" r="6.5" fill="#7C3AED"/>
+  <rect x="143" y="118" width="31" height="31" rx="10" fill="#FCE7F3" stroke="#fff" stroke-width="3"/>
+  <path d="M151 134l6 6 10-15" stroke="#DB2777" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M122 29l4 9 9 4-9 4-4 9-4-9-9-4 9-4 4-9Z" fill="#FDE68A"/>
+  <circle cx="43" cy="122" r="6" fill="#A78BFA"/>
 </svg>

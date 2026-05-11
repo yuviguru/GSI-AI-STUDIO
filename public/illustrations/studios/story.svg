@@ -1,13 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
-  <ellipse cx="100" cy="180" rx="56" ry="6" fill="#000" opacity=".10"/>
-  <path d="M30 70 q70 -30 140 0 v90 q-70 -22 -140 0 z" fill="#fff" stroke="#7C3AED" stroke-width="4"/>
-  <path d="M100 76 v82" stroke="#7C3AED" stroke-width="3"/>
-  <path d="M44 96 h44 M44 110 h36 M44 124 h44" stroke="#C4B5FD" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="138" cy="106" r="14" fill="#FDE68A"/>
-  <circle cx="134" cy="104" r="2.5" fill="#0F172A"/>
-  <circle cx="142" cy="104" r="2.5" fill="#0F172A"/>
-  <path d="M132 112 q6 5 12 0" stroke="#0F172A" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <path d="M126 130 l8 14 8 -14" stroke="#F97316" stroke-width="3" stroke-linecap="round" fill="none"/>
-  <circle cx="160" cy="60" r="6" fill="#FDE68A"/>
-  <circle cx="40" cy="62" r="4" fill="#A7F3D0"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" role="img" aria-labelledby="storyTitle storyDesc">
+  <title id="storyTitle">Story Studio illustration</title>
+  <desc id="storyDesc">A magical open book with a child hero, castle, moon, and AI sparkles.</desc>
+  <defs>
+    <linearGradient id="storyPage" x1="33" y1="66" x2="169" y2="164" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EDE9FE"/>
+    </linearGradient>
+    <linearGradient id="storySpark" x1="44" y1="38" x2="164" y2="138" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FDE68A"/>
+      <stop offset=".48" stop-color="#F472B6"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="100" cy="180" rx="57" ry="7" fill="#111827" opacity=".12"/>
+  <path d="M28 74c29-12 54-10 72 7 18-17 43-19 72-7v87c-30-12-55-9-72 8-17-17-42-20-72-8V74Z" fill="url(#storyPage)" stroke="#6D28D9" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M100 81v88" stroke="#7C3AED" stroke-width="3" stroke-linecap="round"/>
+  <path d="M45 101h35M45 115h29M45 129h36" stroke="#C4B5FD" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="135" cy="89" r="16" fill="#FED7AA" stroke="#fff" stroke-width="4"/>
+  <path d="M120 88c2-15 18-22 30-10-1 9-8 13-18 13-5 0-9-1-12-3Z" fill="#92400E"/>
+  <circle cx="130" cy="93" r="2" fill="#111827"/>
+  <circle cx="140" cy="93" r="2" fill="#111827"/>
+  <path d="M130 100c4 3 9 3 13 0" stroke="#111827" stroke-width="2" stroke-linecap="round"/>
+  <path d="M120 123h31v25h-31v-25Z" fill="#FDE68A" stroke="#F97316" stroke-width="3"/>
+  <path d="M116 123h39l-19.5-18L116 123Z" fill="#FB7185" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M130 148v-11a7 7 0 0 1 14 0v11" fill="#A78BFA"/>
+  <path d="M66 45l5 12 12 5-12 5-5 12-5-12-12-5 12-5 5-12Z" fill="url(#storySpark)"/>
+  <path d="M149 42c9 10 8 25-2 34 14-2 24-13 25-28-7 5-15 5-23-6Z" fill="#FDE68A" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M159 60l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7Z" fill="#A7F3D0"/>
 </svg>

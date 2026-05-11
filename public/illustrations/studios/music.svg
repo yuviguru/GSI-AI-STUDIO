@@ -1,13 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
-  <ellipse cx="100" cy="180" rx="46" ry="6" fill="#000" opacity=".10"/>
-  <path d="M50 110 a50 50 0 0 1 100 0" stroke="#F97316" stroke-width="8" fill="none"/>
-  <rect x="40" y="106" width="22" height="44" rx="10" fill="#FB923C" stroke="#fff" stroke-width="3"/>
-  <rect x="138" y="106" width="22" height="44" rx="10" fill="#FB923C" stroke="#fff" stroke-width="3"/>
-  <circle cx="51" cy="128" r="4" fill="#fff"/>
-  <circle cx="149" cy="128" r="4" fill="#fff"/>
-  <circle cx="80" cy="62" r="6" fill="#7C3AED"/>
-  <rect x="84" y="40" width="3" height="26" fill="#7C3AED"/>
-  <circle cx="124" cy="56" r="6" fill="#10B981"/>
-  <rect x="128" y="34" width="3" height="26" fill="#10B981"/>
-  <path d="M104 28 q14 8 0 18 q-14 -10 0 -18" fill="#FBBF24"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" role="img" aria-labelledby="musicTitle musicDesc">
+  <title id="musicTitle">Music Lab illustration</title>
+  <desc id="musicDesc">Headphones around a glowing waveform with rhythm notes and beat dots.</desc>
+  <defs>
+    <linearGradient id="musicShell" x1="42" y1="44" x2="162" y2="156" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FED7AA"/>
+      <stop offset="1" stop-color="#FB923C"/>
+    </linearGradient>
+    <linearGradient id="musicWave" x1="66" y1="82" x2="134" y2="134" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FDE68A"/>
+      <stop offset="1" stop-color="#A78BFA"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="100" cy="181" rx="53" ry="7" fill="#111827" opacity=".12"/>
+  <path d="M47 111a53 53 0 0 1 106 0" stroke="url(#musicShell)" stroke-width="11" stroke-linecap="round"/>
+  <rect x="34" y="103" width="30" height="53" rx="15" fill="#FB923C" stroke="#fff" stroke-width="4"/>
+  <rect x="136" y="103" width="30" height="53" rx="15" fill="#FB923C" stroke="#fff" stroke-width="4"/>
+  <circle cx="49" cy="130" r="5" fill="#FFFBEB"/>
+  <circle cx="151" cy="130" r="5" fill="#FFFBEB"/>
+  <rect x="65" y="84" width="70" height="50" rx="19" fill="url(#musicWave)" stroke="#fff" stroke-width="4"/>
+  <path d="M78 109v-11m11 24V95m11 32V91m11 31V97m11 19v-13" stroke="#7C2D12" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="79" cy="56" r="8" fill="#7C3AED" stroke="#fff" stroke-width="3"/>
+  <path d="M87 56V30c15 5 22 12 22 22" stroke="#7C3AED" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="136" cy="58" r="8" fill="#10B981" stroke="#fff" stroke-width="3"/>
+  <path d="M144 58V34h22" stroke="#10B981" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M153 80l4 9 9 4-9 4-4 9-4-9-9-4 9-4 4-9Z" fill="#FDE68A"/>
+  <circle cx="56" cy="76" r="5" fill="#FDE68A"/>
 </svg>

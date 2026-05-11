@@ -1,18 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" fill="none">
-  <circle cx="110" cy="110" r="92" fill="#fff" opacity=".18"/>
-  <ellipse cx="110" cy="195" rx="62" ry="7" fill="#000" opacity=".10"/>
-  <rect x="42" y="92" width="136" height="64" rx="32" fill="#A7F3D0" stroke="#fff" stroke-width="3"/>
-  <circle cx="74" cy="124" r="14" fill="#fff"/>
-  <circle cx="74" cy="124" r="6" fill="#0F766E"/>
-  <rect x="138" y="116" width="18" height="6" rx="3" fill="#fff"/>
-  <rect x="144" y="110" width="6" height="18" rx="3" fill="#fff"/>
-  <circle cx="120" cy="60" r="22" fill="#FDE68A" stroke="#fff" stroke-width="3"/>
-  <circle cx="113" cy="58" r="3" fill="#0F172A"/>
-  <circle cx="127" cy="58" r="3" fill="#0F172A"/>
-  <path d="M111 68 q9 8 18 0" stroke="#0F172A" stroke-width="3" stroke-linecap="round" fill="none"/>
-  <rect x="116" y="40" width="8" height="6" rx="2" fill="#0F172A"/>
-  <path d="M30 72 l8 -8 -8 -8" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-  <path d="M192 80 l-8 -8 8 -8" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="36" cy="148" r="6" fill="#FDE68A"/>
-  <circle cx="184" cy="160" r="5" fill="#FCA5A5"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" fill="none" role="img" aria-labelledby="playTitle playDesc">
+  <title id="playTitle">Play hub illustration</title>
+  <desc id="playDesc">A game controller with a smiling AI robot, flags, and challenge sparkles.</desc>
+  <defs>
+    <linearGradient id="playPad" x1="38" y1="80" x2="184" y2="156" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#CCFBF1"/>
+      <stop offset="1" stop-color="#67E8F9"/>
+    </linearGradient>
+    <linearGradient id="playBot" x1="86" y1="42" x2="142" y2="105" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FEF3C7"/>
+      <stop offset="1" stop-color="#FDE68A"/>
+    </linearGradient>
+    <filter id="playShadow" x="25" y="34" width="174" height="166" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#064E3B" flood-opacity=".16"/>
+    </filter>
+  </defs>
+  <circle cx="110" cy="110" r="94" fill="#fff" opacity=".18"/>
+  <ellipse cx="110" cy="190" rx="66" ry="9" fill="#111827" opacity=".12"/>
+  <g filter="url(#playShadow)">
+    <rect x="39" y="91" width="142" height="68" rx="34" fill="url(#playPad)" stroke="#fff" stroke-width="4"/>
+    <circle cx="73" cy="125" r="18" fill="#F0FDFA"/>
+    <rect x="61" y="122" width="24" height="7" rx="3.5" fill="#0F766E"/>
+    <rect x="69.5" y="113.5" width="7" height="24" rx="3.5" fill="#0F766E"/>
+    <circle cx="141" cy="113" r="6" fill="#F59E0B"/>
+    <circle cx="156" cy="126" r="6" fill="#FB7185"/>
+    <circle cx="128" cy="128" r="6" fill="#8B5CF6"/>
+  </g>
+  <rect x="86" y="42" width="56" height="52" rx="16" fill="url(#playBot)" stroke="#fff" stroke-width="4"/>
+  <rect x="106" y="34" width="16" height="13" rx="5" fill="#0F172A"/>
+  <circle cx="104" cy="64" r="4" fill="#0F172A"/>
+  <circle cx="124" cy="64" r="4" fill="#0F172A"/>
+  <path d="M103 76c7 7 15 7 22 0" stroke="#0F172A" stroke-width="3" stroke-linecap="round"/>
+  <path d="M86 69H73m69 0h13" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+  <path d="M86 69H73m69 0h13" stroke="#0F766E" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M55 54h22l-7 13 7 13H55l7-13-7-13Z" fill="#F97316" stroke="#fff" stroke-width="3"/>
+  <path d="M163 50h22l-7 13 7 13h-22l7-13-7-13Z" fill="#7C3AED" stroke="#fff" stroke-width="3"/>
+  <path d="M48 160c5-16 16-25 32-28" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
+  <path d="M48 160c5-16 16-25 32-28" stroke="#22C55E" stroke-width="3" stroke-linecap="round"/>
+  <path d="M177 166c-3-17-13-27-29-32" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
+  <path d="M177 166c-3-17-13-27-29-32" stroke="#FDE047" stroke-width="3" stroke-linecap="round"/>
+  <path d="M184 117l4 8 8 4-8 4-4 8-4-8-8-4 8-4 4-8Z" fill="#FDE68A"/>
+  <circle cx="35" cy="87" r="5" fill="#A7F3D0"/>
 </svg>

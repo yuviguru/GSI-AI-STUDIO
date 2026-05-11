@@ -1,14 +1,37 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" fill="none">
-  <circle cx="110" cy="110" r="92" fill="#fff" opacity=".18"/>
-  <ellipse cx="110" cy="195" rx="64" ry="8" fill="#000" opacity=".10"/>
-  <path d="M50 88 q60 -28 120 0 v74 q-60 -22 -120 0 z" fill="#FFF8E7" stroke="#fff" stroke-width="3"/>
-  <path d="M110 92 v74" stroke="#F97316" stroke-width="3"/>
-  <path d="M62 110 h36 M62 124 h36 M62 138 h28" stroke="#FCD34D" stroke-width="3" stroke-linecap="round"/>
-  <path d="M126 110 h36 M126 124 h36 M126 138 h28" stroke="#FCD34D" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="158" cy="62" r="22" fill="#FCD34D" stroke="#fff" stroke-width="3"/>
-  <circle cx="158" cy="62" r="14" fill="#fff"/>
-  <line x1="172" y1="78" x2="186" y2="92" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
-  <line x1="172" y1="78" x2="186" y2="92" stroke="#7C3AED" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="36" cy="60" r="6" fill="#FDE68A"/>
-  <path d="M44 158 q10 -8 20 0" stroke="#F97316" stroke-width="4" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" fill="none" role="img" aria-labelledby="learnTitle learnDesc">
+  <title id="learnTitle">Learn hub illustration</title>
+  <desc id="learnDesc">An open book connected to an AI brain, quiz card, and homework check mark.</desc>
+  <defs>
+    <linearGradient id="learnBook" x1="44" y1="79" x2="176" y2="166" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFBEB"/>
+      <stop offset="1" stop-color="#FED7AA"/>
+    </linearGradient>
+    <linearGradient id="learnBrain" x1="124" y1="43" x2="182" y2="99" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FDE68A"/>
+      <stop offset="1" stop-color="#FB7185"/>
+    </linearGradient>
+    <filter id="learnShadow" x="30" y="39" width="171" height="158" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#7F1D1D" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <circle cx="110" cy="110" r="94" fill="#fff" opacity=".18"/>
+  <ellipse cx="111" cy="190" rx="66" ry="9" fill="#111827" opacity=".12"/>
+  <g filter="url(#learnShadow)">
+    <path d="M48 89c26-15 48-14 62 0 14-14 36-15 62 0v76c-27-12-48-11-62 2-14-13-35-14-62-2V89Z" fill="url(#learnBook)" stroke="#fff" stroke-width="4"/>
+    <path d="M110 91v76" stroke="#F97316" stroke-width="3" stroke-linecap="round"/>
+    <path d="M64 111h31M64 126h34M64 141h25M126 111h31M126 126h33M126 141h24" stroke="#F59E0B" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+    <path d="M79 70l6 12 12 6-12 6-6 12-6-12-12-6 12-6 6-12Z" fill="#A78BFA" stroke="#fff" stroke-width="3"/>
+  </g>
+  <path d="M147 46c19 0 34 13 34 31 0 19-15 32-34 32-19 0-34-13-34-32 0-18 15-31 34-31Z" fill="url(#learnBrain)" stroke="#fff" stroke-width="4"/>
+  <path d="M128 78c0-9 8-16 18-12 4-8 17-4 17 6 8 0 11 11 4 16 3 8-7 16-15 10-7 7-21 1-18-10-6-1-8-6-6-10Z" fill="#fff" opacity=".55"/>
+  <path d="M137 67v30M151 63v36M163 76h-36M166 88h-28" stroke="#BE123C" stroke-width="3" stroke-linecap="round" opacity=".65"/>
+  <rect x="34" y="55" width="31" height="31" rx="10" fill="#ECFDF5" stroke="#fff" stroke-width="3"/>
+  <path d="M43 71l5 5 10-13" stroke="#10B981" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="169" y="126" width="25" height="25" rx="8" fill="#EEF2FF" stroke="#fff" stroke-width="3"/>
+  <path d="M178 136c.5-4 4-7 8-7 5 0 8 3 8 7 0 3-2 5-5 7-2 1-3 2-3 5" stroke="#7C3AED" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="186" cy="152" r="1.8" fill="#7C3AED"/>
+  <path d="M49 143c-10 3-16 10-17 22" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
+  <path d="M49 143c-10 3-16 10-17 22" stroke="#FDE047" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="187" cy="58" r="5" fill="#A7F3D0"/>
+  <circle cx="39" cy="111" r="4" fill="#FCA5A5"/>
 </svg>

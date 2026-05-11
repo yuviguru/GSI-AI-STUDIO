@@ -1,13 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
-  <ellipse cx="100" cy="180" rx="60" ry="6" fill="#000" opacity=".10"/>
-  <rect x="40" y="130" width="120" height="32" rx="6" fill="#6366F1" stroke="#fff" stroke-width="3"/>
-  <rect x="50" y="138" width="100" height="4" rx="2" fill="#A5B4FC"/>
-  <rect x="50" y="148" width="60" height="4" rx="2" fill="#A5B4FC"/>
-  <rect x="48" y="92" width="104" height="34" rx="6" fill="#F472B6" stroke="#fff" stroke-width="3"/>
-  <rect x="58" y="100" width="84" height="4" rx="2" fill="#FBCFE8"/>
-  <rect x="58" y="110" width="48" height="4" rx="2" fill="#FBCFE8"/>
-  <rect x="38" y="56" width="124" height="32" rx="6" fill="#F59E0B" stroke="#fff" stroke-width="3"/>
-  <rect x="48" y="64" width="104" height="4" rx="2" fill="#FED7AA"/>
-  <rect x="48" y="74" width="62" height="4" rx="2" fill="#FED7AA"/>
-  <path d="M150 30 l4 8 8 -4 -4 8 8 4 -8 4 4 8 -8 -4 -4 8 -4 -8 -8 4 4 -8 -8 -4 8 -4 -4 -8 8 4 z" fill="#FBBF24" opacity=".9"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" role="img" aria-labelledby="booksTitle booksDesc">
+  <title id="booksTitle">Book Studio illustration</title>
+  <desc id="booksDesc">Stacked books with a pencil, bookmark, and publishing sparkle.</desc>
+  <defs>
+    <linearGradient id="bookTop" x1="49" y1="42" x2="151" y2="118" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EEF2FF"/>
+      <stop offset="1" stop-color="#A5B4FC"/>
+    </linearGradient>
+    <linearGradient id="bookPencil" x1="130" y1="42" x2="170" y2="110" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FDE68A"/>
+      <stop offset="1" stop-color="#F97316"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="101" cy="181" rx="60" ry="7" fill="#111827" opacity=".12"/>
+  <rect x="31" y="131" width="138" height="35" rx="9" fill="#4F46E5" stroke="#fff" stroke-width="4"/>
+  <rect x="45" y="142" width="96" height="5" rx="2.5" fill="#A5B4FC"/>
+  <rect x="45" y="154" width="60" height="5" rx="2.5" fill="#C7D2FE"/>
+  <rect x="41" y="91" width="121" height="35" rx="9" fill="#EC4899" stroke="#fff" stroke-width="4"/>
+  <rect x="55" y="102" width="78" height="5" rx="2.5" fill="#FBCFE8"/>
+  <rect x="55" y="114" width="49" height="5" rx="2.5" fill="#FCE7F3"/>
+  <path d="M57 42h78c10 0 18 8 18 18v31H52V47c0-3 2-5 5-5Z" fill="url(#bookTop)" stroke="#fff" stroke-width="4"/>
+  <path d="M70 57h48M70 71h34" stroke="#4F46E5" stroke-width="4" stroke-linecap="round"/>
+  <path d="M131 40h17c3 0 5 2 5 5v48l-11-10-11 10V40Z" fill="#F97316" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+  <g transform="rotate(29 153 76)">
+    <rect x="146" y="47" width="15" height="58" rx="6" fill="url(#bookPencil)" stroke="#fff" stroke-width="3"/>
+    <path d="M146 48l7.5-14 7.5 14" fill="#7C3AED" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M146 93h15" stroke="#92400E" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <path d="M43 49l4 10 10 4-10 4-4 10-4-10-10-4 10-4 4-10Z" fill="#FDE68A"/>
 </svg>
