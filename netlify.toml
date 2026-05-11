@@ -20,3 +20,14 @@
 # the `schoolAnalytics/{schoolId}` cache read by the school admin dashboard.
 [functions."school-analytics-refresh"]
   schedule = "0 2 * * *"
+
+# Hourly leaderboard cache. Recomputes top creators into
+# `leaderboards/topCreators` so the public leaderboard endpoint reads a
+# single cached doc instead of scanning 200 recent creations every call.
+[functions."leaderboard-refresh"]
+  schedule = "5 * * * *"
+
+# Override per-route timeouts. MCP tool execution can take 20-40s for
+# story/comic creation; default Next.js function timeout (10s) would 503.
+[functions."api-mcp"]
+  timeout = 60

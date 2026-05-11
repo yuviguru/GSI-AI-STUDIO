@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Mic, Music2 } from 'lucide-react';
+import { Music2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AiXrayPopup } from '@/components/learning/AiXrayPopup';
 import { ShareButton } from '@/components/shared/ShareButton';
 import { DownloadButton } from '@/components/shared/DownloadButton';
+import { SingAlongRecorder } from './SingAlongRecorder';
 import type { AiXrayData, MusicContent } from '@/types';
 
 type MusicData = MusicContent & { title: string; waveformData: number[] };
@@ -41,14 +42,20 @@ export function MusicPlayer({ music, aiXray, onCreateAnother, creationId, readOn
   const lyricsContainerRef = useRef<HTMLDivElement>(null);
   const activeLineRef = useRef<HTMLParagraphElement>(null);
 
-  // Auto-scroll active lyric line into view while playing
+  // "Audio is currently moving" — true when Howler is playing OR the
+  // sing-along recorder is driving playback through its Web Audio mix
+  // (Howler is paused in that case but currentTime is still ticking
+  // forward via SingAlongRecorder.onPlaybackTime).
+  const isAudioActive = isPlaying || (isSingAlong && currentTime > 0);
+
+  // Auto-scroll active lyric line into view while audio is moving
   useEffect(() => {
-    if (!isPlaying || activeLineIndex < 0) return;
+    if (!isAudioActive || activeLineIndex < 0) return;
     const node = activeLineRef.current;
     if (node) {
       node.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-  }, [activeLineIndex, isPlaying]);
+  }, [activeLineIndex, isAudioActive]);
 
   // Auto-show X-Ray on first creation per session (skip in readOnly mode)
   useEffect(() => {
@@ -68,10 +75,19 @@ export function MusicPlayer({ music, aiXray, onCreateAnother, creationId, readOn
   useEffect(() => {
     let howl: import('howler').Howl | null = null;
 
+    if (!music.audioUrl) {
+      // Asset persistence may have failed for this creation; mark loaded so
+      // the rest of the UI (lyrics, sing-along) renders without spinning.
+      setIsLoaded(true);
+      return;
+    }
+
+    const audioSrc = music.audioUrl;
+
     (async () => {
       const { Howl } = await import('howler');
       howl = new Howl({
-        src: [music.audioUrl],
+        src: [audioSrc],
         html5: true,
         onload: () => {
           setAudioDuration(howl!.duration());
@@ -177,22 +193,17 @@ export function MusicPlayer({ music, aiXray, onCreateAnother, creationId, readOn
     }
   };
 
-  const toggleSingAlong = () => {
+  // PERF-001: when the recorder mounts, the SingAlongRecorder owns
+  // playback (it builds its own Web Audio mix of backing track + mic).
+  // We pause Howler so the song doesn't play from two sources at once.
+  useEffect(() => {
+    if (!isSingAlong) return;
     const howl = howlRef.current;
-    setIsSingAlong((prev) => {
-      const next = !prev;
-      if (howl) {
-        if (next && !isPlaying) {
-          howl.play();
-          setIsPlaying(true);
-        } else if (!next && isPlaying) {
-          howl.pause();
-          setIsPlaying(false);
-        }
-      }
-      return next;
-    });
-  };
+    if (howl && howl.playing()) {
+      howl.pause();
+      setIsPlaying(false);
+    }
+  }, [isSingAlong]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -273,31 +284,31 @@ export function MusicPlayer({ music, aiXray, onCreateAnother, creationId, readOn
         </div>
       </div>
 
-      {/* Sing Along (stub — recording coming soon) */}
-      {music.lyrics && !readOnly && (
+      {/* Sing Along — opens the recorder */}
+      {music.lyrics && !readOnly && creationId && !isSingAlong && (
         <button
-          onClick={toggleSingAlong}
+          onClick={() => setIsSingAlong(true)}
           disabled={!isLoaded}
           className={cn(
             'flex w-full items-center justify-center gap-2 rounded-2xl border-2 py-3 font-bold transition-all active:scale-95',
-            isSingAlong
-              ? 'border-brand-orange bg-brand-orange/10 text-brand-orange'
-              : 'border-brand-purple bg-brand-purple/5 text-brand-purple hover:bg-brand-purple/10',
+            'border-brand-purple bg-brand-purple/5 text-brand-purple hover:bg-brand-purple/10',
+            !isLoaded && 'cursor-wait opacity-60',
           )}
-          aria-pressed={isSingAlong}
         >
-          {isSingAlong ? (
-            <>
-              <Mic className="h-5 w-5 animate-pulse" />
-              Listening...
-            </>
-          ) : (
-            <>
-              <Music2 className="h-5 w-5" />
-              Sing Along
-            </>
-          )}
+          <Music2 className="h-5 w-5" />
+          Sing Along
         </button>
+      )}
+
+      {/* Sing-along recorder */}
+      {music.lyrics && !readOnly && creationId && isSingAlong && (
+        <SingAlongRecorder
+          parentCreationId={creationId}
+          backingTrackUrl={music.audioUrl}
+          isParentReady={isLoaded}
+          onPlaybackTime={setCurrentTime}
+          onClose={() => setIsSingAlong(false)}
+        />
       )}
 
       {/* Lyrics */}
@@ -309,7 +320,7 @@ export function MusicPlayer({ music, aiXray, onCreateAnother, creationId, readOn
             className="max-h-48 space-y-2 overflow-y-auto scroll-smooth px-2 text-base leading-relaxed"
           >
             {lyricLines.map((line, i) => {
-              const isActive = i === activeLineIndex && isPlaying;
+              const isActive = i === activeLineIndex && isAudioActive;
               return (
                 <p
                   key={i}
@@ -318,7 +329,7 @@ export function MusicPlayer({ music, aiXray, onCreateAnother, creationId, readOn
                     'origin-left transition-all duration-300',
                     isActive
                       ? 'text-xl font-bold text-brand-purple'
-                      : i < activeLineIndex && isPlaying
+                      : i < activeLineIndex && isAudioActive
                         ? 'text-gray-400'
                         : 'text-gray-600',
                   )}
