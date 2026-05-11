@@ -71,6 +71,11 @@ export async function createStory(
       filterInput(input.premise);
 
       // 2. LLM call (router picks Groq → Claude → ...)
+      //    No `maxCostTier` default: web callers want the full router
+      //    behavior. Setting a default of 'cheap' would exclude Claude
+      //    (premium tier), so deployments with only ANTHROPIC_API_KEY would
+      //    have NO eligible provider. Channels that need a ceiling (MCP,
+      //    WhatsApp bot, free-plan users) pass `maxCostTier` explicitly.
       const llmResponse = await llmRouter.generateJson<LlmStoryResponse>({
         systemPrompt: STORY_SYSTEM_PROMPT,
         userMessage: buildStoryUserPrompt({
@@ -82,7 +87,7 @@ export async function createStory(
           ageGroup: input.ageGroup ?? '8-12',
         }),
         maxTokens: 4096,
-        routing: { maxCostTier: input.maxCostTier ?? 'cheap' },
+        routing: input.maxCostTier ? { maxCostTier: input.maxCostTier } : undefined,
       });
 
       // 3. Output safety filter

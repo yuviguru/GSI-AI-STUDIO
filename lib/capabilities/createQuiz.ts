@@ -63,7 +63,7 @@ export async function createQuiz(
           ageGroup: input.ageGroup ?? '8-12',
         }),
         maxTokens: 4096,
-        routing: { maxCostTier: input.maxCostTier ?? 'cheap' },
+        routing: input.maxCostTier ? { maxCostTier: input.maxCostTier } : undefined,
       });
 
       const safeQuestions = llmResponse.questions.map((q) => ({
