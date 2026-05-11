@@ -149,19 +149,21 @@ export async function archiveCreation(
  * `status != 'archived'` while ordering by `createdAt` is rejected at
  * query time ("inequality filter property and first sort order must be
  * the same"). Using `status` as the first orderBy would group results by
- * status (cosmetically wrong for "my creations"). In-memory filtering is
- * cheap because archived docs are rare; we overscan slightly to keep
- * `hasMore` accurate even when a page-worth lands at the head.
+ * status (cosmetically wrong for "my creations").
+ *
+ * Pagination correctness: we fetch EXACTLY `limit` docs from the adapter.
+ * Overscanning (fetch limit+N, return first N active) breaks pagination
+ * because `page.nextCursor` points after the LAST FETCHED doc, not the
+ * last RETURNED doc — so any unreturned-but-fetched docs would be
+ * permanently skipped on the next page. Trade-off: the user occasionally
+ * sees a slightly short page when archived items appear in their window;
+ * acceptable since archived rate is low in practice (<5%).
  */
 export async function listCreations(
   sessionId: string,
   filters: ListCreationsFilters = {},
 ): Promise<ListCreationsResult> {
   const limit = Math.min(filters.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
-  // Bounded overscan — archived rate in practice is low, so one fetch is
-  // almost always enough. Cap at MAX_PAGE_SIZE so a single query never
-  // blows the read budget.
-  const fetchLimit = Math.min(limit + 10, MAX_PAGE_SIZE);
 
   const where: Array<{ field: string; op: 'eq'; value: unknown }> = [
     { field: 'sessionId', op: 'eq', value: sessionId },
@@ -171,18 +173,18 @@ export async function listCreations(
   const page = await backend.data.query<Creation>(CREATIONS, {
     where,
     orderBy: [{ field: 'createdAt', direction: 'desc' }],
-    limit: fetchLimit,
+    limit,
     cursor: filters.cursor,
   });
 
-  const active = page.items.filter((c) => c.status !== 'archived');
-  const items = active.slice(0, limit);
-  const hasMore = active.length > limit || page.hasMore;
-  // Reuse the underlying adapter cursor — it correctly encodes the
-  // orderBy field values for the underlying page boundary.
-  const nextCursor = hasMore ? page.nextCursor : null;
+  const items = page.items.filter((c) => c.status !== 'archived');
+  // page.nextCursor is positioned AFTER the last fetched doc — which is
+  // exactly the boundary we want, since we're not skipping any returned
+  // ones. (We may have dropped some archived docs from the page, but
+  // those wouldn't be revisited on the next page anyway.)
+  const nextCursor = page.hasMore ? page.nextCursor : null;
 
-  return { items, nextCursor, hasMore };
+  return { items, nextCursor, hasMore: page.hasMore };
 }
 
 export async function listPublicCreations(
@@ -202,7 +204,6 @@ export async function listPublicCreations(
       ]
     : [{ field: 'createdAt', direction: 'desc' }];
 
-  const fetchLimit = Math.min(limit + 10, MAX_PAGE_SIZE);
   const where: Array<{ field: string; op: 'eq'; value: unknown }> = [
     { field: 'isPublic', op: 'eq', value: true },
   ];
@@ -211,16 +212,14 @@ export async function listPublicCreations(
   const page = await backend.data.query<Creation>(CREATIONS, {
     where,
     orderBy,
-    limit: fetchLimit,
+    limit, // exact-limit (see listCreations comment) — no overscan to avoid skipping
     cursor: filters.cursor,
   });
 
-  const active = page.items.filter((c) => c.status !== 'archived');
-  const items = active.slice(0, limit);
-  const hasMore = active.length > limit || page.hasMore;
-  const nextCursor = hasMore ? page.nextCursor : null;
+  const items = page.items.filter((c) => c.status !== 'archived');
+  const nextCursor = page.hasMore ? page.nextCursor : null;
 
-  return { items, nextCursor, hasMore };
+  return { items, nextCursor, hasMore: page.hasMore };
 }
 
 /**
