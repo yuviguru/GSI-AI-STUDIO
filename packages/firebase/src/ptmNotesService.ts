@@ -74,6 +74,12 @@ export async function createPtmNote(input: CreatePtmNoteInput): Promise<PtmNoteD
   return toDoc(doc);
 }
 
+export async function getPtmNote(id: string): Promise<PtmNoteDoc | null> {
+  const snap = await adminDb.collection(COLLECTION).doc(id).get();
+  if (!snap.exists) return null;
+  return toDoc(snap.data() as PtmNoteFirestore);
+}
+
 export async function listPtmNotesForClass(
   schoolId: string,
   classId: string,
@@ -102,13 +108,27 @@ export async function listPtmNotesForKid(
   return snap.docs.map((d) => toDoc(d.data() as PtmNoteFirestore));
 }
 
+export type UpdatePtmNoteResult =
+  | { status: 'updated'; note: PtmNoteDoc }
+  | { status: 'not_found' }
+  | { status: 'forbidden' };
+
+/**
+ * Authorize-then-write. Verifies the note belongs to `schoolId` *before*
+ * mutating, so a guessed or leaked note id can't corrupt a foreign school's
+ * records. Returns a tagged result so the caller can map to the right
+ * HTTP status without inferring it from `null`.
+ */
 export async function updatePtmNote(
   id: string,
+  schoolId: string,
   patch: Partial<Pick<PtmNoteDoc, 'body' | 'status'>>,
-): Promise<PtmNoteDoc | null> {
+): Promise<UpdatePtmNoteResult> {
   const ref = adminDb.collection(COLLECTION).doc(id);
   const snap = await ref.get();
-  if (!snap.exists) return null;
+  if (!snap.exists) return { status: 'not_found' };
+  const existing = snap.data() as PtmNoteFirestore;
+  if (existing.schoolId !== schoolId) return { status: 'forbidden' };
 
   const now = Timestamp.now();
   const update: Partial<PtmNoteFirestore> = {
@@ -119,7 +139,7 @@ export async function updatePtmNote(
   await ref.set(update, { merge: true });
 
   const after = await ref.get();
-  return toDoc(after.data() as PtmNoteFirestore);
+  return { status: 'updated', note: toDoc(after.data() as PtmNoteFirestore) };
 }
 
 export async function deletePtmNote(id: string, schoolId: string): Promise<boolean> {

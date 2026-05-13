@@ -9,12 +9,17 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { requireRole } from '@/lib/auth-utils';
+// Side-effect import: lib/integrations/index.ts registers the local/fedena
+// adapters via registerSchoolDataProvider(). Without this, a fresh
+// serverless function would call resolveProvider() against an empty
+// registry and return INTEGRATION_NOT_REGISTERED — even for the default
+// local provider. Codex r3237140774.
 import {
   getErpIntegrationConfig,
   resolveProvider,
   saveErpIntegrationConfig,
   type SchoolDataProviderId,
-} from '@/lib/integrations/schoolDataProvider';
+} from '@/lib/integrations';
 
 const VALID_PROVIDERS: SchoolDataProviderId[] = [
   'local',

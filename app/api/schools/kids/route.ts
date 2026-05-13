@@ -32,12 +32,18 @@ export async function GET(request: NextRequest) {
 
     const kids = snap.docs.map((d) => {
       const data = d.data() as Record<string, unknown>;
-      const classId = data.classId as string | undefined;
+      // Kid memberships live in `classIds: string[]` (set by joinClassByCode +
+      // the seeder). The legacy singular `classId` field never gets populated,
+      // so reading it left every student tagged "Unassigned class". Codex
+      // r3237140779. Surface the first class for the picker — the schema
+      // allows multi-class but the digest UI only needs one label.
+      const classIds = Array.isArray(data.classIds) ? (data.classIds as string[]) : [];
+      const primaryClassId = classIds[0];
       return {
         id: d.id,
         name: (data.name as string) ?? 'Student',
-        classId,
-        className: classId ? classNameById.get(classId) : undefined,
+        classId: primaryClassId,
+        className: primaryClassId ? classNameById.get(primaryClassId) : undefined,
         parentLinked: typeof data.parentId === 'string' && data.parentId.length > 0,
       };
     });
