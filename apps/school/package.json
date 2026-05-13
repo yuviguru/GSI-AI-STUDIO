@@ -2,5 +2,19 @@
   "name": "@gsi/app-school",
   "version": "0.0.0",
   "private": true,
-  "description": "Teacher + school admin portal. Subdomain: schools.gsi.ai. Email magic-link auth. Phase 4 will move app code here."
+  "description": "Teacher + school admin portal. schools.gsi.ai — email magic-link auth.",
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@gsi/ai": "workspace:*",
+    "@gsi/dpdp": "workspace:*",
+    "@gsi/firebase": "workspace:*",
+    "@gsi/safety": "workspace:*",
+    "@gsi/types": "workspace:*",
+    "@gsi/ui": "workspace:*"
+  }
 }
