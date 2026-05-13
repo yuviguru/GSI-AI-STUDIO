@@ -12,7 +12,7 @@ import { MusicPromptForm } from '@/components/studios/music/MusicPromptForm';
 import { MusicProgress } from '@/components/studios/music/MusicProgress';
 import { MusicPlayer } from '@/components/studios/music/MusicPlayer';
 import { AssignmentBanner } from '@/components/student/AssignmentBanner';
-import type { MusicContent } from '@/types';
+import type { MusicContent } from '@gsi/types';
 import type { MusicInput } from '@/lib/validators';
 
 type MusicData = MusicContent & { title: string; waveformData: number[] };

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import type { ApiResponse, AiXrayData } from '@/types';
+import type { ApiResponse, AiXrayData } from '@gsi/types';
 import { friendlyError } from '@/lib/utils';
 import { fetchWithSession } from '@/lib/fetchWithSession';
 

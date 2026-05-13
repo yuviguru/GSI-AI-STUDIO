@@ -1,6 +1,6 @@
 'use client';
 
-import type { RightRailWidget } from '@/types/dashboard.types';
+import type { RightRailWidget } from '@gsi/types';
 
 interface Props {
   widgets: RightRailWidget[];

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ListChecks, Moon, Plus } from 'lucide-react';
 import { EventCard } from './EventCard';
-import type { CeoChoiceId, CeoEvent } from '@/types';
+import type { CeoChoiceId, CeoEvent } from '@gsi/types';
 
 interface SmallDecisionsZoneProps {
   pendingRegular: CeoEvent | null;

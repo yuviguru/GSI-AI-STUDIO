@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, X } from 'lucide-react';
-import type { BookCharacter, BookSize } from '@/types/book.types';
+import type { BookCharacter, BookSize } from '@gsi/types';
 import { BOOK_SIZES } from '@/lib/templates/bookTemplates';
 import { useBook } from '@/hooks/useBook';
 import { usePageImage } from '@/hooks/usePageImage';

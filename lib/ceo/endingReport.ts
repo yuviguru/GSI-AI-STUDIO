@@ -35,7 +35,7 @@ import type {
   CeoProfile,
   CeoRealWorldParallel,
   CeoStyleSnapshot,
-} from '@/types';
+} from '@gsi/types';
 
 // ─── Tunables ────────────────────────────────────────────────
 

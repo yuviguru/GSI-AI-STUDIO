@@ -9,7 +9,7 @@
  * in the WorkflowTrace X-ray.
  */
 
-import type { CeoBusiness } from '@/types';
+import type { CeoBusiness } from '@gsi/types';
 import { filterInput, filterOutput } from '@/lib/safety/inputFilter';
 import { registerWorkflow, type AnyWorkflowSpec } from './registry';
 import type { WorkflowSpec, WorkflowStep } from '../executor';

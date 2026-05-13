@@ -1,7 +1,7 @@
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from './admin';
 import { AppException } from '@/lib/api-utils';
-import type { UserRole, UserPlan } from '@/types/user.types';
+import type { UserRole, UserPlan } from '@gsi/types';
 
 const USERS_COLLECTION = 'users';
 const CREATIONS_COLLECTION = 'creations';

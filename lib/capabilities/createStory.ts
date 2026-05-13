@@ -15,7 +15,7 @@ import { STORY_SYSTEM_PROMPT, buildStoryUserPrompt } from '@/lib/ai/prompts/stor
 import { usageTracker } from '@/lib/cost/usageTracker';
 import { persistImages } from './imageStorage';
 import type { CostTier } from '@/lib/ai/ports';
-import type { AiXrayData, StoryContent } from '@/types';
+import type { AiXrayData, StoryContent } from '@gsi/types';
 
 // 5-page stories typically generate 5 images; running them in a single
 // Promise.allSettled is fine at pilot scale and saves 5-8s vs sequential

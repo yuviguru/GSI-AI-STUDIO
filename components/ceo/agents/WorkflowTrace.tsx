@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, IndianRupee, Timer } from 'lucide-react';
-import type { CeoWorkflowStepTrace } from '@/types';
+import type { CeoWorkflowStepTrace } from '@gsi/types';
 
 interface WorkflowTraceProps {
   trace: CeoWorkflowStepTrace[];

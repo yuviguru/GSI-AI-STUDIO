@@ -20,7 +20,7 @@ import { TeacherActivityTable } from '@/components/admin/TeacherActivityTable';
 import { ComplianceExport } from '@/components/admin/ComplianceExport';
 import { WeeklyTrendChart } from '@/components/admin/WeeklyTrendChart';
 import { cn } from '@/lib/utils';
-import type { SchoolAnalyticsDoc } from '@/types/user.types';
+import type { SchoolAnalyticsDoc } from '@gsi/types';
 
 interface LeaderboardEntry {
   rank: number;

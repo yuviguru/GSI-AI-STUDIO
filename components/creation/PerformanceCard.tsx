@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Play, Pause, MoreVertical, Trash2, Music2 } from 'lucide-react';
 import { cn, formatCount } from '@/lib/utils';
-import type { PerformanceFeedItem } from '@/types/performance.types';
+import type { PerformanceFeedItem } from '@gsi/types';
 
 interface PerformanceCardProps {
   performance: PerformanceFeedItem;

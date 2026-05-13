@@ -11,7 +11,7 @@
  *  the next event toward, which keeps phase progression reliable even with
  *  weaker models. */
 
-import type { CeoMilestoneStatus, CeoPhaseKey } from '@/types';
+import type { CeoMilestoneStatus, CeoPhaseKey } from '@gsi/types';
 import { PHASE_LABELS } from './constants';
 
 export const PHASES: readonly CeoPhaseKey[] = [

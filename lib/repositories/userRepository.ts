@@ -14,7 +14,7 @@
 
 import { backend } from '@/lib/backend';
 import { hashPhoneNumber } from '@/lib/channels/whatsapp/phoneHash';
-import type { UserRole, UserPlan } from '@/types/user.types';
+import type { UserRole, UserPlan } from '@gsi/types';
 
 const USERS = 'users';
 

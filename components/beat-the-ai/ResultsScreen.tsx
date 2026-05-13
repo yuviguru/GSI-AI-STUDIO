@@ -8,8 +8,8 @@ import type {
   BeatTheAiXray,
   BeatTheAiSkillId,
   BeatTheAiScores,
-} from '@/types/beatTheAi.types';
-import { SKILL_INFO } from '@/types/beatTheAi.types';
+} from '@gsi/types';
+import { SKILL_INFO } from '@gsi/types';
 import { Mascot } from '@/components/mascot/Mascot';
 import { ConfettiCelebration } from '@/components/celebrations/ConfettiCelebration';
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { fetchWithSession } from '@/lib/fetchWithSession';
-import type { GrammarSuggestion } from '@/types/book.types';
+import type { GrammarSuggestion } from '@gsi/types';
 
 export interface GrammarCheckOptions {
   text: string;

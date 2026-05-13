@@ -1,4 +1,4 @@
-import type { CreationType } from '@/types/creation.types';
+import type { CreationType } from '@gsi/types';
 
 export interface Template {
   id: string;

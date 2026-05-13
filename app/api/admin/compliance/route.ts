@@ -17,7 +17,7 @@ import type {
   AssignmentDoc,
   SubmissionDoc,
   ClassDoc,
-} from '@/types/user.types';
+} from '@gsi/types';
 
 /**
  * GET /api/admin/compliance?start=...&end=...

@@ -5,7 +5,7 @@
  * side-effect-imports every workflow for production wiring).
  */
 
-import type { CeoWorkflowId } from '@/types';
+import type { CeoWorkflowId } from '@gsi/types';
 import type { WorkflowSpec } from '../executor';
 
 export type AnyWorkflowSpec = WorkflowSpec<unknown>;

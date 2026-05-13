@@ -1,8 +1,8 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import type { SkillArenaProgress, SkillArenaModule } from '@/types/mindx.types';
-import { MODULE_INFO } from '@/types/mindx.types';
+import type { SkillArenaProgress, SkillArenaModule } from '@gsi/types';
+import { MODULE_INFO } from '@gsi/types';
 import { BandProgressCard } from './BandProgressCard';
 
 interface ProgressDashboardProps {

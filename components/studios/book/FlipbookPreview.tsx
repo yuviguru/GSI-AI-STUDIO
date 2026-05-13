@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import type { Book, BookPage } from '@/types/book.types';
+import type { Book, BookPage } from '@gsi/types';
 import { BOOK_SIZES } from '@/lib/templates/bookTemplates';
 
 interface FlipbookPreviewProps {

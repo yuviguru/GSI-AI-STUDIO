@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { SchoolSettings } from '@/components/admin/SchoolSettings';
-import type { SchoolDoc } from '@/types/user.types';
+import type { SchoolDoc } from '@gsi/types';
 
 export default function SchoolSettingsPage() {
   const router = useRouter();

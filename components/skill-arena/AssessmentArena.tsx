@@ -7,8 +7,8 @@ import type {
   SkillArenaAnswer,
   SkillArenaDifficulty,
   SkillArenaModule,
-} from '@/types/mindx.types';
-import { MODULE_INFO } from '@/types/mindx.types';
+} from '@gsi/types';
+import { MODULE_INFO } from '@gsi/types';
 import { McqOptions } from './McqOptions';
 import { TextAnswer } from './TextAnswer';
 import { SpeakingInput } from './SpeakingInput';

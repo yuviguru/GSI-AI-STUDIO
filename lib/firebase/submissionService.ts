@@ -2,7 +2,7 @@ import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from './admin';
 import { AppException } from '@/lib/api-utils';
 import { getAssignment } from './schoolService';
-import type { SubmissionDoc, SubmissionStatus } from '@/types/user.types';
+import type { SubmissionDoc, SubmissionStatus } from '@gsi/types';
 
 const SUBMISSIONS_COLLECTION = 'submissions';
 const ASSIGNMENTS_COLLECTION = 'assignments';

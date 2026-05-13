@@ -9,7 +9,7 @@ import {
   getCeoBusiness,
 } from '@/lib/firebase/ceoService';
 import { updateKidPoints } from '@/lib/firebase/sessionService';
-import type { CeoBusiness, CeoProfile } from '@/types';
+import type { CeoBusiness, CeoProfile } from '@gsi/types';
 
 type PublicCeoProfile = Omit<CeoProfile, 'userId' | 'kidId'>;
 type PublicCeoBusiness = Omit<CeoBusiness, 'userId' | 'kidId'>;

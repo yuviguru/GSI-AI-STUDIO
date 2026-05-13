@@ -37,7 +37,7 @@ import type {
   AssetStatus,
   AssetVisibility,
   AssetModeration,
-} from '@/types/asset.types';
+} from '@gsi/types';
 
 // ─────────────────────────────────────────────────────────────────────
 // Configuration

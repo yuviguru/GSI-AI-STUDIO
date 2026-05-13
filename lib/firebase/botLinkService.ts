@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { adminDb } from './admin';
 import { AppException } from '@/lib/api-utils';
 import { timestampToMillis } from '@/lib/utils/timestamps';
-import type { BotHandle, BotLinkCode } from '@/types';
+import type { BotHandle, BotLinkCode } from '@gsi/types';
 
 const BOT_LINK_CODES_COLLECTION = 'botLinkCodes';
 const LINK_TTL_MS = 10 * 60 * 1000; // 10 minutes

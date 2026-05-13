@@ -22,7 +22,7 @@
  *  setting Firestore Timestamp fields like `updatedAt`.
  */
 
-import type { CeoBusiness } from '@/types';
+import type { CeoBusiness } from '@gsi/types';
 
 export interface StateChanges {
   cash_delta?: number;

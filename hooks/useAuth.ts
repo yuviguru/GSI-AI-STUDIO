@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth, signOutUser, ensureAnonymousAuth, isFirebaseConfigured } from '@/lib/firebase/client';
-import type { UserRole, UserPlan } from '@/types/user.types';
+import type { UserRole, UserPlan } from '@gsi/types';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

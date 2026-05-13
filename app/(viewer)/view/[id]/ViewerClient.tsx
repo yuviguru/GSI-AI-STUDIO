@@ -9,7 +9,7 @@ import { QuizPlayer } from '@/components/studios/quiz/QuizPlayer';
 import { GamePlayer } from '@/components/studios/game/GamePlayer';
 import { ComicViewer } from '@/components/studios/comic/ComicViewer';
 import { ShareButton } from '@/components/shared/ShareButton';
-import type { Creation, StoryContent, MusicContent, QuizContent, GameContent, ComicContent, CreationType } from '@/types/creation.types';
+import type { Creation, StoryContent, MusicContent, QuizContent, GameContent, ComicContent, CreationType } from '@gsi/types';
 import { RemixButton } from '@/components/shared/RemixButton';
 
 /** Serialized creation (dates as ISO strings from server component) */

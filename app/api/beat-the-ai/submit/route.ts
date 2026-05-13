@@ -27,7 +27,7 @@ import type {
   BeatTheAiSkills,
   BeatTheAiSubmitResponse,
   BeatTheAiSubmitResponseResult,
-} from '@/types/beatTheAi.types';
+} from '@gsi/types';
 
 const ROUNDS_COLLECTION = 'beatTheAiRounds';
 const SESSIONS_COLLECTION = 'sessions';

@@ -23,8 +23,8 @@ import {
 import type {
   PerformanceKind,
   PerformanceVisibility,
-} from '@/types/performance.types';
-import type { CreationType } from '@/types/creation.types';
+} from '@gsi/types';
+import type { CreationType } from '@gsi/types';
 
 const createSchema = z.object({
   kind: z.enum(['sing_along', 'reading', 'voice_memo', 'reaction']),

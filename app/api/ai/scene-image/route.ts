@@ -6,7 +6,7 @@ import { checkRateLimit, trackCreation } from '@/lib/firebase/sessionService';
 import { getBook } from '@/lib/firebase/bookService';
 import { getImageProvider, type ImageStyle } from '@/lib/ai/imageProvider';
 import { dimsForBookAndLayout } from '@/lib/ai/imageDims';
-import type { BookCharacter } from '@/types/book.types';
+import type { BookCharacter } from '@gsi/types';
 
 const STYLE_HINT_MAP: Record<string, ImageStyle> = {
   watercolor: 'watercolor',

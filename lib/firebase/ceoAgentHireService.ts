@@ -15,7 +15,7 @@ import type {
   CeoAgentHire,
   CeoAgentHireStatus,
   CeoAgentId,
-} from '@/types';
+} from '@gsi/types';
 
 const HIRE_COLLECTION = 'ceoAgentHires';
 

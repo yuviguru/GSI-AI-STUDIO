@@ -14,7 +14,7 @@ import type {
   NotificationDoc,
   NotificationPayload,
   NotificationType,
-} from '@/types/notification.types';
+} from '@gsi/types';
 
 export interface EnqueueNotificationInput {
   recipientUid: string;

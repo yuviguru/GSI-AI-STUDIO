@@ -17,7 +17,7 @@ import type {
   CeoDimensionKey,
   CeoDimensionScores,
   CeoProfile,
-} from '@/types';
+} from '@gsi/types';
 import { DIMENSIONS } from './constants';
 
 const BASELINE_SCORE = 50;

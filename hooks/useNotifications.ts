@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import type { NotificationDoc } from '@/types/notification.types';
+import type { NotificationDoc } from '@gsi/types';
 
 interface ApiNotification {
   id: string;

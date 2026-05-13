@@ -2,7 +2,7 @@
 
 import { DashboardSidebar } from './DashboardSidebar';
 import { DashboardRightRail } from './DashboardRightRail';
-import type { DashboardConfig } from '@/types/dashboard.types';
+import type { DashboardConfig } from '@gsi/types';
 
 interface Props {
   config: DashboardConfig;

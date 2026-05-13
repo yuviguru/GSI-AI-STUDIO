@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { fetchWithSession } from '@/lib/fetchWithSession';
-import type { BookPage } from '@/types/book.types';
+import type { BookPage } from '@gsi/types';
 import type { PageCreateInput, PagePatchInput, PageReorderInput } from '@/lib/validators';
 
 /**

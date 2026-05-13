@@ -23,7 +23,7 @@ import type {
   CeoChoiceId,
   CeoDimensionScores,
   CeoEvent,
-} from '@/types';
+} from '@gsi/types';
 
 interface FeedbackPayload {
   eventTitle: string;

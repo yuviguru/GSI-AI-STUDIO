@@ -21,7 +21,7 @@ import type {
   CeoArtifactTrigger,
   CeoWorkflowId,
   CeoWorkflowStepTrace,
-} from '@/types';
+} from '@gsi/types';
 
 const ARTIFACT_COLLECTION = 'ceoArtifacts';
 const BUSINESS_COLLECTION = 'ceoBusiness';

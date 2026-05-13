@@ -14,7 +14,7 @@ import { getOrCreateBotSession, touchBotSession } from './services/sessionStore'
 import { transcribeVoice } from './services/stt';
 import { filterInput, filterOutput } from '@/lib/safety/inputFilter';
 import { AppException } from '@/lib/api-utils';
-import type { KidProfile } from '@/types';
+import type { KidProfile } from '@gsi/types';
 
 const UNSAFE_REPLY =
   "Let's try a different idea! Think of something fun and creative — maybe a new business, a cool character, or a kind decision?";

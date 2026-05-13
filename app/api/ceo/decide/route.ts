@@ -24,7 +24,7 @@ import { generateRegularEvent } from '@/lib/ceo/eventEngine';
 import { generateEndingReport } from '@/lib/ceo/endingReport';
 import { isPhaseComplete } from '@/lib/ceo/phases';
 import { CEO_AI_POINTS, REGULAR_EVENTS_PER_DAY_CAP } from '@/lib/ceo/constants';
-import type { CeoBusiness, CeoEvent } from '@/types';
+import type { CeoBusiness, CeoEvent } from '@gsi/types';
 
 /**
  * POST /api/ceo/decide

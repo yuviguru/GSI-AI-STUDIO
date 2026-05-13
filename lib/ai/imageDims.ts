@@ -19,7 +19,7 @@
  */
 
 import { BOOK_SIZES } from '@/lib/templates/bookTemplates';
-import type { BookSize, PageLayout } from '@/types/book.types';
+import type { BookSize, PageLayout } from '@gsi/types';
 
 const TARGET_LONG_SIDE = 1024;
 const SIZE_STEP = 64; // round dims to a multiple of 64 — image-gen providers prefer this

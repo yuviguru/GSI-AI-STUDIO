@@ -10,7 +10,7 @@ import {
 } from '@/lib/firebase/schoolService';
 import { getConcept } from '@/lib/curriculum/curriculumMap';
 import { enqueueNotificationBatch } from '@/lib/notifications/notificationService';
-import type { CreationType } from '@/types/creation.types';
+import type { CreationType } from '@gsi/types';
 
 async function notifyParentsOfNewAssignment(
   classStudentKidIds: string[],

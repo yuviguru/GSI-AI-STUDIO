@@ -1,4 +1,4 @@
-import type { CreationType } from '@/types/creation.types';
+import type { CreationType } from '@gsi/types';
 import type { Template } from './types';
 import { STORY_TEMPLATES, STORY_CATEGORIES } from './storyTemplates';
 import { MUSIC_TEMPLATES, MUSIC_CATEGORIES } from './musicTemplates';

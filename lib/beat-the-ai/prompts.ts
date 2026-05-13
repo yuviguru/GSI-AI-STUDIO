@@ -1,4 +1,4 @@
-import type { BeatTheAiCategory, BeatTheAiPrompt } from '@/types/beatTheAi.types';
+import type { BeatTheAiCategory, BeatTheAiPrompt } from '@gsi/types';
 
 // ─── Prompt Bank ────────────────────────────────────────────
 

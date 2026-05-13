@@ -10,7 +10,7 @@ import {
 } from '@/lib/firebase/schoolService';
 import { adminDb } from '@/lib/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
-import type { Board } from '@/types/user.types';
+import type { Board } from '@gsi/types';
 
 const VALID_BOARDS: Board[] = ['cbse', 'icse', 'state'];
 

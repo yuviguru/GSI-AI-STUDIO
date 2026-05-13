@@ -6,7 +6,7 @@ import { ArrowDown, ArrowUp, Minus, Trophy, Sparkles } from 'lucide-react';
 import { DIMENSION_LABELS } from '@/lib/ceo/constants';
 import { Mascot } from '@/components/mascot/Mascot';
 import { playSound } from '@/lib/sounds';
-import type { CeoDimensionKey, CeoDimensionScores } from '@/types';
+import type { CeoDimensionKey, CeoDimensionScores } from '@gsi/types';
 
 interface DecisionFeedbackProps {
   open: boolean;

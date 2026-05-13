@@ -17,7 +17,7 @@ import { MUSIC_SYSTEM_PROMPT, buildMusicUserPrompt } from '@/lib/ai/prompts/musi
 import { usageTracker } from '@/lib/cost/usageTracker';
 import { generateMusic } from '@/lib/ai/musicClient';
 import type { AudioGenerateResult, CostTier } from '@/lib/ai/ports';
-import type { AiXrayData, MusicContent } from '@/types';
+import type { AiXrayData, MusicContent } from '@gsi/types';
 
 export interface CreateMusicInput {
   sessionId: string;

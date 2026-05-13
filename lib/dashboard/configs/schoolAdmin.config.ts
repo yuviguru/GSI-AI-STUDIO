@@ -10,7 +10,7 @@ import {
   Plug,
   HelpCircle,
 } from 'lucide-react';
-import type { DashboardConfig } from '@/types/dashboard.types';
+import type { DashboardConfig } from '@gsi/types';
 import { SubstituteAlertWidget } from '@/components/dashboard/widgets/SubstituteAlertWidget';
 import { ComplianceStatusWidget } from '@/components/dashboard/widgets/ComplianceStatusWidget';
 

@@ -6,7 +6,7 @@ import { requireAuthWithKid } from '@/lib/auth-utils';
 import { adminDb } from '@/lib/firebase/admin';
 import { getArtifact } from '@/lib/firebase/ceoArtifactService';
 import { istDayKey } from '@/lib/ceo/cadence';
-import type { CeoBusiness } from '@/types';
+import type { CeoBusiness } from '@gsi/types';
 
 /**
  * POST /api/ceo/marketing/post

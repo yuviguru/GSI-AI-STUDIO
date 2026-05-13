@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { DashboardConfig, SidebarItem } from '@/types/dashboard.types';
+import type { DashboardConfig, SidebarItem } from '@gsi/types';
 
 interface Props {
   config: DashboardConfig;

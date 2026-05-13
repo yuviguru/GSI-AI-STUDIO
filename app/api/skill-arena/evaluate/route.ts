@@ -12,7 +12,7 @@ import type {
   SkillArenaDifficulty,
   SkillArenaModule,
   SkillArenaEvaluateResponse,
-} from '@/types/mindx.types';
+} from '@gsi/types';
 
 const ASSESSMENTS_COLLECTION = 'skillArenaAssessments';
 const SESSIONS_COLLECTION = 'sessions';

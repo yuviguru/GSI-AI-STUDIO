@@ -8,8 +8,8 @@ import type {
   ClassDoc,
   AssignmentDoc,
   Board,
-} from '@/types/user.types';
-import type { CreationType } from '@/types/creation.types';
+} from '@gsi/types';
+import type { CreationType } from '@gsi/types';
 
 const SCHOOLS_COLLECTION = 'schools';
 const CLASSES_SUBCOLLECTION = 'classes';

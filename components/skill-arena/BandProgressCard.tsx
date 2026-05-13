@@ -1,7 +1,7 @@
 'use client';
 
-import type { SkillArenaModuleProgress, SkillArenaModule } from '@/types/mindx.types';
-import { MODULE_INFO, SKILL_ARENA_BANDS } from '@/types/mindx.types';
+import type { SkillArenaModuleProgress, SkillArenaModule } from '@gsi/types';
+import { MODULE_INFO, SKILL_ARENA_BANDS } from '@gsi/types';
 
 interface BandProgressCardProps {
   progress: SkillArenaModuleProgress;

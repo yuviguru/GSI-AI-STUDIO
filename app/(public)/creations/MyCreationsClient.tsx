@@ -8,7 +8,7 @@ import { CreationFilters } from '@/components/creation/CreationFilters';
 import { CreationGrid } from '@/components/creation/CreationGrid';
 import { GalleryTabs, type GalleryTab } from '@/components/creation/GalleryTabs';
 import { PerformanceGrid } from '@/components/creation/PerformanceGrid';
-import type { CreationType } from '@/types/creation.types';
+import type { CreationType } from '@gsi/types';
 
 export function MyCreationsClient() {
   const [tab, setTab] = useState<GalleryTab>('creations');

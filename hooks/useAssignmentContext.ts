@@ -5,8 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import { useAuth } from './useAuth';
 import { useKidProfile } from './useKidProfile';
 import { fetchWithKidAuth } from '@/lib/fetchWithKidAuth';
-import type { AssignmentDoc } from '@/types/user.types';
-import type { CreationType } from '@/types/creation.types';
+import type { AssignmentDoc } from '@gsi/types';
+import type { CreationType } from '@gsi/types';
 
 type AssignmentDetail = Omit<AssignmentDoc, 'dueDate' | 'createdAt' | 'updatedAt'> & {
   dueDate: Date;

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
-import type { BookPlot } from '@/types/book.types';
+import type { BookPlot } from '@gsi/types';
 
 interface StoryPlanCardProps {
   plot: BookPlot;

@@ -13,8 +13,8 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { adminDb } from './admin';
 import type { AiGenerator } from './teacherAiUsageService';
-import type { ConsentScope, ErasureRequest } from '@/types/dpdp.types';
-import { ALL_CONSENT_SCOPES } from '@/types/dpdp.types';
+import type { ConsentScope, ErasureRequest } from '@gsi/types';
+import { ALL_CONSENT_SCOPES } from '@gsi/types';
 
 const KIDS = 'kids';
 const AI_USAGE = 'teacherAiUsage';

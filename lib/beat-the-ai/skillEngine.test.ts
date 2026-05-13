@@ -9,7 +9,7 @@ import {
   determineResult,
   calculateAiPoints,
 } from './skillEngine';
-import type { BeatTheAiRound, BeatTheAiScores, BeatTheAiSkills } from '@/types/beatTheAi.types';
+import type { BeatTheAiRound, BeatTheAiScores, BeatTheAiSkills } from '@gsi/types';
 
 // ─── Helper factories ─────────────────────────────────────
 

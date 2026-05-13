@@ -12,7 +12,7 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase/admin';
 import { AppException } from '@/lib/api-utils';
-import type { ErasureRequest, ErasureStatus } from '@/types/dpdp.types';
+import type { ErasureRequest, ErasureStatus } from '@gsi/types';
 
 const ERASURE_COLLECTION = 'erasureRequests';
 const KIDS_COLLECTION = 'kids';

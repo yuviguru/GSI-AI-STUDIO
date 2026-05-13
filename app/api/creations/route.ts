@@ -3,7 +3,7 @@ import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { saveCreationSchema } from '@/lib/validators';
 import { saveCreation, listCreations } from '@/lib/firebase/creationService';
 import { checkRateLimit, trackCreation } from '@/lib/firebase/sessionService';
-import type { CreationType } from '@/types/creation.types';
+import type { CreationType } from '@gsi/types';
 
 /**
  * POST /api/creations — Save a new creation

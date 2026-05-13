@@ -3,7 +3,7 @@ import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { requireAuthWithKid } from '@/lib/auth-utils';
 import { getCeoBusiness } from '@/lib/firebase/ceoService';
 import { listArtifactsForBusiness } from '@/lib/firebase/ceoArtifactService';
-import type { CeoArtifactStatus } from '@/types';
+import type { CeoArtifactStatus } from '@gsi/types';
 
 const VALID_STATUSES: CeoArtifactStatus[] = ['candidate', 'accepted', 'rejected', 'expired'];
 

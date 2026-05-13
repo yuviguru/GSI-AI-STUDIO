@@ -23,7 +23,7 @@ import type {
   CeoDimensionScores,
   CeoDeliveryChannel,
   CeoPace,
-} from '@/types';
+} from '@gsi/types';
 
 const CEO_BUSINESS_COLLECTION = 'ceoBusiness';
 const CEO_EVENTS_COLLECTION = 'ceoEvents';

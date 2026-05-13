@@ -2,8 +2,8 @@
 
 import { useCallback } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
-import type { Creation, CreationType } from '@/types/creation.types';
-import type { ApiResponse, PaginatedResponse } from '@/types/api.types';
+import type { Creation, CreationType } from '@gsi/types';
+import type { ApiResponse, PaginatedResponse } from '@gsi/types';
 import { fetchWithSession } from '@/lib/fetchWithSession';
 
 async function fetcher<T>(url: string): Promise<T> {

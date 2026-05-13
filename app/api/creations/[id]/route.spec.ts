@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { Creation } from '@/types/creation.types';
+import type { Creation } from '@gsi/types';
 
 // ─── Mock dependencies ─────────────────────────────────
 

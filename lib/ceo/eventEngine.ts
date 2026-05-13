@@ -23,7 +23,7 @@ import type {
   CeoChoiceId,
   CeoEvent,
   CeoEventType,
-} from '@/types';
+} from '@gsi/types';
 import {
   MILESTONE_FALLBACK_CATEGORY,
   stakesMultiplierFor,

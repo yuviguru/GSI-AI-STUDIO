@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { ApiResponse } from '@/types/api.types';
+import type { ApiResponse } from '@gsi/types';
 
 interface CreatorEntry {
   sessionId: string;

@@ -8,7 +8,7 @@ import type {
   CeoDimensionScores,
   CeoEvent,
   CeoPace,
-} from '@/types';
+} from '@gsi/types';
 import { fetchWithKidAuth, KidAuthMissingError } from '@/lib/fetchWithKidAuth';
 import { useAuth } from './useAuth';
 import { useKidProfile } from './useKidProfile';

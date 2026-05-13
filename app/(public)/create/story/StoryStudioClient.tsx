@@ -12,7 +12,7 @@ import { StoryPromptForm } from '@/components/studios/story/StoryPromptForm';
 import { StoryProgress } from '@/components/studios/story/StoryProgress';
 import { StoryViewer } from '@/components/studios/story/StoryViewer';
 import { AssignmentBanner } from '@/components/student/AssignmentBanner';
-import type { StoryContent, AiXrayData } from '@/types';
+import type { StoryContent, AiXrayData } from '@gsi/types';
 import type { StoryInput } from '@/lib/validators';
 
 type StoryData = StoryContent & { title: string; moral: string };

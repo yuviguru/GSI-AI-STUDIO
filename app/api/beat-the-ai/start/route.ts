@@ -5,7 +5,7 @@ import { adminDb } from '@/lib/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { getRandomPrompt } from '@/lib/beat-the-ai/prompts';
 import { getAiDifficulty, getDefaultSkills, getSkillLevel } from '@/lib/beat-the-ai/skillEngine';
-import type { BeatTheAiSkills, BeatTheAiStartResponse } from '@/types/beatTheAi.types';
+import type { BeatTheAiSkills, BeatTheAiStartResponse } from '@gsi/types';
 
 const ROUNDS_COLLECTION = 'beatTheAiRounds';
 const SESSIONS_COLLECTION = 'sessions';

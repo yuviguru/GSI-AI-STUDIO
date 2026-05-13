@@ -8,7 +8,7 @@ import {
   type UpdateSchoolInput,
 } from '@/lib/firebase/schoolService';
 import { invalidateSchoolBranding } from '@/lib/pdf/schoolBranding';
-import type { Board, SchoolPlan } from '@/types/user.types';
+import type { Board, SchoolPlan } from '@gsi/types';
 
 function assertSchoolAccess(schoolId: string, authSchoolId?: string) {
   if (!authSchoolId || authSchoolId !== schoolId) {

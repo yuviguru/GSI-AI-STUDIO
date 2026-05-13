@@ -11,7 +11,7 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { ClassDoc } from '@/types/user.types';
+import type { ClassDoc } from '@gsi/types';
 
 interface Student {
   id: string;

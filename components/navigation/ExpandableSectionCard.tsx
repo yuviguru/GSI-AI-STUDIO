@@ -8,7 +8,7 @@ import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StudioTile } from './StudioTile';
 import { HERO_IMAGE_SIZES } from '@/lib/responsive/tokens';
-import type { SectionDefinition, SectionGradient } from '@/types/dashboard.types';
+import type { SectionDefinition, SectionGradient } from '@gsi/types';
 
 const GRADIENTS: Record<SectionGradient, string> = {
   create: 'from-violet-500 via-purple-500 to-fuchsia-500',

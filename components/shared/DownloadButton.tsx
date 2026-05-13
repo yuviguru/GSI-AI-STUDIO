@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import type { Creation, StoryContent, QuizContent, MusicContent } from '@/types/creation.types';
+import type { Creation, StoryContent, QuizContent, MusicContent } from '@gsi/types';
 
 /** Minimal creation data needed for download — accepts full Creation or a subset */
 type DownloadableCreation = Pick<Creation, 'id' | 'type' | 'title' | 'content'>;

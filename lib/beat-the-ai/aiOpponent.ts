@@ -3,7 +3,7 @@ import type {
   BeatTheAiDifficulty,
   BeatTheAiPrompt,
   BeatTheAiXray,
-} from '@/types/beatTheAi.types';
+} from '@gsi/types';
 import { generateWithClaude } from '@/lib/ai/claudeClient';
 import { generateWithGroq } from '@/lib/ai/groqClient';
 import { filterOutput } from '@/lib/safety/inputFilter';

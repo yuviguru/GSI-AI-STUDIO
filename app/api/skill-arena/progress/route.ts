@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { adminDb } from '@/lib/firebase/admin';
-import type { SkillArenaModule, SkillArenaModuleProgress, SkillArenaProgress } from '@/types/mindx.types';
-import { SKILL_ARENA_BANDS } from '@/types/mindx.types';
+import type { SkillArenaModule, SkillArenaModuleProgress, SkillArenaProgress } from '@gsi/types';
+import { SKILL_ARENA_BANDS } from '@gsi/types';
 
 const SESSIONS_COLLECTION = 'sessions';
 const ASSESSMENTS_COLLECTION = 'skillArenaAssessments';

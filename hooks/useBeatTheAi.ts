@@ -9,7 +9,7 @@ import type {
   BeatTheAiSubmitResponseResult,
   BeatTheAiStartResponse,
   BeatTheAiXray,
-} from '@/types/beatTheAi.types';
+} from '@gsi/types';
 import { fetchWithSession } from '@/lib/fetchWithSession';
 
 export type BeatTheAiPhase =

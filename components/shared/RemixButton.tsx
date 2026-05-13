@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import type { Creation, CreationType } from '@/types/creation.types';
+import type { Creation, CreationType } from '@gsi/types';
 
 interface RemixButtonProps {
   creation: Pick<Creation, 'id' | 'type' | 'prompt'>;

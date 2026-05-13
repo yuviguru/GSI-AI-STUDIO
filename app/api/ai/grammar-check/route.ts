@@ -9,7 +9,7 @@ import {
   buildGrammarUserPrompt,
 } from '@/lib/ai/prompts/bookGrammarPrompt';
 import { nanoid } from 'nanoid';
-import type { GrammarSuggestion } from '@/types/book.types';
+import type { GrammarSuggestion } from '@gsi/types';
 
 interface GroqGrammarResponse {
   suggestions: Array<{

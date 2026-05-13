@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Sparkles } from 'lucide-react';
 import { FlipbookPreview } from '@/components/studios/book/FlipbookPreview';
-import type { Book, BookPage } from '@/types/book.types';
+import type { Book, BookPage } from '@gsi/types';
 
 interface SerializedBook extends Omit<Book, 'createdAt' | 'updatedAt' | 'publishedAt'> {
   createdAt: string;

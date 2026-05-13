@@ -18,9 +18,17 @@
     "noFallthroughCasesInSwitch": true,
     "plugins": [{ "name": "next" }],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@gsi/types": ["./packages/types/src/index.ts"],
+      "@gsi/types/*": ["./packages/types/src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "netlify"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "packages/*/src/**/*.ts"
+  ],
+  "exclude": ["node_modules", "netlify", "packages/*/node_modules"]
 }

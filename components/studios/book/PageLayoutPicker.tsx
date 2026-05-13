@@ -1,7 +1,7 @@
 'use client';
 
 import { BUCKET_LAYOUTS } from '@/lib/templates/bookTemplates';
-import type { BookBucket, PageLayout } from '@/types/book.types';
+import type { BookBucket, PageLayout } from '@gsi/types';
 
 interface PageLayoutPickerProps {
   bucket: BookBucket;

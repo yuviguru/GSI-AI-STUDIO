@@ -6,7 +6,7 @@
  */
 
 import { getSchool } from '@/lib/firebase/schoolService';
-import type { SchoolBranding, SchoolDoc } from '@/types/user.types';
+import type { SchoolBranding, SchoolDoc } from '@gsi/types';
 
 export interface ResolvedBranding {
   schoolName: string;

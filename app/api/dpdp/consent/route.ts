@@ -13,7 +13,7 @@ import {
 import {
   ALL_CONSENT_SCOPES,
   type ConsentScope,
-} from '@/types/dpdp.types';
+} from '@gsi/types';
 
 function isScope(v: unknown): v is ConsentScope {
   return (

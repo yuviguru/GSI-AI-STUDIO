@@ -4,7 +4,7 @@ import { requireRole } from '@/lib/auth-utils';
 import { adminDb } from '@/lib/firebase/admin';
 import { reviewSubmission } from '@/lib/firebase/submissionService';
 import { enqueueNotification } from '@/lib/notifications/notificationService';
-import type { SubmissionStatus } from '@/types/user.types';
+import type { SubmissionStatus } from '@gsi/types';
 
 const VALID_STATUSES: SubmissionStatus[] = [
   'pending',

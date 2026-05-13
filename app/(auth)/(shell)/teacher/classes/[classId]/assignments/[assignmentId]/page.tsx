@@ -7,7 +7,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { SubmissionGrid, type SubmissionRow } from '@/components/teacher/SubmissionGrid';
 import { SubmissionReview } from '@/components/teacher/SubmissionReview';
-import type { AssignmentDoc, SubmissionStatus } from '@/types/user.types';
+import type { AssignmentDoc, SubmissionStatus } from '@gsi/types';
 
 export default function AssignmentReviewPage() {
   const params = useParams<{ classId: string; assignmentId: string }>();

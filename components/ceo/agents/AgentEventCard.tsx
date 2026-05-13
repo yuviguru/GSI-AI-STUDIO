@@ -14,7 +14,7 @@ import {
   runMultiplier,
   type CeoAgentTool,
 } from '@/lib/ceo/agents/pricing';
-import type { CeoArtifact, CeoBusiness, CeoEvent, CeoWorkflowId } from '@/types';
+import type { CeoArtifact, CeoBusiness, CeoEvent, CeoWorkflowId } from '@gsi/types';
 
 interface AgentEventCardProps {
   event: CeoEvent;

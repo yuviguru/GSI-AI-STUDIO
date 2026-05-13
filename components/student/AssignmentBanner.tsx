@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { GraduationCap, CheckCircle2 } from 'lucide-react';
 import { useAssignmentContext } from '@/hooks/useAssignmentContext';
-import type { CreationType } from '@/types/creation.types';
+import type { CreationType } from '@gsi/types';
 
 interface Props {
   /** The current studio's creation type — used as a guard for auto-submit. */

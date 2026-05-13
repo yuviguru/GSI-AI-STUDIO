@@ -10,7 +10,7 @@ import {
   DEFAULT_MILESTONE_MINUTE_IST,
   nextMilestoneAtIst,
 } from '@/lib/ceo/cadence';
-import type { CeoBusiness, CeoChoiceId, CeoEvent } from '@/types';
+import type { CeoBusiness, CeoChoiceId, CeoEvent } from '@gsi/types';
 
 interface MilestoneZoneProps {
   pendingMilestone: CeoEvent | null;

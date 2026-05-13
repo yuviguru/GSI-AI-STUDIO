@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { PerformanceCard } from './PerformanceCard';
-import type { PerformanceFeedItem } from '@/types/performance.types';
+import type { PerformanceFeedItem } from '@gsi/types';
 
 interface PerformanceGridProps {
   items: PerformanceFeedItem[];

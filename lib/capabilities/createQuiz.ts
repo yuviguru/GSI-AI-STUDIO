@@ -9,7 +9,7 @@ import { filterInput, filterOutput } from '@/lib/safety/inputFilter';
 import { QUIZ_SYSTEM_PROMPT, buildQuizUserPrompt } from '@/lib/ai/prompts/quizPrompt';
 import { usageTracker } from '@/lib/cost/usageTracker';
 import type { CostTier } from '@/lib/ai/ports';
-import type { AiXrayData, QuizContent } from '@/types';
+import type { AiXrayData, QuizContent } from '@gsi/types';
 
 export interface CreateQuizInput {
   sessionId: string;

@@ -21,7 +21,7 @@ import type {
   CeoDimensionKey,
   CeoDimensionScores,
   CeoEvent,
-} from '@/types';
+} from '@gsi/types';
 import { DIMENSIONS, PHASE_MULTIPLIERS, type CeoEventCategory } from './constants';
 import type { StateChanges } from './businessState';
 import {

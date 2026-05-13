@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import type { Board, SchoolDoc, SchoolPlan } from '@/types/user.types';
+import type { Board, SchoolDoc, SchoolPlan } from '@gsi/types';
 
 type Tab = 'general' | 'branding' | 'plan';
 

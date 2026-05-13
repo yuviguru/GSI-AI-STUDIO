@@ -12,7 +12,7 @@ import { QuizPromptForm } from '@/components/studios/quiz/QuizPromptForm';
 import { QuizProgress } from '@/components/studios/quiz/QuizProgress';
 import { QuizPlayer } from '@/components/studios/quiz/QuizPlayer';
 import { AssignmentBanner } from '@/components/student/AssignmentBanner';
-import type { QuizContent, AiXrayData } from '@/types';
+import type { QuizContent, AiXrayData } from '@gsi/types';
 import type { QuizInput } from '@/lib/validators';
 
 type QuizData = QuizContent & { title: string };

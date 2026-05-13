@@ -3,7 +3,7 @@ import type {
   BeatTheAiFeedback,
   BeatTheAiPrompt,
   BeatTheAiScores,
-} from '@/types/beatTheAi.types';
+} from '@gsi/types';
 import { generateJsonWithClaude } from '@/lib/ai/claudeClient';
 import { generateJsonWithGroq } from '@/lib/ai/groqClient';
 import { filterOutput } from '@/lib/safety/inputFilter';

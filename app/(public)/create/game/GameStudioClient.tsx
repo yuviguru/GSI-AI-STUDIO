@@ -12,7 +12,7 @@ import { GamePromptForm } from '@/components/studios/game/GamePromptForm';
 import { GameProgress } from '@/components/studios/game/GameProgress';
 import { GamePlayer } from '@/components/studios/game/GamePlayer';
 import { AssignmentBanner } from '@/components/student/AssignmentBanner';
-import type { GameContent, AiXrayData } from '@/types';
+import type { GameContent, AiXrayData } from '@gsi/types';
 import type { GameInput } from '@/lib/validators';
 
 type GameData = GameContent & { title: string };

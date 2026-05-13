@@ -8,7 +8,7 @@ import {
   getArtifact,
 } from '@/lib/firebase/ceoArtifactService';
 import { adminDb } from '@/lib/firebase/admin';
-import type { CeoArtifactAsset, CeoBusiness, CeoEvent } from '@/types';
+import type { CeoArtifactAsset, CeoBusiness, CeoEvent } from '@gsi/types';
 
 /**
  * POST /api/ceo/agents/accept

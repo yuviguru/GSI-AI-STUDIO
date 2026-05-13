@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Lock, UserPlus, Users } from 'lucide-react';
 import { PHASE_LABELS } from '@/lib/ceo/constants';
-import type { CeoAgentConfig, CeoAgentDescriptor, CeoAgentHire, CeoPhaseKey } from '@/types';
+import type { CeoAgentConfig, CeoAgentDescriptor, CeoAgentHire, CeoPhaseKey } from '@gsi/types';
 
 interface AgentCardProps {
   descriptor: CeoAgentDescriptor;

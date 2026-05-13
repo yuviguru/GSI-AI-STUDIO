@@ -8,7 +8,7 @@ import { MascotSpeechBubble } from '@/components/mascot/MascotSpeechBubble';
 import { TelegramConnectButton } from '@/components/ceo/TelegramConnectButton';
 import { PHASE_LABELS } from '@/lib/ceo/constants';
 import { ArrowRight, Lock, Plus, Send, Sparkles, Trophy, UserPlus } from 'lucide-react';
-import type { CeoBusiness } from '@/types';
+import type { CeoBusiness } from '@gsi/types';
 
 const FEATURES = [
   {

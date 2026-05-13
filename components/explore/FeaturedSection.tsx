@@ -4,8 +4,8 @@ import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import type { Creation } from '@/types/creation.types';
-import type { ApiResponse } from '@/types/api.types';
+import type { Creation } from '@gsi/types';
+import type { ApiResponse } from '@gsi/types';
 
 // Hardcoded featured creation IDs — can be made dynamic later
 const FEATURED_IDS: string[] = [];

@@ -36,7 +36,7 @@ import type {
   GrammarSuggestion,
   PageLayout,
   TipTapDocument,
-} from '@/types/book.types';
+} from '@gsi/types';
 import { BOOK_FONTS } from '@/lib/templates/bookTemplates';
 import { slotAspectRatioForCss } from '@/lib/ai/imageDims';
 import { useVoiceInput } from '@/hooks/useVoiceInput';

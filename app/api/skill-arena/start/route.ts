@@ -5,8 +5,8 @@ import { adminDb } from '@/lib/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { getChallengesForModule } from '@/lib/skill-arena/questionBank';
 import { getDifficultyForBand } from '@/lib/skill-arena/scoring';
-import { MODULE_INFO } from '@/types/mindx.types';
-import type { SkillArenaStartResponse } from '@/types/mindx.types';
+import { MODULE_INFO } from '@gsi/types';
+import type { SkillArenaStartResponse } from '@gsi/types';
 
 const ASSESSMENTS_COLLECTION = 'skillArenaAssessments';
 const SESSIONS_COLLECTION = 'sessions';

@@ -12,7 +12,7 @@ import { ComicPromptForm } from '@/components/studios/comic/ComicPromptForm';
 import { ComicProgress } from '@/components/studios/comic/ComicProgress';
 import { ComicViewer } from '@/components/studios/comic/ComicViewer';
 import { AssignmentBanner } from '@/components/student/AssignmentBanner';
-import type { ComicContent } from '@/types';
+import type { ComicContent } from '@gsi/types';
 import type { ComicInput } from '@/lib/validators';
 
 type ComicData = ComicContent;

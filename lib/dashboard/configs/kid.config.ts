@@ -9,7 +9,7 @@ import {
   Settings,
   Palette,
 } from 'lucide-react';
-import type { DashboardConfig } from '@/types/dashboard.types';
+import type { DashboardConfig } from '@gsi/types';
 import {
   KidProfileChip,
   KidTodaysActivity,

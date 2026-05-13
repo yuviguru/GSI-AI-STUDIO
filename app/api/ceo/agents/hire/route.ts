@@ -10,7 +10,7 @@ import {
   getActiveHireForAgent,
 } from '@/lib/firebase/ceoAgentHireService';
 import { getAgentDescriptor, isAgentUnlocked } from '@/lib/ceo/agents/catalog';
-import type { CeoBusiness } from '@/types';
+import type { CeoBusiness } from '@gsi/types';
 
 /**
  * POST /api/ceo/agents/hire

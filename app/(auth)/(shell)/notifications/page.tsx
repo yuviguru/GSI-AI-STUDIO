@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Bell, Check, Inbox, Loader2 } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
-import type { NotificationDoc } from '@/types/notification.types';
+import type { NotificationDoc } from '@gsi/types';
 
 const FILTERS = ['All', 'Unread'] as const;
 type Filter = (typeof FILTERS)[number];

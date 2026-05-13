@@ -9,7 +9,7 @@ import {
   Settings,
   HelpCircle,
 } from 'lucide-react';
-import type { DashboardConfig } from '@/types/dashboard.types';
+import type { DashboardConfig } from '@gsi/types';
 
 export const teacherDashboardConfig: DashboardConfig = {
   role: 'teacher',

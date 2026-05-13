@@ -26,7 +26,7 @@ import type {
   CeoChoiceId,
   CeoEvent,
   CeoPace,
-} from '@/types';
+} from '@gsi/types';
 import { AppException } from '@/lib/api-utils';
 import {
   redeemBotLinkCode,

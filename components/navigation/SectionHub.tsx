@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useKidProfile } from '@/hooks/useKidProfile';
 import { ExpandableSectionCard } from './ExpandableSectionCard';
 import { cn } from '@/lib/utils';
-import type { SectionDefinition } from '@/types/dashboard.types';
+import type { SectionDefinition } from '@gsi/types';
 
 const TABS = ['Recent', 'In Progress', 'Today'] as const;
 type Tab = (typeof TABS)[number];

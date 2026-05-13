@@ -14,7 +14,7 @@ import { executeWorkflow, WorkflowExecutionError } from '@/lib/ceo/agents/execut
 import { getWorkflow } from '@/lib/ceo/agents/workflows';
 import { DEFAULT_TOOL_REGISTRY } from '@/lib/ceo/agents/toolRegistry';
 import { baseWorkflowCostInr, runMultiplier } from '@/lib/ceo/agents/pricing';
-import type { CeoArtifactTrigger, CeoBusiness } from '@/types';
+import type { CeoArtifactTrigger, CeoBusiness } from '@gsi/types';
 
 /**
  * POST /api/ceo/agents/run

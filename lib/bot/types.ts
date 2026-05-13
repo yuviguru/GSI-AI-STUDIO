@@ -28,4 +28,4 @@ export type {
   HomeworkAnswer,
   HomeworkProgress,
   HomeworkSession,
-} from '@/types';
+} from '@gsi/types';

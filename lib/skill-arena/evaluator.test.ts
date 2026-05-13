@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { SkillArenaChallenge, SkillArenaAnswer } from '@/types/mindx.types';
+import type { SkillArenaChallenge, SkillArenaAnswer } from '@gsi/types';
 
 // Mock the AI module to avoid real API calls
 vi.mock('@/lib/ai/claude', () => ({

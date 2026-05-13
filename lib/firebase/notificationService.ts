@@ -12,7 +12,7 @@ import type {
   NotificationDoc,
   NotificationPayload,
   NotificationType,
-} from '@/types/notification.types';
+} from '@gsi/types';
 
 const USERS_COLLECTION = 'users';
 const NOTIFICATIONS_SUBCOLLECTION = 'notifications';

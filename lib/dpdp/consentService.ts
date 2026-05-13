@@ -15,7 +15,7 @@ import {
   type ConsentRecord,
   type ConsentScope,
   type ConsentState,
-} from '@/types/dpdp.types';
+} from '@gsi/types';
 
 const CONSENT_LOG_COLLECTION = 'consentLog';
 const KIDS_COLLECTION = 'kids';

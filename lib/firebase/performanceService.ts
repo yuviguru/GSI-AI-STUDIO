@@ -24,8 +24,8 @@ import type {
   PerformanceKind,
   PerformanceStatus,
   PerformanceVisibility,
-} from '@/types/performance.types';
-import type { CreationType } from '@/types/creation.types';
+} from '@gsi/types';
+import type { CreationType } from '@gsi/types';
 
 const PERFORMANCES_COLLECTION = 'performances';
 const REACTIONS_SUBCOLLECTION = 'reactions';

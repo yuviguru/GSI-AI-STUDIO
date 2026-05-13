@@ -1,7 +1,7 @@
 'use client';
 
-import type { BeatTheAiSkillId, SkillLevel } from '@/types/beatTheAi.types';
-import { SKILL_INFO, SKILL_LEVELS } from '@/types/beatTheAi.types';
+import type { BeatTheAiSkillId, SkillLevel } from '@gsi/types';
+import { SKILL_INFO, SKILL_LEVELS } from '@gsi/types';
 
 interface SkillProgressCardProps {
   skillId: BeatTheAiSkillId;

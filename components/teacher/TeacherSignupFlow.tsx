@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
-import type { Board } from '@/types/user.types';
+import type { Board } from '@gsi/types';
 
 type Stage = 'phone' | 'school' | 'done';
 

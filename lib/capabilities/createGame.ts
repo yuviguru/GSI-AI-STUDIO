@@ -10,7 +10,7 @@ import { GAME_SYSTEM_PROMPT, buildGameUserPrompt } from '@/lib/ai/prompts/gamePr
 import { validateSceneGraph } from '@/lib/ai/validateSceneGraph';
 import { usageTracker } from '@/lib/cost/usageTracker';
 import type { CostTier } from '@/lib/ai/ports';
-import type { AiXrayData, GameContent } from '@/types';
+import type { AiXrayData, GameContent } from '@gsi/types';
 
 export interface CreateGameInput {
   sessionId: string;

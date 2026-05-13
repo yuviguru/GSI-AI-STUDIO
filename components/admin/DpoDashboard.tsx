@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Download, FileText, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import type { ErasureRequest } from '@/types/dpdp.types';
+import type { ErasureRequest } from '@gsi/types';
 
 interface SnapshotResponseRaw {
   consentSnapshot: {

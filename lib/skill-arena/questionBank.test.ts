@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getChallengesForModule, getAllChallenges, getChallengeCount } from './questionBank';
-import type { SkillArenaModule } from '@/types/mindx.types';
+import type { SkillArenaModule } from '@gsi/types';
 
 const MODULES: SkillArenaModule[] = ['speaking', 'listening', 'thinking', 'reading'];
 

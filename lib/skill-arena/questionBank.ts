@@ -4,7 +4,7 @@ import type {
   SkillArenaDifficulty,
   SkillArenaModule,
   SkillArenaQuestion,
-} from '@/types/mindx.types';
+} from '@gsi/types';
 
 // ─── Speaking Challenges ──────────────────────────────────
 

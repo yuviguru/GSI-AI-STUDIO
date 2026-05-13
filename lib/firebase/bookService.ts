@@ -20,7 +20,7 @@ import type {
   BookStatus,
   PageLayout,
   TipTapDocument,
-} from '@/types/book.types';
+} from '@gsi/types';
 import type {
   BookCreateInput,
   BookPatchInput,

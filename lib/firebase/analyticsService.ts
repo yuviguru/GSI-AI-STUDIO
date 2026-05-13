@@ -1,8 +1,8 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { adminDb } from './admin';
 import { getAllConcepts, getConcept } from '@/lib/curriculum/curriculumMap';
-import type { SchoolAnalyticsDoc, SchoolDoc } from '@/types/user.types';
-import type { CreationType } from '@/types/creation.types';
+import type { SchoolAnalyticsDoc, SchoolDoc } from '@gsi/types';
+import type { CreationType } from '@gsi/types';
 
 const SCHOOLS_COLLECTION = 'schools';
 const CLASSES_SUBCOLLECTION = 'classes';

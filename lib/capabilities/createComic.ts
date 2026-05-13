@@ -14,7 +14,7 @@ import {
 import { usageTracker } from '@/lib/cost/usageTracker';
 import { persistImages } from './imageStorage';
 import type { CostTier } from '@/lib/ai/ports';
-import type { AiXrayData, ComicContent, ComicDialogue } from '@/types';
+import type { AiXrayData, ComicContent, ComicDialogue } from '@gsi/types';
 
 const IMAGE_CONCURRENCY = 5;
 const PLACEHOLDER_IMAGE = '/images/placeholder-story.svg';

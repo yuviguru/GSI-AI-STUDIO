@@ -11,7 +11,7 @@
  * shape here is forward-compatible: add fields, don't break existing ones.
  */
 
-import type { CreationType } from '@/types/creation.types';
+import type { CreationType } from '@gsi/types';
 
 export type CurriculumCategory =
   | 'ai_basics'

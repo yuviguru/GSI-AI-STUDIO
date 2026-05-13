@@ -9,7 +9,7 @@ import {
   CONSENT_SCOPE_LABELS,
   type ConsentScope,
   type ConsentState,
-} from '@/types/dpdp.types';
+} from '@gsi/types';
 
 interface Props {
   kidId: string;

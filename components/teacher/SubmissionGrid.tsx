@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Filter, Star, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { SubmissionDoc, SubmissionStatus } from '@/types/user.types';
+import type { SubmissionDoc, SubmissionStatus } from '@gsi/types';
 
 export interface SubmissionRow extends SubmissionDoc {
   kid: { id: string; name: string; avatar?: string; grade?: string };

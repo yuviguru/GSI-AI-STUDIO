@@ -11,7 +11,7 @@ import { PerformanceGrid } from '@/components/creation/PerformanceGrid';
 import { FeaturedSection } from '@/components/explore/FeaturedSection';
 import { Leaderboard } from '@/components/explore/Leaderboard';
 import { cn } from '@/lib/utils';
-import type { CreationType } from '@/types/creation.types';
+import type { CreationType } from '@gsi/types';
 
 const sortOptions: Array<{ value: ExploreSort; label: string }> = [
   { value: 'trending', label: 'Trending 🔥' },

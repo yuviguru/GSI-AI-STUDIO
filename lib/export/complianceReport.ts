@@ -10,7 +10,7 @@ import type {
   ClassDoc,
   SchoolDoc,
   SubmissionDoc,
-} from '@/types/user.types';
+} from '@gsi/types';
 
 /**
  * Input shape for the compliance report. All data is pre-fetched and passed

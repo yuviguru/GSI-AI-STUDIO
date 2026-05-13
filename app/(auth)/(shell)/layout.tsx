@@ -6,7 +6,7 @@ import { DashboardShell } from '@/components/navigation';
 import { teacherDashboardConfig } from '@/lib/dashboard/configs/teacher.config';
 import { schoolAdminDashboardConfig } from '@/lib/dashboard/configs/schoolAdmin.config';
 import { parentDashboardConfig } from '@/lib/dashboard/configs/parent.config';
-import type { DashboardConfig } from '@/types/dashboard.types';
+import type { DashboardConfig } from '@gsi/types';
 
 function pickConfig(role: string | undefined, pathname: string): DashboardConfig {
   // Path-based override: parent-only routes always use the parent shell

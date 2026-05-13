@@ -9,7 +9,7 @@ import { ClassManagement } from '@/components/teacher/ClassManagement';
 import { AssignmentCreator } from '@/components/teacher/AssignmentCreator';
 import { HPCAssistant } from '@/components/teacher/HPCAssistant';
 import { ParentCommsModal } from '@/components/teacher/ParentCommsModal';
-import type { AssignmentDoc, ClassDoc } from '@/types/user.types';
+import type { AssignmentDoc, ClassDoc } from '@gsi/types';
 
 interface Student {
   id: string;

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { fetchWithSession } from '@/lib/fetchWithSession';
-import type { BookCharacter } from '@/types/book.types';
+import type { BookCharacter } from '@gsi/types';
 import type { CharacterCreateInput, CharacterPatchInput } from '@/lib/validators';
 
 /**

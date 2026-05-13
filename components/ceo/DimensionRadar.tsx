@@ -2,7 +2,7 @@
 
 import { DIMENSION_LABELS, DIMENSIONS } from '@/lib/ceo/constants';
 import { cn } from '@/lib/utils';
-import type { CeoDimensionData, CeoDimensionKey } from '@/types';
+import type { CeoDimensionData, CeoDimensionKey } from '@gsi/types';
 
 interface DimensionRadarProps {
   dimensions: Record<CeoDimensionKey, CeoDimensionData>;

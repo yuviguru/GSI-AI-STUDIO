@@ -51,7 +51,7 @@ export interface InterestSignal {
   suggestion: string;        // Actionable suggestion for parents
 }
 
-export type CreationType = 'story' | 'music' | 'quiz' | 'game' | 'comic';
+import type { CreationType } from './creation.types';
 
 export interface InterestAnalysis {
   signals: InterestSignal[];

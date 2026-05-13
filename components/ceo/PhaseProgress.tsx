@@ -3,7 +3,7 @@
 import { PHASE_LABELS } from '@/lib/ceo/constants';
 import { PHASES, PHASE_CONFIG } from '@/lib/ceo/phases';
 import { cn } from '@/lib/utils';
-import type { CeoPhaseKey, CeoMilestoneStatus } from '@/types';
+import type { CeoPhaseKey, CeoMilestoneStatus } from '@gsi/types';
 
 interface PhaseProgressProps {
   currentPhase: CeoPhaseKey;

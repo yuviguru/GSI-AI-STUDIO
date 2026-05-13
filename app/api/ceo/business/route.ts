@@ -8,7 +8,7 @@ import {
   getPendingRegularForBusiness,
   listDecidedEventsForBusiness,
 } from '@/lib/firebase/ceoService';
-import type { CeoBusiness, CeoEvent } from '@/types';
+import type { CeoBusiness, CeoEvent } from '@gsi/types';
 
 /**
  * GET /api/ceo/business

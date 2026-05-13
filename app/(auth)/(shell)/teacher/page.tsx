@@ -7,7 +7,7 @@ import { Plus, Users, Calendar, BookOpen } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { AssignmentCreator } from '@/components/teacher/AssignmentCreator';
 import { cn } from '@/lib/utils';
-import type { AssignmentDoc, ClassDoc } from '@/types/user.types';
+import type { AssignmentDoc, ClassDoc } from '@gsi/types';
 
 interface CreateClassInput {
   name: string;

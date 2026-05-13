@@ -2,8 +2,8 @@
 
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { BEAT_THE_AI_CATEGORIES, SKILL_INFO, getDailyTheme } from '@/types/beatTheAi.types';
-import type { BeatTheAiCategory } from '@/types/beatTheAi.types';
+import { BEAT_THE_AI_CATEGORIES, SKILL_INFO, getDailyTheme } from '@gsi/types';
+import type { BeatTheAiCategory } from '@gsi/types';
 import {
   Clock, ChevronRight, Flame, BarChart3, Zap,
 } from 'lucide-react';
