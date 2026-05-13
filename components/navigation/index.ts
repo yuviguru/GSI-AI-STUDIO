@@ -12,3 +12,4 @@ export {
 export { DashboardShell } from './DashboardShell';
 export { DashboardSidebar } from './DashboardSidebar';
 export { DashboardRightRail } from './DashboardRightRail';
+export { KidSidebarUserChip, KidAvatar } from './KidSidebarUserChip';

@@ -7,7 +7,7 @@ import { AiPointsBadge } from '@/components/learning/AiPointsBadge';
 import { MuteToggle } from '@/components/layout/MuteToggle';
 import { useAuth } from '@/hooks/useAuth';
 import { useKidProfile } from '@/hooks/useKidProfile';
-import { getAvatarEmoji } from '@/components/profile/AvatarPicker';
+import { KidAvatar } from '@/components/navigation/KidSidebarUserChip';
 import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
 import { ProfilePicker } from '@/components/profile/ProfilePicker';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -48,11 +48,16 @@ export function Header() {
                 // Authenticated with active kid: show kid avatar → opens picker
                 <button
                   onClick={() => setShowPicker(true)}
-                  className="flex items-center gap-1.5 rounded-full bg-purple-50 px-2 py-1 transition hover:bg-purple-100"
+                  className="flex items-center gap-1.5 rounded-full bg-purple-50 px-1.5 py-1 pr-2.5 transition hover:bg-purple-100"
                   aria-label="Switch profile"
                 >
-                  <span className="text-xl">{getAvatarEmoji(activeKid.avatar)}</span>
-                  <span className="max-w-[60px] truncate text-xs font-medium text-purple-700">
+                  <KidAvatar
+                    avatarUrl={activeKid.avatarUrl}
+                    emojiId={activeKid.avatar}
+                    name={activeKid.name}
+                    size={28}
+                  />
+                  <span className="max-w-[80px] truncate text-xs font-medium text-purple-700">
                     {activeKid.name}
                   </span>
                 </button>

@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Bell, Mail, Sparkles, Award, Flame } from 'lucide-react';
 import { useKidProfile } from '@/hooks/useKidProfile';
 import { useAiPoints } from '@/contexts/AiPointsContext';
-import { getAvatarEmoji } from '@/components/profile/AvatarPicker';
+import { KidAvatar } from './KidSidebarUserChip';
 import { isPlaceholder, PLACEHOLDERS } from '@/lib/dashboard/placeholders';
 import { PlaceholderRibbon } from '@/components/dashboard/PlaceholderRibbon';
 import { cn } from '@/lib/utils';
@@ -32,15 +32,18 @@ export function KidProfileChip() {
   return (
     <div className="flex items-center justify-between rounded-2xl bg-white p-3 shadow-card">
       <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-blue-100 text-xl">
-          {activeKid ? getAvatarEmoji(activeKid.avatar) : '🐣'}
-        </div>
+        <KidAvatar
+          avatarUrl={activeKid?.avatarUrl}
+          emojiId={activeKid?.avatar}
+          name={activeKid?.name ?? 'Guest'}
+          size={40}
+        />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold leading-tight text-brand-text">
             {activeKid?.name ?? 'Guest'}
           </p>
           <p className="text-[11px] font-medium text-brand-text-secondary">
-            Level {Math.floor(totalPoints / 50) + 1}
+            Level {Math.floor(totalPoints / 50) + 1} · {totalPoints} AI Points
           </p>
         </div>
       </div>

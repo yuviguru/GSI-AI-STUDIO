@@ -16,6 +16,10 @@ import {
   KidDailyChallenge,
   KidStatsGrid,
 } from '@/components/navigation/RightRail';
+import { KidSidebarUserChip } from '@/components/navigation/KidSidebarUserChip';
+import { LeaderboardPanel } from '@/components/dashboard/LeaderboardPanel';
+import { ChallengesWidget } from '@/components/dashboard/ChallengesWidget';
+import { BadgesWidget } from '@/components/dashboard/BadgesWidget';
 
 const CREATE_STUDIOS = [
   {
@@ -222,10 +226,14 @@ export const kidDashboardConfig: DashboardConfig = {
       studios: LEARN_STUDIOS,
     },
   ],
+  ctaCard: KidSidebarUserChip,
   rightRailWidgets: [
     { id: 'kid-profile-chip', component: KidProfileChip },
-    { id: 'kid-todays-activity', component: KidTodaysActivity },
-    { id: 'kid-daily-challenge', component: KidDailyChallenge },
     { id: 'kid-stats-grid', component: KidStatsGrid },
+    { id: 'kid-todays-activity', component: KidTodaysActivity },
+    { id: 'kid-challenges', component: ChallengesWidget },
+    { id: 'kid-badges', component: BadgesWidget },
+    { id: 'kid-leaderboard', component: LeaderboardPanel },
+    { id: 'kid-daily-challenge', component: KidDailyChallenge },
   ],
 };
