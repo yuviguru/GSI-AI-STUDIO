@@ -38,7 +38,7 @@ import {
 } from './prompts/eventPrompt';
 import fallbackEvents from './templates/events.json';
 import { getCurrentAffairsReadOnly, pickThemes } from './currentAffairs';
-import { filterOutput } from '@/lib/safety/inputFilter';
+import { filterOutput } from '@gsi/safety';
 
 /** Shape the LLM is asked to return. `named_title` is ONLY emitted for
  *  milestone events — the regular prompt doesn't ask for it and we don't

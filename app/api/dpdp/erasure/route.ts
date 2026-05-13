@@ -12,7 +12,7 @@ import { verifyAuth } from '@/lib/auth-utils';
 import {
   createErasureRequest,
   listErasureRequestsForParent,
-} from '@/lib/dpdp/dataErasure';
+} from '@gsi/dpdp';
 
 export async function GET(request: NextRequest) {
   try {

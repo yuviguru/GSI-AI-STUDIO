@@ -5,7 +5,7 @@
 import { llmRouter } from '@/lib/ai/router';
 import { saveCreation } from '@/lib/repositories/creationRepository';
 import { trackCreation } from '@/lib/firebase/sessionService';
-import { filterInput, filterOutput } from '@/lib/safety/inputFilter';
+import { filterInput, filterOutput } from '@gsi/safety';
 import { GAME_SYSTEM_PROMPT, buildGameUserPrompt } from '@/lib/ai/prompts/gamePrompt';
 import { validateSceneGraph } from '@/lib/ai/validateSceneGraph';
 import { usageTracker } from '@/lib/cost/usageTracker';

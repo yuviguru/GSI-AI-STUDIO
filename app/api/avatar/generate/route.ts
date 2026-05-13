@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { Timestamp } from 'firebase-admin/firestore';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
-import { filterImagePrompt } from '@/lib/safety/inputFilter';
+import { filterImagePrompt } from '@gsi/safety';
 import { getImageProvider } from '@/lib/ai/imageProvider';
 import { adminDb } from '@/lib/firebase/admin';
 import {

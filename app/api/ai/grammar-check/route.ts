@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { grammarCheckSchema } from '@/lib/validators';
-import { filterInput, filterOutput } from '@/lib/safety/inputFilter';
+import { filterInput, filterOutput } from '@gsi/safety';
 import { checkRateLimit, trackCreation } from '@/lib/firebase/sessionService';
 import { generateJsonWithGroq } from '@/lib/ai/groqClient';
 import {

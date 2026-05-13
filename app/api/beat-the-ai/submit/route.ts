@@ -6,7 +6,7 @@ import {
 } from '@/lib/validators';
 import { adminDb } from '@/lib/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
-import { filterInput } from '@/lib/safety/inputFilter';
+import { filterInput } from '@gsi/safety';
 import { generateAiResponse } from '@/lib/beat-the-ai/aiOpponent';
 import { judgeResponses } from '@/lib/beat-the-ai/aiJudge';
 import {

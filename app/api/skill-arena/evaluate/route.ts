@@ -3,7 +3,7 @@ import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { skillArenaEvaluateSchema } from '@/lib/validators';
 import { adminDb } from '@/lib/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
-import { filterInput } from '@/lib/safety/inputFilter';
+import { filterInput } from '@gsi/safety';
 import { evaluateAssessment } from '@/lib/skill-arena/evaluator';
 import { scoreToBand, calculateAiPoints } from '@/lib/skill-arena/scoring';
 import { updateSessionPoints } from '@/lib/firebase/sessionService';

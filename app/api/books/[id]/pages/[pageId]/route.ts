@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { pagePatchSchema } from '@/lib/validators';
 import { updatePage, deletePage } from '@/lib/firebase/bookService';
-import { filterInput, filterImagePrompt } from '@/lib/safety/inputFilter';
+import { filterInput, filterImagePrompt } from '@gsi/safety';
 
 interface RouteParams {
   params: { id: string; pageId: string };

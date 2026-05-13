@@ -2,5 +2,13 @@
   "name": "@gsi/dpdp",
   "version": "0.0.0",
   "private": true,
-  "description": "DPDP consent service + erasure pipeline. Phase 2 will move lib/dpdp/* here."
+  "description": "DPDP Act 2023 consent + erasure pipeline.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  }
 }

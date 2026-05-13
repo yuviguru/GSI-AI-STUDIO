@@ -5,7 +5,7 @@
 import { llmRouter } from '@/lib/ai/router';
 import { saveCreation } from '@/lib/repositories/creationRepository';
 import { trackCreation } from '@/lib/firebase/sessionService';
-import { filterInput, filterOutput } from '@/lib/safety/inputFilter';
+import { filterInput, filterOutput } from '@gsi/safety';
 import { QUIZ_SYSTEM_PROMPT, buildQuizUserPrompt } from '@/lib/ai/prompts/quizPrompt';
 import { usageTracker } from '@/lib/cost/usageTracker';
 import type { CostTier } from '@/lib/ai/ports';

@@ -5,7 +5,7 @@
  */
 
 import type { CeoBusiness } from '@gsi/types';
-import { filterInput, filterOutput } from '@/lib/safety/inputFilter';
+import { filterInput, filterOutput } from '@gsi/safety';
 import { registerWorkflow, type AnyWorkflowSpec } from './registry';
 import type { WorkflowSpec, WorkflowStep } from '../executor';
 import type { ClaudeToolInput, ClaudeToolOutput } from '../tools/claude';

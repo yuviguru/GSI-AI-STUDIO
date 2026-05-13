@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { characterPortraitSchema } from '@/lib/validators';
-import { filterImagePrompt } from '@/lib/safety/inputFilter';
+import { filterImagePrompt } from '@gsi/safety';
 import { checkRateLimit, trackCreation } from '@/lib/firebase/sessionService';
 import { getImageProvider } from '@/lib/ai/imageProvider';
 

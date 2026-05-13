@@ -17,7 +17,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { getImageProvider } from '../lib/ai/imageProvider';
-import { filterImagePrompt } from '../lib/safety/inputFilter';
+import { filterImagePrompt } from '@gsi/safety';
 import {
   ILLUSTRATION_MANIFEST,
   STYLE_PREFIX,

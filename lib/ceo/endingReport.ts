@@ -24,7 +24,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { generateJsonWithGroq } from '@/lib/ai/groqClient';
 import { generateJsonWithClaude } from '@/lib/ai/claudeClient';
 import { DIMENSIONS, DIMENSION_LABELS } from '@/lib/ceo/constants';
-import { filterOutput } from '@/lib/safety/inputFilter';
+import { filterOutput } from '@gsi/safety';
 import type {
   CeoAdvisor,
   CeoBusiness,

@@ -21,6 +21,8 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, '.'),
       '@gsi/types': path.resolve(__dirname, 'packages/types/src/index.ts'),
+      '@gsi/safety': path.resolve(__dirname, 'packages/safety/src/index.ts'),
+      '@gsi/dpdp': path.resolve(__dirname, 'packages/dpdp/src/index.ts'),
     },
   },
 });

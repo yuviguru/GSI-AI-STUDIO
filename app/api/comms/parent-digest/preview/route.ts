@@ -8,7 +8,7 @@ import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { requireRole } from '@/lib/auth-utils';
 import { adminDb } from '@/lib/firebase/admin';
 import { generateParentDigest } from '@/lib/ai/parentDigestGenerator';
-import { requireConsent } from '@/lib/dpdp/consentService';
+import { requireConsent } from '@gsi/dpdp';
 
 export async function POST(request: NextRequest) {
   try {

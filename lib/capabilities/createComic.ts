@@ -5,7 +5,7 @@
 import { llmRouter, imageRouter } from '@/lib/ai/router';
 import { saveCreation } from '@/lib/repositories/creationRepository';
 import { trackCreation } from '@/lib/firebase/sessionService';
-import { filterInput, filterOutput, filterImagePrompt } from '@/lib/safety/inputFilter';
+import { filterInput, filterOutput, filterImagePrompt } from '@gsi/safety';
 import {
   COMIC_SYSTEM_PROMPT,
   COMIC_STYLE_PREFIXES,

@@ -8,7 +8,7 @@ import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { verifyAuth } from '@/lib/auth-utils';
 import { adminDb } from '@/lib/firebase/admin';
-import { getConsentAudit } from '@/lib/dpdp/consentService';
+import { getConsentAudit } from '@gsi/dpdp';
 
 export async function GET(request: NextRequest) {
   try {

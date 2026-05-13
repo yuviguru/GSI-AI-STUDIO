@@ -11,7 +11,7 @@
 import { llmRouter, audioRouter } from '@/lib/ai/router';
 import { saveCreation } from '@/lib/repositories/creationRepository';
 import { trackCreation } from '@/lib/firebase/sessionService';
-import { filterInput, filterOutput } from '@/lib/safety/inputFilter';
+import { filterInput, filterOutput } from '@gsi/safety';
 import { uploadBuffer, attachAssetToParent } from '@/lib/storage/assetService';
 import { MUSIC_SYSTEM_PROMPT, buildMusicUserPrompt } from '@/lib/ai/prompts/musicPrompt';
 import { usageTracker } from '@/lib/cost/usageTracker';

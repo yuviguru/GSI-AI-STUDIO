@@ -20,7 +20,11 @@
     "paths": {
       "@/*": ["./*"],
       "@gsi/types": ["./packages/types/src/index.ts"],
-      "@gsi/types/*": ["./packages/types/src/*"]
+      "@gsi/types/*": ["./packages/types/src/*"],
+      "@gsi/safety": ["./packages/safety/src/index.ts"],
+      "@gsi/safety/*": ["./packages/safety/src/*"],
+      "@gsi/dpdp": ["./packages/dpdp/src/index.ts"],
+      "@gsi/dpdp/*": ["./packages/dpdp/src/*"]
     }
   },
   "include": [

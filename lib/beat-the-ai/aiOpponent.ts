@@ -6,7 +6,7 @@ import type {
 } from '@gsi/types';
 import { generateWithClaude } from '@/lib/ai/claudeClient';
 import { generateWithGroq } from '@/lib/ai/groqClient';
-import { filterOutput } from '@/lib/safety/inputFilter';
+import { filterOutput } from '@gsi/safety';
 
 // ─── System Prompts by Difficulty ───────────────────────────
 

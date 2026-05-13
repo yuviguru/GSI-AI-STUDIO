@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { verifyAuth } from '@/lib/auth-utils';
 import { adminDb } from '@/lib/firebase/admin';
-import { getErasureRequest } from '@/lib/dpdp/dataErasure';
+import { getErasureRequest } from '@gsi/dpdp';
 
 /** GET /api/dpdp/erasure/[id] — status check. Parent of kid, OR the DPO
  *  (schoolAdmin) of the kid's school. Any other caller gets 403. */

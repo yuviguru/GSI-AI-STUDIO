@@ -12,7 +12,7 @@ import { generateWithGroq } from '@/lib/ai/groqClient';
 import { generateWithClaude } from '@/lib/ai/claudeClient';
 import { getOrCreateBotSession, touchBotSession } from './services/sessionStore';
 import { transcribeVoice } from './services/stt';
-import { filterInput, filterOutput } from '@/lib/safety/inputFilter';
+import { filterInput, filterOutput } from '@gsi/safety';
 import { AppException } from '@/lib/api-utils';
 import type { KidProfile } from '@gsi/types';
 

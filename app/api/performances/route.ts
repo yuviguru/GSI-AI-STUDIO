@@ -14,7 +14,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
-import { filterInput } from '@/lib/safety/inputFilter';
+import { filterInput } from '@gsi/safety';
 import { enforceIpRateLimit } from '@/lib/firebase/sessionService';
 import {
   createPerformance,

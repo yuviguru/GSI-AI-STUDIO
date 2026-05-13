@@ -6,7 +6,7 @@ import type {
 } from '@gsi/types';
 import { generateJsonWithClaude } from '@/lib/ai/claudeClient';
 import { generateJsonWithGroq } from '@/lib/ai/groqClient';
-import { filterOutput } from '@/lib/safety/inputFilter';
+import { filterOutput } from '@gsi/safety';
 
 // ─── Category-specific rubric guidance ───────────────────────
 

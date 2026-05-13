@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { characterCreateSchema } from '@/lib/validators';
 import { addCharacter } from '@/lib/firebase/bookService';
-import { filterInput } from '@/lib/safety/inputFilter';
+import { filterInput } from '@gsi/safety';
 
 /**
  * POST /api/books/[id]/characters — Add a new character to an existing book.

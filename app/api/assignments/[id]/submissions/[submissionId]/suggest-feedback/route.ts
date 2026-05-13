@@ -15,7 +15,7 @@ import {
   checkAndIncrementAiRate,
   logTeacherAiUsage,
 } from '@/lib/firebase/teacherAiUsageService';
-import { requireConsent } from '@/lib/dpdp/consentService';
+import { requireConsent } from '@gsi/dpdp';
 
 function parseLocale(raw: unknown): Locale {
   if (raw === 'hi') return 'hi';

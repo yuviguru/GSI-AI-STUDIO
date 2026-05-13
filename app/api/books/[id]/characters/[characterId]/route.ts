@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { characterPatchSchema } from '@/lib/validators';
 import { updateCharacter, removeCharacter } from '@/lib/firebase/bookService';
-import { filterInput } from '@/lib/safety/inputFilter';
+import { filterInput } from '@gsi/safety';
 
 interface RouteParams {
   params: { id: string; characterId: string };

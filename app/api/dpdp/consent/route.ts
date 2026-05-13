@@ -9,7 +9,7 @@ import {
   getConsentState,
   recordConsent,
   revokeConsent,
-} from '@/lib/dpdp/consentService';
+} from '@gsi/dpdp';
 import {
   ALL_CONSENT_SCOPES,
   type ConsentScope,
