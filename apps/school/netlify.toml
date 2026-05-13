@@ -1,0 +1,31 @@
+# Netlify config for the GSI School app (schools.gsi.ai).
+#
+# In the Netlify dashboard, configure the site with:
+#   - Repository: yuviguru/GSI-AI-STUDIO
+#   - Base directory: apps/school
+#   - Build command: pnpm --filter @gsi/app-school build
+#   - Publish directory: apps/school/.next
+#   - Functions directory: netlify/functions (workspace root)
+
+[build]
+  base = "apps/school"
+  command = "pnpm --filter @gsi/app-school build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  PNPM_FLAGS = "--shamefully-hoist"
+  SECRETS_SCAN_ENABLED = "false"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# School-context scheduled functions.
+
+[functions."school-analytics-refresh"]
+  schedule = "0 2 * * *"
+
+# MCP tool execution can take 20-40s for story/comic creation; default
+# Next.js function timeout (10s) would 503.
+[functions."api-mcp"]
+  timeout = 60

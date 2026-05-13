@@ -1,33 +1,23 @@
+# Workspace-root netlify.toml.
+#
+# Each app has its own netlify.toml inside apps/<id>/. Configure the two
+# Netlify sites independently in the dashboard:
+#
+#   kids.gsi.ai    → base = apps/kid    → reads apps/kid/netlify.toml
+#   schools.gsi.ai → base = apps/school → reads apps/school/netlify.toml
+#
+# This root file is a fallback that builds the kid app — useful if a
+# Netlify site is misconfigured without a base directory.
+
 [build]
-  command = "pnpm build"
-  publish = ".next"
+  command = "pnpm --filter @gsi/app-kid build"
+  publish = "apps/kid/.next"
   functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "20"
-  NPM_FLAGS = "--prefix=/dev/null"
+  PNPM_FLAGS = "--shamefully-hoist"
   SECRETS_SCAN_ENABLED = "false"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-
-# Sunday 19:00 IST = 13:30 UTC. Sends the weekly homework digest DM to
-# every linked @GSIPersonalAssistantBot chat that had activity this week.
-[functions."homework-weekly-digest"]
-  schedule = "30 13 * * 0"
-
-# Daily at 02:00 UTC (~07:30 IST). Re-aggregates per-school analytics into
-# the `schoolAnalytics/{schoolId}` cache read by the school admin dashboard.
-[functions."school-analytics-refresh"]
-  schedule = "0 2 * * *"
-
-# Hourly leaderboard cache. Recomputes top creators into
-# `leaderboards/topCreators` so the public leaderboard endpoint reads a
-# single cached doc instead of scanning 200 recent creations every call.
-[functions."leaderboard-refresh"]
-  schedule = "5 * * * *"
-
-# Override per-route timeouts. MCP tool execution can take 20-40s for
-# story/comic creation; default Next.js function timeout (10s) would 503.
-[functions."api-mcp"]
-  timeout = 60
