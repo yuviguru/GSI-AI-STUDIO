@@ -6,13 +6,17 @@ import {
   ProfileSetupCarousel,
   ONBOARDING_DONE_KEY,
 } from '@/components/onboarding/ProfileSetupCarousel';
+import { PostOnboardingAuth } from '@/components/auth/PostOnboardingAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { ContinueCreatingCard } from '@/components/dashboard';
 import { AssignmentView } from '@/components/student/AssignmentView';
 import { SectionHub, DashboardRightRail } from '@/components/navigation';
 import { kidDashboardConfig } from '@/lib/dashboard/configs/kid.config';
 
 export default function HomePage() {
+  const { isAuthenticated } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false);
 
   useEffect(() => {
     try {
@@ -25,6 +29,15 @@ export default function HomePage() {
 
   const handleOnboardingComplete = useCallback(() => {
     setShowOnboarding(false);
+    // After anonymous onboarding, prompt sign-in.
+    // Authenticated users (handled by AppGate) don't hit this path.
+    if (!isAuthenticated) {
+      setShowSignInPrompt(true);
+    }
+  }, [isAuthenticated]);
+
+  const handleSignInDone = useCallback(() => {
+    setShowSignInPrompt(false);
   }, []);
 
   return (
@@ -32,6 +45,12 @@ export default function HomePage() {
       <AnimatePresence>
         {showOnboarding && (
           <ProfileSetupCarousel onComplete={handleOnboardingComplete} />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showSignInPrompt && (
+          <PostOnboardingAuth onContinue={handleSignInDone} />
         )}
       </AnimatePresence>
 

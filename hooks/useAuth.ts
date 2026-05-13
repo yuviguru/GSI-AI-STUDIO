@@ -9,10 +9,24 @@ import {
   type ReactNode,
 } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { auth, signOutUser, isFirebaseConfigured } from '@/lib/firebase/client';
+import { auth, signOutUser, ensureAnonymousAuth, isFirebaseConfigured } from '@/lib/firebase/client';
 import type { UserRole, UserPlan } from '@/types/user.types';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
+
+/** Summary of pending anonymous-session data awaiting assignment to a kid. */
+export interface ClaimedSessionSummary {
+  aiPoints: number;
+  badgeCount: number;
+  conceptCount: number;
+  creationTypes: string[];
+  totalCreationCount: number;
+  onboarding?: {
+    name?: string;
+    avatarUrl?: string;
+    mascotId?: string;
+  };
+}
 
 interface UserProfile {
   uid: string;
@@ -23,18 +37,22 @@ interface UserProfile {
   plan?: UserPlan;
   name?: string;
   kidIds?: string[];
+  /** Non-null when there's pending anonymous session data to assign to a kid. */
+  claimedSessionSummary?: ClaimedSessionSummary;
 }
 
 interface AuthState {
   /** The authenticated user, or null if anonymous */
   user: UserProfile | null;
-  /** True while Firebase Auth is initializing */
+  /** True while Firebase Auth is initializing (includes anonymous auth setup) */
   loading: boolean;
-  /** True if user is authenticated */
+  /** True if user has a real identity (phone auth). False for anonymous. */
   isAuthenticated: boolean;
+  /** True if user has Firebase Anonymous Auth (no phone yet). */
+  isAnonymous: boolean;
   /** Sign out the current user */
   signOut: () => Promise<void>;
-  /** Firebase ID token for API calls */
+  /** Firebase ID token for API calls (works for anonymous users too) */
   getIdToken: () => Promise<string | null>;
   /** Error from auth operations */
   error: string | null;
@@ -48,6 +66,7 @@ const AuthContext = createContext<AuthState>({
   user: null,
   loading: true,
   isAuthenticated: false,
+  isAnonymous: false,
   signOut: async () => {},
   getIdToken: async () => null,
   error: null,
@@ -70,7 +89,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Listen for Firebase Auth state changes
+  // Listen for Firebase Auth state changes.
+  // If no user exists, auto-sign-in anonymously so every visitor gets a
+  // stable Firebase UID from day one. When they later sign up with phone,
+  // `linkWithCredential` upgrades the account in-place (same UID, zero
+  // migration for the happy path).
   useEffect(() => {
     if (!isFirebaseConfigured) {
       setFirebaseUser(null);
@@ -81,13 +104,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setFirebaseUser(user);
+
       if (!user) {
+        // No user yet — kick off anonymous auth. This will trigger another
+        // onAuthStateChanged with the anonymous user, which hits the branch
+        // below. We intentionally leave `loading = true` until that fires.
         setUserProfile(null);
+        ensureAnonymousAuth().catch(() => {
+          // Anonymous auth failed (network, Firebase down, demo mode).
+          // Fall back to truly anonymous — loading can finish.
+          setLoading(false);
+        });
+        return;
+      }
+
+      // We have a Firebase user (anonymous or phone-authenticated).
+      // For anonymous users: just set loading false, no Firestore profile.
+      // For phone users: build a profile object for the rest of the app.
+      if (user.isAnonymous) {
+        setUserProfile(null); // No Firestore profile for anonymous users
         setLoading(false);
         return;
       }
 
-      // Build initial profile from Firebase Auth data
+      // Phone-authenticated user — build initial profile from Firebase data
       setUserProfile({
         uid: user.uid,
         phoneNumber: user.phoneNumber,
@@ -121,6 +161,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               role: json.data.role,
               plan: json.data.plan,
               kidIds: json.data.kidIds,
+              claimedSessionSummary: json.data.claimedSessionSummary,
             }));
           }
         }
@@ -220,6 +261,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             role: json.data.role,
             plan: json.data.plan,
             kidIds: json.data.kidIds,
+            claimedSessionSummary: json.data.claimedSessionSummary,
           }));
         }
       }
@@ -231,7 +273,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value: AuthState = {
     user: userProfile,
     loading,
-    isAuthenticated: !!firebaseUser,
+    // isAuthenticated = true ONLY for phone-verified users, not anonymous.
+    // This preserves existing behavior for all 56+ files that check it.
+    isAuthenticated: !!firebaseUser && !firebaseUser.isAnonymous,
+    isAnonymous: !!firebaseUser?.isAnonymous,
     signOut: handleSignOut,
     getIdToken,
     error,

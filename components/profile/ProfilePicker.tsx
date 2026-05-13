@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useKidProfile } from '@/hooks/useKidProfile';
 import { getAvatarEmoji } from './AvatarPicker';
-import { KidProfileSetup } from './KidProfileSetup';
+import { ProfileSetupCarousel } from '@/components/onboarding/ProfileSetupCarousel';
 
 const MAX_KIDS = 4;
 
@@ -24,6 +24,10 @@ interface ProfilePickerProps {
  * Shows all kid profiles as large tappable circles.
  * Used as a gate after login (forceSelection=true) and
  * as an overlay from header/sidebar for switching profiles.
+ *
+ * "Add Kid" now uses the same ProfileSetupCarousel as initial onboarding
+ * (mascot → name → AI avatar → X-Ray lesson) so all kids get the full
+ * experience instead of the bare-bones KidProfileSetup form.
  */
 export function ProfilePicker({ forceSelection, onSelect, onClose }: ProfilePickerProps) {
   const { signOut } = useAuth();
@@ -38,20 +42,15 @@ export function ProfilePicker({ forceSelection, onSelect, onClose }: ProfilePick
   async function handleKidCreated() {
     await refreshKids();
     setShowAddKid(false);
-    // If this was the first kid, the parent still needs to select them
-    // refreshKids will update the kids list, and the grid will show
   }
 
+  // Use the same onboarding carousel for adding new kids
   if (showAddKid) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-purple-50 to-white p-4">
-        <div className="w-full max-w-sm rounded-3xl bg-white p-2 shadow-xl">
-          <KidProfileSetup
-            onComplete={handleKidCreated}
-            onClose={forceSelection ? undefined : () => setShowAddKid(false)}
-          />
-        </div>
-      </div>
+      <ProfileSetupCarousel
+        createKidProfile
+        onComplete={handleKidCreated}
+      />
     );
   }
 
@@ -88,15 +87,27 @@ export function ProfilePicker({ forceSelection, onSelect, onClose }: ProfilePick
               activeKid?.id === kid.id && 'bg-white shadow-lg ring-2 ring-purple-400'
             )}
           >
-            <div
-              className={cn(
-                'flex h-20 w-20 items-center justify-center rounded-full text-4xl transition-transform',
-                'bg-gradient-to-br from-purple-100 to-blue-100',
-                'group-hover:scale-110'
-              )}
-            >
-              {getAvatarEmoji(kid.avatar)}
-            </div>
+            {kid.avatarUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={kid.avatarUrl}
+                alt={kid.name}
+                className={cn(
+                  'h-20 w-20 rounded-full object-cover transition-transform',
+                  'group-hover:scale-110'
+                )}
+              />
+            ) : (
+              <div
+                className={cn(
+                  'flex h-20 w-20 items-center justify-center rounded-full text-4xl transition-transform',
+                  'bg-gradient-to-br from-purple-100 to-blue-100',
+                  'group-hover:scale-110'
+                )}
+              >
+                {getAvatarEmoji(kid.avatar)}
+              </div>
+            )}
             <span className="max-w-[100px] truncate text-sm font-semibold text-gray-800">
               {kid.name}
             </span>
