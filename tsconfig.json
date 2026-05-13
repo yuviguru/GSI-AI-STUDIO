@@ -34,11 +34,25 @@
     }
   },
   "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    "packages/*/src/**/*.ts"
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "hooks/**/*.ts",
+    "hooks/**/*.tsx",
+    "contexts/**/*.ts",
+    "contexts/**/*.tsx",
+    "lib/**/*.ts",
+    "lib/**/*.tsx",
+    "scripts/**/*.ts",
+    "packages/*/src/**/*.ts",
+    "packages/*/src/**/*.tsx",
+    "vitest.config.ts",
+    "vitest.setup.ts"
   ],
-  "exclude": ["node_modules", "netlify", "packages/*/node_modules"]
+  "exclude": [
+    "node_modules",
+    "netlify",
+    "packages/*/node_modules",
+    "apps/*",
+    "**/.next/**"
+  ]
 }

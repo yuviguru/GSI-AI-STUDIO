@@ -57,8 +57,26 @@ const ROLE_QUICKLINKS = [
 ] as const;
 
 async function loadWalkthrough(): Promise<string> {
-  const filePath = path.join(process.cwd(), 'docs', 'test-journeys.md');
-  const raw = await fs.readFile(filePath, 'utf-8');
+  // The walkthrough lives at the workspace root (../../docs/...) but
+  // process.cwd() during build runs from apps/kid/. Try both locations
+  // so the page works in dev (where cwd is the repo root) and in build
+  // (where cwd is the app root).
+  const candidates = [
+    path.join(process.cwd(), '..', '..', 'docs', 'test-journeys.md'),
+    path.join(process.cwd(), 'docs', 'test-journeys.md'),
+  ];
+  let raw = '';
+  for (const candidate of candidates) {
+    try {
+      raw = await fs.readFile(candidate, 'utf-8');
+      break;
+    } catch {
+      // try next
+    }
+  }
+  if (!raw) {
+    throw new Error('test-journeys.md not found — checked: ' + candidates.join(', '));
+  }
 
   // Strip the engineer-facing appendix; everything before it is product copy.
   const appendixMarker = '## Appendix · How to test this yourself';

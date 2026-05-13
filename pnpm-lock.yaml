@@ -192,6 +192,12 @@ importers:
 
   apps/kid:
     dependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.24.0
+        version: 0.24.3
+      '@google/genai':
+        specifier: ^1.43.0
+        version: 1.43.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@gsi/ai':
         specifier: workspace:*
         version: link:../../packages/ai
@@ -210,9 +216,117 @@ importers:
       '@gsi/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@hookform/resolvers':
+        specifier: ^3.3.0
+        version: 3.10.0(react-hook-form@7.71.2(react@18.3.1))
+      '@tiptap/extension-color':
+        specifier: ^3.22.5
+        version: 3.22.5(@tiptap/extension-text-style@3.22.5(@tiptap/core@3.22.5(@tiptap/pm@3.22.5)))
+      '@tiptap/extension-font-family':
+        specifier: ^3.22.5
+        version: 3.22.5(@tiptap/extension-text-style@3.22.5(@tiptap/core@3.22.5(@tiptap/pm@3.22.5)))
+      '@tiptap/extension-placeholder':
+        specifier: ^3.22.5
+        version: 3.22.5(@tiptap/extensions@3.22.5(@tiptap/core@3.22.5(@tiptap/pm@3.22.5))(@tiptap/pm@3.22.5))
+      '@tiptap/extension-text-align':
+        specifier: ^3.22.5
+        version: 3.22.5(@tiptap/core@3.22.5(@tiptap/pm@3.22.5))
+      '@tiptap/extension-text-style':
+        specifier: ^3.22.5
+        version: 3.22.5(@tiptap/core@3.22.5(@tiptap/pm@3.22.5))
+      '@tiptap/extension-underline':
+        specifier: ^3.22.5
+        version: 3.22.5(@tiptap/core@3.22.5(@tiptap/pm@3.22.5))
+      '@tiptap/pm':
+        specifier: ^3.22.5
+        version: 3.22.5
+      '@tiptap/react':
+        specifier: ^3.22.5
+        version: 3.22.5(@floating-ui/dom@1.7.6)(@tiptap/core@3.22.5(@tiptap/pm@3.22.5))(@tiptap/pm@3.22.5)(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@tiptap/starter-kit':
+        specifier: ^3.22.5
+        version: 3.22.5
+      '@vercel/og':
+        specifier: ^0.9.0
+        version: 0.9.0
+      ai:
+        specifier: ^3.1.0
+        version: 3.4.33(react@18.3.1)(sswr@2.2.0(svelte@5.53.3))(svelte@5.53.3)(vue@3.5.29(typescript@5.9.3))(zod@3.25.76)
+      canvas-confetti:
+        specifier: ^1.9.0
+        version: 1.9.4
+      class-variance-authority:
+        specifier: ^0.7.0
+        version: 0.7.1
+      clsx:
+        specifier: ^2.1.0
+        version: 2.1.1
+      firebase:
+        specifier: ^10.12.0
+        version: 10.14.1
+      firebase-admin:
+        specifier: ^12.1.0
+        version: 12.7.0
+      framer-motion:
+        specifier: ^11.1.0
+        version: 11.18.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      groq-sdk:
+        specifier: ^0.37.0
+        version: 0.37.0
+      howler:
+        specifier: ^2.2.0
+        version: 2.2.4
+      jspdf:
+        specifier: ^4.2.0
+        version: 4.2.0
+      lottie-react:
+        specifier: ^2.4.0
+        version: 2.4.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      lucide-react:
+        specifier: ^0.378.0
+        version: 0.378.0(react@18.3.1)
+      marked:
+        specifier: ^18.0.3
+        version: 18.0.3
+      nanoid:
+        specifier: ^5.0.0
+        version: 5.1.6
+      next:
+        specifier: ^14.2.0
+        version: 14.2.35(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      next-pwa:
+        specifier: ^5.6.0
+        version: 5.6.0(@babel/core@7.29.0)(@types/babel__core@7.20.5)(next@14.2.35(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(webpack@5.105.2)
+      react:
+        specifier: ^18.3.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.0
+        version: 18.3.1(react@18.3.1)
+      react-hook-form:
+        specifier: ^7.51.0
+        version: 7.71.2(react@18.3.1)
+      replicate:
+        specifier: ^0.30.0
+        version: 0.30.2
+      swr:
+        specifier: ^2.2.0
+        version: 2.4.0(react@18.3.1)
+      tailwind-merge:
+        specifier: ^2.3.0
+        version: 2.6.1
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
 
   apps/school:
     dependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.24.0
+        version: 0.24.3
+      '@google/genai':
+        specifier: ^1.43.0
+        version: 1.43.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@gsi/ai':
         specifier: workspace:*
         version: link:../../packages/ai
@@ -231,6 +345,72 @@ importers:
       '@gsi/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@hookform/resolvers':
+        specifier: ^3.3.0
+        version: 3.10.0(react-hook-form@7.71.2(react@18.3.1))
+      '@vercel/og':
+        specifier: ^0.9.0
+        version: 0.9.0
+      ai:
+        specifier: ^3.1.0
+        version: 3.4.33(react@18.3.1)(sswr@2.2.0(svelte@5.53.3))(svelte@5.53.3)(vue@3.5.29(typescript@5.9.3))(zod@3.25.76)
+      class-variance-authority:
+        specifier: ^0.7.0
+        version: 0.7.1
+      clsx:
+        specifier: ^2.1.0
+        version: 2.1.1
+      firebase:
+        specifier: ^10.12.0
+        version: 10.14.1
+      firebase-admin:
+        specifier: ^12.1.0
+        version: 12.7.0
+      framer-motion:
+        specifier: ^11.1.0
+        version: 11.18.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      groq-sdk:
+        specifier: ^0.37.0
+        version: 0.37.0
+      jspdf:
+        specifier: ^4.2.0
+        version: 4.2.0
+      lucide-react:
+        specifier: ^0.378.0
+        version: 0.378.0(react@18.3.1)
+      marked:
+        specifier: ^18.0.3
+        version: 18.0.3
+      nanoid:
+        specifier: ^5.0.0
+        version: 5.1.6
+      next:
+        specifier: ^14.2.0
+        version: 14.2.35(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      next-pwa:
+        specifier: ^5.6.0
+        version: 5.6.0(@babel/core@7.29.0)(@types/babel__core@7.20.5)(next@14.2.35(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(webpack@5.105.2)
+      react:
+        specifier: ^18.3.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.0
+        version: 18.3.1(react@18.3.1)
+      react-hook-form:
+        specifier: ^7.51.0
+        version: 7.71.2(react@18.3.1)
+      replicate:
+        specifier: ^0.30.0
+        version: 0.30.2
+      swr:
+        specifier: ^2.2.0
+        version: 2.4.0(react@18.3.1)
+      tailwind-merge:
+        specifier: ^2.3.0
+        version: 2.6.1
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
 
   packages/ai: {}
 

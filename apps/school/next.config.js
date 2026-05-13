@@ -9,36 +9,21 @@ const withPWA = require('next-pwa')({
 
 const nextConfig = {
   reactStrictMode: true,
+  transpilePackages: [
+    '@gsi/ai',
+    '@gsi/dpdp',
+    '@gsi/firebase',
+    '@gsi/safety',
+    '@gsi/types',
+    '@gsi/ui',
+  ],
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'storage.googleapis.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'firebasestorage.googleapis.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'replicate.delivery',
-      },
-      {
-        protocol: 'https',
-        hostname: 'image.pollinations.ai',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images.pexels.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'pub-582b7213209642b9b995c96c95a30381.r2.dev',
-      },
+      { protocol: 'https', hostname: 'storage.googleapis.com' },
+      { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
+      { protocol: 'https', hostname: 'replicate.delivery' },
+      { protocol: 'https', hostname: 'image.pollinations.ai' },
+      { protocol: 'https', hostname: 'pub-582b7213209642b9b995c96c95a30381.r2.dev' },
     ],
   },
   headers: async () => [
