@@ -654,6 +654,8 @@ Consent is captured per scope, not as a blanket opt-in:
 | `parent_messaging` | Sending messages to parent via Telegram/WhatsApp/SMS/email |
 | `peer_sharing` | Showing kid's creations in class feed / explore / remix |
 | `analytics` | Including kid in anonymized school-level analytics |
+| `voice_recording` | Capturing the kid's voice via microphone (sing-along, book reading, voice memo) — see `#voice-and-video-consent` |
+| `video_recording` | Capturing the kid's image via camera (video performances) — see `#voice-and-video-consent` |
 
 ### Consent Capture Flow
 
@@ -665,13 +667,51 @@ Consent is captured per scope, not as a blanket opt-in:
 
 ### Consent Enforcement
 
-Every AI generator endpoint calls `hasConsent(parentUid, kidId, scope)` before running. Every messaging send checks `parent_messaging`. Revocation (`DELETE /api/dpdp/consent`) writes a new `consentLog` entry with `granted: false` and stops downstream activity within 1 minute (checked at start of each generator call; no long-running jobs).
+Every AI generator endpoint calls `hasConsent(parentUid, kidId, scope)` before running. Every messaging send checks `parent_messaging`. Every asset upload with `sourceType='user_recording'` checks `voice_recording` (audio) or `video_recording` (video). Revocation (`DELETE /api/dpdp/consent`) writes a new `consentLog` entry with `granted: false` and stops downstream activity within 1 minute (checked at start of each generator call; no long-running jobs).
+
+### Voice and Video Consent (PERF-001)
+
+Voice and video recording scopes use the **same** verifiable parental consent mechanism as the other DPDP scopes — DPDP Act 2023 + Rules 2025 do not exempt voice from "personal data of minors". The bar is identical to `data_storage`. What differs is **when** consent is collected.
+
+**Two-path consent capture**:
+
+1. **Upfront at signup (default path)**: when a parent creates a kid profile, the consent register shows two additional unchecked checkboxes — "Allow voice recording" and "Allow video recording" — with plain-language explanations. Both default unchecked (explicit opt-in). Parent can grant either or both, or neither. Skipping is not blocking — kid can still create AI content; recording features simply stay locked.
+
+2. **On-demand from kid screen (lazy path)**: if a kid hits a recording feature without consent, we don't block them with a dead-end. Instead:
+   - Kid taps "Sing Along" / "Read Aloud" / "Record Voice Memo".
+   - Client checks `hasConsent(parentUid, kidId, scope)`.
+   - If false → kid sees a friendly prompt: "We need a quick OK from your parent". Tapping "Ask my parent" calls `POST /api/dpdp/consent/request` with `{ kidId, scope, context }`.
+   - Server generates a short-lived (60 min) consent link, dispatches it to the parent via the kid's `parentChannelPrefs` channel order (Telegram → WhatsApp → SMS).
+   - Parent taps the link → reaches the same plain-language explainer + OTP re-verification → grants or denies → `consentLog` write.
+   - Kid client polls `GET /api/dpdp/consent/request/:requestId` every 5s while the modal is open. On `granted: true`, the recorder unlocks and the kid resumes the flow without a page reload.
+   - On expiry / denial, kid sees a "we'll come back to this later" screen (no shame, no dead-end).
+
+**Why on-demand is acceptable under DPDP**: the consent ceremony itself (parent OTP + plain-language explainer + audit log) is identical to upfront consent. We're only changing the **trigger** from "at signup" to "at first use of feature". DPDP requires verifiable consent **before processing** — which we honor: no audio bytes leave the device until consent lands.
+
+**Anonymous Phase 1 sessions**: no parent exists yet. Voice recording is allowed (no DPDP processing of identifiable minor data — sessions are pseudonymous and recordings are private-by-default). Video recording is **blocked entirely** until Phase 2 — once an account exists and a parent has been verified, we can request `video_recording` consent. This avoids the situation of a video recording existing in our system with no parent to attach it to.
+
+**Consent revocation cascade**: revoking `voice_recording` or `video_recording` immediately:
+- Hides all of the kid's existing public performances from `/explore` and class feeds (sets `visibility='private'`).
+- Disables the recorder UI for that kid.
+- Does **not** auto-delete the recordings — that requires a separate erasure request (kid/parent intent may be "stop sharing" not "destroy work"). The DPDP dashboard shows a clear "Delete all recordings" button next to the revocation toggle.
+
+**UGC voice moderation pipeline**:
+
+Kid voice recordings are user-generated content and need their own moderation, separate from the AI content safety pipeline (which only protects against AI-generated harm). Multi-stage:
+
+1. **Auto-checks at finalize** (`POST /api/assets/finalize`): file size sanity, duration sanity, MIME-type whitelist, magic-byte verification (audio actually is audio). Cheap, runs on every upload.
+2. **Pre-publish queue for first 3 public performances per kid**: when a kid sets a performance to `visibility='public'` for the first time (or among their first 3), `status='draft'` and the item enters a moderation queue. Reviewed by a human (Phase 1) or automated speech-to-text + profanity scan (Phase 2 — Whisper or Gemini transcription → existing `filterOutput()` pipeline). Time SLO: 24 hrs.
+3. **After 3 clean publishes**, kid is "trusted" — subsequent public performances auto-publish, but a 1-in-20 spot-check sample still routes to the queue.
+4. **Community report flow**: any user can flag a public performance via a "Report" button on the player. Two reports within 24 hrs auto-revert `visibility='private'` pending review.
+5. **Hard moderation rejections** (slurs, threats, full-name disclosure, phone numbers, addresses) → `status='flagged'`, kid is notified with a kid-friendly explanation, parent is notified via `parent_messaging` channel.
+
+This pipeline reuses `lib/safety/inputFilter.ts` and `lib/safety/outputFilter.ts` for the text scan; the speech-to-text layer is the only new dependency.
 
 ### Right to Erasure
 
 `POST /api/dpdp/erasure` queues an erasure request. `lib/dpdp/dataErasure.ts` cascades across:
 
-- `creations`, `submissions`, `reactions`, `hpcNarratives`, `lessonPlans` (if linked), `questionPapers` (detokenize references only — papers are teacher-owned), `notifications`, `parentDigests`, `commsLog`, `teacherAiUsage` (anonymize), media files in Firebase Storage.
+- `creations`, `performances`, `assets` (with cascading R2 object deletion), `submissions`, `reactions`, `hpcNarratives`, `lessonPlans` (if linked), `questionPapers` (detokenize references only — papers are teacher-owned), `notifications`, `parentDigests`, `commsLog`, `teacherAiUsage` (anonymize), media files in Firebase Cloud Storage and Cloudflare R2.
 
 Must complete within 30 days. A signed tamper-evident receipt is returned to the parent via `receiptUrl`.
 

@@ -15,13 +15,18 @@ export interface StoryContent {
 }
 
 export interface MusicContent {
-  audioUrl: string;
+  /** PERF-001: stable reference to the asset doc (R2/Firebase storage) */
+  audioAssetId?: string;
+  /** Legacy / in-flight: direct URL when no asset doc exists yet */
+  audioUrl?: string;
   duration: number;
   genre: string;
   mood: string;
   lyrics: string;
   instruments: string[];
   bpm: number;
+  /** Waveform points 0-1, length 50 — for player rendering without re-decoding */
+  waveformData?: number[];
 }
 
 export interface QuizContent {

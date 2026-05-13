@@ -29,13 +29,28 @@ const TIERS: Tier[] = [
     cta: { label: 'Start creating', href: '/create/story' },
   },
   {
+    name: 'Creator',
+    tagline: 'For kids who like making a few things every day.',
+    price: '₹99',
+    priceUnit: '/ month',
+    priceNote: 'Or ₹899/year · Cancel anytime',
+    features: [
+      '15 creations per day across all studios',
+      'All 10 studios + AI X-Ray on every creation',
+      '6 badges + creation streaks',
+      'Faster image generation',
+      'Cancel anytime, keep all your creations',
+    ],
+    cta: { label: 'Try Creator', href: '/create/story?upgrade=creator' },
+  },
+  {
     name: 'Pro',
     tagline: 'For kids who create every day.',
     price: '₹299',
     priceUnit: '/ month',
     priceNote: 'Or ₹2,499/year · Cancel anytime',
     features: [
-      'Unlimited creations, every studio',
+      'Up to 50 creations per day, every studio',
       'Full 12-badge collection + streaks',
       'Parent dashboard with weekly reports',
       'Priority AI (fastest image models)',
@@ -49,7 +64,7 @@ const TIERS: Tier[] = [
     name: 'Schools',
     tagline: 'For principals solving the 2026-27 mandate.',
     price: 'Custom',
-    priceNote: 'From ₹99/student/month · 50-student minimum',
+    priceNote: 'From ₹149/student/month · 50-student minimum',
     features: [
       'Everything in Pro — for every student',
       'Teacher dashboard: classes, assignments, reports',
@@ -81,7 +96,7 @@ export function Pricing() {
         </div>
 
         {/* Tiers */}
-        <div className="mt-14 grid gap-5 lg:grid-cols-3">
+        <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {TIERS.map((tier) => (
             <PricingCard key={tier.name} tier={tier} />
           ))}

@@ -183,6 +183,46 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // WhatsApp per-phone rate limits — server-side only.
+    // Document IDs are SHA-256 hashes of the phone number (no raw PII).
+    match /whatsappRateLimits/{key} {
+      allow read, write: if false;
+    }
+
+    // AI provider usage telemetry — server-side only.
+    // Tags every router attempt with sessionId/studio/cost/provider.
+    // Read via Admin SDK in /admin/usage page; never client-readable.
+    match /aiUsage/{eventId} {
+      allow read, write: if false;
+    }
+
+    // ─── Assets (PERF-001) ───────────────────────────────────
+    // Unified binary-media metadata — payloads in object storage.
+    // Public-readable when visibility=public + status=ready, otherwise
+    // server-side only (clients receive signed URLs from the API).
+    match /assets/{assetId} {
+      allow read: if resource.data.visibility == 'public'
+                  && resource.data.status == 'ready';
+      allow write: if false; // Server-side only via Admin SDK
+    }
+
+    // ─── Performances (PERF-001) ─────────────────────────────
+    // Kid voice recordings tied to creations. Public reads gated to
+    // published items; everything else server-side only.
+    match /performances/{performanceId} {
+      allow read: if resource.data.visibility == 'public'
+                  && resource.data.status == 'published';
+      allow write: if false; // Server-side only via Admin SDK
+
+      // Reactions subcollection — reads only when parent is publicly
+      // visible. Writes are server-side via the /react endpoint.
+      match /reactions/{reactorId} {
+        allow read: if get(/databases/$(database)/documents/performances/$(performanceId)).data.visibility == 'public'
+                    && get(/databases/$(database)/documents/performances/$(performanceId)).data.status == 'published';
+        allow write: if false;
+      }
+    }
+
     // ─── Books (Book Studio) ────────────────────────────────
     // Multi-session authoring artifacts. Distinct from `creations` because
     // books are the kid's authored work (multi-page, locked layout) rather
