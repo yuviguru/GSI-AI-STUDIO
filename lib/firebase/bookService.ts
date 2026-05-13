@@ -619,15 +619,40 @@ export async function reorderPages(
   const pagesCol = bookRef.collection(PAGES_SUBCOLLECTION);
 
   await adminDb.runTransaction(async (tx) => {
-    // Verify all pages exist
-    const reads = input.order.map((entry) => tx.get(pagesCol.doc(entry.pageId)));
-    const snaps = await Promise.all(reads);
-    for (const [i, snap] of snaps.entries()) {
-      if (!snap.exists) {
+    // 1. Load ALL existing pages to validate completeness
+    const allPagesSnap = await tx.get(pagesCol);
+    const existingIds = new Set(allPagesSnap.docs.map((d) => d.id));
+
+    // 2. Validate the order covers every page exactly once
+    const submittedIds = new Set(input.order.map((e) => e.pageId));
+    if (submittedIds.size !== input.order.length) {
+      throw new AppException(
+        'INVALID_INPUT',
+        'Duplicate page IDs in reorder request',
+        400,
+      );
+    }
+    if (submittedIds.size !== existingIds.size) {
+      throw new AppException(
+        'INVALID_INPUT',
+        `Order must include all ${existingIds.size} pages, got ${submittedIds.size}`,
+        400,
+      );
+    }
+    for (const id of submittedIds) {
+      if (!existingIds.has(id)) {
+        throw new AppException('NOT_FOUND', `Page ${id} not found`, 404);
+      }
+    }
+
+    // 3. Validate contiguous 1-based page numbers
+    const pageNumbers = input.order.map((e) => e.pageNumber).sort((a, b) => a - b);
+    for (let i = 0; i < pageNumbers.length; i++) {
+      if (pageNumbers[i] !== i + 1) {
         throw new AppException(
-          'NOT_FOUND',
-          `Page ${input.order[i]!.pageId} not found`,
-          404
+          'INVALID_INPUT',
+          `Page numbers must be contiguous 1..${pageNumbers.length}`,
+          400,
         );
       }
     }
