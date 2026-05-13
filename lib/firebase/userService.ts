@@ -6,6 +6,7 @@ import type { UserRole, UserPlan } from '@/types/user.types';
 const USERS_COLLECTION = 'users';
 const CREATIONS_COLLECTION = 'creations';
 const SESSIONS_COLLECTION = 'sessions';
+const KIDS_COLLECTION = 'kids';
 
 // ─── Firestore document shape (server-side, with Timestamps) ──────────────
 
@@ -179,30 +180,20 @@ export async function claimSession(
     await creationBatch.commit();
   }
 
-  // 2. Merge session data into user.claimedSessionData inside a transaction so
-  //    concurrent claims don't clobber each other. Idempotent on sessionId.
+  // 2. Merge session data — either onto the first existing kid (returning user)
+  //    or into claimedSessionData (new user, consumed later by createKid).
   const sessionRef = adminDb.collection(SESSIONS_COLLECTION).doc(sessionId);
   let pointsMigrated = 0;
 
   await adminDb.runTransaction(async (tx) => {
     const userSnap = await tx.get(userRef);
     if (!userSnap.exists) {
-      // Should be unreachable — created above — but guard anyway.
       throw new AppException('USER_NOT_FOUND', 'User profile vanished', 500);
     }
     const userData = userSnap.data() as UserDocFirestore;
 
-    // Already claimed this session — no-op (return early but still merge
-    // onboarding profile if the caller sent one and the user has none yet).
+    // Already claimed this session — no-op.
     if (userData.claimedSessionIds?.includes(sessionId)) {
-      const existing = userData.claimedSessionData?.onboarding ?? {};
-      const merged = mergeOnboarding(existing, options.onboarding);
-      if (merged && JSON.stringify(merged) !== JSON.stringify(existing)) {
-        tx.update(userRef, {
-          'claimedSessionData.onboarding': merged,
-          updatedAt: Timestamp.now(),
-        });
-      }
       return;
     }
 
@@ -218,6 +209,11 @@ export async function claimSession(
     };
     pointsMigrated = sessionPoints.aiPoints;
 
+    // ── Always stash in claimedSessionData ──
+    // We never auto-merge onto an existing kid because we don't know WHICH
+    // kid did the anonymous work. The parent must explicitly assign via the
+    // "Who was creating?" UI (or createKid() consumes it for the first kid
+    // when no kids exist yet).
     const previous = userData.claimedSessionData ?? {
       aiPoints: 0,
       badges: [],
@@ -228,12 +224,6 @@ export async function claimSession(
 
     const mergedOnboarding = mergeOnboarding(previous.onboarding, options.onboarding);
 
-    // Build the payload field-by-field — Firestore rejects nested
-    // `FieldValue.delete()` inside an `update()` map value, and also rejects
-    // explicit `undefined` values. So we omit `onboarding` entirely when there
-    // is nothing to write. Because we're replacing the whole claimedSessionData
-    // map atomically (top-level key, not dot-path), omitting the field cleanly
-    // drops any previously-stored onboarding too — no delete sentinel needed.
     const claimedSessionDataPayload: Record<string, unknown> = {
       aiPoints: previous.aiPoints + sessionPoints.aiPoints,
       badges: dedupe([...previous.badges, ...sessionPoints.badges]),
@@ -296,6 +286,89 @@ function mergeOnboarding(
 }
 
 /**
+ * Assign pending claimedSessionData to a specific kid profile.
+ *
+ * Called from the "Who was creating?" UI when a returning user (who already has
+ * kid profiles) claims an anonymous session. The parent picks which kid did
+ * the anonymous work, and we merge the accumulated points/badges/concepts
+ * onto that kid — then clear claimedSessionData.
+ *
+ * For avatar/mascot: only adopted if the target kid doesn't already have one
+ * (preserves the kid's existing identity).
+ */
+export async function assignClaimedDataToKid(
+  uid: string,
+  kidId: string,
+): Promise<{ pointsAssigned: number }> {
+  const userRef = adminDb.collection(USERS_COLLECTION).doc(uid);
+  const kidRef = adminDb.collection(KIDS_COLLECTION).doc(kidId);
+
+  let pointsAssigned = 0;
+
+  await adminDb.runTransaction(async (tx) => {
+    const userSnap = await tx.get(userRef);
+    if (!userSnap.exists) {
+      throw new AppException('USER_NOT_FOUND', 'User profile not found', 404);
+    }
+    const userData = userSnap.data() as UserDocFirestore;
+
+    if (!userData.claimedSessionData) {
+      // Nothing to assign — already consumed or never existed.
+      return;
+    }
+
+    // Verify the kid belongs to this parent.
+    if (!userData.kidIds?.includes(kidId)) {
+      throw new AppException('KID_NOT_FOUND', 'Kid profile not found under this account', 404);
+    }
+
+    const kidSnap = await tx.get(kidRef);
+    if (!kidSnap.exists) {
+      throw new AppException('KID_NOT_FOUND', 'Kid profile document missing', 404);
+    }
+
+    const kidData = kidSnap.data()!;
+    const claimed = userData.claimedSessionData;
+    pointsAssigned = claimed.aiPoints ?? 0;
+
+    // Merge points, badges, concepts, creations onto kid (additive).
+    const kidUpdate: Record<string, unknown> = {
+      aiPoints: (kidData.aiPoints ?? 0) + (claimed.aiPoints ?? 0),
+      badges: dedupe([...(kidData.badges ?? []), ...(claimed.badges ?? [])]),
+      conceptsLearned: dedupe([
+        ...(kidData.conceptsLearned ?? []),
+        ...(claimed.conceptsLearned ?? []),
+      ]),
+      creationsByType: addCounts(
+        kidData.creationsByType ?? {},
+        claimed.creationsByType ?? {},
+      ),
+      shareCount: (kidData.shareCount ?? 0) + (claimed.shareCount ?? 0),
+      updatedAt: Timestamp.now(),
+    };
+
+    // Adopt avatar/mascot only if the kid doesn't already have one.
+    const onboarding = claimed.onboarding;
+    if (onboarding?.avatarUrl && !kidData.avatarUrl) {
+      kidUpdate.avatarUrl = onboarding.avatarUrl;
+    }
+    if (onboarding?.mascotId && !kidData.mascotId) {
+      kidUpdate.mascotId = onboarding.mascotId;
+    }
+
+    tx.update(kidRef, kidUpdate);
+
+    // Clear claimedSessionData — it's been consumed.
+    tx.update(userRef, {
+      claimedSessionData: FieldValue.delete(),
+      updatedAt: Timestamp.now(),
+    });
+  });
+
+  return { pointsAssigned };
+}
+
+/**
  * Server-side cleanup hook for sign-out. Clears any orphaned claimedSessionData
  * so that if the user signs back in later their stale anonymous-session points
  * snapshot doesn't seed a future kid by mistake. Safe no-op if absent.
@@ -305,11 +378,7 @@ export async function clearOrphanedClaimSnapshot(uid: string): Promise<void> {
   const snap = await userRef.get();
   if (!snap.exists) return;
   const data = snap.data() as UserDocFirestore;
-  // Only clear if there's no kid yet — once a kid exists the snapshot is already
-  // consumed (createKid deletes it). This guards against overwriting in-flight
-  // claim writes from a parallel session.
   if (!data.claimedSessionData) return;
-  if ((data.kidIds ?? []).length > 0) return;
   await userRef.update({
     claimedSessionData: FieldValue.delete(),
     updatedAt: Timestamp.now(),

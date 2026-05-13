@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { SidebarNav } from '@/components/layout/SidebarNav';
@@ -9,16 +10,20 @@ import { CelebrationModal } from '@/components/learning/CelebrationModal';
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { KidProfileProvider, useKidProfile } from '@/hooks/useKidProfile';
-import { LoginPrompt } from '@/components/auth/LoginPrompt';
+// LoginPrompt removed — PostOnboardingAuth (in page.tsx) handles the sign-in
+// encouragement right after onboarding. The sidebar "Tap to sign in" provides
+// ongoing re-engagement for anonymous users who skipped it.
 import { ProfilePicker } from '@/components/profile/ProfilePicker';
+import { SessionMigrationPrompt } from '@/components/profile/SessionMigrationPrompt';
 import { ProfileSetupCarousel } from '@/components/onboarding/ProfileSetupCarousel';
 import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
 
 const REQUIRE_LOGIN = process.env.NEXT_PUBLIC_REQUIRE_LOGIN === 'true';
 
 function AppGate({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading: authLoading } = useAuth();
-  const { needsProfileSetup, needsProfileSelection, refreshKids } = useKidProfile();
+  const { isAuthenticated, user, loading: authLoading, refreshProfile } = useAuth();
+  const { needsProfileSetup, needsProfileSelection, hasKids, kids, refreshKids } = useKidProfile();
+  const [claimDismissed, setClaimDismissed] = useState(false);
 
   // Still loading auth/profile state
   if (authLoading) return null;
@@ -38,8 +43,28 @@ function AppGate({ children }: { children: React.ReactNode }) {
   // Anonymous user (open beta) — no gate, full access
   if (!isAuthenticated) return <>{children}</>;
 
+  // Authenticated with pending anonymous session data — show the simplified
+  // migration prompt BEFORE profile setup / picker. Two scenarios:
+  // 1. New user (no kids): "Keep my work" or "Start fresh"
+  // 2. Existing user (has kids): "Save as new profile" or "Delete this data"
+  if (user?.claimedSessionSummary && !claimDismissed) {
+    return (
+      <SessionMigrationPrompt
+        claimedData={user.claimedSessionSummary}
+        hasKids={hasKids}
+        kidCount={kids.length}
+        onComplete={async () => {
+          setClaimDismissed(true);
+          await refreshProfile();
+          await refreshKids();
+        }}
+      />
+    );
+  }
+
   // Authenticated but no kids — run the rich onboarding carousel which creates
   // the verified kid profile (mascot + AI avatar + X-Ray lesson) in one flow.
+  // (createKid() auto-consumes claimedSessionData for the first kid.)
   if (needsProfileSetup) {
     return <ProfileSetupCarousel createKidProfile onComplete={refreshKids} />;
   }
@@ -79,7 +104,6 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               </div>
             </div>
             <CelebrationModal />
-            <LoginPrompt />
             </AppGate>
           </AiPointsProvider>
         </KidProfileProvider>
