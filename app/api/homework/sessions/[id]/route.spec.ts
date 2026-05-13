@@ -7,7 +7,7 @@ import type { HomeworkSession } from '@/lib/bot/types';
 const mockKidDoc = vi.fn();
 const mockSessionDoc = vi.fn();
 
-vi.mock('@/lib/firebase/admin', () => ({
+vi.mock('@gsi/firebase/admin', () => ({
   adminAuth: {
     verifyIdToken: vi.fn(async (token: string) => {
       if (token === 'parent-a-token') return { uid: 'parent_a' };

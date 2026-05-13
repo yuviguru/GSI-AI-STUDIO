@@ -4,7 +4,7 @@ import {
   beatTheAiSubmitResponseSchema,
   beatTheAiJudgeSchema,
 } from '@/lib/validators';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { filterInput } from '@gsi/safety';
 import { generateAiResponse } from '@/lib/beat-the-ai/aiOpponent';
@@ -18,7 +18,7 @@ import {
   getDefaultSkills,
   detectLevelUp,
 } from '@/lib/beat-the-ai/skillEngine';
-import { updateSessionPoints } from '@/lib/firebase/sessionService';
+import { updateSessionPoints } from '@gsi/firebase/sessionService';
 import type {
   BeatTheAiDifficulty,
   BeatTheAiPrompt,

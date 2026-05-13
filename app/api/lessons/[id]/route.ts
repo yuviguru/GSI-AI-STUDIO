@@ -8,7 +8,7 @@ import { requireRole } from '@/lib/auth-utils';
 import {
   getLessonPlan,
   updateLessonPlan,
-} from '@/lib/firebase/lessonPlanService';
+} from '@gsi/firebase/lessonPlanService';
 
 export async function GET(
   request: NextRequest,

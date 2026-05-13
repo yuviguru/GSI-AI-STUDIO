@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { beatTheAiStartSchema } from '@/lib/validators';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { getRandomPrompt } from '@/lib/beat-the-ai/prompts';
 import { getAiDifficulty, getDefaultSkills, getSkillLevel } from '@/lib/beat-the-ai/skillEngine';

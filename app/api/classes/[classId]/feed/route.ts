@@ -9,8 +9,8 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { verifyAuth } from '@/lib/auth-utils';
-import { adminDb } from '@/lib/firebase/admin';
-import { isKidInClass, listClassFeed } from '@/lib/firebase/classFeedService';
+import { adminDb } from '@gsi/firebase/admin';
+import { isKidInClass, listClassFeed } from '@gsi/firebase/classFeedService';
 
 async function resolveScope(
   request: NextRequest,

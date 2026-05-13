@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
-import { getCreation, incrementShare } from '@/lib/firebase/creationService';
+import { getCreation, incrementShare } from '@gsi/firebase/creationService';
 
 const SHARE_MESSAGES: Record<string, (title: string, url: string) => string> = {
   story: (title, url) => `Check out the AI story I made: "${title}"! Read it here: ${url}`,

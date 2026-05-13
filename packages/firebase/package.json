@@ -2,5 +2,17 @@
   "name": "@gsi/firebase",
   "version": "0.0.0",
   "private": true,
-  "description": "Firebase admin SDK setup + every lib/firebase/* service. Phase 2 will move lib/firebase/* here."
+  "description": "Firebase admin SDK setup + every Firestore service (users, kids, schools, classes, assignments, submissions, notifications, ptmNotes, etc.).",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "types": "./src/*.ts",
+      "default": "./src/*.ts"
+    }
+  }
 }

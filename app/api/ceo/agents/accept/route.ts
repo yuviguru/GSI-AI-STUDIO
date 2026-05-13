@@ -6,8 +6,8 @@ import { ceoAgentAcceptSchema } from '@/lib/validators';
 import {
   acceptArtifact,
   getArtifact,
-} from '@/lib/firebase/ceoArtifactService';
-import { adminDb } from '@/lib/firebase/admin';
+} from '@gsi/firebase/ceoArtifactService';
+import { adminDb } from '@gsi/firebase/admin';
 import type { CeoArtifactAsset, CeoBusiness, CeoEvent } from '@gsi/types';
 
 /**

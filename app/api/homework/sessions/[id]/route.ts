@@ -16,7 +16,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { hybridAuth } from '@/lib/auth-utils';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 import { getHomeworkSession } from '@/lib/bot/services/homeworkSessionStore';
 import type { HomeworkSession } from '@/lib/bot/types';
 

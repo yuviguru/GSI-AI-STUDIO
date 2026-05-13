@@ -7,7 +7,7 @@
  * semantics stay consistent with the rest of the platform.
  */
 
-import { generateJsonWithClaude, generateWithClaude } from '@/lib/ai/claudeClient';
+import { generateJsonWithClaude, generateWithClaude } from '@gsi/ai/claudeClient';
 import type { ToolAdapter, ToolRunContext, ToolRunResult } from './types';
 
 export interface ClaudeToolInput {

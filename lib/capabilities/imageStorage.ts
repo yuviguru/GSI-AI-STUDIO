@@ -20,7 +20,7 @@
  */
 
 import { backend } from '@/lib/backend';
-import { adminStorage } from '@/lib/firebase/admin';
+import { adminStorage } from '@gsi/firebase/admin';
 import { nanoid } from 'nanoid';
 
 const BUCKET_PREFIX = 'creations';

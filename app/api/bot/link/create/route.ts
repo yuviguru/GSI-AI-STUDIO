@@ -1,10 +1,10 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { botLinkCreateSchema } from '@/lib/validators';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { requireAuthWithKid } from '@/lib/auth-utils';
-import { createBotLinkCode } from '@/lib/firebase/botLinkService';
+import { createBotLinkCode } from '@gsi/firebase/botLinkService';
 
 const BOT_LINK_CODES_COLLECTION = 'botLinkCodes';
 const MINTS_PER_HOUR_LIMIT = 5;

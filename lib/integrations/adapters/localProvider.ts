@@ -13,7 +13,7 @@
  *   until that ships.
  */
 
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 import {
   registerSchoolDataProvider,
   type AttendanceRecord,

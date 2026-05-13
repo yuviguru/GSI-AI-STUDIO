@@ -15,11 +15,11 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { filterInput } from '@gsi/safety';
-import { enforceIpRateLimit } from '@/lib/firebase/sessionService';
+import { enforceIpRateLimit } from '@gsi/firebase/sessionService';
 import {
   createPerformance,
   listPerformances,
-} from '@/lib/firebase/performanceService';
+} from '@gsi/firebase/performanceService';
 import type {
   PerformanceKind,
   PerformanceVisibility,

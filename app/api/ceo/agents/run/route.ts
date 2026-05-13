@@ -3,13 +3,13 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { requireAuthWithKid } from '@/lib/auth-utils';
 import { ceoAgentRunSchema } from '@/lib/validators';
-import { adminDb } from '@/lib/firebase/admin';
-import { getCeoBusiness } from '@/lib/firebase/ceoService';
-import { getCeoAgentHire } from '@/lib/firebase/ceoAgentHireService';
+import { adminDb } from '@gsi/firebase/admin';
+import { getCeoBusiness } from '@gsi/firebase/ceoService';
+import { getCeoAgentHire } from '@gsi/firebase/ceoAgentHireService';
 import {
   countRecentCandidatesForWorkflow,
   saveCandidateArtifact,
-} from '@/lib/firebase/ceoArtifactService';
+} from '@gsi/firebase/ceoArtifactService';
 import { executeWorkflow, WorkflowExecutionError } from '@/lib/ceo/agents/executor';
 import { getWorkflow } from '@/lib/ceo/agents/workflows';
 import { DEFAULT_TOOL_REGISTRY } from '@/lib/ceo/agents/toolRegistry';

@@ -9,8 +9,8 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { requireRole } from '@/lib/auth-utils';
-import { adminDb } from '@/lib/firebase/admin';
-import { listClassesForSchool } from '@/lib/firebase/schoolService';
+import { adminDb } from '@gsi/firebase/admin';
+import { listClassesForSchool } from '@gsi/firebase/schoolService';
 
 const KIDS = 'kids';
 

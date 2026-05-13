@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 import type { SkillArenaModule, SkillArenaModuleProgress, SkillArenaProgress } from '@gsi/types';
 import { SKILL_ARENA_BANDS } from '@gsi/types';
 

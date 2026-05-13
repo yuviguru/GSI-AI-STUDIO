@@ -4,7 +4,7 @@
  * Wraps `firebase-admin/auth` behind the AuthProvider port.
  */
 
-import { adminAuth } from '@/lib/firebase/admin';
+import { adminAuth } from '@gsi/firebase/admin';
 import type { AuthProvider, AuthUser } from '../ports/AuthProvider';
 
 function fromFirebaseUser(record: {

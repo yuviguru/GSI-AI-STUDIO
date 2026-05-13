@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { requireRole } from '@/lib/auth-utils';
-import { adminDb } from '@/lib/firebase/admin';
-import { reviewSubmission } from '@/lib/firebase/submissionService';
+import { adminDb } from '@gsi/firebase/admin';
+import { reviewSubmission } from '@gsi/firebase/submissionService';
 import { enqueueNotification } from '@/lib/notifications/notificationService';
 import type { SubmissionStatus } from '@gsi/types';
 

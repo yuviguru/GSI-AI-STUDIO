@@ -8,12 +8,12 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { requireRole } from '@/lib/auth-utils';
-import { generateSubInstructions } from '@/lib/ai/subInstructionsGenerator';
+import { generateSubInstructions } from '@gsi/ai/subInstructionsGenerator';
 import {
   checkAndIncrementAiRate,
   logTeacherAiUsage,
-} from '@/lib/firebase/teacherAiUsageService';
-import { getSchool } from '@/lib/firebase/schoolService';
+} from '@gsi/firebase/teacherAiUsageService';
+import { getSchool } from '@gsi/firebase/schoolService';
 import { isSupportedLocale, type Locale } from '@/lib/i18n/locales';
 
 const SUBJECT_MAX_LEN = 80;

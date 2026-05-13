@@ -14,8 +14,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { jsPDF } from 'jspdf';
 import { handleApiError, AppException } from '@/lib/api-utils';
 import { requireRole } from '@/lib/auth-utils';
-import { adminDb } from '@/lib/firebase/admin';
-import { getHpcNarrative } from '@/lib/firebase/schoolService';
+import { adminDb } from '@gsi/firebase/admin';
+import { getHpcNarrative } from '@gsi/firebase/schoolService';
 import {
   getSchoolBranding,
   renderBrandedHeader,

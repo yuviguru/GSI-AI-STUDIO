@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { saveCreationSchema } from '@/lib/validators';
-import { saveCreation, listCreations } from '@/lib/firebase/creationService';
-import { checkRateLimit, trackCreation } from '@/lib/firebase/sessionService';
+import { saveCreation, listCreations } from '@gsi/firebase/creationService';
+import { checkRateLimit, trackCreation } from '@gsi/firebase/sessionService';
 import type { CreationType } from '@gsi/types';
 
 /**

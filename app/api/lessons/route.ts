@@ -9,7 +9,7 @@ import { requireRole } from '@/lib/auth-utils';
 import {
   createLessonPlan,
   listLessonPlansForTeacher,
-} from '@/lib/firebase/lessonPlanService';
+} from '@gsi/firebase/lessonPlanService';
 import { getChapter } from '@/lib/curriculum/ncertIndex';
 import { isSupportedLocale, type Locale } from '@/lib/i18n/locales';
 

@@ -8,15 +8,15 @@
  * port can swap independently when needed.
  */
 
-import { llmRouter, audioRouter } from '@/lib/ai/router';
+import { llmRouter, audioRouter } from '@gsi/ai/router';
 import { saveCreation } from '@/lib/repositories/creationRepository';
-import { trackCreation } from '@/lib/firebase/sessionService';
+import { trackCreation } from '@gsi/firebase/sessionService';
 import { filterInput, filterOutput } from '@gsi/safety';
 import { uploadBuffer, attachAssetToParent } from '@/lib/storage/assetService';
-import { MUSIC_SYSTEM_PROMPT, buildMusicUserPrompt } from '@/lib/ai/prompts/musicPrompt';
+import { MUSIC_SYSTEM_PROMPT, buildMusicUserPrompt } from '@gsi/ai/prompts/musicPrompt';
 import { usageTracker } from '@/lib/cost/usageTracker';
-import { generateMusic } from '@/lib/ai/musicClient';
-import type { AudioGenerateResult, CostTier } from '@/lib/ai/ports';
+import { generateMusic } from '@gsi/ai/musicClient';
+import type { AudioGenerateResult, CostTier } from '@gsi/ai/ports';
 import type { AiXrayData, MusicContent } from '@gsi/types';
 
 export interface CreateMusicInput {

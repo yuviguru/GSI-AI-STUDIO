@@ -15,7 +15,7 @@ import {
   findFreeTeachersForPeriod,
   weekdayFromDate,
   type SubCandidate,
-} from '@/lib/firebase/timetableService';
+} from '@gsi/firebase/timetableService';
 
 export async function POST(request: NextRequest) {
   try {

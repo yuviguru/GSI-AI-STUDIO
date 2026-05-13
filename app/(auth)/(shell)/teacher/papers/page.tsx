@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { QuestionPaperGenerator } from '@/components/teacher/QuestionPaperGenerator';
-import type { QuestionPaperDoc } from '@/lib/firebase/questionPaperService';
+import type { QuestionPaperDoc } from '@gsi/firebase/questionPaperService';
 
 export default function PapersPage() {
   const router = useRouter();

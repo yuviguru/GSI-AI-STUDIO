@@ -16,7 +16,7 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { getImageProvider } from '../lib/ai/imageProvider';
+import { getImageProvider } from '@gsi/ai/imageProvider';
 import { filterImagePrompt } from '@gsi/safety';
 import {
   ILLUSTRATION_MANIFEST,

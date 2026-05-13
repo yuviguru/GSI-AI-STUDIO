@@ -8,7 +8,7 @@
  */
 
 import { isAdmin } from '@/lib/admin/guard';
-import { llmRouter, imageRouter } from '@/lib/ai/router';
+import { llmRouter, imageRouter } from '@gsi/ai/router';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;

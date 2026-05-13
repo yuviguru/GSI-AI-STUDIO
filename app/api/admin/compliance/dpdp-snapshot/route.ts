@@ -10,7 +10,7 @@ import {
   getConsentSnapshotForSchool,
   getTeacherAiUsageRollup,
   listErasureRequestsForSchool,
-} from '@/lib/firebase/complianceQueryService';
+} from '@gsi/firebase/complianceQueryService';
 
 export async function GET(request: NextRequest) {
   try {

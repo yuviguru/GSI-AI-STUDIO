@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { verifyAuth } from '@/lib/auth-utils';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 import { getErasureRequest } from '@gsi/dpdp';
 
 /** GET /api/dpdp/erasure/[id] — status check. Parent of kid, OR the DPO

@@ -1,13 +1,13 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { verifyAuth, requireRole } from '@/lib/auth-utils';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 import {
   createAssignment,
   getClass,
   listAssignmentsForTeacher,
   listAssignmentsForKid,
-} from '@/lib/firebase/schoolService';
+} from '@gsi/firebase/schoolService';
 import { getConcept } from '@/lib/curriculum/curriculumMap';
 import { enqueueNotificationBatch } from '@/lib/notifications/notificationService';
 import type { CreationType } from '@gsi/types';

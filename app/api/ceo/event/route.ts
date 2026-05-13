@@ -9,7 +9,7 @@ import {
   reserveRegularEventSlot,
   releaseRegularEventSlot,
   getRecentEventsForBusiness,
-} from '@/lib/firebase/ceoService';
+} from '@gsi/firebase/ceoService';
 import { generateRegularEvent } from '@/lib/ceo/eventEngine';
 import { REGULAR_EVENTS_PER_DAY_CAP } from '@/lib/ceo/constants';
 

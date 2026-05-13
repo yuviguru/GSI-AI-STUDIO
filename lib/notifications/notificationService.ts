@@ -8,7 +8,7 @@
  * behind this interface in a follow-up without changing callers.
  */
 
-import { createNotification } from '@/lib/firebase/notificationService';
+import { createNotification } from '@gsi/firebase/notificationService';
 import type {
   NotificationChannel,
   NotificationDoc,

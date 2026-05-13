@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getCreation, incrementView } from '@/lib/firebase/creationService';
+import { getCreation, incrementView } from '@gsi/firebase/creationService';
 import { ViewerClient } from './ViewerClient';
 
 interface ViewPageProps {

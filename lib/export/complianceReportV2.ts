@@ -14,7 +14,7 @@ import {
 } from './complianceReport';
 import type { ConsentScope } from '@gsi/types';
 import type { ErasureRequest } from '@gsi/types';
-import type { AiGenerator } from '@/lib/firebase/teacherAiUsageService';
+import type { AiGenerator } from '@gsi/firebase/teacherAiUsageService';
 
 const A4_WIDTH = 210;
 const MARGIN = 15;

@@ -14,8 +14,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleApiError, AppException } from '@/lib/api-utils';
 import { verifyAuth } from '@/lib/auth-utils';
-import { adminDb } from '@/lib/firebase/admin';
-import { getKid } from '@/lib/firebase/kidService';
+import { adminDb } from '@gsi/firebase/admin';
+import { getKid } from '@gsi/firebase/kidService';
 import { renderProgressReport, type Range } from '@/lib/pdf/progressReport';
 
 function parseRange(raw: string | null): Range {

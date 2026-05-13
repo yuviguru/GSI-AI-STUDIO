@@ -6,7 +6,7 @@ import {
   updateSchool,
   setSchoolPlan,
   type UpdateSchoolInput,
-} from '@/lib/firebase/schoolService';
+} from '@gsi/firebase/schoolService';
 import { invalidateSchoolBranding } from '@/lib/pdf/schoolBranding';
 import type { Board, SchoolPlan } from '@gsi/types';
 

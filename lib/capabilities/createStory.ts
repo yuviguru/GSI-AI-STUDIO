@@ -7,14 +7,14 @@
  * adapter on top of this.
  */
 
-import { llmRouter, imageRouter } from '@/lib/ai/router';
+import { llmRouter, imageRouter } from '@gsi/ai/router';
 import { saveCreation } from '@/lib/repositories/creationRepository';
-import { trackCreation } from '@/lib/firebase/sessionService';
+import { trackCreation } from '@gsi/firebase/sessionService';
 import { filterInput, filterOutput, filterImagePrompt } from '@gsi/safety';
-import { STORY_SYSTEM_PROMPT, buildStoryUserPrompt } from '@/lib/ai/prompts/storyPrompt';
+import { STORY_SYSTEM_PROMPT, buildStoryUserPrompt } from '@gsi/ai/prompts/storyPrompt';
 import { usageTracker } from '@/lib/cost/usageTracker';
 import { persistImages } from './imageStorage';
-import type { CostTier } from '@/lib/ai/ports';
+import type { CostTier } from '@gsi/ai/ports';
 import type { AiXrayData, StoryContent } from '@gsi/types';
 
 // 5-page stories typically generate 5 images; running them in a single

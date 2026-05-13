@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { bookCreateSchema } from '@/lib/validators';
-import { createBook, listBooks } from '@/lib/firebase/bookService';
+import { createBook, listBooks } from '@gsi/firebase/bookService';
 import type { BookStatus } from '@gsi/types';
 
 /**

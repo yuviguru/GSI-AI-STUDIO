@@ -1,4 +1,4 @@
-import type { SessionPointsData } from '@/lib/firebase/sessionService';
+import type { SessionPointsData } from '@gsi/firebase/sessionService';
 
 // ─── Badge types ─────────────────────────────────────────────────────────────
 

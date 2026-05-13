@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { adminAuth, adminDb } from '@/lib/firebase/admin';
+import { adminAuth, adminDb } from '@gsi/firebase/admin';
 import { AppException } from '@/lib/api-utils';
 import type { AuthContext, HybridAuthResult, UserRole, UserDoc } from '@gsi/types';
 

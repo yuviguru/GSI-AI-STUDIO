@@ -2,14 +2,14 @@ import { describe, it, expect, vi } from 'vitest';
 import type { SkillArenaChallenge, SkillArenaAnswer } from '@gsi/types';
 
 // Mock the AI module to avoid real API calls
-vi.mock('@/lib/ai/claude', () => ({
+vi.mock('@gsi/ai/claude', () => ({
   generateJsonWithClaude: vi.fn(),
   shouldUseGroq: vi.fn(() => false),
 }));
-vi.mock('@/lib/ai/groq', () => ({
+vi.mock('@gsi/ai/groq', () => ({
   generateJsonWithGroq: vi.fn(),
 }));
-vi.mock('@/lib/safety/filter', () => ({
+vi.mock('@gsi/safety', () => ({
   filterOutput: vi.fn((text: string) => text),
 }));
 

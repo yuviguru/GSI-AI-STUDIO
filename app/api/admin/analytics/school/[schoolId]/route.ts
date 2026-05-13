@@ -4,7 +4,7 @@ import { requireRole } from '@/lib/auth-utils';
 import {
   getCachedAnalytics,
   refreshSchoolAnalytics,
-} from '@/lib/firebase/analyticsService';
+} from '@gsi/firebase/analyticsService';
 
 /**
  * GET /api/admin/analytics/school/[schoolId]

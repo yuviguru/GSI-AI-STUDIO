@@ -9,7 +9,7 @@ import {
   deletePtmNote,
   updatePtmNote,
   type PtmNoteStatus,
-} from '@/lib/firebase/ptmNotesService';
+} from '@gsi/firebase/ptmNotesService';
 
 const ALLOWED_STATUSES: PtmNoteStatus[] = ['draft', 'sent', 'acknowledged'];
 

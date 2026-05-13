@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleApiError, AppException } from '@/lib/api-utils';
 import { requireRole } from '@/lib/auth-utils';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 import {
   getSchool,
   listClassesForSchool,
-} from '@/lib/firebase/schoolService';
+} from '@gsi/firebase/schoolService';
 import { buildComplianceReport } from '@/lib/export/complianceReport';
 import { buildComplianceReportV2 } from '@/lib/export/complianceReportV2';
 import {
   getConsentSnapshotForSchool,
   getTeacherAiUsageRollup,
   listErasureRequestsForSchool,
-} from '@/lib/firebase/complianceQueryService';
+} from '@gsi/firebase/complianceQueryService';
 import type {
   AssignmentDoc,
   SubmissionDoc,

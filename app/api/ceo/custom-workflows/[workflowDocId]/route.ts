@@ -6,7 +6,7 @@ import {
   deleteCustomWorkflow,
   getCustomWorkflow,
   setCustomWorkflowEnabled,
-} from '@/lib/firebase/ceoCustomWorkflowService';
+} from '@gsi/firebase/ceoCustomWorkflowService';
 
 const patchSchema = z.object({
   enabled: z.boolean(),

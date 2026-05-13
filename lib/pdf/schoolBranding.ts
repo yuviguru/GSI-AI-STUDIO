@@ -5,7 +5,7 @@
  * renderer that downstream generators call uniformly.
  */
 
-import { getSchool } from '@/lib/firebase/schoolService';
+import { getSchool } from '@gsi/firebase/schoolService';
 import type { SchoolBranding, SchoolDoc } from '@gsi/types';
 
 export interface ResolvedBranding {

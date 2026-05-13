@@ -6,8 +6,8 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { requireRole } from '@/lib/auth-utils';
-import { adminDb } from '@/lib/firebase/admin';
-import { generateParentDigest } from '@/lib/ai/parentDigestGenerator';
+import { adminDb } from '@gsi/firebase/admin';
+import { generateParentDigest } from '@gsi/ai/parentDigestGenerator';
 import { requireConsent } from '@gsi/dpdp';
 
 export async function POST(request: NextRequest) {

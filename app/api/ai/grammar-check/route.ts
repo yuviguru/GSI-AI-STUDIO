@@ -2,12 +2,12 @@ import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { grammarCheckSchema } from '@/lib/validators';
 import { filterInput, filterOutput } from '@gsi/safety';
-import { checkRateLimit, trackCreation } from '@/lib/firebase/sessionService';
-import { generateJsonWithGroq } from '@/lib/ai/groqClient';
+import { checkRateLimit, trackCreation } from '@gsi/firebase/sessionService';
+import { generateJsonWithGroq } from '@gsi/ai/groqClient';
 import {
   BOOK_GRAMMAR_SYSTEM_PROMPT,
   buildGrammarUserPrompt,
-} from '@/lib/ai/prompts/bookGrammarPrompt';
+} from '@gsi/ai/prompts/bookGrammarPrompt';
 import { nanoid } from 'nanoid';
 import type { GrammarSuggestion } from '@gsi/types';
 

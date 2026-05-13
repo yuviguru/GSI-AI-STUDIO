@@ -5,7 +5,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { musicInputSchema } from '@/lib/validators';
-import { checkRateLimit, enforceIpRateLimit } from '@/lib/firebase/sessionService';
+import { checkRateLimit, enforceIpRateLimit } from '@gsi/firebase/sessionService';
 import { createMusic } from '@/lib/capabilities/createMusic';
 
 export async function POST(request: NextRequest) {

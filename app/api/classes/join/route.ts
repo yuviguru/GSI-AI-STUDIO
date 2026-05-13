@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { verifyAuth } from '@/lib/auth-utils';
-import { adminDb } from '@/lib/firebase/admin';
-import { joinClassByCode } from '@/lib/firebase/schoolService';
+import { adminDb } from '@gsi/firebase/admin';
+import { joinClassByCode } from '@gsi/firebase/schoolService';
 
 /**
  * POST /api/classes/join

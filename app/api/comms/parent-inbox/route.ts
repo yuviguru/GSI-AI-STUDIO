@@ -8,7 +8,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError } from '@/lib/api-utils';
 import { verifyAuth } from '@/lib/auth-utils';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 
 const COMMS_LOG = 'commsLog';
 const MAX = 50;

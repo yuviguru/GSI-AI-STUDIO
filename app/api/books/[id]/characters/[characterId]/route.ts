@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { characterPatchSchema } from '@/lib/validators';
-import { updateCharacter, removeCharacter } from '@/lib/firebase/bookService';
+import { updateCharacter, removeCharacter } from '@gsi/firebase/bookService';
 import { filterInput } from '@gsi/safety';
 
 interface RouteParams {

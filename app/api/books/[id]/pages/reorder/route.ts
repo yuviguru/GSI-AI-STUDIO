@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { pageReorderSchema } from '@/lib/validators';
-import { reorderPages } from '@/lib/firebase/bookService';
+import { reorderPages } from '@gsi/firebase/bookService';
 
 /**
  * POST /api/books/[id]/pages/reorder — Atomically reorder pages.

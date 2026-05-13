@@ -18,7 +18,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { createUploadUrl } from '@/lib/storage/assetService';
-import { enforceIpRateLimit } from '@/lib/firebase/sessionService';
+import { enforceIpRateLimit } from '@gsi/firebase/sessionService';
 
 const bodySchema = z.object({
   kind: z.enum(['audio', 'video', 'image', 'pdf']),

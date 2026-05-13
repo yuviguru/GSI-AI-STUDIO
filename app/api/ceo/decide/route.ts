@@ -15,8 +15,8 @@ import {
   reserveRegularEventSlot,
   releaseRegularEventSlot,
   getRecentEventsForBusiness,
-} from '@/lib/firebase/ceoService';
-import { updateKidPoints } from '@/lib/firebase/sessionService';
+} from '@gsi/firebase/ceoService';
+import { updateKidPoints } from '@gsi/firebase/sessionService';
 import { applyStateChanges } from '@/lib/ceo/businessState';
 import { applyScoreAdjustments } from '@/lib/ceo/profileEngine';
 import { scoreDecision } from '@/lib/ceo/scoringEngine';

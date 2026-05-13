@@ -9,7 +9,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { requireRole } from '@/lib/auth-utils';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 
 const COMMS_LOG = 'commsLog';
 const TEMPLATE_ID = 'parent_weekly_digest_v1';

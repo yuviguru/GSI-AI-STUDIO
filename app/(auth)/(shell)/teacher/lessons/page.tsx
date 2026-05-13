@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { LessonPlanGenerator } from '@/components/teacher/LessonPlanGenerator';
-import type { LessonPlanDoc } from '@/lib/firebase/lessonPlanService';
+import type { LessonPlanDoc } from '@gsi/firebase/lessonPlanService';
 
 export default function LessonsPage() {
   const router = useRouter();

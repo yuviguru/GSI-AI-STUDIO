@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     // Consent reads require the parent; ownership is re-checked by the
     // helpers below only on writes. For reads we verify kid ownership
     // inline.
-    const kidSnap = await (await import('@/lib/firebase/admin')).adminDb
+    const kidSnap = await (await import('@gsi/firebase/admin')).adminDb
       .collection('kids')
       .doc(kidId)
       .get();

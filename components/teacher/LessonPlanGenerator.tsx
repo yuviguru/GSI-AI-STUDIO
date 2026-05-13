@@ -8,7 +8,7 @@ import type { ChapterEntry } from '@/lib/curriculum/ncertIndex';
 import type {
   LessonPlanDraft,
   StudioId,
-} from '@/lib/ai/lessonPlanGenerator';
+} from '@gsi/ai/lessonPlanGenerator';
 
 const STUDIO_OPTIONS: Array<StudioId | ''> = ['', 'story', 'music', 'quiz', 'game', 'comic'];
 

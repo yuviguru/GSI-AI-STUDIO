@@ -8,11 +8,11 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { requireRole } from '@/lib/auth-utils';
-import { generateLessonPlan } from '@/lib/ai/lessonPlanGenerator';
+import { generateLessonPlan } from '@gsi/ai/lessonPlanGenerator';
 import {
   checkAndIncrementAiRate,
   logTeacherAiUsage,
-} from '@/lib/firebase/teacherAiUsageService';
+} from '@gsi/firebase/teacherAiUsageService';
 import { isSupportedLocale, type Locale } from '@/lib/i18n/locales';
 
 const VALID_STUDIOS = new Set(['story', 'music', 'quiz', 'game', 'comic']);

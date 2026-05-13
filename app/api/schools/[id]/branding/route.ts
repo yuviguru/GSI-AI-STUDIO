@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { requireRole } from '@/lib/auth-utils';
-import { updateSchoolBranding } from '@/lib/firebase/schoolService';
+import { updateSchoolBranding } from '@gsi/firebase/schoolService';
 import { invalidateSchoolBranding } from '@/lib/pdf/schoolBranding';
 
 function assertSchoolAccess(schoolId: string, authSchoolId?: string) {

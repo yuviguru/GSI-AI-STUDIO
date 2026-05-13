@@ -9,8 +9,8 @@ import {
   submitCreation,
   listSubmissionsWithContext,
   bulkApprovePending,
-} from '@/lib/firebase/submissionService';
-import { getAssignment } from '@/lib/firebase/schoolService';
+} from '@gsi/firebase/submissionService';
+import { getAssignment } from '@gsi/firebase/schoolService';
 
 /**
  * POST /api/assignments/[id]/submissions

@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
-import { listPublicCreations, getTopCreators } from '@/lib/firebase/creationService';
+import { listPublicCreations, getTopCreators } from '@gsi/firebase/creationService';
 import type { CreationType } from '@gsi/types';
 
 export const dynamic = 'force-dynamic';

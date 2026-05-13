@@ -2,10 +2,10 @@ import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { pageImageSchema } from '@/lib/validators';
 import { filterImagePrompt } from '@gsi/safety';
-import { checkRateLimit, trackCreation } from '@/lib/firebase/sessionService';
-import { getBook } from '@/lib/firebase/bookService';
-import { getImageProvider, type ImageStyle } from '@/lib/ai/imageProvider';
-import { dimsForBookAndLayout } from '@/lib/ai/imageDims';
+import { checkRateLimit, trackCreation } from '@gsi/firebase/sessionService';
+import { getBook } from '@gsi/firebase/bookService';
+import { getImageProvider, type ImageStyle } from '@gsi/ai/imageProvider';
+import { dimsForBookAndLayout } from '@gsi/ai/imageDims';
 
 /** Fallback dims for the explicit `aspect` enum — used when no bookId/pageId
  *  is provided to derive proper slot dimensions. */

@@ -5,12 +5,12 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { requireRole } from '@/lib/auth-utils';
-import { adminDb } from '@/lib/firebase/admin';
-import { draftAdhocMessage, type Tone } from '@/lib/ai/adhocMessageDrafter';
+import { adminDb } from '@gsi/firebase/admin';
+import { draftAdhocMessage, type Tone } from '@gsi/ai/adhocMessageDrafter';
 import {
   checkAndIncrementAiRate,
   logTeacherAiUsage,
-} from '@/lib/firebase/teacherAiUsageService';
+} from '@gsi/firebase/teacherAiUsageService';
 import { requireConsent } from '@gsi/dpdp';
 import { isSupportedLocale, type Locale } from '@/lib/i18n/locales';
 

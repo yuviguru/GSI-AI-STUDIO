@@ -16,7 +16,7 @@
  *     are bucketed under the kid/parent's phone-derived identity.
  */
 
-import { llmRouter } from '@/lib/ai/router';
+import { llmRouter } from '@gsi/ai/router';
 import { TOOLS, executeTool } from '@/lib/mcp/tools';
 import { sendWhatsAppText } from './client';
 import { backend } from '@/lib/backend';

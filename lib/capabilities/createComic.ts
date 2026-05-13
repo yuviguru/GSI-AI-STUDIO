@@ -2,18 +2,18 @@
  * createComic capability — generates a multi-panel illustrated comic.
  */
 
-import { llmRouter, imageRouter } from '@/lib/ai/router';
+import { llmRouter, imageRouter } from '@gsi/ai/router';
 import { saveCreation } from '@/lib/repositories/creationRepository';
-import { trackCreation } from '@/lib/firebase/sessionService';
+import { trackCreation } from '@gsi/firebase/sessionService';
 import { filterInput, filterOutput, filterImagePrompt } from '@gsi/safety';
 import {
   COMIC_SYSTEM_PROMPT,
   COMIC_STYLE_PREFIXES,
   buildComicUserPrompt,
-} from '@/lib/ai/prompts/comicPrompt';
+} from '@gsi/ai/prompts/comicPrompt';
 import { usageTracker } from '@/lib/cost/usageTracker';
 import { persistImages } from './imageStorage';
-import type { CostTier } from '@/lib/ai/ports';
+import type { CostTier } from '@gsi/ai/ports';
 import type { AiXrayData, ComicContent, ComicDialogue } from '@gsi/types';
 
 const IMAGE_CONCURRENCY = 5;

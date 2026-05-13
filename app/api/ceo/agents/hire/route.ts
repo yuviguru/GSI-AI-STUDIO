@@ -3,12 +3,12 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { requireAuthWithKid } from '@/lib/auth-utils';
 import { ceoAgentHireSchema } from '@/lib/validators';
-import { adminDb } from '@/lib/firebase/admin';
-import { getCeoBusiness } from '@/lib/firebase/ceoService';
+import { adminDb } from '@gsi/firebase/admin';
+import { getCeoBusiness } from '@gsi/firebase/ceoService';
 import {
   createCeoAgentHire,
   getActiveHireForAgent,
-} from '@/lib/firebase/ceoAgentHireService';
+} from '@gsi/firebase/ceoAgentHireService';
 import { getAgentDescriptor, isAgentUnlocked } from '@/lib/ceo/agents/catalog';
 import type { CeoBusiness } from '@gsi/types';
 

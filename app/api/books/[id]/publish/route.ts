@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
-import { publishBook } from '@/lib/firebase/bookService';
+import { publishBook } from '@gsi/firebase/bookService';
 
 const publishInputSchema = z.object({
   isPublic: z.boolean().default(false),

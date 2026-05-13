@@ -7,7 +7,7 @@ import {
   getPendingMilestoneForBusiness,
   getPendingRegularForBusiness,
   listDecidedEventsForBusiness,
-} from '@/lib/firebase/ceoService';
+} from '@gsi/firebase/ceoService';
 import type { CeoBusiness, CeoEvent } from '@gsi/types';
 
 /**

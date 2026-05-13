@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { requireRole } from '@/lib/auth-utils';
-import { getClass, getClassStudents } from '@/lib/firebase/schoolService';
+import { getClass, getClassStudents } from '@gsi/firebase/schoolService';
 
 /**
  * GET /api/schools/[id]/classes/[classId]

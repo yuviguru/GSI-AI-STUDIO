@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { skillArenaStartSchema } from '@/lib/validators';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { getChallengesForModule } from '@/lib/skill-arena/questionBank';
 import { getDifficultyForBand } from '@/lib/skill-arena/scoring';

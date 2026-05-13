@@ -7,7 +7,7 @@ const mockGetCreation = vi.fn();
 const mockIncrementView = vi.fn();
 const mockArchiveCreation = vi.fn();
 
-vi.mock('@/lib/firebase/creationService', () => ({
+vi.mock('@gsi/firebase/creationService', () => ({
   getCreation: (...args: unknown[]) => mockGetCreation(...args),
   incrementView: (...args: unknown[]) => mockIncrementView(...args),
   archiveCreation: (...args: unknown[]) => mockArchiveCreation(...args),

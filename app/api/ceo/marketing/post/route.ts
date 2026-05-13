@@ -3,8 +3,8 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { requireAuthWithKid } from '@/lib/auth-utils';
-import { adminDb } from '@/lib/firebase/admin';
-import { getArtifact } from '@/lib/firebase/ceoArtifactService';
+import { adminDb } from '@gsi/firebase/admin';
+import { getArtifact } from '@gsi/firebase/ceoArtifactService';
 import { istDayKey } from '@/lib/ceo/cadence';
 import type { CeoBusiness } from '@gsi/types';
 

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { bookPatchSchema } from '@/lib/validators';
-import { getBook, updateBook, deleteBook } from '@/lib/firebase/bookService';
+import { getBook, updateBook, deleteBook } from '@gsi/firebase/bookService';
 
 interface RouteParams {
   params: { id: string };

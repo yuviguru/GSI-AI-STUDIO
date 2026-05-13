@@ -4,7 +4,7 @@ import { requireRole } from '@/lib/auth-utils';
 import {
   saveErpIntegration,
   removeErpIntegration,
-} from '@/lib/firebase/erpIntegrationService';
+} from '@gsi/firebase/erpIntegrationService';
 import '@/lib/integrations'; // ensure adapters register
 import {
   getErpIntegrationConfig,

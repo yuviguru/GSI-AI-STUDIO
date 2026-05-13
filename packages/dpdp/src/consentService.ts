@@ -7,7 +7,7 @@
  */
 
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 import { AppException } from '@/lib/api-utils';
 import {
   ALL_CONSENT_SCOPES,

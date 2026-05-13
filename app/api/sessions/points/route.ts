@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
-import { getSessionPoints, updateSessionPoints } from '@/lib/firebase/sessionService';
-import type { PointsAction } from '@/lib/firebase/sessionService';
+import { getSessionPoints, updateSessionPoints } from '@gsi/firebase/sessionService';
+import type { PointsAction } from '@gsi/firebase/sessionService';
 import { verifyAuth } from '@/lib/auth-utils';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 
 const VALID_ACTIONS = ['add_points', 'learn_concept', 'track_creation', 'track_share'] as const;
 

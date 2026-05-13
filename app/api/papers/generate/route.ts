@@ -8,11 +8,11 @@ import { requireRole } from '@/lib/auth-utils';
 import {
   generateQuestionPaper,
   type PaperBlueprint,
-} from '@/lib/ai/questionPaperGenerator';
+} from '@gsi/ai/questionPaperGenerator';
 import {
   checkAndIncrementAiRate,
   logTeacherAiUsage,
-} from '@/lib/firebase/teacherAiUsageService';
+} from '@gsi/firebase/teacherAiUsageService';
 import { isSupportedLocale, type Locale } from '@/lib/i18n/locales';
 
 export async function POST(request: NextRequest) {

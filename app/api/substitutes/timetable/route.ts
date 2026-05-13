@@ -9,7 +9,7 @@ import { requireRole } from '@/lib/auth-utils';
 import {
   listTimetablesForSchool,
   saveTeacherTimetable,
-} from '@/lib/firebase/timetableService';
+} from '@gsi/firebase/timetableService';
 
 export async function GET(request: NextRequest) {
   try {

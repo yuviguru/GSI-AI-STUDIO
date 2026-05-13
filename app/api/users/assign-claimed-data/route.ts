@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { verifyAuth } from '@/lib/auth-utils';
-import { assignClaimedDataToKid } from '@/lib/firebase/userService';
+import { assignClaimedDataToKid } from '@gsi/firebase/userService';
 
 /**
  * POST /api/users/assign-claimed-data

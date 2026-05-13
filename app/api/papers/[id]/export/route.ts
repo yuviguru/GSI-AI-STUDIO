@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { jsPDF } from 'jspdf';
 import { handleApiError, AppException } from '@/lib/api-utils';
 import { requireRole } from '@/lib/auth-utils';
-import { getQuestionPaper } from '@/lib/firebase/questionPaperService';
+import { getQuestionPaper } from '@gsi/firebase/questionPaperService';
 import {
   getSchoolBranding,
   renderBrandedHeader,

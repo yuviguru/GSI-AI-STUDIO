@@ -12,7 +12,7 @@ import {
   createPtmNote,
   listPtmNotesForClass,
   listPtmNotesForKid,
-} from '@/lib/firebase/ptmNotesService';
+} from '@gsi/firebase/ptmNotesService';
 
 export async function GET(request: NextRequest) {
   try {

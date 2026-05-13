@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError } from '@/lib/api-utils';
 import { requireAuthWithKid } from '@/lib/auth-utils';
-import { listBusinessesForKid } from '@/lib/firebase/ceoService';
+import { listBusinessesForKid } from '@gsi/firebase/ceoService';
 
 /**
  * GET /api/ceo/businesses

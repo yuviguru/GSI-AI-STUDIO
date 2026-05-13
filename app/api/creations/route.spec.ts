@@ -7,12 +7,12 @@ const mockTrackCreation = vi.fn();
 const mockSaveCreation = vi.fn();
 const mockListCreations = vi.fn();
 
-vi.mock('@/lib/firebase/sessionService', () => ({
+vi.mock('@gsi/firebase/sessionService', () => ({
   checkRateLimit: (...args: unknown[]) => mockCheckRateLimit(...args),
   trackCreation: (...args: unknown[]) => mockTrackCreation(...args),
 }));
 
-vi.mock('@/lib/firebase/creationService', () => ({
+vi.mock('@gsi/firebase/creationService', () => ({
   saveCreation: (...args: unknown[]) => mockSaveCreation(...args),
   listCreations: (...args: unknown[]) => mockListCreations(...args),
 }));

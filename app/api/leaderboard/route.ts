@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError } from '@/lib/api-utils';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 
 // Always evaluate at runtime — leaderboard data changes constantly and
 // build-time prerender would otherwise cache an empty response.

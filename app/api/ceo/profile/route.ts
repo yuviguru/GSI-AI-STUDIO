@@ -7,8 +7,8 @@ import {
   getPublicCeoProfile,
   setCeoProfilePublic,
   getCeoBusiness,
-} from '@/lib/firebase/ceoService';
-import { updateKidPoints } from '@/lib/firebase/sessionService';
+} from '@gsi/firebase/ceoService';
+import { updateKidPoints } from '@gsi/firebase/sessionService';
 import type { CeoBusiness, CeoProfile } from '@gsi/types';
 
 type PublicCeoProfile = Omit<CeoProfile, 'userId' | 'kidId'>;

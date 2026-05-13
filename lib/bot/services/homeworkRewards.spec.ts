@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Timestamp } from 'firebase-admin/firestore';
 import type { HomeworkSession } from '@/lib/bot/types';
 
-vi.mock('@/lib/firebase/sessionService', () => ({
+vi.mock('@gsi/firebase/sessionService', () => ({
   updateSessionPoints: vi.fn(),
 }));
 
-import { updateSessionPoints } from '@/lib/firebase/sessionService';
+import { updateSessionPoints } from '@gsi/firebase/sessionService';
 import {
   computePointsForSession,
   applyHomeworkReward,

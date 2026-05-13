@@ -21,8 +21,8 @@
  *  ARCHETYPES ("the neighbourhood-first founder") — never named companies. */
 
 import { Timestamp } from 'firebase-admin/firestore';
-import { generateJsonWithGroq } from '@/lib/ai/groqClient';
-import { generateJsonWithClaude } from '@/lib/ai/claudeClient';
+import { generateJsonWithGroq } from '@gsi/ai/groqClient';
+import { generateJsonWithClaude } from '@gsi/ai/claudeClient';
 import { DIMENSIONS, DIMENSION_LABELS } from '@/lib/ceo/constants';
 import { filterOutput } from '@gsi/safety';
 import type {

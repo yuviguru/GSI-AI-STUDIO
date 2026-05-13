@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { verifyAuth } from '@/lib/auth-utils';
-import { updateKid, getKid } from '@/lib/firebase/kidService';
+import { updateKid, getKid } from '@gsi/firebase/kidService';
 
 /**
  * PATCH /api/users/kids/[kidId]

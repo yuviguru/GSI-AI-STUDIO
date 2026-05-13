@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { pageCreateSchema } from '@/lib/validators';
-import { appendPage } from '@/lib/firebase/bookService';
+import { appendPage } from '@gsi/firebase/bookService';
 
 /**
  * POST /api/books/[id]/pages — Append a new page to a book.

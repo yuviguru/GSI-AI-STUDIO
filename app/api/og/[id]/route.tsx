@@ -1,5 +1,5 @@
 import { ImageResponse } from '@vercel/og';
-import { getCreation } from '@/lib/firebase/creationService';
+import { getCreation } from '@gsi/firebase/creationService';
 
 export const runtime = 'nodejs';
 

@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
-import { getBook } from '@/lib/firebase/bookService';
+import { getBook } from '@gsi/firebase/bookService';
 import { generateBookPdf } from '@/lib/export/pdfGenerator';
 
 /**

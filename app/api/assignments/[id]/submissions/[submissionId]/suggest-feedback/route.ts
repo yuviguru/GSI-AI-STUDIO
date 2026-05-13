@@ -8,13 +8,13 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { requireRole } from '@/lib/auth-utils';
-import { getSubmissionWithContext } from '@/lib/firebase/submissionService';
-import { adminDb } from '@/lib/firebase/admin';
-import { suggestFeedback, type Locale } from '@/lib/ai/feedbackSuggester';
+import { getSubmissionWithContext } from '@gsi/firebase/submissionService';
+import { adminDb } from '@gsi/firebase/admin';
+import { suggestFeedback, type Locale } from '@gsi/ai/feedbackSuggester';
 import {
   checkAndIncrementAiRate,
   logTeacherAiUsage,
-} from '@/lib/firebase/teacherAiUsageService';
+} from '@gsi/firebase/teacherAiUsageService';
 import { requireConsent } from '@gsi/dpdp';
 
 function parseLocale(raw: unknown): Locale {

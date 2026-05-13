@@ -38,7 +38,7 @@ import type {
   TipTapDocument,
 } from '@gsi/types';
 import { BOOK_FONTS } from '@/lib/templates/bookTemplates';
-import { slotAspectRatioForCss } from '@/lib/ai/imageDims';
+import { slotAspectRatioForCss } from '@gsi/ai/imageDims';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { useGrammarCheck } from '@/hooks/useGrammarCheck';
 import { usePageImage } from '@/hooks/usePageImage';

@@ -5,7 +5,7 @@
  * URLs for served reads.
  */
 
-import { adminStorage } from '@/lib/firebase/admin';
+import { adminStorage } from '@gsi/firebase/admin';
 import type {
   StorageProvider,
   UploadUrlOptions,

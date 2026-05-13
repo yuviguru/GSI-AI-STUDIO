@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockGetOrCreateSession = vi.fn();
 
-vi.mock('@/lib/firebase/sessionService', () => ({
+vi.mock('@gsi/firebase/sessionService', () => ({
   getOrCreateSession: (...args: unknown[]) => mockGetOrCreateSession(...args),
 }));
 

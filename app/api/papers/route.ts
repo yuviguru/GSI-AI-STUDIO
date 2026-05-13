@@ -10,7 +10,7 @@ import {
   createQuestionPaper,
   listQuestionPapersForTeacher,
   type QuestionPaperStatus,
-} from '@/lib/firebase/questionPaperService';
+} from '@gsi/firebase/questionPaperService';
 import { getChapter } from '@/lib/curriculum/ncertIndex';
 import {
   isSupportedLocale,

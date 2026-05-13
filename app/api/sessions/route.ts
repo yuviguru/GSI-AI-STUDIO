@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
-import { getOrCreateSession } from '@/lib/firebase/sessionService';
+import { getOrCreateSession } from '@gsi/firebase/sessionService';
 
 /**
  * POST /api/sessions

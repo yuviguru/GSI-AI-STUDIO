@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { characterCreateSchema } from '@/lib/validators';
-import { addCharacter } from '@/lib/firebase/bookService';
+import { addCharacter } from '@gsi/firebase/bookService';
 import { filterInput } from '@gsi/safety';
 
 /**

@@ -11,8 +11,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
-import type { PtmNoteDraft } from '@/lib/ai/ptmNoteGenerator';
-import type { Tone } from '@/lib/ai/adhocMessageDrafter';
+import type { PtmNoteDraft } from '@gsi/ai/ptmNoteGenerator';
+import type { Tone } from '@gsi/ai/adhocMessageDrafter';
 
 interface Props {
   kidId: string;

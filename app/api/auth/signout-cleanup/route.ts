@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
-import { adminAuth } from '@/lib/firebase/admin';
-import { clearOrphanedClaimSnapshot } from '@/lib/firebase/userService';
+import { adminAuth } from '@gsi/firebase/admin';
+import { clearOrphanedClaimSnapshot } from '@gsi/firebase/userService';
 
 /**
  * POST /api/auth/signout-cleanup

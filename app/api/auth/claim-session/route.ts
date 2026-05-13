@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
-import { adminAuth } from '@/lib/firebase/admin';
-import { claimSession } from '@/lib/firebase/userService';
+import { adminAuth } from '@gsi/firebase/admin';
+import { claimSession } from '@gsi/firebase/userService';
 import { MASCOTS } from '@/lib/mascots/roster';
 import { isPersistableAvatarUrl } from '@/lib/images/avatarUrl';
 

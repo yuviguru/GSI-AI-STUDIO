@@ -30,7 +30,7 @@
  */
 
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { adminAuth, adminDb } from '../lib/firebase/admin';
+import { adminAuth, adminDb } from '@gsi/firebase/admin';
 
 // ─── CLI ──────────────────────────────────────────────────────────────────
 

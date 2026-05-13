@@ -8,8 +8,8 @@
  *      Groq Whisper STT. Bot modules never touch SDKs directly. */
 
 import type { BotContext, BotIncomingMessage, BotSession } from './types';
-import { generateWithGroq } from '@/lib/ai/groqClient';
-import { generateWithClaude } from '@/lib/ai/claudeClient';
+import { generateWithGroq } from '@gsi/ai/groqClient';
+import { generateWithClaude } from '@gsi/ai/claudeClient';
 import { getOrCreateBotSession, touchBotSession } from './services/sessionStore';
 import { transcribeVoice } from './services/stt';
 import { filterInput, filterOutput } from '@gsi/safety';

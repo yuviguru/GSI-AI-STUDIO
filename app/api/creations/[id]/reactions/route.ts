@@ -8,13 +8,13 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { verifyAuth } from '@/lib/auth-utils';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 import {
   addReaction,
   isAllowedReaction,
   isKidInClass,
   removeReaction,
-} from '@/lib/firebase/classFeedService';
+} from '@gsi/firebase/classFeedService';
 
 async function resolveActor(
   request: NextRequest,

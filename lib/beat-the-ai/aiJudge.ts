@@ -4,8 +4,8 @@ import type {
   BeatTheAiPrompt,
   BeatTheAiScores,
 } from '@gsi/types';
-import { generateJsonWithClaude } from '@/lib/ai/claudeClient';
-import { generateJsonWithGroq } from '@/lib/ai/groqClient';
+import { generateJsonWithClaude } from '@gsi/ai/claudeClient';
+import { generateJsonWithGroq } from '@gsi/ai/groqClient';
 import { filterOutput } from '@gsi/safety';
 
 // ─── Category-specific rubric guidance ───────────────────────

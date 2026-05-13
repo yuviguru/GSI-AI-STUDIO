@@ -7,7 +7,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StudioTile } from './StudioTile';
-import { HERO_IMAGE_SIZES } from '@/lib/responsive/tokens';
+import { HERO_IMAGE_SIZES } from '@gsi/ui';
 import type { SectionDefinition, SectionGradient } from '@gsi/types';
 
 const GRADIENTS: Record<SectionGradient, string> = {

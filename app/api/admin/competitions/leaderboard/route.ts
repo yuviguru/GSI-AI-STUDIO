@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError } from '@/lib/api-utils';
 import { requireRole } from '@/lib/auth-utils';
-import { buildInterSchoolLeaderboard } from '@/lib/firebase/analyticsService';
+import { buildInterSchoolLeaderboard } from '@gsi/firebase/analyticsService';
 
 /**
  * GET /api/admin/competitions/leaderboard

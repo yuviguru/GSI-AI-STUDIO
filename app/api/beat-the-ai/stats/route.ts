@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 import type { BeatTheAiCategory, BeatTheAiStats } from '@gsi/types';
 
 const SESSIONS_COLLECTION = 'sessions';

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getPublishedBookBySlug } from '@/lib/firebase/bookService';
+import { getPublishedBookBySlug } from '@gsi/firebase/bookService';
 import { PublicBookViewer } from './PublicBookViewer';
 
 interface BookViewPageProps {

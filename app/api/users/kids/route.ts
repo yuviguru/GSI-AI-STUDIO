@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { verifyAuth } from '@/lib/auth-utils';
-import { createKid, listKids } from '@/lib/firebase/kidService';
+import { createKid, listKids } from '@gsi/firebase/kidService';
 import { isPersistableAvatarUrl } from '@/lib/images/avatarUrl';
 
 /**

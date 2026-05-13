@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { coverPatchSchema } from '@/lib/validators';
-import { updateCover } from '@/lib/firebase/bookService';
+import { updateCover } from '@gsi/firebase/bookService';
 import { filterInput, filterImagePrompt } from '@gsi/safety';
 
 /**

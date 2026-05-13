@@ -2,8 +2,8 @@ import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { characterPortraitSchema } from '@/lib/validators';
 import { filterImagePrompt } from '@gsi/safety';
-import { checkRateLimit, trackCreation } from '@/lib/firebase/sessionService';
-import { getImageProvider } from '@/lib/ai/imageProvider';
+import { checkRateLimit, trackCreation } from '@gsi/firebase/sessionService';
+import { getImageProvider } from '@gsi/ai/imageProvider';
 
 /**
  * POST /api/ai/character-portrait — Generate an anchor portrait for a character.

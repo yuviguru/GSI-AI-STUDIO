@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
-import { adminAuth } from '@/lib/firebase/admin';
-import { createUser } from '@/lib/firebase/userService';
+import { adminAuth } from '@gsi/firebase/admin';
+import { createUser } from '@gsi/firebase/userService';
 import type { UserRole } from '@gsi/types';
 
 const VALID_ROLES: UserRole[] = ['parent', 'teacher'];

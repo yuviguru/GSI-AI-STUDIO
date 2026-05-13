@@ -23,6 +23,9 @@ export default defineConfig({
       '@gsi/types': path.resolve(__dirname, 'packages/types/src/index.ts'),
       '@gsi/safety': path.resolve(__dirname, 'packages/safety/src/index.ts'),
       '@gsi/dpdp': path.resolve(__dirname, 'packages/dpdp/src/index.ts'),
+      '@gsi/ai': path.resolve(__dirname, 'packages/ai/src'),
+      '@gsi/firebase': path.resolve(__dirname, 'packages/firebase/src'),
+      '@gsi/ui': path.resolve(__dirname, 'packages/ui/src/index.ts'),
     },
   },
 });

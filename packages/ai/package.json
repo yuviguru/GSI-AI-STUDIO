@@ -2,5 +2,21 @@
   "name": "@gsi/ai",
   "version": "0.0.0",
   "private": true,
-  "description": "Claude / Replicate / Gemini clients, prompts, router, eval harness. Phase 2 will move lib/ai/* here."
+  "description": "Claude / Replicate / Gemini clients, ports, adapters, routers, prompts, generators, and eval harness.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "types": "./src/*.ts",
+      "default": "./src/*.ts"
+    },
+    "./*/index": {
+      "types": "./src/*/index.ts",
+      "default": "./src/*/index.ts"
+    }
+  }
 }

@@ -18,7 +18,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { dispatch, isNotification } from '@/lib/mcp/server';
 import { backend } from '@/lib/backend';
 import type { JsonRpcRequest } from '@/lib/mcp/protocol';
-import type { CostTier } from '@/lib/ai/ports';
+import type { CostTier } from '@gsi/ai/ports';
 
 export const maxDuration = 60;
 

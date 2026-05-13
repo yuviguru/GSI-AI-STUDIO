@@ -15,7 +15,7 @@ import {
   getPerformanceFeedItem,
   updatePerformance,
   deletePerformance,
-} from '@/lib/firebase/performanceService';
+} from '@gsi/firebase/performanceService';
 
 interface RouteParams {
   params: { id: string };

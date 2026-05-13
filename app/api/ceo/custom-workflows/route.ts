@@ -2,11 +2,11 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { requireAuthWithKid } from '@/lib/auth-utils';
-import { getCeoBusiness } from '@/lib/firebase/ceoService';
+import { getCeoBusiness } from '@gsi/firebase/ceoService';
 import {
   createCustomWorkflow,
   listCustomWorkflowsForBusiness,
-} from '@/lib/firebase/ceoCustomWorkflowService';
+} from '@gsi/firebase/ceoCustomWorkflowService';
 import { getAgentDescriptor } from '@/lib/ceo/agents/catalog';
 
 const TRIGGER_ENUM = z.enum([

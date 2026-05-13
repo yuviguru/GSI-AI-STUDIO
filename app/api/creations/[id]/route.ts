@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
-import { getCreation, incrementView, archiveCreation } from '@/lib/firebase/creationService';
+import { getCreation, incrementView, archiveCreation } from '@gsi/firebase/creationService';
 
 /**
  * GET /api/creations/:id — Fetch a single creation

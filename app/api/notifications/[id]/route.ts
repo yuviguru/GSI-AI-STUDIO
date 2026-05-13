@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError } from '@/lib/api-utils';
 import { verifyAuth } from '@/lib/auth-utils';
-import { markNotificationRead } from '@/lib/firebase/notificationService';
+import { markNotificationRead } from '@gsi/firebase/notificationService';
 
 /** PATCH /api/notifications/[id] — mark a notification read. */
 export async function PATCH(

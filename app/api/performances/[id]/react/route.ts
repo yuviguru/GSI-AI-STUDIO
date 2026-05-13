@@ -6,7 +6,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
-import { reactToPerformance } from '@/lib/firebase/performanceService';
+import { reactToPerformance } from '@gsi/firebase/performanceService';
 
 const bodySchema = z.object({
   emoji: z.string().min(1).max(8),

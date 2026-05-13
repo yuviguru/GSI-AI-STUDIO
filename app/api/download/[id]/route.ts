@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
-import { incrementDownload } from '@/lib/firebase/creationService';
+import { incrementDownload } from '@gsi/firebase/creationService';
 
 /**
  * POST /api/download/[id]

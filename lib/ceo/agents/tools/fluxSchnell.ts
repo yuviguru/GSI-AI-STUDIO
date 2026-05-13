@@ -11,7 +11,7 @@
  * stability in the kid-facing trace.
  */
 
-import { getImageProvider, type ImageOptions, type ImageStyle } from '@/lib/ai/imageProvider';
+import { getImageProvider, type ImageOptions, type ImageStyle } from '@gsi/ai/imageProvider';
 import type { ToolAdapter, ToolRunContext, ToolRunResult } from './types';
 
 export interface FluxSchnellInput {

@@ -9,8 +9,8 @@ import type {
   SkillArenaXray,
 } from '@gsi/types';
 import { MODULE_XRAY_CONCEPTS } from '@gsi/types';
-import { generateJsonWithClaude } from '@/lib/ai/claudeClient';
-import { generateJsonWithGroq } from '@/lib/ai/groqClient';
+import { generateJsonWithClaude } from '@gsi/ai/claudeClient';
+import { generateJsonWithGroq } from '@gsi/ai/groqClient';
 import { filterOutput } from '@gsi/safety';
 
 // ─── Module-specific rubrics ──────────────────────────────

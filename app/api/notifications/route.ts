@@ -4,7 +4,7 @@ import { verifyAuth } from '@/lib/auth-utils';
 import {
   getUnreadCount,
   listNotifications,
-} from '@/lib/firebase/notificationService';
+} from '@gsi/firebase/notificationService';
 
 /** GET /api/notifications — list current user's recent notifications. */
 export async function GET(request: NextRequest) {
