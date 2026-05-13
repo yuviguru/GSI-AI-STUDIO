@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ContinueCreatingCard } from '@/components/dashboard';
 import { AssignmentView } from '@/components/student/AssignmentView';
 import { SectionHub, DashboardRightRail } from '@/components/navigation';
+import { KidAuthBanner } from '@/components/navigation/KidAuthBanner';
 import { kidDashboardConfig } from '@/lib/dashboard/configs/kid.config';
 
 export default function HomePage() {
@@ -55,6 +56,7 @@ export default function HomePage() {
       </AnimatePresence>
 
       <div className="mx-auto w-full max-w-[1600px] px-4 py-5 sm:px-6 lg:px-8">
+        <KidAuthBanner />
         <ContinueCreatingCard />
         <div className="mb-4">
           <AssignmentView />
