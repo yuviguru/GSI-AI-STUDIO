@@ -1,0 +1,6 @@
+{
+  "name": "@gsi/dpdp",
+  "version": "0.0.0",
+  "private": true,
+  "description": "DPDP consent service + erasure pipeline. Phase 2 will move lib/dpdp/* here."
+}

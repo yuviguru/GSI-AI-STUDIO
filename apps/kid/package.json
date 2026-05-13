@@ -1,0 +1,6 @@
+{
+  "name": "@gsi/app-kid",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Kid + parent portal. Subdomain: kids.gsi.ai. Phase 3 will move app code here."
+}

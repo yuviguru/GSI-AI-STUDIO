@@ -1,0 +1,6 @@
+{
+  "name": "@gsi/safety",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Input/output filters, profanity, blocklist. Phase 2 will move lib/safety/* here."
+}
