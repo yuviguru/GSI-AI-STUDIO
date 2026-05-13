@@ -3,8 +3,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { getRecaptchaVerifier, sendPhoneOtp, auth } from '@/lib/firebase/client';
-import type { ConfirmationResult } from 'firebase/auth';
+import {
+  getRecaptchaVerifier,
+  clearRecaptchaVerifier,
+  sendPhoneOtp,
+  verifyPhoneOtp,
+  auth,
+} from '@/lib/firebase/client';
 import { useAuth } from '@/hooks/useAuth';
 
 type Step = 'phone' | 'success';
@@ -35,7 +40,7 @@ export function PhoneAuthFlow({ onComplete, onClose }: PhoneAuthFlowProps) {
   // Consent + Phone
   const [consentChecked, setConsentChecked] = useState(false);
   const [phone, setPhone] = useState('');
-  const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
+  const [verificationId, setVerificationId] = useState<string | null>(null);
   const [otpSent, setOtpSent] = useState(false);
 
   // OTP
@@ -44,6 +49,11 @@ export function PhoneAuthFlow({ onComplete, onClose }: PhoneAuthFlowProps) {
   const [resendCooldown, setResendCooldown] = useState(0);
 
   const recaptchaContainerRef = useRef<HTMLDivElement>(null);
+
+  // Clean up reCAPTCHA when this component unmounts (modal close, navigation)
+  useEffect(() => {
+    return () => clearRecaptchaVerifier();
+  }, []);
 
   // ── Send OTP ──────────────────────────────────────────────────────────
 
@@ -61,9 +71,11 @@ export function PhoneAuthFlow({ onComplete, onClose }: PhoneAuthFlowProps) {
         throw new Error('Please enter a valid 10-digit phone number');
       }
 
+      // getRecaptchaVerifier replaces the container element to avoid
+      // "already rendered" errors on retry (see client.ts for details).
       const verifier = getRecaptchaVerifier('recaptcha-container');
-      const result = await sendPhoneOtp(cleanPhone, verifier);
-      setConfirmation(result);
+      const vId = await sendPhoneOtp(cleanPhone, verifier);
+      setVerificationId(vId);
       setOtpSent(true);
       setResendCooldown(30);
       setTimeout(() => otpRefs.current[0]?.focus(), 100);
@@ -73,6 +85,10 @@ export function PhoneAuthFlow({ onComplete, onClose }: PhoneAuthFlowProps) {
         setError('Too many attempts. Please try again later.');
       } else if (message.includes('invalid-phone-number')) {
         setError('Invalid phone number. Please check and try again.');
+      } else if (message.includes('reCAPTCHA') || message.includes('recaptcha')) {
+        // reCAPTCHA got into a broken state — will auto-recover on next attempt
+        // since getRecaptchaVerifier replaces the DOM node.
+        setError('Verification failed. Please try again.');
       } else {
         setError(message);
       }
@@ -107,21 +123,36 @@ export function PhoneAuthFlow({ onComplete, onClose }: PhoneAuthFlowProps) {
   // Auto-verify when all 6 digits entered
   useEffect(() => {
     const code = otp.join('');
-    if (code.length === 6 && confirmation) verifyOtp(code);
+    if (code.length === 6 && verificationId) handleVerifyOtp(code);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [otp, confirmation]);
+  }, [otp, verificationId]);
 
-  // ── Verify OTP + auto-register ────────────────────────────────────────
+  // ── Verify OTP + link/sign-in + auto-register ─────────────────────────
+  //
+  // Three outcomes via verifyPhoneOtp():
+  // 1. Anonymous → phone (link succeeded): same UID, zero migration.
+  // 2. Anonymous → phone (conflict): signed into existing account;
+  //    conflictAnonymousUid set → SessionInit claim handles migration.
+  // 3. No anonymous user → plain phone sign-in.
 
-  async function verifyOtp(code: string) {
-    if (!confirmation) return;
+  async function handleVerifyOtp(code: string) {
+    if (!verificationId) return;
     setError(null);
     setLoading(true);
 
     try {
-      await confirmation.confirm(code);
-      const user = auth.currentUser;
+      const result = await verifyPhoneOtp(verificationId, code);
+      const user = result.user;
       if (!user) throw new Error('Authentication failed');
+
+      // If there was a conflict (phone already linked to another account),
+      // store the orphaned anonymous UID so SessionInit can claim its data.
+      if (result.conflictAnonymousUid && typeof window !== 'undefined') {
+        sessionStorage.setItem(
+          'gsi-conflict-anonymous-uid',
+          result.conflictAnonymousUid,
+        );
+      }
 
       // Auto-register: create user doc if it doesn't exist (silent, no user input)
       const token = await user.getIdToken();
@@ -166,7 +197,7 @@ export function PhoneAuthFlow({ onComplete, onClose }: PhoneAuthFlowProps) {
 
   function handleChangeNumber() {
     setOtpSent(false);
-    setConfirmation(null);
+    setVerificationId(null);
     setOtp(['', '', '', '', '', '']);
     setError(null);
   }

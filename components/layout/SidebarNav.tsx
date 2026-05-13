@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { useAiPoints } from '@/contexts/AiPointsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useKidProfile } from '@/hooks/useKidProfile';
+import { useOnboardingProfile } from '@/hooks/useOnboardingProfile';
 import { getAvatarEmoji } from '@/components/profile/AvatarPicker';
 import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
 import { ProfilePicker } from '@/components/profile/ProfilePicker';
@@ -111,6 +112,7 @@ export function SidebarNav() {
   const [showPicker, setShowPicker] = useState(false);
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { activeKid } = useKidProfile();
+  const { profile: onboardingProfile } = useOnboardingProfile();
   const { totalPoints } = useAiPoints();
   const isStudioActive = pathname.startsWith('/create/');
 
@@ -264,15 +266,24 @@ export function SidebarNav() {
         {/* ── User / Active Kid ─────────────────────────────────────── */}
         <div className="border-t border-gray-100 px-1 py-4">
           {!authLoading && isAuthenticated && activeKid ? (
-            /* Authenticated with active kid: avatar left, name + points stacked right */
+            /* Authenticated with active kid: show generated avatar or emoji fallback */
             <button
               onClick={() => setShowPicker(true)}
               className="flex w-full items-start gap-2.5 rounded-xl px-3 py-2.5 transition hover:bg-gray-50"
               aria-label="Switch profile"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-blue-100 text-xl">
-                {getAvatarEmoji(activeKid.avatar)}
-              </div>
+              {activeKid.avatarUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={activeKid.avatarUrl}
+                  alt={activeKid.name}
+                  className="h-10 w-10 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-blue-100 text-xl">
+                  {getAvatarEmoji(activeKid.avatar)}
+                </div>
+              )}
               <div className="min-w-0 flex-1 text-left">
                 <p className="truncate text-sm font-semibold text-brand-text leading-tight">
                   {activeKid.name}
@@ -283,8 +294,36 @@ export function SidebarNav() {
                 </p>
               </div>
             </button>
+          ) : !authLoading && !isAuthenticated && onboardingProfile ? (
+            /* Anonymous but onboarded: show their avatar + name with sign-in nudge */
+            <button
+              onClick={() => setShowAuthFlow(true)}
+              className="flex w-full items-start gap-2.5 rounded-xl px-3 py-2.5 transition hover:bg-gray-50"
+              aria-label="Sign in to save profile"
+            >
+              {onboardingProfile.avatarUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={onboardingProfile.avatarUrl}
+                  alt={onboardingProfile.name}
+                  className="h-10 w-10 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-blue-100">
+                  <UserRound className="h-5 w-5 text-purple-400" />
+                </div>
+              )}
+              <div className="min-w-0 flex-1 text-left">
+                <p className="truncate text-sm font-semibold text-brand-text leading-tight">
+                  {onboardingProfile.name}
+                </p>
+                <p className="mt-0.5 text-[11px] font-medium text-amber-500">
+                  Tap to sign in
+                </p>
+              </div>
+            </button>
           ) : !authLoading && !isAuthenticated ? (
-            /* Not authenticated: show sign in */
+            /* Not authenticated and no onboarding: show sign in */
             <button
               onClick={() => setShowAuthFlow(true)}
               className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-brand-primary transition hover:bg-brand-primary/8"

@@ -400,7 +400,9 @@ export const bookPatchSchema = z
       .nullable()
       .optional(),
     format: bookFormatSchema.optional(),
-    pageLimit: z.number().int().min(4).max(40).optional(),
+    // pageLimit is intentionally excluded — it's locked at creation time
+    // and enforced by enforceTierLimit. Allowing patches would let callers
+    // bypass the plan-based page cap.
     isPublic: z.boolean().optional(),
   })
   .strict();

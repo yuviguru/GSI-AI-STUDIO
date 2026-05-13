@@ -23,6 +23,25 @@ export async function GET(request: NextRequest) {
       throw new AppException('USER_NOT_FOUND', 'User profile not found', 404);
     }
 
+    // Build a lightweight summary of pending claimed session data so the
+    // client can show the "Who was creating?" assignment UI.
+    const claimedSessionSummary = user.claimedSessionData
+      ? {
+          aiPoints: user.claimedSessionData.aiPoints ?? 0,
+          badgeCount: (user.claimedSessionData.badges ?? []).length,
+          conceptCount: (user.claimedSessionData.conceptsLearned ?? []).length,
+          creationTypes: Object.keys(user.claimedSessionData.creationsByType ?? {}),
+          totalCreationCount: Object.values(user.claimedSessionData.creationsByType ?? {}).reduce((a, b) => a + b, 0),
+          onboarding: user.claimedSessionData.onboarding
+            ? {
+                name: user.claimedSessionData.onboarding.name,
+                avatarUrl: user.claimedSessionData.onboarding.avatarUrl,
+                mascotId: user.claimedSessionData.onboarding.mascotId,
+              }
+            : undefined,
+        }
+      : undefined;
+
     return apiSuccess({
       id: user.id,
       phone: user.phone,
@@ -31,6 +50,7 @@ export async function GET(request: NextRequest) {
       plan: user.plan,
       kidIds: user.kidIds,
       schoolId: user.schoolId,
+      ...(claimedSessionSummary ? { claimedSessionSummary } : {}),
     });
   } catch (error) {
     return handleApiError(error);
