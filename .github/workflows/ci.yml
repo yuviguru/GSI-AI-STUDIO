@@ -19,11 +19,14 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
+      - name: Enable corepack pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.0.0 --activate
+          pnpm --version
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
 
@@ -33,11 +36,14 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
+      - name: Enable corepack pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.0.0 --activate
+          pnpm --version
       - run: pnpm install --frozen-lockfile
       - run: npx tsc --noEmit
 
@@ -47,11 +53,14 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
+      - name: Enable corepack pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.0.0 --activate
+          pnpm --version
       - run: pnpm install --frozen-lockfile
       - run: pnpm test -- --run
       - run: pnpm test:coverage -- --run
@@ -67,11 +76,14 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
+      - name: Enable corepack pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.0.0 --activate
+          pnpm --version
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
         env:
