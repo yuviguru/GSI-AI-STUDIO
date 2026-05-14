@@ -49,32 +49,29 @@ export function MascotPickerStep({
   ];
 
   const trackRef = useRef<HTMLDivElement | null>(null);
-  const [canPrev, setCanPrev] = useState(false);
-  const [canNext, setCanNext] = useState(false);
   // Only show the chevrons when the track actually has horizontal overflow.
-  // On a wide viewport all 8 cards fit, no arrows needed.
+  // On a wide viewport all 8 cards fit, no arrows needed at all. When they
+  // are shown, they're never disabled — the user can scroll regardless of
+  // which mascots are locked.
   const [hasOverflow, setHasOverflow] = useState(false);
 
-  const updateArrows = useCallback(() => {
+  const updateOverflow = useCallback(() => {
     const el = trackRef.current;
     if (!el) return;
-    const overflowing = el.scrollWidth > el.clientWidth + 4;
-    setHasOverflow(overflowing);
-    setCanPrev(el.scrollLeft > 4);
-    setCanNext(overflowing && el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    setHasOverflow(el.scrollWidth > el.clientWidth + 4);
   }, []);
 
   useEffect(() => {
-    updateArrows();
+    updateOverflow();
     const el = trackRef.current;
     if (!el) return;
-    el.addEventListener('scroll', updateArrows, { passive: true });
-    window.addEventListener('resize', updateArrows);
+    el.addEventListener('scroll', updateOverflow, { passive: true });
+    window.addEventListener('resize', updateOverflow);
     return () => {
-      el.removeEventListener('scroll', updateArrows);
-      window.removeEventListener('resize', updateArrows);
+      el.removeEventListener('scroll', updateOverflow);
+      window.removeEventListener('resize', updateOverflow);
     };
-  }, [updateArrows]);
+  }, [updateOverflow]);
 
   const scrollByCard = useCallback((direction: 1 | -1) => {
     const el = trackRef.current;
@@ -85,9 +82,9 @@ export function MascotPickerStep({
   }, []);
 
   return (
-    <div className="flex h-full flex-col px-5 py-6">
-      {/* Heading */}
-      <div className="text-center">
+    <div className="flex h-full flex-col py-6">
+      {/* Heading — kept narrow + centered for readability. */}
+      <div className="mx-auto max-w-md px-5 text-center">
         <p className="text-xs font-semibold uppercase tracking-wider text-purple-500">
           Step 1 of 4
         </p>
@@ -99,24 +96,19 @@ export function MascotPickerStep({
         </p>
       </div>
 
-      {/*
-        Carousel breakout — the parent ProfileSetupCarousel caps the modal at
-        max-w-md (448px), which is the right width for the text-only steps
-        but cramps the picker so only ~1.5 cards fit. Escape that with
-        `left-1/2 -translate-x-1/2 w-screen` so the carousel uses the full
-        viewport. On phone portrait this is the same as the parent width;
-        on landscape mobile / tablet / desktop, more cards become visible.
-      */}
-      <div className="relative left-1/2 mt-6 w-screen -translate-x-1/2 shrink-0">
-        <div className="mx-auto max-w-[1400px]">
+      {/* Carousel — uses the full viewport width since the parent step
+          opts out of `max-w-md` for the mascot step. Capped at 1400px on
+          ultrawides so 8 cards don't drift to the corners. */}
+      <div className="relative mt-6 shrink-0">
+        <div className="relative mx-auto max-w-[1400px]">
           <div
             ref={trackRef}
             role="radiogroup"
             aria-label="Choose your mascot"
             className={cn(
-              'flex items-center justify-start gap-4 overflow-x-auto py-2 pb-6',
-              // Centre the row when all cards fit so it doesn't hug the left.
-              hasOverflow ? '' : 'sm:justify-center',
+              'flex items-center gap-4 overflow-x-auto py-2 pb-6',
+              // Centre the row when all cards fit so they don't hug the left.
+              hasOverflow ? 'justify-start' : 'sm:justify-center',
               'snap-x snap-mandatory scroll-smooth',
               '[-ms-overflow-style:none] [scrollbar-width:none]',
               '[&::-webkit-scrollbar]:hidden',
@@ -133,21 +125,22 @@ export function MascotPickerStep({
             ))}
           </div>
 
-          {/* Prev / Next chevrons — only when there's overflow to scroll
-              through. Disabled state shown when at an edge. */}
+          {/* Prev / Next chevrons — visible whenever there's horizontal
+              overflow, and never disabled. The user can scroll past locked
+              characters — being unlocked has nothing to do with scrolling
+              past them. The track stops naturally at its scroll boundary
+              so clicking past the edge is a no-op. */}
           {hasOverflow && (
             <>
               <button
                 type="button"
                 aria-label="Previous mascot"
                 onClick={() => scrollByCard(-1)}
-                disabled={!canPrev}
                 className={cn(
                   'absolute left-2 top-1/2 -translate-y-1/2',
                   'hidden h-11 w-11 items-center justify-center rounded-full',
                   'bg-white text-gray-700 shadow-lg ring-1 ring-black/10 transition',
                   'hover:bg-gray-50 hover:shadow-xl active:scale-95',
-                  'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:shadow-lg',
                   'sm:flex',
                 )}
               >
@@ -157,13 +150,11 @@ export function MascotPickerStep({
                 type="button"
                 aria-label="Next mascot"
                 onClick={() => scrollByCard(1)}
-                disabled={!canNext}
                 className={cn(
                   'absolute right-2 top-1/2 -translate-y-1/2',
                   'hidden h-11 w-11 items-center justify-center rounded-full',
                   'bg-white text-gray-700 shadow-lg ring-1 ring-black/10 transition',
                   'hover:bg-gray-50 hover:shadow-xl active:scale-95',
-                  'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:shadow-lg',
                   'sm:flex',
                 )}
               >
@@ -174,50 +165,52 @@ export function MascotPickerStep({
         </div>
       </div>
 
-      {/* Speech bubble — animates between mascots */}
-      <div className="mt-3 min-h-[56px]">
-        <AnimatePresence mode="wait">
-          {selected && (
-            <motion.div
-              key={selected.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="rounded-2xl bg-purple-50 p-3 text-center"
-            >
-              <p className="text-sm italic text-purple-900">
-                &ldquo;{selected.greeting}&rdquo;
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      {/* Speech bubble + action row — re-narrowed to max-w-md so they sit
+          aligned with the heading on wide viewports. */}
+      <div className="mx-auto w-full max-w-md px-5">
+        <div className="mt-3 min-h-[56px]">
+          <AnimatePresence mode="wait">
+            {selected && (
+              <motion.div
+                key={selected.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="rounded-2xl bg-purple-50 p-3 text-center"
+              >
+                <p className="text-sm italic text-purple-900">
+                  &ldquo;{selected.greeting}&rdquo;
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-      {/* Action row */}
-      <div className="mt-4 flex gap-2">
-        {onBack && (
+        <div className="mt-4 flex gap-2">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="rounded-xl px-4 py-3 text-sm font-medium text-gray-500 hover:bg-gray-100"
+            >
+              ← Back
+            </button>
+          )}
           <button
             type="button"
-            onClick={onBack}
-            className="rounded-xl px-4 py-3 text-sm font-medium text-gray-500 hover:bg-gray-100"
+            onClick={onNext}
+            disabled={!selected}
+            className={cn(
+              'flex-1 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition active:scale-[0.98]',
+              selected
+                ? 'bg-purple-600 hover:bg-purple-700'
+                : 'cursor-not-allowed bg-gray-300',
+            )}
           >
-            ← Back
+            {selected ? `Stick with ${selected.name} →` : 'Pick a buddy first'}
           </button>
-        )}
-        <button
-          type="button"
-          onClick={onNext}
-          disabled={!selected}
-          className={cn(
-            'flex-1 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition active:scale-[0.98]',
-            selected
-              ? 'bg-purple-600 hover:bg-purple-700'
-              : 'cursor-not-allowed bg-gray-300',
-          )}
-        >
-          {selected ? `Stick with ${selected.name} →` : 'Pick a buddy first'}
-        </button>
+        </div>
       </div>
     </div>
   );

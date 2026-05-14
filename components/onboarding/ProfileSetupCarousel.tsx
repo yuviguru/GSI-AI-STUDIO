@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
 import { MascotPickerStep } from './MascotPickerStep';
 import { NameStep } from './NameStep';
 import {
@@ -193,7 +194,15 @@ export function ProfileSetupCarousel({
         </button>
       </div>
 
-      <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col overflow-hidden">
+      {/* Mascot picker step wants the full viewport so the carousel can show
+          multiple cards on landscape / tablet / desktop. Other steps keep
+          the cosy max-w-md column. */}
+      <div
+        className={cn(
+          'relative mx-auto flex w-full flex-1 flex-col overflow-hidden',
+          step === 'mascot' ? 'max-w-none' : 'max-w-md',
+        )}
+      >
         <AnimatePresence mode="wait">
           {step === 'mascot' && (
             <motion.div
