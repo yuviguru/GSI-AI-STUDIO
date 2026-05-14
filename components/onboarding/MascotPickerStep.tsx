@@ -50,13 +50,18 @@ export function MascotPickerStep({
 
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [canPrev, setCanPrev] = useState(false);
-  const [canNext, setCanNext] = useState(true);
+  const [canNext, setCanNext] = useState(false);
+  // Only show the chevrons when the track actually has horizontal overflow.
+  // On a wide viewport all 8 cards fit, no arrows needed.
+  const [hasOverflow, setHasOverflow] = useState(false);
 
   const updateArrows = useCallback(() => {
     const el = trackRef.current;
     if (!el) return;
+    const overflowing = el.scrollWidth > el.clientWidth + 4;
+    setHasOverflow(overflowing);
     setCanPrev(el.scrollLeft > 4);
-    setCanNext(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    setCanNext(overflowing && el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
   }, []);
 
   useEffect(() => {
@@ -94,62 +99,79 @@ export function MascotPickerStep({
         </p>
       </div>
 
-      {/* Carousel — height is the card height + scrollbar padding, so the
-          parent's flex-1 can't stretch the cards vertically. */}
-      <div className="relative mt-6 shrink-0">
-        <div
-          ref={trackRef}
-          role="radiogroup"
-          aria-label="Choose your mascot"
-          className={cn(
-            'flex items-center gap-4 overflow-x-auto py-2 pb-6',
-            'snap-x snap-mandatory scroll-smooth',
-            '[-ms-overflow-style:none] [scrollbar-width:none]',
-            '[&::-webkit-scrollbar]:hidden',
-            '-mx-5 px-5',
-          )}
-        >
-          {orderedMascots.map((m: Mascot) => (
-            <MascotCard
-              key={m.id}
-              mascot={m}
-              isSelected={selectedId === m.id}
-              onSelect={() => isMascotSelectable(m) && onSelect(m.id)}
-            />
-          ))}
-        </div>
+      {/*
+        Carousel breakout — the parent ProfileSetupCarousel caps the modal at
+        max-w-md (448px), which is the right width for the text-only steps
+        but cramps the picker so only ~1.5 cards fit. Escape that with
+        `left-1/2 -translate-x-1/2 w-screen` so the carousel uses the full
+        viewport. On phone portrait this is the same as the parent width;
+        on landscape mobile / tablet / desktop, more cards become visible.
+      */}
+      <div className="relative left-1/2 mt-6 w-screen -translate-x-1/2 shrink-0">
+        <div className="mx-auto max-w-[1400px]">
+          <div
+            ref={trackRef}
+            role="radiogroup"
+            aria-label="Choose your mascot"
+            className={cn(
+              'flex items-center justify-start gap-4 overflow-x-auto py-2 pb-6',
+              // Centre the row when all cards fit so it doesn't hug the left.
+              hasOverflow ? '' : 'sm:justify-center',
+              'snap-x snap-mandatory scroll-smooth',
+              '[-ms-overflow-style:none] [scrollbar-width:none]',
+              '[&::-webkit-scrollbar]:hidden',
+              'px-5 sm:px-8',
+            )}
+          >
+            {orderedMascots.map((m: Mascot) => (
+              <MascotCard
+                key={m.id}
+                mascot={m}
+                isSelected={selectedId === m.id}
+                onSelect={() => isMascotSelectable(m) && onSelect(m.id)}
+              />
+            ))}
+          </div>
 
-        {/* Prev / Next chevrons — tablet+ */}
-        <button
-          type="button"
-          aria-label="Previous mascot"
-          onClick={() => scrollByCard(-1)}
-          disabled={!canPrev}
-          className={cn(
-            'absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2',
-            'hidden h-10 w-10 items-center justify-center rounded-full',
-            'bg-white text-gray-700 shadow-lg ring-1 ring-black/5 transition',
-            'hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed',
-            'sm:flex',
+          {/* Prev / Next chevrons — only when there's overflow to scroll
+              through. Disabled state shown when at an edge. */}
+          {hasOverflow && (
+            <>
+              <button
+                type="button"
+                aria-label="Previous mascot"
+                onClick={() => scrollByCard(-1)}
+                disabled={!canPrev}
+                className={cn(
+                  'absolute left-2 top-1/2 -translate-y-1/2',
+                  'hidden h-11 w-11 items-center justify-center rounded-full',
+                  'bg-white text-gray-700 shadow-lg ring-1 ring-black/10 transition',
+                  'hover:bg-gray-50 hover:shadow-xl active:scale-95',
+                  'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:shadow-lg',
+                  'sm:flex',
+                )}
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                aria-label="Next mascot"
+                onClick={() => scrollByCard(1)}
+                disabled={!canNext}
+                className={cn(
+                  'absolute right-2 top-1/2 -translate-y-1/2',
+                  'hidden h-11 w-11 items-center justify-center rounded-full',
+                  'bg-white text-gray-700 shadow-lg ring-1 ring-black/10 transition',
+                  'hover:bg-gray-50 hover:shadow-xl active:scale-95',
+                  'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:shadow-lg',
+                  'sm:flex',
+                )}
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </>
           )}
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-        <button
-          type="button"
-          aria-label="Next mascot"
-          onClick={() => scrollByCard(1)}
-          disabled={!canNext}
-          className={cn(
-            'absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2',
-            'hidden h-10 w-10 items-center justify-center rounded-full',
-            'bg-white text-gray-700 shadow-lg ring-1 ring-black/5 transition',
-            'hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed',
-            'sm:flex',
-          )}
-        >
-          <ChevronRight className="h-5 w-5" />
-        </button>
+        </div>
       </div>
 
       {/* Speech bubble — animates between mascots */}
