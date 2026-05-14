@@ -2,10 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MASCOTS, type Mascot, isMascotSelectable } from '@/lib/mascots/roster';
+
+// Lottie is heavy + DOM-only; lazy + client-only.
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
+
+/** In-memory cache so we only fetch each Lottie JSON once per session. */
+const lottieCache = new Map<string, unknown>();
 
 interface MascotPickerStepProps {
   selectedId: string | null;
@@ -206,6 +213,38 @@ function MascotCard({ mascot, isSelected, onSelect }: MascotCardProps) {
     ? `${mascot.name}, ${mascot.tagline}`
     : `${mascot.name}, ${mascot.tagline} (coming soon — locked)`;
 
+  // Lottie has highest priority — fetched lazily, cached, falls back silently
+  // to the next layer (heroImage → emoji) if the JSON 404s or fails to parse.
+  const [lottieData, setLottieData] = useState<unknown>(() =>
+    mascot.lottie ? lottieCache.get(mascot.lottie) ?? null : null,
+  );
+
+  useEffect(() => {
+    if (!mascot.lottie) {
+      setLottieData(null);
+      return;
+    }
+    const cached = lottieCache.get(mascot.lottie);
+    if (cached) {
+      setLottieData(cached);
+      return;
+    }
+    let cancelled = false;
+    fetch(mascot.lottie)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`Lottie ${r.status}`))))
+      .then((data) => {
+        if (cancelled) return;
+        lottieCache.set(mascot.lottie!, data);
+        setLottieData(data);
+      })
+      .catch(() => {
+        // silent fallback to heroImage / emoji
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mascot.lottie]);
+
   return (
     <motion.button
       type="button"
@@ -240,9 +279,21 @@ function MascotCard({ mascot, isSelected, onSelect }: MascotCardProps) {
         aria-hidden
       />
 
-      {/* Hero character */}
+      {/* Hero character — Lottie > heroImage > emoji */}
       <div className="absolute inset-x-0 top-2 bottom-16 flex items-end justify-center">
-        {mascot.heroImage && imageOk ? (
+        {mascot.lottie && lottieData ? (
+          <div
+            className="h-full w-full transition-transform duration-300 group-hover:scale-105"
+            aria-hidden
+          >
+            <Lottie
+              animationData={lottieData}
+              loop
+              autoplay
+              style={{ width: '100%', height: '100%' }}
+            />
+          </div>
+        ) : mascot.heroImage && imageOk ? (
           <div className="relative h-full w-full">
             <Image
               src={mascot.heroImage}
