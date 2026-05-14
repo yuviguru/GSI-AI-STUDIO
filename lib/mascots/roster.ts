@@ -77,7 +77,9 @@ export const MASCOTS: readonly Mascot[] = [
     cardGradient: 'from-cyan-400 via-sky-500 to-blue-600',
     ringColor: 'ring-cyan-400',
     softBg: 'bg-cyan-50',
-    heroImage: '/mascots/pixie.png',
+    // No `heroImage` for Pixie — the Lottie animation is the canonical
+    // render. (Other mascots fall back to PNG/emoji until their Lottie
+    // ships.)
   },
   {
     id: 'koko',

@@ -95,13 +95,13 @@ export function MascotPickerStep({
       </div>
 
       {/* Carousel */}
-      <div className="relative mt-6 flex-1">
+      <div className="relative mt-6">
         <div
           ref={trackRef}
           role="radiogroup"
           aria-label="Choose your mascot"
           className={cn(
-            'flex h-full min-h-[360px] gap-3 overflow-x-auto pb-4',
+            'flex items-stretch gap-4 overflow-x-auto py-2 pb-6',
             'snap-x snap-mandatory scroll-smooth',
             '[-ms-overflow-style:none] [scrollbar-width:none]',
             '[&::-webkit-scrollbar]:hidden',
@@ -263,8 +263,10 @@ function MascotCard({ mascot, isSelected, onSelect }: MascotCardProps) {
       }
       transition={{ type: 'spring', stiffness: 300, damping: 24 }}
       className={cn(
-        'group relative shrink-0 snap-center overflow-hidden rounded-3xl text-left',
-        'w-[170px] aspect-[3/5] sm:w-[200px]',
+        'group relative shrink-0 snap-center overflow-hidden text-left',
+        'rounded-[28px]',
+        // Supercell proportions — wider, less elongated. ~4:5 portrait.
+        'w-[230px] h-[300px] sm:w-[260px] sm:h-[340px]',
         'bg-gradient-to-b shadow-card',
         mascot.cardGradient ?? mascot.gradient,
         selectable && isSelected
@@ -275,12 +277,14 @@ function MascotCard({ mascot, isSelected, onSelect }: MascotCardProps) {
     >
       {/* Soft halo behind the character */}
       <div
-        className="pointer-events-none absolute inset-x-0 bottom-12 mx-auto h-32 w-32 rounded-full bg-white/20 blur-2xl"
+        className="pointer-events-none absolute inset-x-0 bottom-16 mx-auto h-40 w-40 rounded-full bg-white/25 blur-3xl"
         aria-hidden
       />
 
-      {/* Hero character — Lottie > heroImage > emoji */}
-      <div className="absolute inset-x-0 top-2 bottom-16 flex items-end justify-center">
+      {/* Hero character — Lottie > heroImage > emoji.
+          Sits in the bottom 70% of the card so the character feels grounded,
+          like a Supercell game hero. */}
+      <div className="absolute inset-x-0 top-6 bottom-14 flex items-end justify-center">
         {mascot.lottie && lottieData ? (
           <div
             className="h-full w-full transition-transform duration-300 group-hover:scale-105"
@@ -299,7 +303,7 @@ function MascotCard({ mascot, isSelected, onSelect }: MascotCardProps) {
               src={mascot.heroImage}
               alt=""
               fill
-              sizes="200px"
+              sizes="260px"
               className="object-contain object-bottom drop-shadow-[0_6px_12px_rgba(0,0,0,0.25)] transition-transform duration-300 group-hover:scale-105"
               onError={() => setImageOk(false)}
             />
@@ -307,7 +311,7 @@ function MascotCard({ mascot, isSelected, onSelect }: MascotCardProps) {
         ) : (
           <span
             className="block leading-none drop-shadow-[0_6px_12px_rgba(0,0,0,0.25)]"
-            style={{ fontSize: 96 }}
+            style={{ fontSize: 128 }}
             aria-hidden
           >
             {mascot.art}
@@ -324,11 +328,11 @@ function MascotCard({ mascot, isSelected, onSelect }: MascotCardProps) {
       )}
 
       {/* Footer — name + tagline on a dark gradient like Supercell */}
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 via-black/30 to-transparent p-3 pt-8">
-        <p className="font-display text-base font-extrabold leading-tight text-white drop-shadow-md sm:text-lg">
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent p-4 pt-10">
+        <p className="font-display text-xl font-extrabold leading-tight text-white drop-shadow-md sm:text-2xl">
           {mascot.name}
         </p>
-        <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-white/85 sm:text-[11px]">
+        <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/90 sm:text-xs">
           {mascot.tagline}
         </p>
       </div>
