@@ -328,10 +328,31 @@ async function seedKids() {
     updatedAt: now(),
   };
 
+  // Mascot ids come from lib/mascots/roster.ts. Pixie is the unlocked default;
+  // koko/aria/bolt are coming-soon in the picker but valid in Firestore so we
+  // can test the rendering path. Spread mascot variety across kids so the UI
+  // covers more than just Pixie.
+  //
+  // avatarUrl mimics what the onboarding AI generator writes: a Firebase
+  // Storage download URL. The emulator doesn't host these, so the kid app's
+  // KidAvatar falls back to the emoji — which exercises the fallback path
+  // for free. Use one kid (Aarav) with a working external URL so the happy
+  // path also gets coverage.
+  const AVATAR = {
+    aarav: 'https://api.dicebear.com/9.x/adventurer/svg?seed=Aarav&radius=50',
+    diya:
+      'https://firebasestorage.googleapis.com/v0/b/gsi-test.appspot.com/o/avatars%2Ftest_kid_diya.png?alt=media',
+    krish:
+      'https://firebasestorage.googleapis.com/v0/b/gsi-test.appspot.com/o/avatars%2Ftest_kid_krish.png?alt=media',
+  };
+
   await setDoc(`kids/${KID.aarav}`, {
     id: KID.aarav,
     email: 'aarav@test.gsi.ai',
     name: 'Aarav',
+    avatar: 'tiger',
+    mascotId: 'pixie',
+    avatarUrl: AVATAR.aarav,
     age: 11,
     grade: '6',
     parentId: UID.parent1,
@@ -340,6 +361,16 @@ async function seedKids() {
     aiPoints: 120,
     totalCreations: 5,
     creationsByType: { story: 3, quiz: 1, comic: 1 },
+    beatTheAiStats: {
+      totalRounds: 8,
+      wins: 5,
+      losses: 2,
+      ties: 1,
+      currentStreak: 2,
+      longestStreak: 4,
+      byCategory: { story: { rounds: 5, wins: 3 }, quiz: { rounds: 3, wins: 2 } },
+    },
+    beatTheAiSkills: { story: { xp: 120, level: 2 }, quiz: { xp: 75, level: 1 } },
     ...baseKid,
   });
 
@@ -347,6 +378,9 @@ async function seedKids() {
     id: KID.diya,
     email: 'diya@test.gsi.ai',
     name: 'Diya',
+    avatar: 'fox',
+    mascotId: 'koko',
+    avatarUrl: AVATAR.diya,
     age: 11,
     grade: '6',
     parentId: UID.parent2,
@@ -355,6 +389,11 @@ async function seedKids() {
     aiPoints: 85,
     totalCreations: 3,
     creationsByType: { music: 2, story: 1 },
+    skillArenaProgress: {
+      speaking: { band: 5, score: 60, assessments: 2 },
+      reading: { band: 6, score: 72, assessments: 1 },
+    },
+    skillArenaStats: { totalAssessments: 3, averageBand: 5.5 },
     ...baseKid,
   });
 
@@ -362,6 +401,9 @@ async function seedKids() {
     id: KID.krish,
     email: 'krish@test.gsi.ai',
     name: 'Krish',
+    avatar: 'panda',
+    mascotId: 'bolt',
+    avatarUrl: AVATAR.krish,
     age: 12,
     grade: '7',
     parentId: UID.parent2,
@@ -370,14 +412,27 @@ async function seedKids() {
     aiPoints: 200,
     totalCreations: 8,
     creationsByType: { game: 4, quiz: 2, comic: 2 },
+    beatTheAiStats: {
+      totalRounds: 14,
+      wins: 9,
+      losses: 4,
+      ties: 1,
+      currentStreak: 3,
+      longestStreak: 6,
+      byCategory: { game: { rounds: 8, wins: 5 }, comic: { rounds: 6, wins: 4 } },
+    },
+    beatTheAiSkills: { game: { xp: 220, level: 3 }, comic: { xp: 145, level: 2 } },
     ...baseKid,
   });
 
-  // Sneha is anonymous (no parentId) — covers the open-beta flow.
+  // Sneha is anonymous (no parentId, teacher-verified) — covers the
+  // open-beta + "no avatarUrl yet" path so the emoji fallback fires.
   await setDoc(`kids/${KID.sneha}`, {
     id: KID.sneha,
     email: 'sneha@test.gsi.ai',
     name: 'Sneha',
+    avatar: 'rabbit',
+    mascotId: 'aria',
     age: 12,
     grade: '7',
     parentId: null,

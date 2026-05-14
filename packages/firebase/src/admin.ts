@@ -4,6 +4,20 @@ import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import { getStorage, type Storage } from 'firebase-admin/storage';
 
 /**
+ * Detect emulator mode. When either FIRESTORE_EMULATOR_HOST or
+ * FIREBASE_AUTH_EMULATOR_HOST is set, firebase-admin auto-routes calls to
+ * those endpoints without needing real credentials. We let the seeder, test
+ * runners, and local dev short-circuit credential validation entirely.
+ */
+function isEmulator(): boolean {
+  return !!(
+    process.env.FIRESTORE_EMULATOR_HOST ||
+    process.env.FIREBASE_AUTH_EMULATOR_HOST ||
+    process.env.FIREBASE_STORAGE_EMULATOR_HOST
+  );
+}
+
+/**
  * Load Firebase service account credentials.
  *
  * Priority:
@@ -61,6 +75,22 @@ function getApp(): App {
     return getApps()[0]!;
   }
   const storageBucket = getStorageBucket();
+  const projectId =
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ||
+    process.env.GCLOUD_PROJECT ||
+    process.env.GOOGLE_CLOUD_PROJECT ||
+    'demo-gsi-emulator';
+
+  // Emulator mode: skip credential validation. firebase-admin reads the
+  // emulator host env vars and routes all calls there. Real credentials
+  // aren't checked by the emulator, so a plain projectId is enough.
+  if (isEmulator()) {
+    return initializeApp({
+      projectId,
+      ...(storageBucket ? { storageBucket } : {}),
+    });
+  }
+
   return initializeApp({
     credential: cert(getServiceAccount()),
     ...(storageBucket ? { storageBucket } : {}),
