@@ -1,10 +1,11 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { Lock } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MASCOTS, type Mascot, isMascotSelectable } from '@/lib/mascots/roster';
-import { MascotAvatar } from '@/components/mascot/MascotAvatar';
 
 interface MascotPickerStepProps {
   selectedId: string | null;
@@ -13,6 +14,19 @@ interface MascotPickerStepProps {
   onBack?: () => void;
 }
 
+/**
+ * Supercell-style horizontal carousel picker.
+ *
+ * - Big colorful cards with each mascot's hero art prominent.
+ * - Scroll-snap horizontal scroll on mobile; desktop gets prev/next buttons.
+ * - The selected card pops with a white ring + slight scale.
+ * - Locked mascots (`comingSoon`) still show in the lineup but render
+ *   desaturated + non-interactive with a "SOON" badge.
+ *
+ * Hero art comes from `mascot.heroImage` (drop PNG/WEBP into
+ * /public/mascots/<id>.png — see public/mascots/CONTEXT.md). Until the
+ * generated art lands, the card falls back to the emoji `mascot.art`.
+ */
 export function MascotPickerStep({
   selectedId,
   onSelect,
@@ -20,16 +34,47 @@ export function MascotPickerStep({
   onBack,
 }: MascotPickerStepProps) {
   const selected = MASCOTS.find((m) => m.id === selectedId) ?? null;
-  // Sort unlocked mascots first so the picker doesn't show a wall of locked
-  // tiles before the selectable one. Original roster order is preserved
-  // within each group.
+
+  // Unlocked mascots first so kids see the playable one immediately.
   const orderedMascots = [
     ...MASCOTS.filter((m) => !m.comingSoon),
     ...MASCOTS.filter((m) => m.comingSoon),
   ];
 
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(true);
+
+  const updateArrows = useCallback(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    setCanPrev(el.scrollLeft > 4);
+    setCanNext(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    updateArrows();
+    const el = trackRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', updateArrows, { passive: true });
+    window.addEventListener('resize', updateArrows);
+    return () => {
+      el.removeEventListener('scroll', updateArrows);
+      window.removeEventListener('resize', updateArrows);
+    };
+  }, [updateArrows]);
+
+  const scrollByCard = useCallback((direction: 1 | -1) => {
+    const el = trackRef.current;
+    if (!el) return;
+    const card = el.querySelector<HTMLElement>('[data-mascot-card]');
+    const step = card ? card.offsetWidth + 12 : 180;
+    el.scrollBy({ left: step * direction, behavior: 'smooth' });
+  }, []);
+
   return (
     <div className="flex h-full flex-col px-5 py-6">
+      {/* Heading */}
       <div className="text-center">
         <p className="text-xs font-semibold uppercase tracking-wider text-purple-500">
           Step 1 of 4
@@ -42,74 +87,84 @@ export function MascotPickerStep({
         </p>
       </div>
 
-      <div
-        role="radiogroup"
-        aria-label="Choose your mascot"
-        className="mt-5 grid flex-1 grid-cols-2 gap-3 overflow-y-auto pb-4 sm:grid-cols-4"
-      >
-        {orderedMascots.map((m: Mascot) => {
-          const isSelected = selectedId === m.id;
-          const selectable = isMascotSelectable(m);
-          const ariaLabel = selectable
-            ? `${m.name}, ${m.tagline}`
-            : `${m.name}, ${m.tagline} (coming soon — locked)`;
-
-          return (
-            <motion.button
+      {/* Carousel */}
+      <div className="relative mt-6 flex-1">
+        <div
+          ref={trackRef}
+          role="radiogroup"
+          aria-label="Choose your mascot"
+          className={cn(
+            'flex h-full min-h-[360px] gap-3 overflow-x-auto pb-4',
+            'snap-x snap-mandatory scroll-smooth',
+            '[-ms-overflow-style:none] [scrollbar-width:none]',
+            '[&::-webkit-scrollbar]:hidden',
+            '-mx-5 px-5',
+          )}
+        >
+          {orderedMascots.map((m: Mascot) => (
+            <MascotCard
               key={m.id}
-              type="button"
-              role="radio"
-              aria-checked={isSelected}
-              aria-label={ariaLabel}
-              aria-disabled={!selectable}
-              disabled={!selectable}
-              onClick={() => selectable && onSelect(m.id)}
-              whileTap={selectable ? { scale: 0.95 } : undefined}
-              className={cn(
-                'relative flex flex-col items-center gap-2 rounded-2xl bg-gradient-to-br p-3 text-left transition-all',
-                m.gradient,
-                selectable && isSelected
-                  ? cn('ring-4 ring-offset-2', m.ringColor)
-                  : 'ring-1 ring-black/5',
-                selectable
-                  ? 'cursor-pointer hover:ring-black/15'
-                  : 'cursor-not-allowed opacity-60 grayscale',
-              )}
-            >
-              <MascotAvatar id={m.id} size="lg" />
-              <div className="text-center">
-                <p className="font-display text-sm font-bold text-gray-900">
-                  {m.name}
-                </p>
-                <p className="text-[10px] font-medium text-gray-600">
-                  {m.tagline}
-                </p>
-              </div>
+              mascot={m}
+              isSelected={selectedId === m.id}
+              onSelect={() => isMascotSelectable(m) && onSelect(m.id)}
+            />
+          ))}
+        </div>
 
-              {!selectable && (
-                <div className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-gray-700 shadow-sm">
-                  <Lock className="h-2.5 w-2.5" aria-hidden />
-                  <span>Soon</span>
-                </div>
-              )}
-            </motion.button>
-          );
-        })}
+        {/* Prev / Next chevrons — tablet+ */}
+        <button
+          type="button"
+          aria-label="Previous mascot"
+          onClick={() => scrollByCard(-1)}
+          disabled={!canPrev}
+          className={cn(
+            'absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2',
+            'hidden h-10 w-10 items-center justify-center rounded-full',
+            'bg-white text-gray-700 shadow-lg ring-1 ring-black/5 transition',
+            'hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed',
+            'sm:flex',
+          )}
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          aria-label="Next mascot"
+          onClick={() => scrollByCard(1)}
+          disabled={!canNext}
+          className={cn(
+            'absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2',
+            'hidden h-10 w-10 items-center justify-center rounded-full',
+            'bg-white text-gray-700 shadow-lg ring-1 ring-black/5 transition',
+            'hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed',
+            'sm:flex',
+          )}
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
       </div>
 
-      {selected && (
-        <motion.div
-          key={selected.id}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-3 rounded-2xl bg-purple-50 p-3 text-center"
-        >
-          <p className="text-sm italic text-purple-900">
-            &ldquo;{selected.greeting}&rdquo;
-          </p>
-        </motion.div>
-      )}
+      {/* Speech bubble — animates between mascots */}
+      <div className="mt-3 min-h-[56px]">
+        <AnimatePresence mode="wait">
+          {selected && (
+            <motion.div
+              key={selected.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="rounded-2xl bg-purple-50 p-3 text-center"
+            >
+              <p className="text-sm italic text-purple-900">
+                &ldquo;{selected.greeting}&rdquo;
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
+      {/* Action row */}
       <div className="mt-4 flex gap-2">
         {onBack && (
           <button
@@ -135,5 +190,97 @@ export function MascotPickerStep({
         </button>
       </div>
     </div>
+  );
+}
+
+interface MascotCardProps {
+  mascot: Mascot;
+  isSelected: boolean;
+  onSelect: () => void;
+}
+
+function MascotCard({ mascot, isSelected, onSelect }: MascotCardProps) {
+  const [imageOk, setImageOk] = useState(Boolean(mascot.heroImage));
+  const selectable = isMascotSelectable(mascot);
+  const ariaLabel = selectable
+    ? `${mascot.name}, ${mascot.tagline}`
+    : `${mascot.name}, ${mascot.tagline} (coming soon — locked)`;
+
+  return (
+    <motion.button
+      type="button"
+      role="radio"
+      aria-checked={isSelected}
+      aria-label={ariaLabel}
+      aria-disabled={!selectable}
+      disabled={!selectable}
+      onClick={onSelect}
+      data-mascot-card
+      whileTap={selectable ? { scale: 0.97 } : undefined}
+      animate={
+        selectable && isSelected
+          ? { scale: 1.04 }
+          : { scale: selectable ? 1 : 0.96 }
+      }
+      transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+      className={cn(
+        'group relative shrink-0 snap-center overflow-hidden rounded-3xl text-left',
+        'w-[170px] aspect-[3/5] sm:w-[200px]',
+        'bg-gradient-to-b shadow-card',
+        mascot.cardGradient ?? mascot.gradient,
+        selectable && isSelected
+          ? 'shadow-elevated ring-4 ring-white/90'
+          : 'ring-1 ring-black/10',
+        !selectable && 'cursor-not-allowed opacity-70 grayscale',
+      )}
+    >
+      {/* Soft halo behind the character */}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-12 mx-auto h-32 w-32 rounded-full bg-white/20 blur-2xl"
+        aria-hidden
+      />
+
+      {/* Hero character */}
+      <div className="absolute inset-x-0 top-2 bottom-16 flex items-end justify-center">
+        {mascot.heroImage && imageOk ? (
+          <div className="relative h-full w-full">
+            <Image
+              src={mascot.heroImage}
+              alt=""
+              fill
+              sizes="200px"
+              className="object-contain object-bottom drop-shadow-[0_6px_12px_rgba(0,0,0,0.25)] transition-transform duration-300 group-hover:scale-105"
+              onError={() => setImageOk(false)}
+            />
+          </div>
+        ) : (
+          <span
+            className="block leading-none drop-shadow-[0_6px_12px_rgba(0,0,0,0.25)]"
+            style={{ fontSize: 96 }}
+            aria-hidden
+          >
+            {mascot.art}
+          </span>
+        )}
+      </div>
+
+      {/* SOON badge */}
+      {!selectable && (
+        <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-gray-700 shadow-sm">
+          <Lock className="h-2.5 w-2.5" aria-hidden />
+          <span>Soon</span>
+        </div>
+      )}
+
+      {/* Footer — name + tagline on a dark gradient like Supercell */}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 via-black/30 to-transparent p-3 pt-8">
+        <p className="font-display text-base font-extrabold leading-tight text-white drop-shadow-md sm:text-lg">
+          {mascot.name}
+        </p>
+        <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-white/85 sm:text-[11px]">
+          {mascot.tagline}
+        </p>
+      </div>
+    </motion.button>
   );
 }
