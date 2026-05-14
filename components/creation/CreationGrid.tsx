@@ -3,7 +3,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { CreationCard } from './CreationCard';
-import type { Creation } from '@/types/creation.types';
+import type { Creation } from '@gsi/types';
 
 interface CreationGridProps {
   items: Creation[];

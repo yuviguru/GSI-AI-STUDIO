@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import type { BeatTheAiPrompt, BeatTheAiDifficulty, BeatTheAiCategory } from '@/types/beatTheAi.types';
-import { BEAT_THE_AI_CATEGORIES } from '@/types/beatTheAi.types';
+import type { BeatTheAiPrompt, BeatTheAiDifficulty, BeatTheAiCategory } from '@gsi/types';
+import { BEAT_THE_AI_CATEGORIES } from '@gsi/types';
 
 interface ChallengeArenaProps {
   prompt: BeatTheAiPrompt;

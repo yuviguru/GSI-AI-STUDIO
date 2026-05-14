@@ -1,8 +1,8 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import type { BeatTheAiSkills, BeatTheAiSkillId } from '@/types/beatTheAi.types';
-import { SKILL_INFO } from '@/types/beatTheAi.types';
+import type { BeatTheAiSkills, BeatTheAiSkillId } from '@gsi/types';
+import { SKILL_INFO } from '@gsi/types';
 
 interface SkillRadarChartProps {
   skills: BeatTheAiSkills;

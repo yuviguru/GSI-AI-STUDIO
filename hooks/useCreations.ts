@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { Creation, CreationType } from '@/types/creation.types';
-import type { ApiResponse, PaginatedResponse } from '@/types/api.types';
+import type { Creation, CreationType } from '@gsi/types';
+import type { ApiResponse, PaginatedResponse } from '@gsi/types';
 import { fetchWithSession } from '@/lib/fetchWithSession';
 
 interface UseCreationsReturn {

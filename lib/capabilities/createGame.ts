@@ -2,15 +2,15 @@
  * createGame capability — generates a branching text-adventure game.
  */
 
-import { llmRouter } from '@/lib/ai/router';
+import { llmRouter } from '@gsi/ai/router';
 import { saveCreation } from '@/lib/repositories/creationRepository';
-import { trackCreation } from '@/lib/firebase/sessionService';
-import { filterInput, filterOutput } from '@/lib/safety/inputFilter';
-import { GAME_SYSTEM_PROMPT, buildGameUserPrompt } from '@/lib/ai/prompts/gamePrompt';
-import { validateSceneGraph } from '@/lib/ai/validateSceneGraph';
+import { trackCreation } from '@gsi/firebase/sessionService';
+import { filterInput, filterOutput } from '@gsi/safety';
+import { GAME_SYSTEM_PROMPT, buildGameUserPrompt } from '@gsi/ai/prompts/gamePrompt';
+import { validateSceneGraph } from '@gsi/ai/validateSceneGraph';
 import { usageTracker } from '@/lib/cost/usageTracker';
-import type { CostTier } from '@/lib/ai/ports';
-import type { AiXrayData, GameContent } from '@/types';
+import type { CostTier } from '@gsi/ai/ports';
+import type { AiXrayData, GameContent } from '@gsi/types';
 
 export interface CreateGameInput {
   sessionId: string;

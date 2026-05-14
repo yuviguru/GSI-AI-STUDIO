@@ -12,7 +12,7 @@ import type {
   CeoCustomTrigger,
   CeoCustomWorkflow,
   CeoWorkflowId,
-} from '@/types';
+} from '@gsi/types';
 
 interface WorkflowBuilderTabProps {
   business: CeoBusiness;

@@ -9,7 +9,7 @@ import {
   useRef,
   type ReactNode,
 } from 'react';
-import type { ApiResponse, PointsResponse } from '@/types';
+import type { ApiResponse, PointsResponse } from '@gsi/types';
 import type { ConfettiVariant } from '@/components/celebrations/ConfettiCelebration';
 import { fetchWithSession } from '@/lib/fetchWithSession';
 import { useKidProfile } from '@/hooks/useKidProfile';

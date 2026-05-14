@@ -31,11 +31,11 @@ import type {
   AssetUploadUrlRequest,
   AssetUploadUrlResponse,
   AssetFinalizeResponse,
-} from '@/types/asset.types';
+} from '@gsi/types';
 import type {
   Performance,
   PerformanceVisibility,
-} from '@/types/performance.types';
+} from '@gsi/types';
 
 /**
  * Peak mic amplitude below which a recording is treated as effectively

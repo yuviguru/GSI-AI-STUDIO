@@ -15,15 +15,15 @@
  *  fallback, template events as last resort. Pure generation only — no
  *  Firestore writes; caller hands the result to ceoService.saveCeoEvent. */
 
-import { generateJsonWithGroq } from '@/lib/ai/groqClient';
-import { generateJsonWithClaude } from '@/lib/ai/claudeClient';
+import { generateJsonWithGroq } from '@gsi/ai/groqClient';
+import { generateJsonWithClaude } from '@gsi/ai/claudeClient';
 import type {
   CeoBusiness,
   CeoChoice,
   CeoChoiceId,
   CeoEvent,
   CeoEventType,
-} from '@/types';
+} from '@gsi/types';
 import {
   MILESTONE_FALLBACK_CATEGORY,
   stakesMultiplierFor,
@@ -38,7 +38,7 @@ import {
 } from './prompts/eventPrompt';
 import fallbackEvents from './templates/events.json';
 import { getCurrentAffairsReadOnly, pickThemes } from './currentAffairs';
-import { filterOutput } from '@/lib/safety/inputFilter';
+import { filterOutput } from '@gsi/safety';
 
 /** Shape the LLM is asked to return. `named_title` is ONLY emitted for
  *  milestone events — the regular prompt doesn't ask for it and we don't

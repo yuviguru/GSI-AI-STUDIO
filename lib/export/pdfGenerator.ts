@@ -1,5 +1,5 @@
-import type { QuizContent } from '@/types/creation.types';
-import type { Book, BookPage } from '@/types/book.types';
+import type { QuizContent } from '@gsi/types';
+import type { Book, BookPage } from '@gsi/types';
 
 /** Minimal story shape needed for PDF generation */
 interface PdfStory {

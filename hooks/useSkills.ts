@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { BeatTheAiSkills, BeatTheAiSkillsResponse } from '@/types/beatTheAi.types';
+import type { BeatTheAiSkills, BeatTheAiSkillsResponse } from '@gsi/types';
 import { getDefaultSkills } from '@/lib/beat-the-ai/skillEngine';
 import { fetchWithSession } from '@/lib/fetchWithSession';
 

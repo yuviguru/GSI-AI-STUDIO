@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import Image from 'next/image';
 import { CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 import { WorkflowTrace } from './WorkflowTrace';
-import type { CeoArtifact, CeoArtifactAsset } from '@/types';
+import type { CeoArtifact, CeoArtifactAsset } from '@gsi/types';
 
 interface BrandCandidateReviewProps {
   artifact: CeoArtifact;

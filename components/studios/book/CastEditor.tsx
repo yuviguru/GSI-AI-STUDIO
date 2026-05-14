@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Plus, Sparkles, Trash2 } from 'lucide-react';
-import type { Book, BookCharacter } from '@/types/book.types';
+import type { Book, BookCharacter } from '@gsi/types';
 import { useBookCharacters } from '@/hooks/useBookCharacters';
 import { useCharacterPortrait } from '@/hooks/useCharacterPortrait';
 

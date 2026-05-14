@@ -6,7 +6,7 @@ import { Megaphone, Send } from 'lucide-react';
 import { fetchWithKidAuth } from '@/lib/fetchWithKidAuth';
 import { useAuth } from '@/hooks/useAuth';
 import { useKidProfile } from '@/hooks/useKidProfile';
-import type { CeoArtifact, CeoArtifactAsset, CeoBusiness } from '@/types';
+import type { CeoArtifact, CeoArtifactAsset, CeoBusiness } from '@gsi/types';
 
 interface MarketingTabProps {
   business: CeoBusiness;

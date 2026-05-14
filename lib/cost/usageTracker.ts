@@ -18,7 +18,7 @@
 
 import { AsyncLocalStorage } from 'async_hooks';
 import { backend } from '@/lib/backend';
-import type { RouterMetricsSink } from '@/lib/ai/router/LlmRouter';
+import type { RouterMetricsSink } from '@gsi/ai/router/LlmRouter';
 
 const COLLECTION = 'aiUsage';
 

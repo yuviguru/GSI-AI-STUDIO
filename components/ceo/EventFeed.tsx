@@ -6,7 +6,7 @@ import { ChevronDown } from 'lucide-react';
 import { Mascot } from '@/components/mascot/Mascot';
 import { cn } from '@/lib/utils';
 import { EventCard } from './EventCard';
-import type { CeoEvent, CeoChoiceId, CeoDimensionScores } from '@/types';
+import type { CeoEvent, CeoChoiceId, CeoDimensionScores } from '@gsi/types';
 
 interface HistoryEntry {
   event: CeoEvent;

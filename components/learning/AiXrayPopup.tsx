@@ -4,7 +4,7 @@ import { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAiPoints } from '@/contexts/AiPointsContext';
 import { CurriculumTag } from './CurriculumTag';
-import type { AiXrayData } from '@/types';
+import type { AiXrayData } from '@gsi/types';
 
 /** Map AI concepts to display-friendly emoji icons */
 const CONCEPT_ICONS: Record<string, string> = {

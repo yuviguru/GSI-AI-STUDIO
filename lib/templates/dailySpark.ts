@@ -1,4 +1,4 @@
-import type { CreationType } from '@/types/creation.types';
+import type { CreationType } from '@gsi/types';
 import type { Template } from './types';
 
 /** Daily Spark prompts — 30+ per type for a full month without repeats */

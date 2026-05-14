@@ -12,7 +12,7 @@
  * `GET /api/ceo/agents/catalog` route returns this unchanged.
  */
 
-import type { CeoAgentDescriptor, CeoAgentId } from '@/types';
+import type { CeoAgentDescriptor, CeoAgentId } from '@gsi/types';
 
 export const AGENT_CATALOG: readonly CeoAgentDescriptor[] = [
   {

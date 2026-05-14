@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Bell, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
-import type { NotificationDoc } from '@/types/notification.types';
+import type { NotificationDoc } from '@gsi/types';
 
 interface ApiNotification {
   id: string;

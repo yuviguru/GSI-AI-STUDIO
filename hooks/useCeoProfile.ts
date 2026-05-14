@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { CeoBusiness, CeoProfile } from '@/types';
+import type { CeoBusiness, CeoProfile } from '@gsi/types';
 import { fetchWithKidAuth, KidAuthMissingError } from '@/lib/fetchWithKidAuth';
 import { useAuth } from './useAuth';
 import { useKidProfile } from './useKidProfile';

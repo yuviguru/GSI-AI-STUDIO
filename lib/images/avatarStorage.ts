@@ -1,4 +1,4 @@
-import { adminStorage } from '@/lib/firebase/admin';
+import { adminStorage } from '@gsi/firebase/admin';
 
 /**
  * Upload an avatar buffer to Firebase Storage and return a long-lived public URL.

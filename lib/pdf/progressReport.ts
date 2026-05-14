@@ -8,8 +8,8 @@
  */
 
 import { jsPDF } from 'jspdf';
-import { adminDb } from '@/lib/firebase/admin';
-import { getKid } from '@/lib/firebase/kidService';
+import { adminDb } from '@gsi/firebase/admin';
+import { getKid } from '@gsi/firebase/kidService';
 import { AppException } from '@/lib/api-utils';
 import {
   getSchoolBranding,

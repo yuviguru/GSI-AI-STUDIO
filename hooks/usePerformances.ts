@@ -2,9 +2,9 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { fetchWithSession } from '@/lib/fetchWithSession';
-import type { PerformanceFeedItem, PerformanceKind } from '@/types/performance.types';
-import type { CreationType } from '@/types/creation.types';
-import type { ApiResponse } from '@/types/api.types';
+import type { PerformanceFeedItem, PerformanceKind } from '@gsi/types';
+import type { CreationType } from '@gsi/types';
+import type { ApiResponse } from '@gsi/types';
 
 export type PerformanceListMode =
   | { mode: 'mine' }

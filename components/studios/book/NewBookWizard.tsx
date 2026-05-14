@@ -21,7 +21,7 @@ import type {
   BookPlot,
   BookSize,
   BookType,
-} from '@/types/book.types';
+} from '@gsi/types';
 
 interface NewBookWizardProps {
   onClose: () => void;

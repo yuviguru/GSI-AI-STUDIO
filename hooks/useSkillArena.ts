@@ -12,7 +12,7 @@ import type {
   SkillArenaBandTitle,
   SkillArenaStartResponse,
   SkillArenaEvaluateResponse,
-} from '@/types/mindx.types';
+} from '@gsi/types';
 import { fetchWithSession } from '@/lib/fetchWithSession';
 
 export type SkillArenaPhase =

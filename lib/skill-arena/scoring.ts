@@ -1,5 +1,5 @@
-import type { SkillArenaBandTitle, SkillArenaDifficulty } from '@/types/mindx.types';
-import { SKILL_ARENA_BANDS } from '@/types/mindx.types';
+import type { SkillArenaBandTitle, SkillArenaDifficulty } from '@gsi/types';
+import { SKILL_ARENA_BANDS } from '@gsi/types';
 
 /** Map a 0-100 score to a band (1-5) and title */
 export function scoreToBand(score: number): { band: number; bandTitle: SkillArenaBandTitle } {

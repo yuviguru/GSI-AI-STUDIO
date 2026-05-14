@@ -13,6 +13,21 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // --- Breakpoints (Responsive Layout Contract) ---
+      // Defaults sm/md/lg/xl/2xl preserved so existing code doesn't shift.
+      screens: {
+        xs: '360px',
+        sm: '640px',
+        md: '768px',
+        lg: '1024px',
+        xl: '1280px',
+        '2xl': '1536px',
+        '3xl': '1920px',
+        landscape: { raw: '(orientation: landscape)' },
+        portrait: { raw: '(orientation: portrait)' },
+        short: { raw: '(max-height: 480px)' },
+      },
+
       colors: {
         // --- Brand Colors (Design System §3) ---
         brand: {

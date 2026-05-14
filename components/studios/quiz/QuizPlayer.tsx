@@ -6,8 +6,8 @@ import { cn } from '@/lib/utils';
 import { AiXrayPopup } from '@/components/learning/AiXrayPopup';
 import { ShareButton } from '@/components/shared/ShareButton';
 import { DownloadButton } from '@/components/shared/DownloadButton';
-import type { AiXrayData } from '@/types';
-import type { QuizContent } from '@/types/creation.types';
+import type { AiXrayData } from '@gsi/types';
+import type { QuizContent } from '@gsi/types';
 
 interface QuizQuestion {
   question: string;

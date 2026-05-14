@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { BookOpen, Music, HelpCircle, Gamepad2, Palette, Sparkles, Rocket } from 'lucide-react';
 import { useCreations } from '@/hooks/useCreations';
-import type { Creation } from '@/types/creation.types';
+import type { Creation } from '@gsi/types';
 import { cn } from '@/lib/utils';
 
 const TYPE_META: Record<string, { icon: React.ComponentType<{ className?: string }>; gradient: string }> = {

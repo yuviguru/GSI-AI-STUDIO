@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { getRandomTemplate, type Template } from '@/lib/templates';
-import type { CreationType } from '@/types/creation.types';
+import type { CreationType } from '@gsi/types';
 
 interface SurpriseButtonProps {
   type: CreationType;

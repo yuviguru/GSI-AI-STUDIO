@@ -14,7 +14,7 @@
  *    - Characters: friends, family, teachers, cousins — no investors/VCs
  *    - No violence / substances / brand names / politics / religion */
 
-import type { CeoBusiness, CeoBusinessType } from '@/types';
+import type { CeoBusiness, CeoBusinessType } from '@gsi/types';
 import { PHASE_CONFIG, milestoneDescription, milestoneSummary } from '../phases';
 import { stakesMultiplierFor } from '../constants';
 import type { CurrentAffairTheme } from '../currentAffairs';

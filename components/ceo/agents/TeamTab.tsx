@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Sparkles, Users } from 'lucide-react';
 import { useCeoAgents } from '@/hooks/useCeoAgents';
 import { AgentCard } from './AgentCard';
-import type { CeoAgentConfig, CeoAgentId, CeoBusiness } from '@/types';
+import type { CeoAgentConfig, CeoAgentId, CeoBusiness } from '@gsi/types';
 
 interface TeamTabProps {
   business: CeoBusiness;

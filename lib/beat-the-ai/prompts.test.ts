@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ALL_PROMPTS, getRandomPrompt } from './prompts';
-import type { BeatTheAiCategory } from '@/types/beatTheAi.types';
+import type { BeatTheAiCategory } from '@gsi/types';
 
 const CATEGORIES: BeatTheAiCategory[] = [
   'story_sprint', 'rhyme_time',

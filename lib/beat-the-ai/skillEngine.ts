@@ -7,12 +7,12 @@ import type {
   BeatTheAiSkillId,
   BeatTheAiSkills,
   SkillLevel,
-} from '@/types/beatTheAi.types';
+} from '@gsi/types';
 import {
   CATEGORY_PRIMARY_SKILL,
   SCORE_SKILL_MAP,
   SKILL_LEVELS,
-} from '@/types/beatTheAi.types';
+} from '@gsi/types';
 
 /** Calculate skill XP earned from a completed round */
 export function calculateSkillXp(

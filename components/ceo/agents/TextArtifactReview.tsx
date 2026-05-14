@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { CheckCircle2, IndianRupee, Loader2, RefreshCw } from 'lucide-react';
 import { WorkflowTrace } from './WorkflowTrace';
-import type { CeoArtifact, CeoArtifactAsset } from '@/types';
+import type { CeoArtifact, CeoArtifactAsset } from '@gsi/types';
 
 interface TextArtifactReviewProps {
   artifact: CeoArtifact;

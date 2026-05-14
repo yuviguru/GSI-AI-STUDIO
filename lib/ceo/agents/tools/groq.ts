@@ -4,7 +4,7 @@
  * `lib/ai/groqClient.ts` so retries + error semantics stay consistent.
  */
 
-import { generateJsonWithGroq, generateWithGroq } from '@/lib/ai/groqClient';
+import { generateJsonWithGroq, generateWithGroq } from '@gsi/ai/groqClient';
 import type { ToolAdapter, ToolRunContext, ToolRunResult } from './types';
 
 export interface GroqToolInput {

@@ -17,7 +17,7 @@ import { AppException } from '@/lib/api-utils';
 import {
   redeemBotLinkCode,
   redeemBotLinkToken,
-} from '@/lib/firebase/botLinkService';
+} from '@gsi/firebase/botLinkService';
 import { linkBotSession } from '@/lib/bot/services/sessionStore';
 
 type Send = (msg: BotOutgoingMessage) => Promise<string>;

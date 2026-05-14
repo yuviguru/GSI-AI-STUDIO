@@ -1,7 +1,7 @@
 'use client';
 
 import { Plus } from 'lucide-react';
-import type { BookPage } from '@/types/book.types';
+import type { BookPage } from '@gsi/types';
 
 interface PageNavigatorProps {
   pages: BookPage[];

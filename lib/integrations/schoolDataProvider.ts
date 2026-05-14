@@ -8,7 +8,7 @@
  * hard-code ERP calls.
  */
 
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 import { AppException } from '@/lib/api-utils';
 
 export type SchoolDataProviderId =
@@ -93,6 +93,38 @@ export async function getErpIntegrationConfig(
     lastError: data.lastError as string | undefined,
     enabled: (data.enabled as boolean | undefined) ?? true,
   };
+}
+
+export interface SaveErpIntegrationInput {
+  schoolId: string;
+  provider: SchoolDataProviderId;
+  credentialsRef?: string;
+  enabled: boolean;
+}
+
+/**
+ * Persist an integration config for a school. Does not store raw credentials —
+ * only the opaque reference to the encrypted bundle in secure storage.
+ */
+export async function saveErpIntegrationConfig(
+  input: SaveErpIntegrationInput,
+): Promise<ErpIntegrationConfig> {
+  const ref = adminDb.collection(INTEGRATIONS_COLLECTION).doc(input.schoolId);
+  const now = new Date();
+  await ref.set(
+    {
+      provider: input.provider,
+      credentialsRef: input.credentialsRef ?? null,
+      enabled: input.enabled,
+      updatedAt: now,
+    },
+    { merge: true },
+  );
+  const after = await getErpIntegrationConfig(input.schoolId);
+  if (!after) {
+    throw new AppException('INTEGRATION_SAVE_FAILED', 'Could not read back integration config.', 500);
+  }
+  return after;
 }
 
 // ─── resolveProvider: the public entry point ──────────────────────────────

@@ -147,7 +147,8 @@ GSI AI Studio is a serverless PWA built on Next.js (Netlify) + Firebase, designe
 **Tech**: Next.js 14+ (App Router), React, Tailwind CSS, next-pwa
 **Host**: Netlify
 **Responsibilities**:
-- Creation studio UIs (Story, Music, Quiz, Game, Comic — 5 studios)
+- Creation studio UIs (Story, Music, Quiz, Game, Comic, Book — 6 studios)
+- 3-column Section Hub home (SidebarNav + SectionHub + RightRail) grouping studios into Create / Play / Learn / Discover sections
 - AI X-Ray learning popups
 - AI Points, badges, and celebration system
 - Koko mascot with expressions and speech bubbles
@@ -161,14 +162,19 @@ GSI AI Studio is a serverless PWA built on Next.js (Netlify) + Firebase, designe
 ```
 app/
 ├── (public)/           # No-auth pages
-│   ├── page.tsx        # Landing / playground entry
+│   ├── page.tsx        # 3-column Section Hub (home)
 │   ├── create/         # Creation studios
 │   │   ├── story/      # Story Studio
 │   │   ├── music/      # Music Lab
 │   │   ├── quiz/       # Quiz Maker
 │   │   ├── game/       # Game Studio (text adventures)
-│   │   └── comic/      # Comic Studio (multi-panel)
+│   │   ├── comic/      # Comic Studio (multi-panel)
+│   │   └── book/       # Book Studio (multi-session authoring)
 │   ├── ceo/            # Kid CEO business sim (register/play/profile/leaderboard)
+│   ├── beat-the-ai/    # Human vs AI challenge
+│   ├── skill-arena/    # MindX IELTS-style assessment
+│   ├── homework/       # Teacher-assigned homework
+│   ├── learn/          # AI Lab — concept cards
 │   ├── explore/        # Public creations feed
 │   ├── creations/      # My Creations gallery
 │   └── view/[id]/      # Public creation viewer (SSR)

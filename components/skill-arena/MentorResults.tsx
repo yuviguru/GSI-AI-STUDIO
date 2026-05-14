@@ -7,8 +7,8 @@ import type {
   SkillArenaXray,
   SkillArenaBandTitle,
   SkillArenaModule,
-} from '@/types/mindx.types';
-import { MODULE_INFO, SKILL_ARENA_BANDS } from '@/types/mindx.types';
+} from '@gsi/types';
+import { MODULE_INFO, SKILL_ARENA_BANDS } from '@gsi/types';
 import { Mascot } from '@/components/mascot/Mascot';
 import { ConfettiCelebration } from '@/components/celebrations/ConfettiCelebration';
 

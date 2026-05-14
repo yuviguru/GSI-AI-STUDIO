@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { cn, formatCount } from '@/lib/utils';
 import { DownloadButton } from '@/components/shared/DownloadButton';
-import type { Creation, CreationType } from '@/types/creation.types';
+import type { Creation, CreationType } from '@gsi/types';
 
 interface CreationCardProps {
   creation: Creation;

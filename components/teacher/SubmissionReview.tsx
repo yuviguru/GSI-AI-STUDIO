@@ -6,7 +6,7 @@ import { ArrowLeft, ArrowRight, ExternalLink, Star, Sparkles, Undo2 } from 'luci
 import { cn } from '@/lib/utils';
 import { getConcept } from '@/lib/curriculum/curriculumMap';
 import { useAuth } from '@/hooks/useAuth';
-import type { SubmissionStatus } from '@/types/user.types';
+import type { SubmissionStatus } from '@gsi/types';
 import type { SubmissionRow } from './SubmissionGrid';
 
 interface Props {

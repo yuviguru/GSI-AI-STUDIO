@@ -2,7 +2,7 @@
  *  and default capital per business type. Ported from SimPrenuer/profileEngine.js
  *  (PHASE_MULTIPLIERS, DIMENSIONS) with kid-adapted amounts. */
 
-import type { CeoBusinessType, CeoDimensionKey, CeoPace, CeoPhaseKey } from '@/types';
+import type { CeoBusinessType, CeoDimensionKey, CeoPace, CeoPhaseKey } from '@gsi/types';
 
 export const DIMENSIONS: readonly CeoDimensionKey[] = [
   'risk_calibration',

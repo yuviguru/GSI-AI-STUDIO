@@ -1,0 +1,14 @@
+{
+  "name": "@gsi/safety",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Input/output filters, profanity, blocklist. Every kid-facing AI prompt and output passes through here.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  }
+}

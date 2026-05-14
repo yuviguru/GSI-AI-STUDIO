@@ -14,7 +14,7 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 import { TelegramAdapter } from '@/lib/bot/adapters/telegram';
 import type {
   BotOutgoingMessage,

@@ -16,13 +16,13 @@
  *     are bucketed under the kid/parent's phone-derived identity.
  */
 
-import { llmRouter } from '@/lib/ai/router';
+import { llmRouter } from '@gsi/ai/router';
 import { TOOLS, executeTool } from '@/lib/mcp/tools';
 import { sendWhatsAppText } from './client';
 import { backend } from '@/lib/backend';
 import { hashPhoneNumber } from './phoneHash';
 import { enforceWhatsAppRateLimit, WhatsAppRateLimitError } from './rateLimiter';
-import { filterInput } from '@/lib/safety/inputFilter';
+import { filterInput } from '@gsi/safety';
 
 const SYSTEM_PROMPT = `You are the GSI AI Studio WhatsApp assistant for Indian kids (ages 8-17) and their parents. You help them create stories, music, comics, games, and quizzes.
 

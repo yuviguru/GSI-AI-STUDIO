@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Download, Share2, Truck, X } from 'lucide-react';
-import type { Book } from '@/types/book.types';
+import type { Book } from '@gsi/types';
 
 interface PublishModalProps {
   book: Book;

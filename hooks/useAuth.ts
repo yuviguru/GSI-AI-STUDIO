@@ -9,8 +9,8 @@ import {
   type ReactNode,
 } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { auth, signOutUser, ensureAnonymousAuth, isFirebaseConfigured } from '@/lib/firebase/client';
-import type { UserRole, UserPlan } from '@/types/user.types';
+import { auth, signOutUser, ensureAnonymousAuth, isFirebaseConfigured } from '@gsi/firebase/client';
+import type { UserRole, UserPlan } from '@gsi/types';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

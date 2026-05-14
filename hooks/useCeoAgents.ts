@@ -11,7 +11,7 @@ import type {
   CeoAgentConfig,
   CeoArtifact,
   CeoWorkflowId,
-} from '@/types';
+} from '@gsi/types';
 
 interface CatalogResponse {
   agents: CeoAgentDescriptor[];

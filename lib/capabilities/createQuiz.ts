@@ -2,14 +2,14 @@
  * createQuiz capability — generates an interactive quiz from a topic.
  */
 
-import { llmRouter } from '@/lib/ai/router';
+import { llmRouter } from '@gsi/ai/router';
 import { saveCreation } from '@/lib/repositories/creationRepository';
-import { trackCreation } from '@/lib/firebase/sessionService';
-import { filterInput, filterOutput } from '@/lib/safety/inputFilter';
-import { QUIZ_SYSTEM_PROMPT, buildQuizUserPrompt } from '@/lib/ai/prompts/quizPrompt';
+import { trackCreation } from '@gsi/firebase/sessionService';
+import { filterInput, filterOutput } from '@gsi/safety';
+import { QUIZ_SYSTEM_PROMPT, buildQuizUserPrompt } from '@gsi/ai/prompts/quizPrompt';
 import { usageTracker } from '@/lib/cost/usageTracker';
-import type { CostTier } from '@/lib/ai/ports';
-import type { AiXrayData, QuizContent } from '@/types';
+import type { CostTier } from '@gsi/ai/ports';
+import type { AiXrayData, QuizContent } from '@gsi/types';
 
 export interface CreateQuizInput {
   sessionId: string;

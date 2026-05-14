@@ -18,10 +18,10 @@
  *  Reader is safe on cache miss: falls back to a small evergreen pool so the
  *  milestone event still generates if the cron hasn't run yet. */
 
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
-import { generateJsonWithGroq } from '@/lib/ai/groqClient';
-import { generateJsonWithClaude } from '@/lib/ai/claudeClient';
+import { generateJsonWithGroq } from '@gsi/ai/groqClient';
+import { generateJsonWithClaude } from '@gsi/ai/claudeClient';
 
 const COLLECTION = 'currentAffairsDaily';
 

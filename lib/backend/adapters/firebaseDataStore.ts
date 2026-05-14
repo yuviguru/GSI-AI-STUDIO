@@ -22,7 +22,7 @@ import {
   type Transaction as FirestoreTx,
   type WhereFilterOp,
 } from 'firebase-admin/firestore';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb } from '@gsi/firebase/admin';
 import type {
   DataStore,
   Transaction,

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { enrichScores } from './scoringEngine';
-import type { CeoBusiness } from '@/types';
+import type { CeoBusiness } from '@gsi/types';
 
 function mkBusiness(overrides: Partial<CeoBusiness> = {}): CeoBusiness {
   const base: CeoBusiness = {

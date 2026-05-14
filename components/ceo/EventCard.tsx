@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { PHASE_LABELS } from '@/lib/ceo/constants';
 import { playSound, type SoundName } from '@/lib/sounds';
 import { cn } from '@/lib/utils';
-import type { CeoEvent, CeoChoiceId } from '@/types';
+import type { CeoEvent, CeoChoiceId } from '@gsi/types';
 
 interface EventCardProps {
   event: CeoEvent;

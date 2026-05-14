@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { AiXrayPopup } from '@/components/learning/AiXrayPopup';
 import { ShareButton } from '@/components/shared/ShareButton';
-import type { GameContent, GameScene, AiXrayData } from '@/types';
+import type { GameContent, GameScene, AiXrayData } from '@gsi/types';
 
 interface GamePlayerProps {
   game: GameContent & { title: string };

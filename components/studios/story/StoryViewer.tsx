@@ -7,7 +7,7 @@ import { StoryPageView } from './StoryPageView';
 import { AiXrayPopup } from '@/components/learning/AiXrayPopup';
 import { ShareButton } from '@/components/shared/ShareButton';
 import { DownloadButton } from '@/components/shared/DownloadButton';
-import type { AiXrayData, StoryContent } from '@/types';
+import type { AiXrayData, StoryContent } from '@gsi/types';
 
 interface StoryViewerProps {
   story: {

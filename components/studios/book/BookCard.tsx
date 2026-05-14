@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { BookOpen, Lock } from 'lucide-react';
-import type { BookListItem } from '@/types/book.types';
+import type { BookListItem } from '@gsi/types';
 import { getBookTypeCard } from '@/lib/templates/bookTemplates';
 
 interface BookCardProps {

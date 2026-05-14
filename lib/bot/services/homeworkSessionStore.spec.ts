@@ -21,7 +21,7 @@ const makeDocRef = (id: string) => ({
 
 const mockCollectionDoc = vi.fn((id: string) => makeDocRef(id));
 
-vi.mock('@/lib/firebase/admin', () => ({
+vi.mock('@gsi/firebase/admin', () => ({
   adminDb: {
     collection: vi.fn(() => ({ doc: mockCollectionDoc })),
     runTransaction: vi.fn(

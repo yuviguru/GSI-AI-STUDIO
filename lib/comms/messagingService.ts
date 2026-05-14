@@ -7,8 +7,8 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
-import { adminDb } from '@/lib/firebase/admin';
-import { hasConsent } from '@/lib/dpdp/consentService';
+import { adminDb } from '@gsi/firebase/admin';
+import { hasConsent } from '@gsi/dpdp';
 import { TelegramProvider } from './providers/telegramProvider';
 import { WhatsAppProvider } from './providers/whatsappProvider';
 import type {

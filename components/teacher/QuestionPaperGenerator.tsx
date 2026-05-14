@@ -10,7 +10,7 @@ import type {
   PaperBlueprint,
   QuestionPaperDraft,
   QuestionTypeSpec,
-} from '@/lib/ai/questionPaperGenerator';
+} from '@gsi/ai/questionPaperGenerator';
 
 const BLOOM_LEVELS: BloomLevel[] = [
   'remember',

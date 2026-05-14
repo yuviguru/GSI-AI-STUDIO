@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import type { ComicPanel } from '@/types';
+import type { ComicPanel } from '@gsi/types';
 
 interface ComicPanelViewProps {
   panel: ComicPanel;

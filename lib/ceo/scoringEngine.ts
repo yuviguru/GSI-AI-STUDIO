@@ -12,8 +12,8 @@
  *  Uses GSI's existing Groq → Claude pipeline. Falls back to the kid's own
  *  choice.weights if the LLM is unavailable. */
 
-import { generateJsonWithGroq } from '@/lib/ai/groqClient';
-import { generateJsonWithClaude } from '@/lib/ai/claudeClient';
+import { generateJsonWithGroq } from '@gsi/ai/groqClient';
+import { generateJsonWithClaude } from '@gsi/ai/claudeClient';
 import type {
   CeoBusiness,
   CeoChoice,
@@ -21,7 +21,7 @@ import type {
   CeoDimensionKey,
   CeoDimensionScores,
   CeoEvent,
-} from '@/types';
+} from '@gsi/types';
 import { DIMENSIONS, PHASE_MULTIPLIERS, type CeoEventCategory } from './constants';
 import type { StateChanges } from './businessState';
 import {

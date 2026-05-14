@@ -941,6 +941,104 @@ Add: Profile avatar (top right), Dashboard link, Portfolio link, Challenges tab
 
 ---
 
+## Home Dashboard — 3-Column Section Hub
+
+The home (`app/(public)/page.tsx`) is a **hub**, not a feature surface. It groups the 9 product surfaces (Story, Comic, Music, Quiz, Game, Books, Beat the AI, MindX, CEO + Homework + Discover) into four conceptual sections so the kid never feels lost.
+
+### Conceptual sections
+
+| Section | Studios it contains |
+|---|---|
+| **Create** | Story, Comic, Music, Quiz, Game, Books |
+| **Play** | Beat the AI, Kid CEO |
+| **Learn** | MindX Skill Arena, AI Lab (`/learn`), Homework |
+| **Discover** | My Creations, Community Gallery |
+
+New features pick a section before any code is written. If a feature does not fit one, the section taxonomy is wrong — fix the taxonomy, do not add a 5th tile.
+
+### 3-column shell layout (≥ `lg` breakpoint)
+
+```
+┌────────────┬────────────────────────────────┬───────────────────┐
+│ SidebarNav │  SectionHub                    │  RightRail        │
+│ (~240px)   │  (1fr)                         │  (~320px)         │
+│            │                                │                   │
+│ Brand      │  "Hi, <Kid>! 🚀 Create today"  │  ProfileChip      │
+│ Home       │  [Recent | In Progress | Today]│  (avatar + level) │
+│ Create     │                                │  + 🔔 + ✉︎          │
+│ Play       │  ┌─────────┬────────┬────────┐ │                   │
+│ Learn      │  │ CREATE  │ PLAY   │ LEARN  │ │  Today's Activity │
+│ Discover   │  │ hero    │ hero   │ hero   │ │  ▸ Story (60%)    │
+│ Creations  │  │ illust. │ illust.│ illust.│ │  ▸ Quiz (40%)     │
+│            │  └─────────┴────────┴────────┘ │                   │
+│ ─────────  │                                │  ┌──────────────┐ │
+│ Streak     │  Top Studios (mosaic)          │  │ Daily Chal.  │ │
+│ illust.    │  ┌─────────┬────────┬────────┐ │  │ illustration │ │
+│ CTA card   │  │ Story   │Comic   │ Music  │ │  │ "Play now"   │ │
+│            │  │ (large) ├────────┴────────┤ │  └──────────────┘ │
+│            │  │         │ Books (wide)    │ │                   │
+│            │  ├─────────┴────┬────┬───────┤ │  ┌────┬────┬────┐ │
+│            │  │ Game         │Quiz│ B-AI  │ │  │AI  │Bdg │Strk│ │
+│            │  └──────────────┴────┴───────┘ │  │Pts │    │    │ │
+└────────────┴────────────────────────────────┴───────────────────┘
+```
+
+Below `lg`: stack to single column. SidebarNav collapses to a hamburger; RightRail collapses below the hub.
+
+### Components (`components/navigation/`)
+
+- **`AppShell`** — CSS-grid container `grid-template-columns: minmax(220px,260px) 1fr minmax(300px,360px)`. Used by `app/(public)/layout.tsx`. Sidebar + right rail persist across home and section pages.
+- **`SidebarNav`** — Brand, primary nav with active-route highlight, divider, illustrated CTA card at bottom (streak mascot).
+- **`RightRail`** — ProfileChip, Today's Activity (in-progress creations from `creationService` drafts), illustrated daily-challenge card, 3-tile stats grid (AI Points / Badges / Streak).
+- **`SectionHub`** — Center column on home: greeting strip + tabs + 3 hero cards + studio mosaic.
+- **`SectionHeroCard`** — Vibrant gradient panel, illustration, count, avatar stack of recent users. Clicks through to the section landing page. Variants per section (`create | play | learn`).
+- **`StudioTile`** — Mosaic tile with `large | square | wide | small` variants. Illustrated thumbnail + studio name + brief class count. Reuses tile across section landings.
+
+### Rules
+
+- The home is **not** a router. It does not embed any studio UI. Each section hero links to its section landing page, where studios are picked.
+- Discover is sidebar-only (no hero card on home) — it's a meta-section, secondary to creating.
+- Every hero/tile **must** have an illustration. No emoji-only or icon-only tiles on the home — that's the IA failure we just fixed.
+- The shell composes — section pages reuse `AppShell` so SidebarNav and RightRail persist; only the center column changes.
+
+---
+
+## Illustration System
+
+Kid-friendly illustrations are core to the home and section UI. Generated via the existing image cascade (`lib/ai/imageProvider.ts`: Pixazo Flux Schnell → Replicate SDXL → Pollinations), then committed as static assets so runtime is deterministic.
+
+### Style guide (single prefix applied to every asset)
+
+> "Soft 3D rendered illustration, claymation feel, vibrant pastel palette (purples, peaches, mint, sunshine yellow), rounded shapes, friendly kid character age 8–12, transparent background, centered subject, no text, child-safe."
+
+This locks the visual language across providers. If the prefix changes, regenerate **all** assets — partial regen looks visually inconsistent across tiles.
+
+### Asset locations (`public/illustrations/`)
+
+```
+public/illustrations/
+  sections/   create.webp, play.webp, learn.webp, discover.webp
+  studios/    story.webp, comic.webp, music.webp, quiz.webp, game.webp,
+              books.webp, beat-the-ai.webp, ceo.webp, skill-arena.webp
+  cta/        streak-mascot.webp, daily-challenge.webp
+  mascots/    empty.webp
+```
+
+### Generation workflow
+
+- Manifest: `scripts/illustration-manifest.ts` — typed list of `{ slot, filename, prompt }` reviewed in PR like source code.
+- Generator: `scripts/generate-illustrations.ts` — calls `imageProvider.generate()` with the style prefix + per-asset prompt, gates output through `lib/safety/outputFilter.ts`, writes to `public/illustrations/`. Idempotent (skips existing unless `--force`); per-slot regen via `--slot=studios/books`.
+- Run locally with provider keys, commit results. Builds do **not** depend on AI keys.
+- Components consume via `next/image` with `priority` on the hero set, lazy on the mosaic. All illustrations carry meaningful `alt` text or `aria-hidden` if decorative.
+
+### Don'ts
+
+- Don't generate illustrations at request time on the home — too slow, non-deterministic, costs scale with pageviews.
+- Don't mix illustration styles (don't use stock vector icons next to the 3D-rendered tiles — they read as broken).
+- Don't add a tile without an illustration — placeholder grey is worse than reordering the mosaic to omit the tile.
+
+---
+
 ## Forms
 
 ### Input Fields
@@ -1410,3 +1508,56 @@ Interactive demos run client-side when possible (Transformers.js for small model
 - **Total page weight**: < 500KB initial load
 - **Image optimization**: WebP format, lazy loading, responsive sizes
 - **Service Worker**: Cache static assets, offline landing page
+
+---
+
+## Responsive Layout Contract
+
+GSI AI Studio runs on every form factor — pocket phone in landscape on the bus, classroom tablet flipped sideways, parent's laptop, school office desktop, and projector during a school assembly. Layout adapts without breaking any feature.
+
+### Breakpoint system
+
+`tailwind.config.ts` extends the default screens with `xs` (360px), `3xl` (1920px), and orientation modifiers `landscape` / `portrait` / `short` (max-height 480px).
+
+| Token | Width | Typical device |
+|---|---|---|
+| `xs` | ≥ 360px | Small phone portrait |
+| `sm` | ≥ 640px | Large phone, phone landscape |
+| `md` | ≥ 768px | Tablet portrait |
+| `lg` | ≥ 1024px | Tablet landscape, small laptop |
+| `xl` | ≥ 1280px | Desktop |
+| `2xl` | ≥ 1536px | Large desktop |
+| `3xl` | ≥ 1920px | 4K monitor, projector wall |
+| `landscape:` | any width, landscape orientation | Used for short-viewport refinements |
+| `portrait:` | any width, portrait orientation | Stacks columns when phone is held normally |
+| `short:` | viewport height ≤ 480px | Compress vertical chrome (typical phone landscape) |
+
+### Layout zones at each breakpoint
+
+| Viewport | Sidebar | Center column | Right rail |
+|---|---|---|---|
+| `< xs` (≤360px) | Hidden, BottomNav owns nav | Single col, expandable cards | Folded into BottomNav drawer |
+| `xs`–`sm` portrait | Hidden, BottomNav | Single col | Hidden |
+| `sm` landscape / `short:` | Hidden, BottomNav (compact) | Studio grids inside expanded cards use 3 cols | Hidden |
+| `md` portrait | Icon-only rail (72px) | Single col main | Stacked below center |
+| `md` landscape / `lg` | Icon-only rail | Single col main | Visible (300px) |
+| `xl` | Full rail (240px) | Single col main | Visible (340px) |
+| `2xl`–`3xl` | Full rail | Centered, capped at `max-w-[1600px]` | Visible (380px) |
+
+Section pages always reuse the same shell — only the center column changes. Sidebar and right rail persist across kid Create / Play / Learn navigation and across school admin / teacher / parent surfaces (Workstream 5).
+
+### Universal rules (apply at every breakpoint)
+
+- **Touch targets ≥ 44×44 px.** Use the `TOUCH_TARGET` constant from `lib/responsive/tokens.ts`.
+- **No fixed body heights.** Each column scrolls independently inside the shell.
+- **`prefers-reduced-motion` respected.** Framer Motion components must accept this hint and skip transitions for users who request it.
+- **Safe-area aware.** Bottom-anchored UI uses the `SAFE_BOTTOM` helper; modals overflow under iOS notch when full-screen.
+- **`next/image` sizes set.** Hero illustrations use `HERO_IMAGE_SIZES`; mosaic/picker tiles use `TILE_IMAGE_SIZES`. Projectors don't get phone-sized PNGs.
+
+### Expandable Section Card pattern
+
+The Create / Play / Learn cards on the home are accordion-style. Click to expand inline; only one card open at a time. Inside the expanded body, the studio grid uses `grid-template-columns: repeat(auto-fit, minmax(140px, 1fr))` so it self-adjusts to the card's actual width — landscape phone gets 3 columns, narrow portrait gets 2, sidebar-flanked desktop gets 2–3 depending on right-rail width.
+
+The card header is the click target (≥ 56px tall). Body uses Framer Motion `<motion.div animate={{ height: 'auto' }}>`; respects `prefers-reduced-motion`.
+
+See `components/navigation/ExpandableSectionCard.tsx`.

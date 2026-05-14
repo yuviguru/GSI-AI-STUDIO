@@ -1,7 +1,7 @@
 'use client';
 
 import { Check, X } from 'lucide-react';
-import type { GrammarSuggestion } from '@/types/book.types';
+import type { GrammarSuggestion } from '@gsi/types';
 
 interface GrammarSuggestionListProps {
   suggestions: GrammarSuggestion[];

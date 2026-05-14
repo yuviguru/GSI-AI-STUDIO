@@ -7,7 +7,7 @@ import { BUSINESS_TYPE_DEFAULT_NAMES, STARTING_CAPITAL } from '@/lib/ceo/constan
 import { Mascot } from '@/components/mascot/Mascot';
 import { cn } from '@/lib/utils';
 import businessesJson from '@/lib/ceo/templates/businesses.json';
-import type { CeoBusinessType, CeoPace } from '@/types';
+import type { CeoBusinessType, CeoPace } from '@gsi/types';
 
 interface BusinessTemplate {
   type: CeoBusinessType;

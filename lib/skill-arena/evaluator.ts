@@ -7,11 +7,11 @@ import type {
   SkillArenaMentorFeedback,
   SkillArenaModule,
   SkillArenaXray,
-} from '@/types/mindx.types';
-import { MODULE_XRAY_CONCEPTS } from '@/types/mindx.types';
-import { generateJsonWithClaude } from '@/lib/ai/claudeClient';
-import { generateJsonWithGroq } from '@/lib/ai/groqClient';
-import { filterOutput } from '@/lib/safety/inputFilter';
+} from '@gsi/types';
+import { MODULE_XRAY_CONCEPTS } from '@gsi/types';
+import { generateJsonWithClaude } from '@gsi/ai/claudeClient';
+import { generateJsonWithGroq } from '@gsi/ai/groqClient';
+import { filterOutput } from '@gsi/safety';
 
 // ─── Module-specific rubrics ──────────────────────────────
 

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { fetchWithSession } from '@/lib/fetchWithSession';
-import type { Book, BookPage } from '@/types/book.types';
+import type { Book, BookPage } from '@gsi/types';
 import type { BookPatchInput, CoverPatchInput } from '@/lib/validators';
 
 interface BookFetchResponse {

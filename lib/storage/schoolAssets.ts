@@ -7,8 +7,8 @@
  * resize before upload.
  */
 
-import { adminStorage } from '@/lib/firebase/admin';
-import { setSchoolBrandingAssetUrl } from '@/lib/firebase/schoolService';
+import { adminStorage } from '@gsi/firebase/admin';
+import { setSchoolBrandingAssetUrl } from '@gsi/firebase/schoolService';
 import { AppException } from '@/lib/api-utils';
 
 export type SchoolAssetKind = 'logo' | 'letterhead';

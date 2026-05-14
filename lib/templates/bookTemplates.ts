@@ -5,7 +5,7 @@ import type {
   BookSize,
   BookType,
   PageLayout,
-} from '@/types/book.types';
+} from '@gsi/types';
 
 export interface BookTypeCard {
   type: BookType;

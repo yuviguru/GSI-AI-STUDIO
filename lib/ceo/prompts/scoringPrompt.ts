@@ -10,7 +10,7 @@
  *  lib/ceo/scoringEngine.ts. The LLM just produces raw -10..+10 signals per
  *  dimension. */
 
-import type { CeoBusiness, CeoChoice, CeoChoiceId, CeoEvent } from '@/types';
+import type { CeoBusiness, CeoChoice, CeoChoiceId, CeoEvent } from '@gsi/types';
 
 export const DECISION_SCORING_PROMPT = `You are the Kid CEO Scoring Engine. You evaluate decisions by 10+ year-olds to build a behavioral profile — their "CEO DNA".
 

@@ -16,7 +16,7 @@ import type { HomeworkSession } from '@/lib/bot/types';
 import {
   updateSessionPoints,
   type SessionPointsData,
-} from '@/lib/firebase/sessionService';
+} from '@gsi/firebase/sessionService';
 
 /** Base points for finishing a session, before score scaling. */
 const BASE_POINTS = 20;

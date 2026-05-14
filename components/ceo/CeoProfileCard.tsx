@@ -12,7 +12,7 @@ import type {
   CeoEndingReport,
   CeoProfile,
   CeoRealWorldParallel,
-} from '@/types';
+} from '@gsi/types';
 
 interface CeoProfileCardProps {
   business: Pick<

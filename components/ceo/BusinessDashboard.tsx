@@ -5,7 +5,7 @@ import { Wallet, Star, Smile, Flag } from 'lucide-react';
 import { PHASE_LABELS } from '@/lib/ceo/constants';
 import { PHASE_CONFIG } from '@/lib/ceo/phases';
 import { cn } from '@/lib/utils';
-import type { CeoBusiness } from '@/types';
+import type { CeoBusiness } from '@gsi/types';
 
 const PHASE_TINT: Record<string, string> = {
   pre_launch: 'bg-slate-100 text-slate-700',

@@ -18,9 +18,41 @@
     "noFallthroughCasesInSwitch": true,
     "plugins": [{ "name": "next" }],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@gsi/types": ["./packages/types/src/index.ts"],
+      "@gsi/types/*": ["./packages/types/src/*"],
+      "@gsi/safety": ["./packages/safety/src/index.ts"],
+      "@gsi/safety/*": ["./packages/safety/src/*"],
+      "@gsi/dpdp": ["./packages/dpdp/src/index.ts"],
+      "@gsi/dpdp/*": ["./packages/dpdp/src/*"],
+      "@gsi/ai": ["./packages/ai/src/index.ts"],
+      "@gsi/ai/*": ["./packages/ai/src/*"],
+      "@gsi/firebase": ["./packages/firebase/src/index.ts"],
+      "@gsi/firebase/*": ["./packages/firebase/src/*"],
+      "@gsi/ui": ["./packages/ui/src/index.ts"],
+      "@gsi/ui/*": ["./packages/ui/src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "netlify"]
+  "include": [
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "hooks/**/*.ts",
+    "hooks/**/*.tsx",
+    "contexts/**/*.ts",
+    "contexts/**/*.tsx",
+    "lib/**/*.ts",
+    "lib/**/*.tsx",
+    "scripts/**/*.ts",
+    "packages/*/src/**/*.ts",
+    "packages/*/src/**/*.tsx",
+    "vitest.config.ts",
+    "vitest.setup.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "netlify",
+    "packages/*/node_modules",
+    "apps/*",
+    "**/.next/**"
+  ]
 }

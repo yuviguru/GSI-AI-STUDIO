@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { ComicPanelView } from './ComicPanelView';
 import { AiXrayPopup } from '@/components/learning/AiXrayPopup';
 import { ShareButton } from '@/components/shared/ShareButton';
-import type { AiXrayData, ComicContent } from '@/types';
+import type { AiXrayData, ComicContent } from '@gsi/types';
 
 interface ComicViewerProps {
   comic: ComicContent;

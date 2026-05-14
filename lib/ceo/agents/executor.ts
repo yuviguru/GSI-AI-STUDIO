@@ -20,7 +20,7 @@
 
 import { stepCostInr, type CeoAgentTool } from './pricing';
 import type { ToolAdapter } from './tools/types';
-import type { CeoArtifactAsset, CeoWorkflowStepTrace } from '@/types';
+import type { CeoArtifactAsset, CeoWorkflowStepTrace } from '@gsi/types';
 
 /** One step in a workflow. Each step resolves an adapter by `tool` id
  *  and invokes it with `prepareInput(context)`, where `context` is the

@@ -6,7 +6,7 @@ import {
   totalDecisionsAcrossDimensions,
 } from './profileEngine';
 import { DIMENSIONS } from './constants';
-import type { CeoDimensionKey } from '@/types';
+import type { CeoDimensionKey } from '@gsi/types';
 
 describe('initialDimensions', () => {
   it('seeds all 6 dimensions at score=50, decisions=0, trend=stable', () => {

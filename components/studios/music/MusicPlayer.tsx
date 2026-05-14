@@ -7,7 +7,7 @@ import { AiXrayPopup } from '@/components/learning/AiXrayPopup';
 import { ShareButton } from '@/components/shared/ShareButton';
 import { DownloadButton } from '@/components/shared/DownloadButton';
 import { SingAlongRecorder } from './SingAlongRecorder';
-import type { AiXrayData, MusicContent } from '@/types';
+import type { AiXrayData, MusicContent } from '@gsi/types';
 
 type MusicData = MusicContent & { title: string; waveformData: number[] };
 

@@ -1,8 +1,8 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { MODULE_INFO } from '@/types/mindx.types';
-import type { SkillArenaModule, SkillArenaModuleProgress } from '@/types/mindx.types';
+import { MODULE_INFO } from '@gsi/types';
+import type { SkillArenaModule, SkillArenaModuleProgress } from '@gsi/types';
 
 interface ModulePickerProps {
   onSelect: (module: SkillArenaModule) => void;

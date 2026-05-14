@@ -45,10 +45,18 @@ export interface Mascot {
   lottie?: string;
   /** Tailwind gradient classes for the mascot's signature card background. */
   gradient: string;
+  /** Bolder Supercell-style gradient used by the picker card (saturated,
+   *  full-bleed). Falls back to `gradient` if not set. */
+  cardGradient?: string;
   /** Tailwind ring color used when the mascot card is selected. */
   ringColor: string;
   /** Tailwind background for the soft tile. */
   softBg: string;
+  /** Public path to a hero character render (PNG/WEBP, transparent bg).
+   *  Used by the Supercell-style picker card. Drop generated art into
+   *  /public/mascots/<id>.png (or .webp) and set this field. Falls back to
+   *  the emoji `art` until the asset ships. */
+  heroImage?: string;
   /** When true, the picker shows a "Coming soon" badge and disables selection.
    *  All non-Pixie mascots are flagged this way until their Lottie art ships. */
   comingSoon?: boolean;
@@ -66,8 +74,12 @@ export const MASCOTS: readonly Mascot[] = [
     art: '🤖',
     lottie: '/lottie/pixie-default.json',
     gradient: 'from-cyan-200 via-sky-100 to-blue-100',
+    cardGradient: 'from-cyan-400 via-sky-500 to-blue-600',
     ringColor: 'ring-cyan-400',
     softBg: 'bg-cyan-50',
+    // No `heroImage` for Pixie — the Lottie animation is the canonical
+    // render. (Other mascots fall back to PNG/emoji until their Lottie
+    // ships.)
   },
   {
     id: 'koko',
@@ -79,8 +91,10 @@ export const MASCOTS: readonly Mascot[] = [
     kind: 'animal',
     art: '🦊',
     gradient: 'from-orange-200 via-amber-100 to-rose-100',
+    cardGradient: 'from-orange-400 via-amber-500 to-rose-500',
     ringColor: 'ring-orange-400',
     softBg: 'bg-orange-50',
+    heroImage: '/mascots/koko.png',
     comingSoon: true,
   },
   {
@@ -93,8 +107,10 @@ export const MASCOTS: readonly Mascot[] = [
     kind: 'fantasy',
     art: '🦉',
     gradient: 'from-violet-200 via-indigo-100 to-purple-100',
+    cardGradient: 'from-violet-500 via-indigo-600 to-purple-700',
     ringColor: 'ring-violet-400',
     softBg: 'bg-violet-50',
+    heroImage: '/mascots/aria.png',
     comingSoon: true,
   },
   {
@@ -107,8 +123,10 @@ export const MASCOTS: readonly Mascot[] = [
     kind: 'fantasy',
     art: '🐉',
     gradient: 'from-rose-200 via-red-100 to-orange-100',
+    cardGradient: 'from-rose-500 via-red-600 to-orange-600',
     ringColor: 'ring-rose-400',
     softBg: 'bg-rose-50',
+    heroImage: '/mascots/bolt.png',
     comingSoon: true,
   },
   {
@@ -121,8 +139,10 @@ export const MASCOTS: readonly Mascot[] = [
     kind: 'cosmic',
     art: '👽',
     gradient: 'from-emerald-200 via-teal-100 to-cyan-100',
+    cardGradient: 'from-emerald-500 via-teal-600 to-cyan-700',
     ringColor: 'ring-emerald-400',
     softBg: 'bg-emerald-50',
+    heroImage: '/mascots/luma.png',
     comingSoon: true,
   },
   {
@@ -135,8 +155,10 @@ export const MASCOTS: readonly Mascot[] = [
     kind: 'animal',
     art: '🐢',
     gradient: 'from-teal-200 via-emerald-100 to-lime-100',
+    cardGradient: 'from-teal-500 via-emerald-600 to-lime-600',
     ringColor: 'ring-teal-400',
     softBg: 'bg-teal-50',
+    heroImage: '/mascots/pebble.png',
     comingSoon: true,
   },
   {
@@ -149,8 +171,10 @@ export const MASCOTS: readonly Mascot[] = [
     kind: 'animal',
     art: '🐼',
     gradient: 'from-pink-200 via-fuchsia-100 to-purple-100',
+    cardGradient: 'from-pink-500 via-fuchsia-600 to-purple-700',
     ringColor: 'ring-pink-400',
     softBg: 'bg-pink-50',
+    heroImage: '/mascots/rio.png',
     comingSoon: true,
   },
   {
@@ -163,8 +187,10 @@ export const MASCOTS: readonly Mascot[] = [
     kind: 'cosmic',
     art: '🧑‍🚀',
     gradient: 'from-blue-200 via-indigo-100 to-violet-100',
+    cardGradient: 'from-blue-500 via-indigo-600 to-violet-700',
     ringColor: 'ring-blue-400',
     softBg: 'bg-blue-50',
+    heroImage: '/mascots/nova.png',
     comingSoon: true,
   },
 ] as const;

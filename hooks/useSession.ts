@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { generateSessionId } from '@/lib/utils';
-import type { SessionResponse } from '@/types';
+import type { SessionResponse } from '@gsi/types';
 
 const SESSION_KEY = 'gsi-session-id';
 // Mirrors the server-side cap in lib/firebase/sessionService.ts. This is

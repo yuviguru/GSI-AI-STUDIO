@@ -1,0 +1,38 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["../../*"],
+      "@gsi/ai": ["../../packages/ai/src/index.ts"],
+      "@gsi/ai/*": ["../../packages/ai/src/*"],
+      "@gsi/dpdp": ["../../packages/dpdp/src/index.ts"],
+      "@gsi/dpdp/*": ["../../packages/dpdp/src/*"],
+      "@gsi/firebase": ["../../packages/firebase/src/index.ts"],
+      "@gsi/firebase/*": ["../../packages/firebase/src/*"],
+      "@gsi/safety": ["../../packages/safety/src/index.ts"],
+      "@gsi/safety/*": ["../../packages/safety/src/*"],
+      "@gsi/types": ["../../packages/types/src/index.ts"],
+      "@gsi/types/*": ["../../packages/types/src/*"],
+      "@gsi/ui": ["../../packages/ui/src/index.ts"],
+      "@gsi/ui/*": ["../../packages/ui/src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "../../components/**/*.ts",
+    "../../components/**/*.tsx",
+    "../../hooks/**/*.ts",
+    "../../hooks/**/*.tsx",
+    "../../contexts/**/*.ts",
+    "../../contexts/**/*.tsx",
+    "../../lib/**/*.ts",
+    "../../lib/**/*.tsx",
+    "../../packages/*/src/**/*.ts",
+    "../../packages/*/src/**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": ["node_modules", "../../node_modules"]
+}

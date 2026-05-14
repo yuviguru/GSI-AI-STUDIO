@@ -26,12 +26,12 @@ import type {
   CeoChoiceId,
   CeoEvent,
   CeoPace,
-} from '@/types';
+} from '@gsi/types';
 import { AppException } from '@/lib/api-utils';
 import {
   redeemBotLinkCode,
   redeemBotLinkToken,
-} from '@/lib/firebase/botLinkService';
+} from '@gsi/firebase/botLinkService';
 import { linkBotSession } from '@/lib/bot/services/sessionStore';
 import {
   advanceBusinessPhase,
@@ -50,7 +50,7 @@ import {
   releaseRegularEventSlot,
   reserveRegularEventSlot,
   saveCeoEvent,
-} from '@/lib/firebase/ceoService';
+} from '@gsi/firebase/ceoService';
 import { timestampToMillis } from '@/lib/utils/timestamps';
 import { applyStateChanges } from '@/lib/ceo/businessState';
 import { applyScoreAdjustments } from '@/lib/ceo/profileEngine';
@@ -68,7 +68,7 @@ import {
   REGULAR_EVENTS_PER_DAY_CAP,
 } from '@/lib/ceo/constants';
 import businessesCatalog from '@/lib/ceo/templates/businesses.json';
-import { updateKidPoints } from '@/lib/firebase/sessionService';
+import { updateKidPoints } from '@gsi/firebase/sessionService';
 
 type Send = (msg: BotOutgoingMessage) => Promise<string>;
 

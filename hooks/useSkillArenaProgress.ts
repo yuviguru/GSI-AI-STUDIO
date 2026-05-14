@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { SkillArenaProgress } from '@/types/mindx.types';
+import type { SkillArenaProgress } from '@gsi/types';
 import { fetchWithSession } from '@/lib/fetchWithSession';
 
 const CACHE_KEY = 'gsi-skill-arena-progress';

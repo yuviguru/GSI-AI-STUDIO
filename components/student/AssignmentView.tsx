@@ -7,7 +7,7 @@ import { fetchWithKidAuth } from '@/lib/fetchWithKidAuth';
 import { useAuth } from '@/hooks/useAuth';
 import { useKidProfile } from '@/hooks/useKidProfile';
 import { cn } from '@/lib/utils';
-import type { AssignmentDoc } from '@/types/user.types';
+import type { AssignmentDoc } from '@gsi/types';
 
 type StudentStatus = 'not_started' | 'pending' | 'approved' | 'revision_requested' | 'late';
 

@@ -1,0 +1,31 @@
+# Netlify config for the GSI Kid app (kids.gsi.ai).
+#
+# In the Netlify dashboard, configure the site with:
+#   - Repository: yuviguru/GSI-AI-STUDIO
+#   - Base directory: apps/kid
+#   - Build command: pnpm --filter @gsi/app-kid build
+#   - Publish directory: apps/kid/.next
+#   - Functions directory: netlify/functions (workspace root)
+
+[build]
+  base = "apps/kid"
+  command = "pnpm --filter @gsi/app-kid build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  PNPM_FLAGS = "--shamefully-hoist"
+  SECRETS_SCAN_ENABLED = "false"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Scheduled functions live at the workspace root in netlify/functions/.
+# Both sites can reference them; pick the kid site to own kid-context
+# schedules so the function deploys with its closest data.
+
+[functions."homework-weekly-digest"]
+  schedule = "30 13 * * 0"
+
+[functions."leaderboard-refresh"]
+  schedule = "5 * * * *"

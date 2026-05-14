@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { cn, formatCount } from '@/lib/utils';
 import { ShareSheet } from './ShareSheet';
-import type { CreationType } from '@/types/creation.types';
+import type { CreationType } from '@gsi/types';
 
 interface ShareButtonProps {
   creationId: string;

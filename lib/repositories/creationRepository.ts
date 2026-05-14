@@ -9,7 +9,7 @@
 
 import { backend } from '@/lib/backend';
 import { AppException } from '@/lib/api-utils';
-import type { Creation, CreationType } from '@/types/creation.types';
+import type { Creation, CreationType } from '@gsi/types';
 
 const CREATIONS = 'creations';
 const DEFAULT_PAGE_SIZE = 20;

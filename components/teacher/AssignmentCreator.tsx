@@ -9,8 +9,8 @@ import {
   type CurriculumCategory,
   type CurriculumConcept,
 } from '@/lib/curriculum/curriculumMap';
-import type { CreationType } from '@/types/creation.types';
-import type { AssignmentDoc, ClassDoc } from '@/types/user.types';
+import type { CreationType } from '@gsi/types';
+import type { AssignmentDoc, ClassDoc } from '@gsi/types';
 
 const CREATION_TYPES: { id: CreationType; label: string; emoji: string }[] = [
   { id: 'story', label: 'Story', emoji: '📖' },
