@@ -94,14 +94,15 @@ export function MascotPickerStep({
         </p>
       </div>
 
-      {/* Carousel */}
-      <div className="relative mt-6">
+      {/* Carousel — height is the card height + scrollbar padding, so the
+          parent's flex-1 can't stretch the cards vertically. */}
+      <div className="relative mt-6 shrink-0">
         <div
           ref={trackRef}
           role="radiogroup"
           aria-label="Choose your mascot"
           className={cn(
-            'flex items-stretch gap-4 overflow-x-auto py-2 pb-6',
+            'flex items-center gap-4 overflow-x-auto py-2 pb-6',
             'snap-x snap-mandatory scroll-smooth',
             '[-ms-overflow-style:none] [scrollbar-width:none]',
             '[&::-webkit-scrollbar]:hidden',
