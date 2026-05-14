@@ -6,61 +6,43 @@ on:
   pull_request:
     branches: [main]
 
-# Cancel in-flight runs when a new commit lands on the same branch. Stops
-# the queue from filling with superseded jobs that take 6h to be killed.
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Enable corepack pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@9.0.0 --activate
-          pnpm --version
+          cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
 
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Enable corepack pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@9.0.0 --activate
-          pnpm --version
+          cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: npx tsc --noEmit
 
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Enable corepack pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@9.0.0 --activate
-          pnpm --version
+          cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test -- --run
       - run: pnpm test:coverage -- --run
@@ -73,17 +55,13 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Enable corepack pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@9.0.0 --activate
-          pnpm --version
+          cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
         env:
