@@ -6,13 +6,22 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel in-flight runs when a new commit lands on the same branch. Stops
+# the queue from filling with superseded jobs that take 6h to be killed.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -23,9 +32,12 @@ jobs:
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -36,9 +48,12 @@ jobs:
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -55,9 +70,12 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
