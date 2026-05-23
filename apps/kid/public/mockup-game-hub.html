@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>GSI Game Hub — Desktop (Fit-Viewport)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          display: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+          body: ['Figtree', 'system-ui', 'sans-serif'],
+          mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        },
+        colors: {
+          brand: {
+            primary: '#5B5FFF', secondary: '#20C997', accent: '#FF9F43', ai: '#8A5CFF',
+            background: '#F5F6FB', surface: '#FFFFFF', soft: '#EEF1FF',
+            text: '#1E1E2F', 'text-secondary': '#6B7280',
+          },
+        },
+        boxShadow: {
+          'glass': '0 8px 32px rgba(91, 95, 255, 0.08), 0 2px 8px rgba(0,0,0,0.04)',
+          'tile': '0 8px 22px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.9)',
+          'tile-hover': '0 18px 40px rgba(91,95,255,0.18), inset 0 1px 0 rgba(255,255,255,0.9)',
+        },
+      },
+    },
+  };
+</script>
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: Figtree, system-ui, sans-serif;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 0%, rgba(138, 92, 255, 0.06), transparent 60%),
+      radial-gradient(ellipse 70% 50% at 80% 100%, rgba(255, 159, 67, 0.05), transparent 60%),
+      #F5F6FB;
+  }
+  .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
+  .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+  .glass {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+  }
+  .hud-frame { position: relative; }
+  .hud-frame::before, .hud-frame::after {
+    content: ''; position: absolute; width: 10px; height: 10px;
+    border-color: rgba(91,95,255,0.35); border-style: solid; pointer-events: none;
+  }
+  .hud-frame::before { top: 6px; left: 6px; border-width: 2px 0 0 2px; border-top-left-radius: 4px; }
+  .hud-frame::after { bottom: 6px; right: 6px; border-width: 0 2px 2px 0; border-bottom-right-radius: 4px; }
+
+  .mode-tile {
+    position: relative; overflow: hidden;
+    transition: transform .25s cubic-bezier(.2,.7,.3,1.2), box-shadow .25s ease;
+    isolation: isolate;
+  }
+  .mode-tile::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.6), transparent 60%);
+    opacity: 0.5; pointer-events: none; z-index: 1;
+  }
+  .mode-tile:hover { transform: translateY(-3px) scale(1.02); }
+  .avatar-ring {
+    background: conic-gradient(from -90deg, #5B5FFF 0deg, #8A5CFF 200deg, rgba(255,255,255,0.4) 200deg, rgba(255,255,255,0.4) 360deg);
+    padding: 3px; border-radius: 9999px;
+  }
+  @keyframes drift { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(20px, -30px); } }
+  @keyframes drift2 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-25px, 20px); } }
+  @keyframes glow { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.05); } }
+  @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+  @keyframes sparkle { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(0.85); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .drift { animation: drift 18s ease-in-out infinite; }
+  .drift2 { animation: drift2 22s ease-in-out infinite; }
+  .glow-pulse { animation: glow 3s ease-in-out infinite; }
+  .bob { animation: bob 3.5s ease-in-out infinite; }
+  .sparkle { animation: sparkle 2s ease-in-out infinite; }
+  .platform-spin { animation: spin 20s linear infinite; }
+  button:active, .pressable:active { transform: translateY(1px) scale(0.985); }
+  .btn-bevel-gold {
+    background: linear-gradient(180deg, #FFB45C, #FF9F43);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -2px 0 rgba(0,0,0,0.12), 0 6px 16px rgba(255,159,67,0.4);
+  }
+  .progress-bar { height: 8px; border-radius: 999px; background: rgba(91,95,255,0.1); overflow: hidden; position: relative; }
+  .progress-bar::after {
+    content: ''; position: absolute; inset: 0;
+    background: repeating-linear-gradient(90deg, transparent 0, transparent 12px, rgba(255,255,255,0.4) 12px, rgba(255,255,255,0.4) 13px);
+    pointer-events: none;
+  }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #5B5FFF, #8A5CFF); box-shadow: 0 0 6px rgba(91,95,255,0.5); border-radius: 999px; }
+  .platform-ring {
+    background: conic-gradient(from 0deg, rgba(91,95,255,0.5), rgba(138,92,255,0.5), rgba(32,201,151,0.5), rgba(255,159,67,0.5), rgba(91,95,255,0.5));
+    border-radius: 50%; padding: 2px; opacity: 0.6;
+  }
+</style>
+</head>
+<body class="h-screen text-brand-text antialiased flex flex-col">
+
+<!-- Background drift -->
+<div class="pointer-events-none fixed inset-0 overflow-hidden">
+  <div class="drift absolute top-[10%] left-[8%] h-64 w-64 rounded-full bg-brand-primary/10 blur-3xl"></div>
+  <div class="drift2 absolute top-[60%] right-[5%] h-72 w-72 rounded-full bg-brand-accent/10 blur-3xl"></div>
+  <div class="sparkle absolute top-[15%] left-[40%] h-1.5 w-1.5 rounded-full bg-brand-primary/40"></div>
+  <div class="sparkle absolute top-[25%] left-[70%] h-1 w-1 rounded-full bg-brand-ai/40" style="animation-delay:.4s"></div>
+  <div class="sparkle absolute top-[55%] left-[15%] h-1.5 w-1.5 rounded-full bg-brand-accent/50" style="animation-delay:.8s"></div>
+</div>
+
+<!-- COMPACT HUD (48px) -->
+<header class="glass relative z-20 shrink-0 border-b border-white/40">
+  <div class="mx-auto flex max-w-[1400px] items-center justify-between px-5 py-2">
+    <div class="flex items-center gap-2">
+      <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-primary to-brand-ai shadow-glass">
+        <span class="text-sm">🎮</span>
+      </div>
+      <div class="font-display text-sm font-bold">GSI <span class="text-brand-primary">Studio</span></div>
+    </div>
+    <div class="hidden items-center gap-3 lg:flex">
+      <div class="flex items-center gap-1.5 rounded-full bg-brand-secondary/10 px-2.5 py-1">
+        <span class="relative flex h-1.5 w-1.5">
+          <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-secondary opacity-75"></span>
+          <span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-secondary"></span>
+        </span>
+        <span class="text-[11px] font-semibold text-brand-secondary">12 online</span>
+      </div>
+      <div class="flex items-center gap-1.5 rounded-full bg-brand-accent/10 px-2.5 py-1">
+        <span class="text-xs">🔥</span>
+        <span class="font-mono text-[11px] font-bold text-brand-accent">7 days</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <div class="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400/20 to-orange-400/20 px-2.5 py-1 ring-1 ring-amber-300/40">
+        <span class="text-xs">✨</span>
+        <span class="font-mono text-xs font-bold text-amber-700">2,847</span>
+      </div>
+      <button class="rounded-full p-1.5 hover:bg-white/60">⚙️</button>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN: fills remaining viewport, no scroll -->
+<main class="mx-auto grid w-full max-w-[1400px] flex-1 gap-3 px-4 py-3 lg:grid-cols-[260px_1fr_280px] overflow-hidden min-h-0">
+
+  <!-- LEFT -->
+  <aside class="flex flex-col gap-3 min-h-0">
+    <!-- Player Card -->
+    <div class="hud-frame glass rounded-2xl p-4 shadow-glass relative overflow-hidden shrink-0">
+      <div class="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-brand-primary/15 blur-2xl"></div>
+      <div class="flex items-center gap-3 relative">
+        <div class="relative shrink-0">
+          <div class="avatar-ring h-[68px] w-[68px]"></div>
+          <div class="absolute inset-[3px] flex items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-blue-100 text-3xl">🦊</div>
+          <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 px-2 py-0.5 shadow-md ring-2 ring-white">
+            <span class="font-mono text-[9px] font-bold text-white">LVL 28</span>
+          </div>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="font-display text-base font-bold leading-tight truncate">Arjun</div>
+          <div class="text-[10px] font-semibold uppercase tracking-wider text-brand-primary">Story Wizard</div>
+          <div class="mt-2 progress-bar"><div class="progress-fill" style="width:78%"></div></div>
+          <div class="mt-1 flex justify-between text-[9px] font-mono text-brand-text-secondary">
+            <span>2,847 XP</span><span>3,000</span>
+          </div>
+        </div>
+      </div>
+      <div class="mt-3 grid grid-cols-3 gap-2 border-t border-white/60 pt-2.5">
+        <div class="text-center"><div class="font-mono text-sm font-bold">42</div><div class="text-[8px] font-semibold uppercase tracking-wider text-brand-text-secondary">Made</div></div>
+        <div class="text-center"><div class="font-mono text-sm font-bold text-brand-accent">7🔥</div><div class="text-[8px] font-semibold uppercase tracking-wider text-brand-text-secondary">Streak</div></div>
+        <div class="text-center"><div class="font-mono text-sm font-bold text-brand-secondary">12</div><div class="text-[8px] font-semibold uppercase tracking-wider text-brand-text-secondary">Badges</div></div>
+      </div>
+    </div>
+
+    <!-- Badges -->
+    <div class="hud-frame glass rounded-2xl p-3 shadow-glass shrink-0">
+      <div class="mb-2 flex items-center justify-between">
+        <div class="font-display text-[11px] font-bold uppercase tracking-wider">🏆 Badges</div>
+        <button class="text-[10px] font-semibold text-brand-primary hover:underline">All →</button>
+      </div>
+      <div class="grid grid-cols-6 gap-1.5">
+        <div class="aspect-square rounded-lg bg-gradient-to-br from-amber-100 to-amber-50 p-1 ring-1 ring-amber-200/60 flex items-center justify-center text-base">📖</div>
+        <div class="aspect-square rounded-lg bg-gradient-to-br from-rose-100 to-pink-50 p-1 ring-1 ring-rose-200/60 flex items-center justify-center text-base">🎵</div>
+        <div class="aspect-square rounded-lg bg-gradient-to-br from-emerald-100 to-emerald-50 p-1 ring-1 ring-emerald-200/60 flex items-center justify-center text-base">🧠</div>
+        <div class="aspect-square rounded-lg bg-gradient-to-br from-violet-100 to-violet-50 p-1 ring-1 ring-violet-200/60 flex items-center justify-center text-base">🔥</div>
+        <div class="aspect-square rounded-lg bg-gray-100 p-1 ring-1 ring-gray-200 flex items-center justify-center text-base opacity-50">🔒</div>
+        <div class="aspect-square rounded-lg bg-gray-100 p-1 ring-1 ring-gray-200 flex items-center justify-center text-base opacity-50">🔒</div>
+      </div>
+    </div>
+
+    <!-- Squad fills remaining -->
+    <div class="hud-frame glass rounded-2xl p-3 shadow-glass flex-1 min-h-0 flex flex-col">
+      <div class="mb-2 font-display text-[11px] font-bold uppercase tracking-wider shrink-0">👥 Squad</div>
+      <div class="space-y-2 flex-1 overflow-hidden">
+        <div class="flex items-center gap-2">
+          <div class="relative shrink-0">
+            <div class="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-pink-100 to-rose-100">🐱</div>
+            <span class="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white bg-brand-secondary"></span>
+          </div>
+          <div class="min-w-0 flex-1"><div class="truncate text-[11px] font-semibold">Priya</div><div class="text-[9px] text-brand-text-secondary">In Music Lab</div></div>
+          <span class="font-mono text-[9px] text-brand-text-secondary">L22</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="relative shrink-0">
+            <div class="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-yellow-100 to-amber-100">🦁</div>
+            <span class="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white bg-brand-secondary"></span>
+          </div>
+          <div class="min-w-0 flex-1"><div class="truncate text-[11px] font-semibold">Rohan</div><div class="text-[9px] text-brand-text-secondary">Battle Arena</div></div>
+          <span class="font-mono text-[9px] text-brand-text-secondary">L31</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="relative shrink-0">
+            <div class="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-cyan-100 to-sky-100">🐼</div>
+            <span class="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white bg-gray-300"></span>
+          </div>
+          <div class="min-w-0 flex-1"><div class="truncate text-[11px] font-semibold">Aisha</div><div class="text-[9px] text-brand-text-secondary">Offline · 2h</div></div>
+          <span class="font-mono text-[9px] text-brand-text-secondary">L18</span>
+        </div>
+      </div>
+      <button class="mt-2 rounded-lg bg-brand-primary/10 py-1.5 text-[11px] font-bold text-brand-primary hover:bg-brand-primary/15 shrink-0">+ Add Friend</button>
+    </div>
+  </aside>
+
+  <!-- CENTER: Hero + 9-mode 3x3 grid -->
+  <section class="flex flex-col gap-3 min-h-0">
+
+    <!-- Hero (compact horizontal layout, ~220px) -->
+    <div class="hud-frame glass relative overflow-hidden rounded-3xl shadow-glass shrink-0" style="height:220px">
+      <div class="pointer-events-none absolute inset-0">
+        <div class="absolute top-1/2 left-[18%] h-[160px] w-[160px] -translate-y-1/2 rounded-full bg-gradient-radial from-brand-primary/20 to-transparent blur-2xl glow-pulse"></div>
+      </div>
+      <div class="relative flex h-full items-center gap-5 px-6">
+        <div class="flex flex-col items-center shrink-0">
+          <div class="bob relative z-10 text-[80px] leading-none drop-shadow-2xl filter">😺</div>
+          <div class="relative mt-[-10px] h-4 w-28">
+            <div class="platform-spin platform-ring absolute inset-0"></div>
+            <div class="absolute inset-1 rounded-full bg-gradient-to-b from-white/80 to-brand-soft"></div>
+          </div>
+        </div>
+        <div class="flex-1 relative z-10 min-w-0">
+          <div class="flex items-center gap-2 mb-2 flex-wrap">
+            <div class="rounded-full bg-brand-primary/10 px-2.5 py-0.5">
+              <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-brand-primary">⚡ Today's Quest</span>
+            </div>
+            <div class="rounded-full bg-amber-100/60 px-2.5 py-0.5 ring-1 ring-amber-200/60">
+              <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-700">+50 XP</span>
+            </div>
+          </div>
+          <h1 class="font-display text-2xl font-bold leading-tight">
+            What will you <span class="bg-gradient-to-r from-brand-primary to-brand-ai bg-clip-text text-transparent">create</span> today?
+          </h1>
+          <p class="mt-1 text-xs text-brand-text-secondary">Continue where you left off or pick a new studio.</p>
+          <button class="btn-bevel-gold pressable mt-3 inline-flex items-center gap-2 rounded-full px-5 py-2 transition-transform">
+            <span class="text-sm">🎯</span>
+            <span class="font-display text-xs font-bold uppercase tracking-wide text-white">Resume: Dragon Story</span>
+            <svg class="h-3.5 w-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 9-mode 3x3 grid (all modes in one consistent grid) -->
+    <div class="flex-1 min-h-0 flex flex-col">
+      <div class="mb-2 flex items-center justify-between shrink-0">
+        <h2 class="font-display text-sm font-bold">Choose your Studio</h2>
+        <span class="font-mono text-[10px] uppercase tracking-widest text-brand-text-secondary">9 modes</span>
+      </div>
+      <div class="grid grid-cols-3 grid-rows-3 gap-3 flex-1 min-h-0">
+
+        <div class="mode-tile pressable cursor-pointer rounded-2xl p-3 shadow-tile hover:shadow-tile-hover flex flex-col justify-between" style="background: linear-gradient(160deg, #EEF2FF 0%, #DBEAFE 100%);">
+          <div class="relative z-10 flex items-start justify-between">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/80 shadow-md ring-1 ring-indigo-200/50"><span class="text-lg">📚</span></div>
+            <span class="rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white shadow-md">NEW</span>
+          </div>
+          <div class="relative z-10">
+            <div class="font-display text-sm font-bold text-indigo-900">Book Studio</div>
+            <div class="text-[10px] text-indigo-700/80">Write your own books</div>
+          </div>
+        </div>
+
+        <div class="mode-tile pressable cursor-pointer rounded-2xl p-3 shadow-tile hover:shadow-tile-hover flex flex-col justify-between" style="background: linear-gradient(160deg, #F5F3FF 0%, #E9D5FF 100%);">
+          <div class="relative z-10 flex h-10 w-10 items-center justify-center rounded-xl bg-white/80 shadow-md ring-1 ring-violet-200/50"><span class="text-lg">📖</span></div>
+          <div class="relative z-10"><div class="font-display text-sm font-bold text-violet-900">Story Studio</div><div class="text-[10px] text-violet-700/80">Magical tales</div></div>
+        </div>
+
+        <div class="mode-tile pressable cursor-pointer rounded-2xl p-3 shadow-tile hover:shadow-tile-hover flex flex-col justify-between" style="background: linear-gradient(160deg, #FFF7ED 0%, #FED7AA 100%);">
+          <div class="relative z-10 flex h-10 w-10 items-center justify-center rounded-xl bg-white/80 shadow-md ring-1 ring-orange-200/50"><span class="text-lg">🎵</span></div>
+          <div class="relative z-10"><div class="font-display text-sm font-bold text-orange-900">Music Lab</div><div class="text-[10px] text-orange-700/80">Compose tracks</div></div>
+        </div>
+
+        <div class="mode-tile pressable cursor-pointer rounded-2xl p-3 shadow-tile hover:shadow-tile-hover flex flex-col justify-between" style="background: linear-gradient(160deg, #ECFDF5 0%, #A7F3D0 100%);">
+          <div class="relative z-10 flex h-10 w-10 items-center justify-center rounded-xl bg-white/80 shadow-md ring-1 ring-emerald-200/50"><span class="text-lg">🎮</span></div>
+          <div class="relative z-10"><div class="font-display text-sm font-bold text-emerald-900">Game Studio</div><div class="text-[10px] text-emerald-700/80">Build games</div></div>
+        </div>
+
+        <div class="mode-tile pressable cursor-pointer rounded-2xl p-3 shadow-tile hover:shadow-tile-hover flex flex-col justify-between" style="background: linear-gradient(160deg, #FEFCE8 0%, #FDE68A 100%);">
+          <div class="relative z-10 flex h-10 w-10 items-center justify-center rounded-xl bg-white/80 shadow-md ring-1 ring-amber-200/50"><span class="text-lg">🎨</span></div>
+          <div class="relative z-10"><div class="font-display text-sm font-bold text-amber-900">Comic Studio</div><div class="text-[10px] text-amber-700/80">Draw heroes</div></div>
+        </div>
+
+        <div class="mode-tile pressable cursor-pointer rounded-2xl p-3 shadow-tile hover:shadow-tile-hover flex flex-col justify-between" style="background: linear-gradient(160deg, #ECFEFF 0%, #A5F3FC 100%);">
+          <div class="relative z-10 flex h-10 w-10 items-center justify-center rounded-xl bg-white/80 shadow-md ring-1 ring-cyan-200/50"><span class="text-lg">🧠</span></div>
+          <div class="relative z-10"><div class="font-display text-sm font-bold text-cyan-900">Quiz Maker</div><div class="text-[10px] text-cyan-700/80">Test friends</div></div>
+        </div>
+
+        <div class="mode-tile pressable cursor-pointer rounded-2xl p-3 shadow-tile hover:shadow-tile-hover flex flex-col justify-between" style="background: linear-gradient(160deg, #FEF2F2 0%, #FECACA 100%);">
+          <div class="relative z-10 flex items-start justify-between">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-red-500 shadow-md"><span class="text-lg">⚔️</span></div>
+            <span class="rounded bg-rose-500 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white">LIVE</span>
+          </div>
+          <div class="relative z-10"><div class="font-display text-sm font-bold text-rose-900">Beat the AI</div><div class="text-[10px] text-rose-700/80">Challenge mode</div></div>
+        </div>
+
+        <div class="mode-tile pressable cursor-pointer rounded-2xl p-3 shadow-tile hover:shadow-tile-hover flex flex-col justify-between" style="background: linear-gradient(160deg, #F0FDFA 0%, #99F6E4 100%);">
+          <div class="relative z-10 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 shadow-md"><span class="text-lg">🧩</span></div>
+          <div class="relative z-10"><div class="font-display text-sm font-bold text-teal-900">MindX Arena</div><div class="text-[10px] text-teal-700/80">Skill challenges</div></div>
+        </div>
+
+        <div class="mode-tile pressable cursor-pointer rounded-2xl p-3 shadow-tile hover:shadow-tile-hover flex flex-col justify-between" style="background: linear-gradient(160deg, #FAF5FF 0%, #D8B4FE 100%);">
+          <div class="relative z-10 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-fuchsia-600 shadow-md"><span class="text-lg">👑</span></div>
+          <div class="relative z-10"><div class="font-display text-sm font-bold text-purple-900">Kid CEO</div><div class="text-[10px] text-purple-700/80">Run your company</div></div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- RIGHT -->
+  <aside class="flex flex-col gap-3 min-h-0">
+    <!-- Leaderboard -->
+    <div class="hud-frame glass rounded-2xl p-3 shadow-glass shrink-0">
+      <div class="mb-2 flex items-center justify-between">
+        <div class="font-display text-[11px] font-bold uppercase tracking-wider">🏅 Weekly Rank</div>
+        <span class="font-mono text-[9px] font-bold uppercase tracking-widest text-brand-secondary">LIVE</span>
+      </div>
+      <div class="space-y-1.5">
+        <div class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-amber-100/80 to-yellow-50 p-1.5 ring-1 ring-amber-200/60">
+          <div class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 font-display font-black text-white shadow-md text-xs">1</div>
+          <div class="text-base">🦊</div>
+          <div class="min-w-0 flex-1 truncate text-[11px] font-bold">Karthik</div>
+          <div class="font-mono text-[10px] font-bold text-amber-700">4,820</div>
+        </div>
+        <div class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-slate-100/80 to-slate-50 p-1.5 ring-1 ring-slate-200">
+          <div class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-slate-300 to-slate-400 font-display font-black text-white shadow-md text-xs">2</div>
+          <div class="text-base">🐯</div>
+          <div class="min-w-0 flex-1 truncate text-[11px] font-bold">Meera</div>
+          <div class="font-mono text-[10px] font-bold text-slate-700">3,945</div>
+        </div>
+        <div class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-orange-100/80 to-orange-50 p-1.5 ring-1 ring-orange-200/60">
+          <div class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-amber-600 font-display font-black text-white shadow-md text-xs">3</div>
+          <div class="text-base">🦁</div>
+          <div class="min-w-0 flex-1 truncate text-[11px] font-bold">Rohan</div>
+          <div class="font-mono text-[10px] font-bold text-orange-700">3,720</div>
+        </div>
+        <div class="my-1 flex items-center gap-1.5">
+          <div class="h-px flex-1 bg-gradient-to-r from-transparent to-brand-primary/20"></div>
+          <div class="font-mono text-[9px] tracking-widest text-brand-text-secondary">···</div>
+          <div class="h-px flex-1 bg-gradient-to-l from-transparent to-brand-primary/20"></div>
+        </div>
+        <div class="flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-100/80 to-violet-50 p-1.5 ring-2 ring-brand-primary/40">
+          <div class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-brand-primary to-brand-ai font-display font-black text-white shadow-md text-xs">12</div>
+          <div class="text-base">🦊</div>
+          <div class="min-w-0 flex-1"><div class="truncate text-[11px] font-bold text-brand-primary">You</div><div class="text-[9px] text-brand-text-secondary">↑3 this week</div></div>
+          <div class="font-mono text-[10px] font-bold text-brand-primary">2,847</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daily Quests fills remaining -->
+    <div class="hud-frame glass rounded-2xl p-3 shadow-glass flex-1 min-h-0 flex flex-col">
+      <div class="mb-2 flex items-center justify-between shrink-0">
+        <div class="font-display text-[11px] font-bold uppercase tracking-wider">⚡ Daily Quests</div>
+        <span class="font-mono text-[9px] font-bold uppercase tracking-widest text-brand-text-secondary">2/4</span>
+      </div>
+      <div class="space-y-1.5 flex-1">
+        <div class="rounded-lg bg-gradient-to-r from-emerald-100/60 to-emerald-50 p-2 ring-1 ring-emerald-200/50">
+          <div class="flex items-center gap-2">
+            <div class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white">
+              <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 7"/></svg>
+            </div>
+            <div class="min-w-0 flex-1 text-[10px] font-semibold text-emerald-900 line-through opacity-70">Make a creation</div>
+            <span class="font-mono text-[10px] font-bold text-emerald-700">+25</span>
+          </div>
+        </div>
+        <div class="rounded-lg bg-gradient-to-r from-indigo-100/60 to-indigo-50 p-2 ring-1 ring-brand-primary/30">
+          <div class="mb-1 flex items-center gap-2">
+            <span class="text-xs">🎯</span>
+            <div class="min-w-0 flex-1 text-[10px] font-semibold">Write 3 stories</div>
+            <span class="font-mono text-[10px] font-bold text-brand-primary">+50</span>
+          </div>
+          <div class="progress-bar" style="height:4px"><div class="progress-fill" style="width:66%"></div></div>
+          <div class="mt-0.5 text-right text-[9px] font-mono text-brand-text-secondary">2/3</div>
+        </div>
+        <div class="rounded-lg bg-gradient-to-r from-amber-100/60 to-amber-50 p-2 ring-1 ring-amber-200/50">
+          <div class="mb-1 flex items-center gap-2">
+            <span class="text-xs">🔥</span>
+            <div class="min-w-0 flex-1 text-[10px] font-semibold">Beat AI in 3 rounds</div>
+            <span class="font-mono text-[10px] font-bold text-amber-700">+75</span>
+          </div>
+          <div class="progress-bar" style="height:4px"><div class="progress-fill" style="width:33%; background: linear-gradient(90deg, #FF9F43, #F59E0B);"></div></div>
+          <div class="mt-0.5 text-right text-[9px] font-mono text-brand-text-secondary">1/3</div>
+        </div>
+        <div class="rounded-lg bg-gray-50/80 p-2 ring-1 ring-gray-200 opacity-70">
+          <div class="flex items-center gap-2">
+            <span class="text-xs">🔒</span>
+            <div class="min-w-0 flex-1 text-[10px] font-semibold text-brand-text-secondary">Reach Level 29</div>
+            <span class="font-mono text-[10px] font-bold text-brand-text-secondary">+100</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+</body>
+</html>

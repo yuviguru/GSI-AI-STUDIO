@@ -1,74 +1,72 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import {
-  ProfileSetupCarousel,
-  ONBOARDING_DONE_KEY,
-} from '@/components/onboarding/ProfileSetupCarousel';
-import { PostOnboardingAuth } from '@/components/auth/PostOnboardingAuth';
-import { useAuth } from '@/hooks/useAuth';
-import { ContinueCreatingCard } from '@/components/dashboard';
-import { AssignmentView } from '@/components/student/AssignmentView';
-import { SectionHub, DashboardRightRail } from '@/components/navigation';
-import { KidAuthBanner } from '@/components/navigation/KidAuthBanner';
-import { kidDashboardConfig } from '@/lib/dashboard/configs/kid.config';
+import { GameHub } from '@/components/game-hub/GameHub';
+import { MascotLoader } from '@/components/loader/MascotLoader';
+import { AuthChoiceScreen } from '@/components/auth/AuthChoiceScreen';
+import { GuestWarningModal } from '@/components/auth/GuestWarningModal';
+import { ProfileSetupCarousel } from '@/components/onboarding/ProfileSetupCarousel';
+import { useEntryGate } from '@/hooks/useEntryGate';
 
+/**
+ * Home page = the Game Hub + an entry-gate overlay.
+ *
+ * The hub is always rendered as the base layer so that loaders and auth gates
+ * sit over a real, painted background (the AuthChoiceScreen relies on
+ * `backdrop-blur-xl` to hint at the world behind it).
+ *
+ * All decision-making lives in `useEntryGate`. This component only renders
+ * the chosen overlay (if any).
+ */
 export default function HomePage() {
-  const { isAuthenticated } = useAuth();
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showSignInPrompt, setShowSignInPrompt] = useState(false);
-
-  useEffect(() => {
-    try {
-      const completed = localStorage.getItem(ONBOARDING_DONE_KEY);
-      if (!completed) setShowOnboarding(true);
-    } catch {
-      // localStorage unavailable — skip onboarding
-    }
-  }, []);
-
-  const handleOnboardingComplete = useCallback(() => {
-    setShowOnboarding(false);
-    // After anonymous onboarding, prompt sign-in.
-    // Authenticated users (handled by AppGate) don't hit this path.
-    if (!isAuthenticated) {
-      setShowSignInPrompt(true);
-    }
-  }, [isAuthenticated]);
-
-  const handleSignInDone = useCallback(() => {
-    setShowSignInPrompt(false);
-  }, []);
+  const {
+    state,
+    acceptGuestChoice,
+    dismissMissingFields,
+    dismissGuestWarning,
+    completeOnboarding,
+  } = useEntryGate();
 
   return (
-    <div className="min-h-screen bg-brand-background">
-      <AnimatePresence>
-        {showOnboarding && (
-          <ProfileSetupCarousel onComplete={handleOnboardingComplete} />
-        )}
-      </AnimatePresence>
+    <>
+      <GameHub />
 
       <AnimatePresence>
-        {showSignInPrompt && (
-          <PostOnboardingAuth onContinue={handleSignInDone} />
+        {state.kind === 'loading' && <MascotLoader key="loader" />}
+
+        {state.kind === 'auth-choice' && (
+          <AuthChoiceScreen
+            key="auth-choice"
+            onContinueAsGuest={acceptGuestChoice}
+            // onSignedIn: no-op. The auth state change triggers AppGate in the
+            // layout to route through claim-session → ProfileSetupCarousel →
+            // ProfilePicker; this page won't re-render the auth-choice screen.
+          />
+        )}
+
+        {state.kind === 'onboarding' && (
+          <ProfileSetupCarousel
+            key="onboarding"
+            onComplete={completeOnboarding}
+          />
+        )}
+
+        {state.kind === 'guest-warning' && (
+          <GuestWarningModal
+            key="guest-warning"
+            onContinueAsGuest={dismissGuestWarning}
+          />
+        )}
+
+        {state.kind === 'missing-fields' && (
+          <ProfileSetupCarousel
+            key="missing-fields"
+            onComplete={dismissMissingFields}
+            initialStep={state.initialStep}
+            targetKidId={state.targetKidId}
+          />
         )}
       </AnimatePresence>
-
-      <div className="mx-auto w-full max-w-[1600px] px-4 py-5 sm:px-6 lg:px-8">
-        <KidAuthBanner />
-        <ContinueCreatingCard />
-        <div className="mb-4">
-          <AssignmentView />
-        </div>
-
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-6 xl:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
-          <SectionHub sections={kidDashboardConfig.sections} />
-          <div className="mt-6 lg:mt-0">
-            <DashboardRightRail widgets={kidDashboardConfig.rightRailWidgets} />
-          </div>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

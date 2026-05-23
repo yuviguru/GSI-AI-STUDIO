@@ -95,16 +95,28 @@ const config: Config = {
         'button-hover': '0 8px 20px rgba(0,0,0,0.15)',
         'soft': '0 4px 12px rgba(0,0,0,0.05)',
         'inner': 'inset 0 2px 4px rgba(0,0,0,0.05)',
+        // --- Game hub ---
+        'glass': '0 8px 32px rgba(91, 95, 255, 0.08), 0 2px 8px rgba(0,0,0,0.04)',
+        'tile': '0 8px 22px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.9)',
+        'tile-hover': '0 18px 40px rgba(91,95,255,0.18), inset 0 1px 0 rgba(255,255,255,0.9)',
       },
 
       // --- Animations (Design System §15) ---
       animation: {
         'sparkle': 'sparkle 1.5s ease-in-out infinite',
         'float': 'float 3s ease-in-out infinite',
+        'float-slow': 'floatSlow 15s ease-in-out infinite',
         'slide-up': 'slideUp 0.4s cubic-bezier(0, 0, 0.2, 1)',
         'fade-in': 'fadeIn 0.3s ease-out',
         'scale-pop': 'scalePop 0.15s ease-out',
         'progress-fill': 'progressFill 0.5s ease-out',
+        // --- Game hub ---
+        'pulse-glow': 'pulseGlow 3s ease-in-out infinite',
+        'blob': 'blob 20s ease-in-out infinite',
+        'drift': 'drift 18s ease-in-out infinite',
+        'drift2': 'drift2 22s ease-in-out infinite',
+        'platform-spin': 'platformSpin 20s linear infinite',
+        'bob': 'bob 3.5s ease-in-out infinite',
       },
       keyframes: {
         sparkle: {
@@ -130,6 +142,36 @@ const config: Config = {
         progressFill: {
           '0%': { width: '0%' },
           '100%': { width: 'var(--progress-target, 100%)' },
+        },
+        // --- Game hub ---
+        floatSlow: {
+          '0%, 100%': { transform: 'translateY(0) translateX(0)' },
+          '33%': { transform: 'translateY(-12px) translateX(6px)' },
+          '66%': { transform: 'translateY(6px) translateX(-8px)' },
+        },
+        pulseGlow: {
+          '0%, 100%': { opacity: '0.5', transform: 'scaleX(1)' },
+          '50%': { opacity: '0.8', transform: 'scaleX(1.1)' },
+        },
+        blob: {
+          '0%, 100%': { transform: 'translate(0, 0) scale(1)' },
+          '33%': { transform: 'translate(30px, -20px) scale(1.05)' },
+          '66%': { transform: 'translate(-20px, 20px) scale(0.95)' },
+        },
+        drift: {
+          '0%, 100%': { transform: 'translate(0, 0)' },
+          '50%': { transform: 'translate(20px, -30px)' },
+        },
+        drift2: {
+          '0%, 100%': { transform: 'translate(0, 0)' },
+          '50%': { transform: 'translate(-25px, 20px)' },
+        },
+        platformSpin: {
+          'to': { transform: 'rotate(360deg)' },
+        },
+        bob: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-6px)' },
         },
       },
 
