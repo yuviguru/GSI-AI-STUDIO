@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>GSI Game Hub — Mobile (No-Scroll Scenes)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      fontFamily: {
+        display: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+        body: ['Figtree', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+      },
+      colors: {
+        brand: {
+          primary: '#5B5FFF', secondary: '#20C997', accent: '#FF9F43', ai: '#8A5CFF',
+          background: '#F5F6FB', soft: '#EEF1FF', text: '#1E1E2F', 'text-secondary': '#6B7280',
+        },
+      },
+    }, },
+  };
+</script>
+<style>
+  html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  body {
+    font-family: Figtree, system-ui, sans-serif;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 0%, rgba(138, 92, 255, 0.07), transparent 60%),
+      radial-gradient(ellipse 70% 50% at 80% 100%, rgba(255, 159, 67, 0.06), transparent 60%),
+      #F5F6FB;
+  }
+  .font-display { font-family: 'Plus Jakarta Sans', sans-serif; }
+  .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+  .glass {
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+  }
+
+  /* Phone frame */
+  .phone {
+    width: 390px;
+    height: 844px;
+    border-radius: 48px;
+    background: #000;
+    padding: 12px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.18), 0 0 0 2px rgba(0,0,0,0.04);
+    position: relative;
+    flex-shrink: 0;
+  }
+  .phone-screen {
+    width: 100%; height: 100%;
+    border-radius: 36px; overflow: hidden;
+    position: relative;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 0%, rgba(138, 92, 255, 0.07), transparent 60%),
+      radial-gradient(ellipse 70% 50% at 80% 100%, rgba(255, 159, 67, 0.06), transparent 60%),
+      #F5F6FB;
+  }
+  /* Notch */
+  .notch {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 28px; background: #000; border-radius: 0 0 18px 18px; z-index: 50;
+  }
+
+  .hud-frame { position: relative; }
+  .hud-frame::before, .hud-frame::after {
+    content: ''; position: absolute; width: 8px; height: 8px;
+    border-color: rgba(91,95,255,0.35); border-style: solid; pointer-events: none;
+  }
+  .hud-frame::before { top: 5px; left: 5px; border-width: 2px 0 0 2px; border-top-left-radius: 4px; }
+  .hud-frame::after { bottom: 5px; right: 5px; border-width: 0 2px 2px 0; border-bottom-right-radius: 4px; }
+
+  .mode-tile {
+    position: relative; overflow: hidden;
+    transition: transform .25s cubic-bezier(.2,.7,.3,1.2), box-shadow .25s ease;
+    isolation: isolate;
+  }
+  .mode-tile::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.6), transparent 60%);
+    opacity: 0.5; pointer-events: none; z-index: 1;
+  }
+  .mode-tile:active { transform: scale(0.96); }
+
+  .avatar-ring {
+    background: conic-gradient(from -90deg, #5B5FFF 0deg, #8A5CFF 200deg, rgba(255,255,255,0.4) 200deg, rgba(255,255,255,0.4) 360deg);
+    padding: 3px; border-radius: 9999px;
+  }
+  .avatar-ring-lg {
+    background: conic-gradient(from -90deg, #5B5FFF 0deg, #8A5CFF 280deg, rgba(255,255,255,0.4) 280deg, rgba(255,255,255,0.4) 360deg);
+    padding: 4px; border-radius: 9999px;
+  }
+
+  @keyframes drift { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(20px, -30px); } }
+  @keyframes glow { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.05); } }
+  @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+  @keyframes sparkle { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(0.85); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .drift { animation: drift 18s ease-in-out infinite; }
+  .glow-pulse { animation: glow 3s ease-in-out infinite; }
+  .bob { animation: bob 3.5s ease-in-out infinite; }
+  .sparkle { animation: sparkle 2s ease-in-out infinite; }
+  .platform-spin { animation: spin 20s linear infinite; }
+
+  .platform-ring {
+    background: conic-gradient(from 0deg, rgba(91,95,255,0.5), rgba(138,92,255,0.5), rgba(32,201,151,0.5), rgba(255,159,67,0.5), rgba(91,95,255,0.5));
+    border-radius: 50%; padding: 2px; opacity: 0.6;
+  }
+
+  .progress-bar { height: 8px; border-radius: 999px; background: rgba(91,95,255,0.1); overflow: hidden; position: relative; }
+  .progress-bar::after {
+    content: ''; position: absolute; inset: 0;
+    background: repeating-linear-gradient(90deg, transparent 0, transparent 12px, rgba(255,255,255,0.4) 12px, rgba(255,255,255,0.4) 13px);
+    pointer-events: none;
+  }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #5B5FFF, #8A5CFF); box-shadow: 0 0 6px rgba(91,95,255,0.5); border-radius: 999px; }
+
+  .btn-bevel-gold {
+    background: linear-gradient(180deg, #FFB45C, #FF9F43);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -2px 0 rgba(0,0,0,0.12), 0 6px 16px rgba(255,159,67,0.4);
+  }
+
+  .scene { display: none; }
+  .scene.active { display: flex; }
+
+  .tab-btn { transition: all 0.2s; position: relative; }
+  .tab-btn.active { color: #5B5FFF; }
+  .tab-btn.active .tab-icon { transform: scale(1.1) translateY(-2px); }
+  .tab-btn .tab-icon { transition: transform 0.2s; }
+
+  /* Outer page layout for showing multiple phones side by side */
+  .stage {
+    display: flex; flex-wrap: wrap; gap: 40px; padding: 40px; justify-content: center;
+    background: linear-gradient(135deg, #f0f1f9 0%, #e8eaf6 100%);
+    min-height: 100vh; align-items: flex-start;
+  }
+  .phone-label {
+    text-align: center; margin-top: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: #5B5FFF;
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+
+  <!-- =========================== PHONE 1: HUB =========================== -->
+  <div>
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="phone-screen flex flex-col">
+
+        <!-- Status bar spacer -->
+        <div class="h-11 shrink-0"></div>
+
+        <!-- HUD: Player strip -->
+        <div class="px-4 pt-1 shrink-0">
+          <div class="glass hud-frame rounded-2xl p-2.5 shadow-md flex items-center gap-2.5">
+            <div class="relative shrink-0">
+              <div class="avatar-ring h-10 w-10"></div>
+              <div class="absolute inset-[3px] flex items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-blue-100 text-lg">🦊</div>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-1.5">
+                <div class="font-display text-sm font-bold truncate">Arjun</div>
+                <div class="rounded-full bg-gradient-to-br from-amber-400 to-orange-500 px-1.5 py-0 shadow-sm">
+                  <span class="font-mono text-[9px] font-bold text-white">L28</span>
+                </div>
+              </div>
+              <div class="mt-1 progress-bar" style="height:5px"><div class="progress-fill" style="width:78%"></div></div>
+            </div>
+            <div class="flex flex-col items-end shrink-0">
+              <div class="flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400/20 to-orange-400/20 px-2 py-0.5 ring-1 ring-amber-300/40">
+                <span class="text-[10px]">✨</span>
+                <span class="font-mono text-[10px] font-bold text-amber-700">2,847</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hero mascot stage (compact) -->
+        <div class="relative px-4 pt-3 shrink-0">
+          <div class="relative overflow-hidden rounded-3xl glass hud-frame p-3 shadow-md" style="height:155px">
+            <div class="pointer-events-none absolute inset-0">
+              <div class="absolute top-1/2 left-1/2 h-[120px] w-[120px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-radial from-brand-primary/20 to-transparent blur-2xl glow-pulse"></div>
+            </div>
+            <div class="relative flex h-full items-center gap-3">
+              <div class="flex flex-col items-center shrink-0">
+                <div class="bob relative z-10 text-[60px] leading-none drop-shadow-2xl filter">😺</div>
+                <div class="relative mt-[-8px] h-3 w-20">
+                  <div class="platform-spin platform-ring absolute inset-0"></div>
+                  <div class="absolute inset-1 rounded-full bg-gradient-to-b from-white/80 to-brand-soft"></div>
+                </div>
+              </div>
+              <div class="flex-1 relative z-10 min-w-0">
+                <div class="rounded-full bg-amber-100/60 px-2 py-0.5 ring-1 ring-amber-200/60 inline-block">
+                  <span class="text-[9px] font-mono font-bold uppercase tracking-widest text-amber-700">+50 XP</span>
+                </div>
+                <h1 class="font-display text-base font-bold leading-tight mt-1">
+                  What will you <span class="bg-gradient-to-r from-brand-primary to-brand-ai bg-clip-text text-transparent">create</span>?
+                </h1>
+                <button class="btn-bevel-gold mt-1.5 inline-flex items-center gap-1 rounded-full px-2.5 py-1">
+                  <span class="text-[10px]">🎯</span>
+                  <span class="font-display text-[9px] font-bold uppercase tracking-wide text-white">Resume</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mode grid: 3x3 fills remaining -->
+        <div class="flex-1 min-h-0 flex flex-col px-4 pt-3 pb-2">
+          <div class="mb-1.5 flex items-center justify-between shrink-0">
+            <h2 class="font-display text-xs font-bold uppercase tracking-wider">Choose Studio</h2>
+            <span class="font-mono text-[9px] uppercase tracking-widest text-brand-text-secondary">9 modes</span>
+          </div>
+          <div class="grid grid-cols-3 grid-rows-3 gap-2 flex-1 min-h-0">
+
+            <div class="mode-tile rounded-xl p-2 shadow-md flex flex-col justify-between relative" style="background: linear-gradient(160deg, #EEF2FF 0%, #DBEAFE 100%);">
+              <div class="relative z-10 flex items-start justify-between">
+                <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-white/80 shadow-sm ring-1 ring-indigo-200/50"><span class="text-sm">📚</span></div>
+                <span class="rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-1 py-0 text-[7px] font-bold uppercase tracking-wider text-white shadow-sm">NEW</span>
+              </div>
+              <div class="relative z-10 font-display text-[10px] font-bold text-indigo-900 leading-tight">Books</div>
+            </div>
+
+            <div class="mode-tile rounded-xl p-2 shadow-md flex flex-col justify-between relative" style="background: linear-gradient(160deg, #F5F3FF 0%, #E9D5FF 100%);">
+              <div class="relative z-10 flex h-7 w-7 items-center justify-center rounded-lg bg-white/80 shadow-sm ring-1 ring-violet-200/50"><span class="text-sm">📖</span></div>
+              <div class="relative z-10 font-display text-[10px] font-bold text-violet-900 leading-tight">Stories</div>
+            </div>
+
+            <div class="mode-tile rounded-xl p-2 shadow-md flex flex-col justify-between relative" style="background: linear-gradient(160deg, #FFF7ED 0%, #FED7AA 100%);">
+              <div class="relative z-10 flex h-7 w-7 items-center justify-center rounded-lg bg-white/80 shadow-sm ring-1 ring-orange-200/50"><span class="text-sm">🎵</span></div>
+              <div class="relative z-10 font-display text-[10px] font-bold text-orange-900 leading-tight">Music</div>
+            </div>
+
+            <div class="mode-tile rounded-xl p-2 shadow-md flex flex-col justify-between relative" style="background: linear-gradient(160deg, #ECFDF5 0%, #A7F3D0 100%);">
+              <div class="relative z-10 flex h-7 w-7 items-center justify-center rounded-lg bg-white/80 shadow-sm ring-1 ring-emerald-200/50"><span class="text-sm">🎮</span></div>
+              <div class="relative z-10 font-display text-[10px] font-bold text-emerald-900 leading-tight">Games</div>
+            </div>
+
+            <div class="mode-tile rounded-xl p-2 shadow-md flex flex-col justify-between relative" style="background: linear-gradient(160deg, #FEFCE8 0%, #FDE68A 100%);">
+              <div class="relative z-10 flex h-7 w-7 items-center justify-center rounded-lg bg-white/80 shadow-sm ring-1 ring-amber-200/50"><span class="text-sm">🎨</span></div>
+              <div class="relative z-10 font-display text-[10px] font-bold text-amber-900 leading-tight">Comics</div>
+            </div>
+
+            <div class="mode-tile rounded-xl p-2 shadow-md flex flex-col justify-between relative" style="background: linear-gradient(160deg, #ECFEFF 0%, #A5F3FC 100%);">
+              <div class="relative z-10 flex h-7 w-7 items-center justify-center rounded-lg bg-white/80 shadow-sm ring-1 ring-cyan-200/50"><span class="text-sm">🧠</span></div>
+              <div class="relative z-10 font-display text-[10px] font-bold text-cyan-900 leading-tight">Quiz</div>
+            </div>
+
+            <div class="mode-tile rounded-xl p-2 shadow-md flex flex-col justify-between relative" style="background: linear-gradient(160deg, #FEF2F2 0%, #FECACA 100%);">
+              <div class="relative z-10 flex items-start justify-between">
+                <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-rose-500 to-red-500 shadow-sm"><span class="text-sm">⚔️</span></div>
+                <span class="rounded bg-rose-500 px-1 py-0 text-[7px] font-bold uppercase tracking-wider text-white">LIVE</span>
+              </div>
+              <div class="relative z-10 font-display text-[10px] font-bold text-rose-900 leading-tight">Beat AI</div>
+            </div>
+
+            <div class="mode-tile rounded-xl p-2 shadow-md flex flex-col justify-between relative" style="background: linear-gradient(160deg, #F0FDFA 0%, #99F6E4 100%);">
+              <div class="relative z-10 flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 shadow-sm"><span class="text-sm">🧩</span></div>
+              <div class="relative z-10 font-display text-[10px] font-bold text-teal-900 leading-tight">MindX</div>
+            </div>
+
+            <div class="mode-tile rounded-xl p-2 shadow-md flex flex-col justify-between relative" style="background: linear-gradient(160deg, #FAF5FF 0%, #D8B4FE 100%);">
+              <div class="relative z-10 flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-fuchsia-600 shadow-sm"><span class="text-sm">👑</span></div>
+              <div class="relative z-10 font-display text-[10px] font-bold text-purple-900 leading-tight">Kid CEO</div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Bottom Tab Bar -->
+        <div class="shrink-0 px-3 pb-3">
+          <div class="glass rounded-3xl shadow-lg p-1 flex items-center justify-around">
+            <button class="tab-btn active flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-2xl bg-brand-primary/10">
+              <span class="tab-icon text-base">🎮</span>
+              <span class="font-display text-[9px] font-bold">Hub</span>
+            </button>
+            <button class="tab-btn flex flex-col items-center gap-0.5 px-3 py-1.5">
+              <span class="tab-icon text-base opacity-50">👤</span>
+              <span class="font-display text-[9px] font-bold text-brand-text-secondary">Profile</span>
+            </button>
+            <button class="tab-btn flex flex-col items-center gap-0.5 px-3 py-1.5">
+              <span class="tab-icon text-base opacity-50">🏅</span>
+              <span class="font-display text-[9px] font-bold text-brand-text-secondary">Ranks</span>
+            </button>
+            <button class="tab-btn flex flex-col items-center gap-0.5 px-3 py-1.5">
+              <span class="tab-icon text-base opacity-50">⚡</span>
+              <span class="font-display text-[9px] font-bold text-brand-text-secondary">Quests</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">Scene 1 · Hub</div>
+  </div>
+
+  <!-- =========================== PHONE 2: PROFILE =========================== -->
+  <div>
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="phone-screen flex flex-col">
+        <div class="h-11 shrink-0"></div>
+
+        <!-- Title -->
+        <div class="px-4 pt-2 shrink-0 flex items-center justify-between">
+          <div>
+            <div class="font-display text-lg font-bold">Profile</div>
+            <div class="text-[10px] text-brand-text-secondary">Your gaming identity</div>
+          </div>
+          <button class="rounded-full p-2 hover:bg-white/60 glass">⚙️</button>
+        </div>
+
+        <!-- Hero player card -->
+        <div class="px-4 pt-3 shrink-0">
+          <div class="glass hud-frame rounded-3xl p-4 shadow-md text-center relative overflow-hidden">
+            <div class="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-brand-primary/15 blur-2xl"></div>
+
+            <div class="relative inline-block">
+              <div class="avatar-ring-lg h-[100px] w-[100px]"></div>
+              <div class="absolute inset-1 flex items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-blue-100 text-5xl">🦊</div>
+              <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 px-3 py-0.5 shadow-md ring-2 ring-white">
+                <span class="font-mono text-[10px] font-bold text-white">LVL 28</span>
+              </div>
+            </div>
+
+            <div class="mt-3 font-display text-xl font-bold">Arjun</div>
+            <div class="text-[11px] font-bold uppercase tracking-wider text-brand-primary">Story Wizard</div>
+
+            <div class="mt-3 progress-bar"><div class="progress-fill" style="width:78%"></div></div>
+            <div class="mt-1 flex justify-between text-[10px] font-mono text-brand-text-secondary">
+              <span>2,847 XP</span><span class="text-brand-primary">→ LVL 29 · 153 XP</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats row -->
+        <div class="px-4 pt-3 shrink-0 grid grid-cols-3 gap-2">
+          <div class="glass rounded-2xl p-3 text-center">
+            <div class="font-mono text-xl font-bold">42</div>
+            <div class="text-[9px] font-semibold uppercase tracking-wider text-brand-text-secondary mt-0.5">Creations</div>
+          </div>
+          <div class="glass rounded-2xl p-3 text-center">
+            <div class="font-mono text-xl font-bold text-brand-accent">7🔥</div>
+            <div class="text-[9px] font-semibold uppercase tracking-wider text-brand-text-secondary mt-0.5">Streak</div>
+          </div>
+          <div class="glass rounded-2xl p-3 text-center">
+            <div class="font-mono text-xl font-bold text-brand-secondary">12</div>
+            <div class="text-[9px] font-semibold uppercase tracking-wider text-brand-text-secondary mt-0.5">Badges</div>
+          </div>
+        </div>
+
+        <!-- Badges fill remaining -->
+        <div class="flex-1 min-h-0 px-4 pt-3 pb-2 flex flex-col">
+          <div class="mb-2 flex items-center justify-between shrink-0">
+            <h2 class="font-display text-xs font-bold uppercase tracking-wider">🏆 Achievements</h2>
+            <span class="font-mono text-[9px] text-brand-text-secondary">4 / 12</span>
+          </div>
+          <div class="glass rounded-2xl p-3 grid grid-cols-4 gap-2 flex-1 content-start">
+            <div class="aspect-square rounded-xl bg-gradient-to-br from-amber-100 to-amber-50 p-2 ring-1 ring-amber-200/60 flex items-center justify-center text-2xl">📖</div>
+            <div class="aspect-square rounded-xl bg-gradient-to-br from-rose-100 to-pink-50 p-2 ring-1 ring-rose-200/60 flex items-center justify-center text-2xl">🎵</div>
+            <div class="aspect-square rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-50 p-2 ring-1 ring-emerald-200/60 flex items-center justify-center text-2xl">🧠</div>
+            <div class="aspect-square rounded-xl bg-gradient-to-br from-violet-100 to-violet-50 p-2 ring-1 ring-violet-200/60 flex items-center justify-center text-2xl">🔥</div>
+            <div class="aspect-square rounded-xl bg-gray-100 p-2 ring-1 ring-gray-200 opacity-40 flex items-center justify-center text-2xl">🔒</div>
+            <div class="aspect-square rounded-xl bg-gray-100 p-2 ring-1 ring-gray-200 opacity-40 flex items-center justify-center text-2xl">🔒</div>
+            <div class="aspect-square rounded-xl bg-gray-100 p-2 ring-1 ring-gray-200 opacity-40 flex items-center justify-center text-2xl">🔒</div>
+            <div class="aspect-square rounded-xl bg-gray-100 p-2 ring-1 ring-gray-200 opacity-40 flex items-center justify-center text-2xl">🔒</div>
+          </div>
+        </div>
+
+        <!-- Bottom Tab Bar -->
+        <div class="shrink-0 px-3 pb-3">
+          <div class="glass rounded-3xl shadow-lg p-1 flex items-center justify-around">
+            <button class="tab-btn flex flex-col items-center gap-0.5 px-3 py-1.5">
+              <span class="tab-icon text-base opacity-50">🎮</span>
+              <span class="font-display text-[9px] font-bold text-brand-text-secondary">Hub</span>
+            </button>
+            <button class="tab-btn active flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-2xl bg-brand-primary/10">
+              <span class="tab-icon text-base">👤</span>
+              <span class="font-display text-[9px] font-bold">Profile</span>
+            </button>
+            <button class="tab-btn flex flex-col items-center gap-0.5 px-3 py-1.5">
+              <span class="tab-icon text-base opacity-50">🏅</span>
+              <span class="font-display text-[9px] font-bold text-brand-text-secondary">Ranks</span>
+            </button>
+            <button class="tab-btn flex flex-col items-center gap-0.5 px-3 py-1.5">
+              <span class="tab-icon text-base opacity-50">⚡</span>
+              <span class="font-display text-[9px] font-bold text-brand-text-secondary">Quests</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">Scene 2 · Profile</div>
+  </div>
+
+  <!-- =========================== PHONE 3: RANKS =========================== -->
+  <div>
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="phone-screen flex flex-col">
+        <div class="h-11 shrink-0"></div>
+
+        <!-- Title -->
+        <div class="px-4 pt-2 shrink-0 flex items-center justify-between">
+          <div>
+            <div class="font-display text-lg font-bold">Weekly Ranks</div>
+            <div class="text-[10px] text-brand-text-secondary">Resets in 3d 14h</div>
+          </div>
+          <span class="font-mono text-[10px] font-bold uppercase tracking-widest text-brand-secondary">● LIVE</span>
+        </div>
+
+        <!-- Podium hero (top 3) -->
+        <div class="px-4 pt-3 shrink-0">
+          <div class="glass hud-frame rounded-3xl p-4 shadow-md relative overflow-hidden">
+            <div class="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-amber-300/20 blur-2xl"></div>
+
+            <div class="relative flex items-end justify-center gap-3">
+              <!-- #2 -->
+              <div class="flex flex-col items-center">
+                <div class="text-3xl">🐯</div>
+                <div class="mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-slate-300 to-slate-400 font-display font-black text-white shadow-md text-xs">2</div>
+                <div class="mt-1 text-[10px] font-bold">Meera</div>
+                <div class="font-mono text-[9px] text-slate-700">3,945</div>
+                <div class="mt-1 w-12 h-10 rounded-t-lg bg-gradient-to-t from-slate-300 to-slate-200"></div>
+              </div>
+              <!-- #1 -->
+              <div class="flex flex-col items-center">
+                <div class="text-[10px]">👑</div>
+                <div class="text-4xl">🦊</div>
+                <div class="mt-1 flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 font-display font-black text-white shadow-md text-sm">1</div>
+                <div class="mt-1 text-[11px] font-bold text-amber-800">Karthik</div>
+                <div class="font-mono text-[10px] font-bold text-amber-700">4,820</div>
+                <div class="mt-1 w-12 h-14 rounded-t-lg bg-gradient-to-t from-amber-400 to-yellow-300"></div>
+              </div>
+              <!-- #3 -->
+              <div class="flex flex-col items-center">
+                <div class="text-3xl">🦁</div>
+                <div class="mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-amber-600 font-display font-black text-white shadow-md text-xs">3</div>
+                <div class="mt-1 text-[10px] font-bold">Rohan</div>
+                <div class="font-mono text-[9px] text-orange-700">3,720</div>
+                <div class="mt-1 w-12 h-7 rounded-t-lg bg-gradient-to-t from-orange-300 to-orange-200"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Your rank highlight -->
+        <div class="px-4 pt-3 shrink-0">
+          <div class="rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-500 p-0.5 shadow-md">
+            <div class="rounded-[14px] bg-white p-3 flex items-center gap-3">
+              <div class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-primary to-brand-ai font-display font-black text-white text-sm">12</div>
+              <div class="text-2xl">🦊</div>
+              <div class="min-w-0 flex-1">
+                <div class="font-display text-sm font-bold text-brand-primary">You · Arjun</div>
+                <div class="text-[10px] text-brand-secondary font-semibold">↑ 3 places this week</div>
+              </div>
+              <div class="text-right">
+                <div class="font-mono text-base font-bold text-brand-primary">2,847</div>
+                <div class="text-[9px] uppercase tracking-wider text-brand-text-secondary">XP</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top 10 list (no scroll, fits) -->
+        <div class="flex-1 min-h-0 px-4 pt-3 pb-2 flex flex-col">
+          <div class="mb-1.5 shrink-0 font-display text-[11px] font-bold uppercase tracking-wider">Top Players</div>
+          <div class="glass rounded-2xl p-2 flex flex-col gap-1 flex-1">
+            <div class="flex items-center gap-2 p-1.5 rounded-lg">
+              <span class="font-mono text-[10px] font-bold w-4 text-brand-text-secondary">4</span>
+              <span class="text-lg">🐱</span>
+              <span class="text-[11px] font-semibold flex-1 truncate">Priya</span>
+              <span class="font-mono text-[10px] font-bold">3,210</span>
+            </div>
+            <div class="flex items-center gap-2 p-1.5 rounded-lg">
+              <span class="font-mono text-[10px] font-bold w-4 text-brand-text-secondary">5</span>
+              <span class="text-lg">🐼</span>
+              <span class="text-[11px] font-semibold flex-1 truncate">Aisha</span>
+              <span class="font-mono text-[10px] font-bold">3,084</span>
+            </div>
+            <div class="flex items-center gap-2 p-1.5 rounded-lg">
+              <span class="font-mono text-[10px] font-bold w-4 text-brand-text-secondary">6</span>
+              <span class="text-lg">🦝</span>
+              <span class="text-[11px] font-semibold flex-1 truncate">Vikram</span>
+              <span class="font-mono text-[10px] font-bold">2,956</span>
+            </div>
+            <div class="flex items-center gap-2 p-1.5 rounded-lg">
+              <span class="font-mono text-[10px] font-bold w-4 text-brand-text-secondary">7</span>
+              <span class="text-lg">🐨</span>
+              <span class="text-[11px] font-semibold flex-1 truncate">Nisha</span>
+              <span class="font-mono text-[10px] font-bold">2,891</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Tab Bar -->
+        <div class="shrink-0 px-3 pb-3">
+          <div class="glass rounded-3xl shadow-lg p-1 flex items-center justify-around">
+            <button class="tab-btn flex flex-col items-center gap-0.5 px-3 py-1.5">
+              <span class="tab-icon text-base opacity-50">🎮</span>
+              <span class="font-display text-[9px] font-bold text-brand-text-secondary">Hub</span>
+            </button>
+            <button class="tab-btn flex flex-col items-center gap-0.5 px-3 py-1.5">
+              <span class="tab-icon text-base opacity-50">👤</span>
+              <span class="font-display text-[9px] font-bold text-brand-text-secondary">Profile</span>
+            </button>
+            <button class="tab-btn active flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-2xl bg-brand-primary/10">
+              <span class="tab-icon text-base">🏅</span>
+              <span class="font-display text-[9px] font-bold">Ranks</span>
+            </button>
+            <button class="tab-btn flex flex-col items-center gap-0.5 px-3 py-1.5">
+              <span class="tab-icon text-base opacity-50">⚡</span>
+              <span class="font-display text-[9px] font-bold text-brand-text-secondary">Quests</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">Scene 3 · Ranks</div>
+  </div>
+
+  <!-- =========================== PHONE 4: QUESTS =========================== -->
+  <div>
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="phone-screen flex flex-col">
+        <div class="h-11 shrink-0"></div>
+
+        <!-- Title -->
+        <div class="px-4 pt-2 shrink-0 flex items-center justify-between">
+          <div>
+            <div class="font-display text-lg font-bold">Daily Quests</div>
+            <div class="text-[10px] text-brand-text-secondary">Resets in 14h 22m</div>
+          </div>
+          <div class="rounded-full bg-gradient-to-r from-amber-400/20 to-orange-400/20 px-3 py-1 ring-1 ring-amber-300/40">
+            <span class="font-mono text-xs font-bold text-amber-700">2/4</span>
+          </div>
+        </div>
+
+        <!-- Progress overview -->
+        <div class="px-4 pt-3 shrink-0">
+          <div class="glass hud-frame rounded-2xl p-3 shadow-md">
+            <div class="flex items-center justify-between mb-2">
+              <div class="font-display text-xs font-bold">Today's progress</div>
+              <span class="font-mono text-xs font-bold text-brand-primary">+75 XP earned</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" style="width:50%"></div></div>
+            <div class="mt-1 text-right text-[10px] font-mono text-brand-text-secondary">Streak +50 if all complete</div>
+          </div>
+        </div>
+
+        <!-- Quest list fills remaining -->
+        <div class="flex-1 min-h-0 px-4 pt-3 pb-2 flex flex-col gap-2">
+          <!-- Done -->
+          <div class="rounded-2xl bg-gradient-to-r from-emerald-100/80 to-emerald-50 p-3 ring-1 ring-emerald-200/50">
+            <div class="flex items-center gap-3">
+              <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-md">
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 7"/></svg>
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="text-xs font-semibold text-emerald-900 line-through opacity-70">Make a creation</div>
+                <div class="text-[10px] text-emerald-700 font-semibold">Completed · 11:42 AM</div>
+              </div>
+              <span class="font-mono text-xs font-bold text-emerald-700">+25</span>
+            </div>
+          </div>
+
+          <!-- Active 1 -->
+          <div class="rounded-2xl bg-gradient-to-r from-indigo-100/80 to-indigo-50 p-3 ring-2 ring-brand-primary/30">
+            <div class="flex items-start gap-3 mb-2">
+              <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-primary to-brand-ai text-white shadow-md">🎯</div>
+              <div class="min-w-0 flex-1">
+                <div class="text-xs font-bold">Write 3 stories</div>
+                <div class="text-[10px] text-brand-text-secondary">2 of 3 complete</div>
+              </div>
+              <span class="font-mono text-xs font-bold text-brand-primary">+50</span>
+            </div>
+            <div class="progress-bar" style="height:5px"><div class="progress-fill" style="width:66%"></div></div>
+          </div>
+
+          <!-- Active 2 -->
+          <div class="rounded-2xl bg-gradient-to-r from-amber-100/80 to-amber-50 p-3 ring-1 ring-amber-200/50">
+            <div class="flex items-start gap-3 mb-2">
+              <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-md">🔥</div>
+              <div class="min-w-0 flex-1">
+                <div class="text-xs font-bold">Beat AI in 3 rounds</div>
+                <div class="text-[10px] text-brand-text-secondary">1 of 3 complete</div>
+              </div>
+              <span class="font-mono text-xs font-bold text-amber-700">+75</span>
+            </div>
+            <div class="progress-bar" style="height:5px"><div class="progress-fill" style="width:33%; background: linear-gradient(90deg, #FF9F43, #F59E0B);"></div></div>
+          </div>
+
+          <!-- Locked -->
+          <div class="rounded-2xl bg-gray-50/80 p-3 ring-1 ring-gray-200 opacity-70">
+            <div class="flex items-center gap-3">
+              <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-200 text-gray-500 shadow-sm">🔒</div>
+              <div class="min-w-0 flex-1">
+                <div class="text-xs font-semibold text-brand-text-secondary">Reach Level 29</div>
+                <div class="text-[10px] text-brand-text-secondary">Unlocks at LVL 29</div>
+              </div>
+              <span class="font-mono text-xs font-bold text-brand-text-secondary">+100</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Tab Bar -->
+        <div class="shrink-0 px-3 pb-3">
+          <div class="glass rounded-3xl shadow-lg p-1 flex items-center justify-around">
+            <button class="tab-btn flex flex-col items-center gap-0.5 px-3 py-1.5">
+              <span class="tab-icon text-base opacity-50">🎮</span>
+              <span class="font-display text-[9px] font-bold text-brand-text-secondary">Hub</span>
+            </button>
+            <button class="tab-btn flex flex-col items-center gap-0.5 px-3 py-1.5">
+              <span class="tab-icon text-base opacity-50">👤</span>
+              <span class="font-display text-[9px] font-bold text-brand-text-secondary">Profile</span>
+            </button>
+            <button class="tab-btn flex flex-col items-center gap-0.5 px-3 py-1.5">
+              <span class="tab-icon text-base opacity-50">🏅</span>
+              <span class="font-display text-[9px] font-bold text-brand-text-secondary">Ranks</span>
+            </button>
+            <button class="tab-btn active flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-2xl bg-brand-primary/10">
+              <span class="tab-icon text-base">⚡</span>
+              <span class="font-display text-[9px] font-bold">Quests</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phone-label">Scene 4 · Quests</div>
+  </div>
+
+</div>
+
+</body>
+</html>
