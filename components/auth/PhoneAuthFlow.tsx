@@ -9,7 +9,7 @@ import {
   sendPhoneOtp,
   verifyPhoneOtp,
   auth,
-} from '@/lib/firebase/client';
+} from '@gsi/firebase/client';
 import { useAuth } from '@/hooks/useAuth';
 
 type Step = 'phone' | 'success';
