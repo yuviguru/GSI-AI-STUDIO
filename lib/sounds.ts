@@ -8,7 +8,10 @@ export type SoundName =
   | 'badgeUnlocked'
   | 'creationComplete'
   | 'buttonTap'
-  | 'celebrate';
+  | 'celebrate'
+  | 'hubOpen'
+  | 'modeSelect'
+  | 'levelUp';
 
 const MUTE_KEY = 'gsi-sound-muted';
 
@@ -199,12 +202,71 @@ function playCelebrate(ac: AudioContext) {
   });
 }
 
+function playHubOpen(ac: AudioContext) {
+  const now = ac.currentTime;
+  const notes = [262, 330, 392]; // C4, E4, G4
+  notes.forEach((freq, i) => {
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    osc.connect(gain);
+    gain.connect(ac.destination);
+    const t = now + i * 0.06;
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.2, t + 0.02);
+    gain.gain.linearRampToValueAtTime(0.1, t + 0.15);
+    gain.gain.linearRampToValueAtTime(0, t + 0.35);
+    osc.start(t);
+    osc.stop(t + 0.4);
+  });
+}
+
+function playModeSelect(ac: AudioContext) {
+  const now = ac.currentTime;
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(600, now);
+  osc.frequency.linearRampToValueAtTime(900, now + 0.08);
+  osc.connect(gain);
+  gain.connect(ac.destination);
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(0.18, now + 0.01);
+  gain.gain.linearRampToValueAtTime(0, now + 0.15);
+  osc.start(now);
+  osc.stop(now + 0.18);
+}
+
+function playLevelUp(ac: AudioContext) {
+  const now = ac.currentTime;
+  const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
+  notes.forEach((freq, i) => {
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    osc.connect(gain);
+    gain.connect(ac.destination);
+    const t = now + i * 0.1;
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(i === 3 ? 0.25 : 0.2, t + 0.02);
+    gain.gain.linearRampToValueAtTime(i === 3 ? 0.15 : 0, t + (i === 3 ? 0.3 : 0.12));
+    if (i === 3) gain.gain.linearRampToValueAtTime(0, t + 0.5);
+    osc.start(t);
+    osc.stop(t + 0.55);
+  });
+}
+
 const SOUND_MAP: Record<SoundName, (ac: AudioContext) => void> = {
   pointsEarned: playPointsEarned,
   badgeUnlocked: playBadgeUnlocked,
   creationComplete: playCreationComplete,
   buttonTap: playButtonTap,
   celebrate: playCelebrate,
+  hubOpen: playHubOpen,
+  modeSelect: playModeSelect,
+  levelUp: playLevelUp,
 };
 
 export function playSound(name: SoundName): void {

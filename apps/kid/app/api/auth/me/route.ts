@@ -50,6 +50,10 @@ export async function GET(request: NextRequest) {
       plan: user.plan,
       kidIds: user.kidIds,
       schoolId: user.schoolId,
+      // Surfaced so the client can use the account's base timezone for
+      // daily-session bucketing instead of whatever device the user is
+      // currently holding.
+      ...(user.timezone ? { timezone: user.timezone } : {}),
       ...(claimedSessionSummary ? { claimedSessionSummary } : {}),
     });
   } catch (error) {

@@ -9,7 +9,10 @@ import {
   encodeDataUri,
   stripJpegMetadata,
 } from '@/lib/images/jpegSanitize';
-import { uploadAvatarToStorage } from '@/lib/images/avatarStorage';
+import {
+  uploadAvatarToStorage,
+  mirrorAvatarToStorage,
+} from '@/lib/images/avatarStorage';
 import { isPersistableAvatarUrl } from '@/lib/images/avatarUrl';
 
 /** Allowed trait values — restricts the prompt surface so kids can't inject
@@ -192,8 +195,17 @@ async function bumpHourlyCounter(
  * Header: X-Session-Id  (recommended — bound for rate limiting)
  *
  * Returns: { imageUrl, prompt, providerName, persisted: boolean }
- *   - persisted=true → imageUrl is a Storage URL safe to save on the kid doc
- *   - persisted=false → imageUrl is a data URI for transient display only
+ *   - persisted=true → imageUrl is on our trust boundary (our Firebase Storage,
+ *     a curated stock CDN, or a mirrored provider asset) and safe to save on
+ *     the kid doc.
+ *   - persisted=false → mirror failed and the URL is provider-hosted (or a
+ *     transient data URI). The client may display it for this session but
+ *     should not persist — the kid-doc save path will reject it.
+ *
+ * Mirroring policy (see lib/images/avatarStorage.ts → mirrorAvatarToStorage):
+ *   Every provider-hosted URL is downloaded and re-uploaded to our Storage
+ *   so we own the durable URL. Provider CDNs (Pixazo R2, Pollinations) are
+ *   treated as transient sources, not long-term hosts.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -254,13 +266,27 @@ export async function POST(request: NextRequest) {
         imageUrl = encodeDataUri(decoded.contentType, sanitised);
       }
     } else {
-      // Provider returned a URL directly. Only mark persisted when it's on
-      // the shared allowlist — otherwise downstream (claim-session,
-      // /api/users/kids) will reject it as an unknown host and the migration
-      // path will silently drop the avatar. Stock-photo fallbacks we don't
-      // recognise come back here as persisted=false; the client keeps them
-      // for the current session but doesn't try to migrate them.
-      persisted = isPersistableAvatarUrl(rawImageUrl);
+      // Provider returned a hosted URL (typical of pixazo-flux-schnell /
+      // pollinations / replicate). Mirror it to OUR Storage so the URL we
+      // hand back to the client — and that the client persists onto the kid
+      // doc — is forever ours. Without this we'd be one provider bucket
+      // deletion away from every kid's avatar 404-ing.
+      const mirroredUrl = await mirrorAvatarToStorage(
+        rawImageUrl,
+        'avatars/generated',
+      );
+      if (mirroredUrl) {
+        imageUrl = mirroredUrl;
+        persisted = isPersistableAvatarUrl(mirroredUrl);
+      } else {
+        // Mirror failed (Storage env unset, provider unreachable, content-
+        // type mismatch, size exceeded). Ship the provider's URL with the
+        // allowlist check as a fallback — better to deliver SOMETHING the
+        // session can show than to block generation. The kid-doc save path
+        // will refuse to persist if the URL isn't on the allowlist, so this
+        // degrades to "avatar visible this session, not saved durably."
+        persisted = isPersistableAvatarUrl(rawImageUrl);
+      }
     }
 
     return apiSuccess({ imageUrl, prompt, providerName, persisted });

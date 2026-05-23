@@ -19,8 +19,42 @@ const SIZE_MAP: Record<MascotAvatarSize, { wrap: string; emoji: string }> = {
   '2xl': { wrap: 'h-40 w-40', emoji: 'text-7xl' },
 };
 
-/** In-memory cache so we only fetch each Lottie JSON once per page load. */
+/**
+ * Two-tier cache so we only fetch each Lottie JSON ONCE per page load,
+ * even when multiple MascotAvatars mount simultaneously (the common case —
+ * hub, HUD, profile scene, picker, loader all render together).
+ *
+ *   - `lottieCache`     — resolved data. Subsequent renders skip the
+ *                         network entirely.
+ *   - `lottieInFlight`  — promises for currently-fetching URLs. Concurrent
+ *                         callers await the existing promise instead of
+ *                         firing a duplicate fetch. Evicted on settle.
+ *
+ * Without the in-flight tier, six concurrent <MascotAvatar id="pixie"/>
+ * mounts would each see an empty resolved cache and fire six identical
+ * GETs (each returning 304 from HTTP cache but still adding network noise
+ * + main-thread JSON.parse work).
+ */
 const lottieCache = new Map<string, unknown>();
+const lottieInFlight = new Map<string, Promise<unknown>>();
+
+function loadLottie(url: string): Promise<unknown> {
+  const cached = lottieCache.get(url);
+  if (cached !== undefined) return Promise.resolve(cached);
+  const pending = lottieInFlight.get(url);
+  if (pending) return pending;
+  const promise = fetch(url)
+    .then((r) => r.json())
+    .then((data: unknown) => {
+      lottieCache.set(url, data);
+      return data;
+    })
+    .finally(() => {
+      lottieInFlight.delete(url);
+    });
+  lottieInFlight.set(url, promise);
+  return promise;
+}
 
 interface MascotAvatarProps {
   id: string | MascotId | undefined | null;
@@ -68,17 +102,18 @@ export function MascotAvatar({
       setLottieData(null);
       return;
     }
-    const cached = lottieCache.get(mascot.lottie);
-    if (cached) {
+    const url = mascot.lottie;
+    // Fast-path: synchronous hit on the resolved cache. Avoids a render
+    // flash for the common "same mascot mounts multiple times" case.
+    const cached = lottieCache.get(url);
+    if (cached !== undefined) {
       setLottieData(cached);
       return;
     }
     let cancelled = false;
-    fetch(mascot.lottie)
-      .then((r) => r.json())
+    loadLottie(url)
       .then((data) => {
         if (cancelled) return;
-        lottieCache.set(mascot.lottie!, data);
         setLottieData(data);
       })
       .catch(() => {

@@ -2,7 +2,6 @@
 
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
 import { MascotPickerStep } from './MascotPickerStep';
 import { NameStep } from './NameStep';
 import {
@@ -32,6 +31,18 @@ interface ProfileSetupCarouselProps {
    * Used by the authenticated layout gate when the parent has 0 kids.
    */
   createKidProfile?: boolean;
+  /**
+   * Start the carousel at a specific step instead of 'mascot'. Use 'avatar'
+   * when an existing profile only needs the avatar filled in. Defaults to 'mascot'.
+   */
+  initialStep?: Step;
+  /**
+   * When set, finishing the carousel updates this existing kid via PATCH
+   * `/api/users/kids/[kidId]` instead of creating a new one. Used by the
+   * "missing-fields" gate to fill in mascot/avatar for a kid that was created
+   * with incomplete data (e.g. avatar generation didn't persist).
+   */
+  targetKidId?: string;
 }
 
 const stepVariants = {
@@ -43,21 +54,94 @@ const stepVariants = {
 export function ProfileSetupCarousel({
   onComplete,
   createKidProfile = false,
+  initialStep = 'mascot',
+  targetKidId,
 }: ProfileSetupCarouselProps) {
-  const { save } = useOnboardingProfile();
+  const { profile: existingOnboarding, save } = useOnboardingProfile();
   const { isAuthenticated, getIdToken, user } = useAuth();
-  const { refreshKids } = useKidProfile();
-  const [step, setStep] = useState<Step>('mascot');
-  // Pre-select the brand default (Pixie). During pilot all other mascots are
-  // locked so the picker is effectively a "meet your buddy" screen — no need
-  // to make the kid click before Next is enabled. They can still see all
-  // mascots in the grid; locked tiles show a "Soon" badge.
-  const [mascotId, setMascotId] = useState<string | null>(DEFAULT_MASCOT_ID);
-  const [name, setName] = useState('');
-  const [age, setAge] = useState<number | null>(null);
-  const [avatar, setAvatar] = useState<GeneratedAvatar | null>(null);
+  const { activeKid, refreshKids, updateKidLocal } = useKidProfile();
+  const [step, setStep] = useState<Step>(initialStep);
+
+  // Pre-fill from whatever profile data already exists, in priority order:
+  // authenticated active kid → anonymous onboarding profile → defaults. This
+  // lets the carousel be re-opened to fill in *just* the missing pieces (e.g.
+  // mascot was saved, avatar generation failed → re-enter at the avatar step
+  // with the existing mascot/name already populated).
+  const initialMascotId =
+    activeKid?.mascotId ?? existingOnboarding?.mascotId ?? DEFAULT_MASCOT_ID;
+  const initialName = activeKid?.name ?? existingOnboarding?.name ?? '';
+  const initialAge = activeKid?.age ?? existingOnboarding?.age ?? null;
+  const initialAvatar: GeneratedAvatar | null = (() => {
+    const existingUrl = activeKid?.avatarUrl ?? existingOnboarding?.avatarUrl;
+    if (!existingUrl) return null;
+    // Already-persisted URL — re-hydrate enough of GeneratedAvatar so the
+    // avatar step's preview shows it and "Next" works without regenerating.
+    return { imageUrl: existingUrl, persisted: true } as GeneratedAvatar;
+  })();
+
+  const [mascotId, setMascotId] = useState<string | null>(initialMascotId);
+  const [name, setName] = useState(initialName);
+  const [age, setAge] = useState<number | null>(initialAge);
+  const [avatar, setAvatar] = useState<GeneratedAvatar | null>(initialAvatar);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  /**
+   * Incremental kid-doc save. Used in `targetKidId` mode (the missing-fields
+   * gate scenario) so that each step persists its own field as the user
+   * completes it — instead of all data piling up until the final "Open my
+   * dashboard" click. Two reasons:
+   *   1. Drop-off safety: if the user closes the carousel mid-flow, what
+   *      they've already done is saved. Refresh re-opens the gate only on
+   *      the fields that are still missing.
+   *   2. Visibility: the user (and dev console) sees the PATCH go out
+   *      immediately after each step, instead of a hidden batch at the end.
+   *
+   * No-op when targetKidId is unset (the createKid path still uses the
+   * end-of-flow POST).
+   */
+  const patchKid = useCallback(
+    async (fields: {
+      mascotId?: string;
+      avatarUrl?: string;
+      name?: string;
+      age?: number;
+    }) => {
+      if (!targetKidId || !isAuthenticated) return;
+      const token = await getIdToken();
+      if (!token) throw new Error('Not authenticated — please sign in again');
+      const res = await fetch(`/api/users/kids/${targetKidId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(fields),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error?.message ?? 'Could not save your profile');
+      }
+      // Use the PATCH response to update local kid state directly — no
+      // need for a follow-up GET /api/users/kids since we already have
+      // the authoritative new values. This eliminates the redundant kids
+      // refresh that previously fired after every incremental save.
+      try {
+        const json = await res.json();
+        if (json?.success && json.data && typeof json.data === 'object') {
+          updateKidLocal(targetKidId, json.data);
+        } else {
+          // Defensive — if the response shape is unexpected, fall back to
+          // the full refresh so we don't leave the UI showing stale state.
+          await refreshKids();
+        }
+      } catch {
+        // Couldn't parse JSON — fall back to full refresh.
+        await refreshKids();
+      }
+    },
+    [targetKidId, isAuthenticated, getIdToken, refreshKids, updateKidLocal],
+  );
 
   const finish = useCallback(async () => {
     setSubmitError(null);
@@ -78,6 +162,44 @@ export function ProfileSetupCarousel({
       completedAt: new Date().toISOString(),
     };
     save(profile);
+
+    // Authenticated PATCH mode: an existing kid is being updated to fill in
+    // missing mascot/avatar. Uses /api/users/kids/[kidId] instead of POST.
+    if (targetKidId && isAuthenticated) {
+      setSubmitting(true);
+      try {
+        const token = await getIdToken();
+        if (!token) throw new Error('Not authenticated — please sign in again');
+
+        const res = await fetch(`/api/users/kids/${targetKidId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: finalName,
+            mascotId: finalMascot,
+            ...(finalAvatarUrl ? { avatarUrl: finalAvatarUrl } : {}),
+            ...(age != null ? { age } : {}),
+          }),
+        });
+
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}));
+          throw new Error(json.error?.message ?? 'Could not update your profile');
+        }
+
+        await refreshKids();
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : 'Something went wrong');
+        setSubmitting(false);
+        return;
+      }
+      setSubmitting(false);
+      onComplete();
+      return;
+    }
 
     // Authenticated mode: create the verified kid profile in Firestore.
     // This is the path taken by the AppGate when the parent has 0 kids —
@@ -139,6 +261,7 @@ export function ProfileSetupCarousel({
     save,
     onComplete,
     createKidProfile,
+    targetKidId,
     isAuthenticated,
     getIdToken,
     user,
@@ -194,15 +317,19 @@ export function ProfileSetupCarousel({
         </button>
       </div>
 
-      {/* Mascot picker step wants the full viewport so the carousel can show
-          multiple cards on landscape / tablet / desktop. Other steps keep
-          the cosy max-w-md column. */}
-      <div
-        className={cn(
-          'relative mx-auto flex w-full flex-1 flex-col overflow-hidden',
-          step === 'mascot' ? 'max-w-none' : 'max-w-md',
-        )}
-      >
+      {/* Top-level error banner — surfaces failures from incremental kid-doc
+          PATCH calls (mascot, avatar) that happen on step transitions. Without
+          this, errors set by the per-step handlers would never be visible
+          (the per-step error UI only renders inside the done step). */}
+      {submitError && step !== 'done' && (
+        <div className="absolute inset-x-4 top-16 z-10 mx-auto max-w-md">
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-center text-sm text-red-600 shadow-sm">
+            {submitError}
+          </p>
+        </div>
+      )}
+
+      <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col overflow-hidden">
         <AnimatePresence mode="wait">
           {step === 'mascot' && (
             <motion.div
@@ -217,7 +344,29 @@ export function ProfileSetupCarousel({
               <MascotPickerStep
                 selectedId={mascotId}
                 onSelect={setMascotId}
-                onNext={() => setStep('name')}
+                onNext={async () => {
+                  // Incremental save: persist mascot to the kid doc right
+                  // away in targetKidId mode. Block advancement on failure
+                  // so the user sees the error instead of moving on with
+                  // unsaved state.
+                  if (targetKidId && mascotId) {
+                    setSubmitError(null);
+                    setSubmitting(true);
+                    try {
+                      await patchKid({ mascotId });
+                    } catch (err) {
+                      setSubmitError(
+                        err instanceof Error
+                          ? err.message
+                          : 'Could not save mascot',
+                      );
+                      setSubmitting(false);
+                      return;
+                    }
+                    setSubmitting(false);
+                  }
+                  setStep('name');
+                }}
               />
             </motion.div>
           )}
@@ -258,8 +407,33 @@ export function ProfileSetupCarousel({
             >
               <AvatarBuilderStep
                 initial={avatar}
-                onNext={(a) => {
+                onNext={async (a) => {
                   setAvatar(a);
+                  // Incremental save: persist avatarUrl to the kid doc as
+                  // soon as the generated avatar is on the allowlist. If the
+                  // server returned persisted=false (Storage upload failed),
+                  // AvatarBuilderStep already blocks the Next button — but
+                  // we double-check here too so a stale state can't slip
+                  // past.
+                  if (targetKidId && a.persisted) {
+                    const url = persistableAvatarUrl(a.imageUrl);
+                    if (url) {
+                      setSubmitError(null);
+                      setSubmitting(true);
+                      try {
+                        await patchKid({ avatarUrl: url });
+                      } catch (err) {
+                        setSubmitError(
+                          err instanceof Error
+                            ? err.message
+                            : 'Could not save avatar',
+                        );
+                        setSubmitting(false);
+                        return;
+                      }
+                      setSubmitting(false);
+                    }
+                  }
                   setStep('xray');
                 }}
                 onBack={() => setStep('name')}

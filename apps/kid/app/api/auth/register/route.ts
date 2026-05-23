@@ -31,19 +31,33 @@ export async function POST(request: NextRequest) {
       throw new AppException('INVALID_AUTH', 'Phone number not found in auth token', 400);
     }
 
-    // 2. Parse request body (role is optional, defaults to parent)
+    // 2. Parse request body (role is optional, defaults to parent;
+    //    timezone is captured client-side via Intl).
     let role: UserRole = 'parent';
+    let timezone: string | undefined;
     try {
       const body = await request.json();
       if (body.role && VALID_ROLES.includes(body.role)) {
         role = body.role;
       }
+      // Accept any reasonably-shaped IANA tz string. We don't enforce it
+      // against the canonical IANA list here — the browser-supplied value
+      // is trusted as a best-effort hint and the worst case is a fallback
+      // to device-local on the client.
+      if (
+        typeof body.timezone === 'string' &&
+        body.timezone.length > 0 &&
+        body.timezone.length <= 64 &&
+        /^[A-Za-z_+\-/:0-9]+$/.test(body.timezone)
+      ) {
+        timezone = body.timezone;
+      }
     } catch {
-      // Empty body is fine — defaults to parent
+      // Empty body is fine — defaults to parent without timezone
     }
 
     // 3. Create user document
-    const userDoc = await createUser({ uid, phone, role });
+    const userDoc = await createUser({ uid, phone, role, timezone });
 
     return apiSuccess({
       id: userDoc.id,
