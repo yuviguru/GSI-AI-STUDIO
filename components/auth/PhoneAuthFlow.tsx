@@ -9,7 +9,7 @@ import {
   sendPhoneOtp,
   verifyPhoneOtp,
   auth,
-} from '@gsi/firebase/client';
+} from '@/lib/firebase/client';
 import { useAuth } from '@/hooks/useAuth';
 
 type Step = 'phone' | 'success';
@@ -161,14 +161,28 @@ export function PhoneAuthFlow({ onComplete, onClose }: PhoneAuthFlowProps) {
       });
 
       if (!meRes.ok) {
-        // New user — auto-register with default role
+        // New user — auto-register with default role. We also capture the
+        // browser's IANA timezone here so the account has a base timezone
+        // for daily-session bucketing (streaks survive international travel
+        // because we use this stored tz, not whatever device the user is
+        // holding at the time).
+        let detectedTimezone: string | undefined;
+        try {
+          detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        } catch {
+          // Older browsers without Intl support — leave undefined and
+          // the server falls back to no-tz (device-local on the client).
+        }
         const registerRes = await fetch('/api/auth/register', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ role: 'parent' }),
+          body: JSON.stringify({
+            role: 'parent',
+            ...(detectedTimezone ? { timezone: detectedTimezone } : {}),
+          }),
         });
 
         if (!registerRes.ok) {

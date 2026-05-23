@@ -1,7 +1,13 @@
-import { Timestamp } from 'firebase-admin/firestore';
+import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from './admin';
 import { AppException } from '@/lib/api-utils';
 import { checkBadgeUnlocks, type HomeworkStatsSnapshot } from '@/lib/badges';
+import { kidSessionId } from '@/lib/sessions/dayKey';
+
+// Re-export shared helpers so existing import sites continue to work via
+// '@/lib/firebase/sessionService' while client code can also import from
+// '@/lib/sessions/dayKey' directly without pulling in firebase-admin.
+export { localDayKey, kidSessionId } from '@/lib/sessions/dayKey';
 
 const SESSIONS_COLLECTION = 'sessions';
 const IP_RATE_LIMITS_COLLECTION = 'ipRateLimits';
@@ -23,14 +29,46 @@ const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const RATE_LIMIT_DISABLED = process.env.RATE_LIMIT_DISABLED === 'true';
 const UNLIMITED_REMAINING = 999;
 
+/**
+ * Session lifecycle taxonomy:
+ *   - 'anonymous' → the device's pre-sign-in bucket. One per device. The only
+ *     kind eligible for claim/migration. Once claimed (claimedBy set) or
+ *     archived (archivedAt set), it can never re-enter the migration funnel.
+ *   - 'kid' → an authenticated kid's daily session, scoped by (kidId, dayKey).
+ *     Never migratable. Created via createOrResumeKidSession and rotated at
+ *     local-day boundaries.
+ *
+ * Missing `type` on legacy docs is treated as 'anonymous' for back-compat.
+ */
+export type SessionType = 'anonymous' | 'kid';
+
 interface SessionDoc {
   id: string;
+  type?: SessionType;
+  /** For type === 'kid': the kid this session belongs to. */
+  kidId?: string;
+  /** For type === 'kid': the parent uid that owns the kid (security guard). */
+  parentUid?: string;
+  /** For type === 'kid': local date in YYYY-MM-DD for daily session grouping. */
+  dayKey?: string;
   fingerprint: string | null;
   creationCount: number;
   lastCreationAt: Timestamp | null;
   ipHash: string | null;
   createdAt: Timestamp;
   expiresAt: Timestamp;
+  // Migration lifecycle (anonymous sessions only)
+  /** Set when claim-session succeeds. Session can never be re-claimed. */
+  claimedAt?: Timestamp;
+  /** UID of the user that claimed this session. */
+  claimedBy?: string;
+  /** Soft-archive marker. Cron sweeps archived docs after retention window. */
+  archivedAt?: Timestamp;
+  /** UID of the user who archived this session (audit trail). */
+  archivedBy?: string;
+  /** Kid sessions only — set when the session is rotated away (kid switch,
+   *  day rollover, sign-out). Subsequent writes should target a new session. */
+  endedAt?: Timestamp;
   // Points & badge fields (added in Phase 1.5 — optional for backward compat)
   aiPoints?: number;
   badges?: string[];
@@ -543,6 +581,9 @@ function buildNewSessionDoc(
   const now = nowMs ?? Date.now();
   return {
     id: sessionId,
+    // Anonymous device session — the default lifecycle. Kid-scoped sessions
+    // are created via createOrResumeKidSession instead.
+    type: 'anonymous',
     fingerprint: fingerprint ?? null,
     creationCount: 0,
     lastCreationAt: null,
@@ -582,6 +623,144 @@ function buildSessionResult(sessionId: string, data: SessionDoc): SessionResult 
     expiresAt: data.expiresAt.toDate().toISOString(),
   };
 }
+
+// ─── Session lifecycle helpers (claim eligibility, archive, kid sessions) ───
+
+/**
+ * Throw if `sessionId` is not eligible to be claimed/migrated.
+ * Ineligible reasons:
+ *   - session already claimed (claimedBy set) → would be a duplicate migration
+ *   - session archived (archivedAt set) → user already discarded it
+ *   - session is a kid-scoped session (type === 'kid') → kid sessions are
+ *     never migratable per the architectural invariant
+ *
+ * If `tx` is provided, the read uses the transaction (must be called before
+ * any writes inside the same transaction).
+ */
+export async function assertSessionEligibleForClaim(
+  sessionId: string,
+  tx?: FirebaseFirestore.Transaction,
+): Promise<void> {
+  const ref = adminDb.collection(SESSIONS_COLLECTION).doc(sessionId);
+  const snap = tx ? await tx.get(ref) : await ref.get();
+  if (!snap.exists) return; // No doc → nothing to claim, but not an error either
+  const data = snap.data() as SessionDoc;
+  if (data.type === 'kid') {
+    throw new AppException(
+      'SESSION_INELIGIBLE',
+      'Kid-scoped sessions cannot be migrated',
+      409,
+    );
+  }
+  if (data.claimedBy) {
+    throw new AppException(
+      'SESSION_ALREADY_CLAIMED',
+      'This session has already been migrated',
+      409,
+    );
+  }
+  if (data.archivedAt) {
+    throw new AppException(
+      'SESSION_ARCHIVED',
+      'This session has been archived and cannot be migrated',
+      409,
+    );
+  }
+}
+
+/**
+ * Soft-archive a session. Sets archivedAt + archivedBy. The doc and its
+ * orphan creations stay in Firestore for the retention window (a future cron
+ * job hard-deletes after N days). Used by the "Discard" path of the
+ * sign-in migration prompt.
+ *
+ * Safe no-op if the session doesn't exist or is already archived.
+ */
+export async function archiveSession(
+  sessionId: string,
+  archivedBy?: string,
+): Promise<void> {
+  const ref = adminDb.collection(SESSIONS_COLLECTION).doc(sessionId);
+  const snap = await ref.get();
+  if (!snap.exists) return;
+  const data = snap.data() as SessionDoc;
+  if (data.archivedAt) return; // Already archived — keep the original stamp
+  await ref.update({
+    archivedAt: Timestamp.now(),
+    ...(archivedBy ? { archivedBy } : {}),
+  });
+}
+
+/**
+ * Create (or resume) a kid's daily session.
+ *
+ * The doc id is deterministic: `kid-{kidId}-{dayKey}` where dayKey is
+ * `YYYY-MM-DD` in the caller's local timezone. Calling this twice for the
+ * same (kidId, dayKey) is idempotent — the first call creates the doc and
+ * subsequent calls return the existing one.
+ *
+ * Caller MUST pass the verified `parentUid` (from the request's Firebase
+ * token) so we can store it on the doc for downstream ownership checks.
+ */
+export async function createOrResumeKidSession(params: {
+  kidId: string;
+  parentUid: string;
+  dayKey: string;
+}): Promise<{ sessionId: string; created: boolean }> {
+  const { kidId, parentUid, dayKey } = params;
+  const sessionId = kidSessionId(kidId, dayKey);
+  const ref = adminDb.collection(SESSIONS_COLLECTION).doc(sessionId);
+
+  const created = await adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (snap.exists) {
+      const existing = snap.data() as SessionDoc;
+      // Re-stamp endedAt to undefined if the session was previously ended
+      // (kid switched away, then back). Firestore can't store `undefined` —
+      // use FieldValue.delete() for clearing.
+      if (existing.endedAt) {
+        tx.update(ref, {
+          endedAt: FieldValue.delete(),
+        });
+      }
+      return false;
+    }
+    const now = Date.now();
+    const doc: SessionDoc = {
+      id: sessionId,
+      type: 'kid',
+      kidId,
+      parentUid,
+      dayKey,
+      fingerprint: null,
+      creationCount: 0,
+      lastCreationAt: null,
+      ipHash: null,
+      createdAt: Timestamp.fromMillis(now),
+      expiresAt: Timestamp.fromMillis(now + SESSION_TTL_MS),
+    };
+    tx.set(ref, doc);
+    return true;
+  });
+
+  return { sessionId, created };
+}
+
+/**
+ * Mark a kid-scoped session as ended. Subsequent writes should rotate to a
+ * fresh session. Safe no-op if doc doesn't exist or is already ended.
+ */
+export async function endKidSession(sessionId: string): Promise<void> {
+  const ref = adminDb.collection(SESSIONS_COLLECTION).doc(sessionId);
+  const snap = await ref.get();
+  if (!snap.exists) return;
+  const data = snap.data() as SessionDoc;
+  if (data.endedAt) return;
+  await ref.update({ endedAt: Timestamp.now() });
+}
+
+// (localDayKey + kidSessionId are re-exported from '@/lib/sessions/dayKey' at
+// the top of this file so both server and client can import them by name.)
 
 // ─── Per-IP rate limiting (sybil guard for anonymous users) ──────────────────
 

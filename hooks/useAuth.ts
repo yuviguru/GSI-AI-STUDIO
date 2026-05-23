@@ -9,8 +9,8 @@ import {
   type ReactNode,
 } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { auth, signOutUser, ensureAnonymousAuth, isFirebaseConfigured } from '@gsi/firebase/client';
-import type { UserRole, UserPlan } from '@gsi/types';
+import { auth, signOutUser, ensureAnonymousAuth, isFirebaseConfigured } from '@/lib/firebase/client';
+import type { UserRole, UserPlan } from '@/types/user.types';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -37,6 +37,10 @@ interface UserProfile {
   plan?: UserPlan;
   name?: string;
   kidIds?: string[];
+  /** IANA timezone name (e.g. 'Asia/Kolkata'). The account's base timezone,
+   *  captured at sign-up. Used to bucket kid sessions by local day even when
+   *  the device is in a different timezone (traveler-safe). */
+  timezone?: string;
   /** Non-null when there's pending anonymous session data to assign to a kid. */
   claimedSessionSummary?: ClaimedSessionSummary;
 }
@@ -50,8 +54,11 @@ interface AuthState {
   isAuthenticated: boolean;
   /** True if user has Firebase Anonymous Auth (no phone yet). */
   isAnonymous: boolean;
-  /** Sign out the current user */
-  signOut: () => Promise<void>;
+  /** Sign out the current user. When `preserveAnonymous: true` is passed, the
+   *  anonymous device session (gsi-session-id, gsi-kid-profile, gsi-ai-points,
+   *  etc.) is left intact so the user can continue as guest after sign-out —
+   *  used by the "Sign out instead" path of the migration prompt. */
+  signOut: (options?: { preserveAnonymous?: boolean }) => Promise<void>;
   /** Firebase ID token for API calls (works for anonymous users too) */
   getIdToken: () => Promise<string | null>;
   /** Error from auth operations */
@@ -67,7 +74,9 @@ const AuthContext = createContext<AuthState>({
   loading: true,
   isAuthenticated: false,
   isAnonymous: false,
-  signOut: async () => {},
+  signOut: async (_options?: { preserveAnonymous?: boolean }) => {
+    void _options;
+  },
   getIdToken: async () => null,
   error: null,
   refreshProfile: async () => {},
@@ -106,15 +115,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setFirebaseUser(user);
 
       if (!user) {
-        // No user yet — kick off anonymous auth. This will trigger another
-        // onAuthStateChanged with the anonymous user, which hits the branch
-        // below. We intentionally leave `loading = true` until that fires.
+        // No user yet — kick off anonymous auth.
         setUserProfile(null);
-        ensureAnonymousAuth().catch(() => {
-          // Anonymous auth failed (network, Firebase down, demo mode).
-          // Fall back to truly anonymous — loading can finish.
-          setLoading(false);
-        });
+        ensureAnonymousAuth()
+          .then((anonUser) => {
+            // Success: onAuthStateChanged fires again with the new anonymous
+            // user and resolves loading in the branch below — do nothing here.
+            //
+            // Failure: ensureAnonymousAuth() swallows its error and resolves
+            // to `null` (anonymous sign-in disabled, offline, rate-limited,
+            // demo mode). No further auth callback will ever come, so we MUST
+            // finish loading here or the whole app hangs on a blank screen.
+            if (!anonUser) setLoading(false);
+          })
+          .catch(() => {
+            // Belt-and-suspenders for any unexpected rejection.
+            setLoading(false);
+          });
         return;
       }
 
@@ -161,6 +178,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               role: json.data.role,
               plan: json.data.plan,
               kidIds: json.data.kidIds,
+              timezone: json.data.timezone,
               claimedSessionSummary: json.data.claimedSessionSummary,
             }));
           }
@@ -177,64 +195,74 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, [firebaseUser]);
 
-  const handleSignOut = useCallback(async () => {
-    try {
-      setError(null);
-
-      // Best-effort server cleanup BEFORE we lose the auth token. If this
-      // fails (network, server cold start) we still proceed with sign-out —
-      // the orphan snapshot is recoverable on next sign-in.
+  const handleSignOut = useCallback(
+    async (options?: { preserveAnonymous?: boolean }) => {
+      const preserveAnonymous = options?.preserveAnonymous === true;
       try {
-        const token = firebaseUser ? await firebaseUser.getIdToken() : null;
-        if (token) {
-          await fetch('/api/auth/signout-cleanup', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
-            // Don't block UI if the network is slow.
-            signal: AbortSignal.timeout(2000),
-          }).catch(() => {});
+        setError(null);
+
+        // Best-effort server cleanup BEFORE we lose the auth token. If this
+        // fails (network, server cold start) we still proceed with sign-out —
+        // the orphan snapshot is recoverable on next sign-in.
+        try {
+          const token = firebaseUser ? await firebaseUser.getIdToken() : null;
+          if (token) {
+            await fetch('/api/auth/signout-cleanup', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` },
+              // Don't block UI if the network is slow.
+              signal: AbortSignal.timeout(2000),
+            }).catch(() => {});
+          }
+        } catch {
+          // Non-blocking — proceed with sign-out
         }
-      } catch {
-        // Non-blocking — proceed with sign-out
+
+        await signOutUser();
+        setUserProfile(null);
+        // Default: hard reset all gsi-* storage keys.
+        // preserveAnonymous=true: keep the keys that drive the anonymous
+        // experience so the user can immediately continue as guest. Used by
+        // the "Sign out instead" path of the migration prompt (full account,
+        // user wants to preserve guest work for a future new-account signup).
+        const PRESERVED_ANONYMOUS_KEYS = new Set([
+          'gsi-session-id',
+          'gsi-kid-profile',
+          'gsi-ai-points',
+          'gsi-onboarding-complete',
+          'gsi-sound-muted',
+        ]);
+
+        if (typeof window !== 'undefined') {
+          // Redirect immediately — stops React effects from running with
+          // empty localStorage while the page is still alive.
+          window.location.href = '/';
+
+          // These run synchronously before the browser actually navigates,
+          // ensuring the next page load starts clean.
+          const lsKeys: string[] = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (!key || !key.startsWith('gsi-')) continue;
+            if (preserveAnonymous && PRESERVED_ANONYMOUS_KEYS.has(key)) continue;
+            lsKeys.push(key);
+          }
+          lsKeys.forEach((k) => localStorage.removeItem(k));
+
+          const ssKeys: string[] = [];
+          for (let i = 0; i < sessionStorage.length; i++) {
+            const key = sessionStorage.key(i);
+            if (key && key.startsWith('gsi-')) ssKeys.push(key);
+          }
+          ssKeys.forEach((k) => sessionStorage.removeItem(k));
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Sign out failed';
+        setError(message);
       }
-
-      await signOutUser();
-      setUserProfile(null);
-      // Hard reset: clear all gsi-* localStorage + sessionStorage keys so the
-      // next session starts from a clean slate (points, badges, active kid,
-      // x-ray flags, streaks, etc.). A full reload then reinitializes every
-      // context provider from scratch.
-      //
-      // Navigate FIRST so that in-flight React effects don't fire with a
-      // missing session ID and accidentally create orphan Firestore docs.
-      // The browser will tear down the current page once navigation begins;
-      // we clear storage in a beforeunload-safe sync block right after.
-      if (typeof window !== 'undefined') {
-        // Redirect immediately — stops React effects from running with
-        // empty localStorage while the page is still alive.
-        window.location.href = '/';
-
-        // These run synchronously before the browser actually navigates,
-        // ensuring the next page load starts clean.
-        const lsKeys: string[] = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && key.startsWith('gsi-')) lsKeys.push(key);
-        }
-        lsKeys.forEach((k) => localStorage.removeItem(k));
-
-        const ssKeys: string[] = [];
-        for (let i = 0; i < sessionStorage.length; i++) {
-          const key = sessionStorage.key(i);
-          if (key && key.startsWith('gsi-')) ssKeys.push(key);
-        }
-        ssKeys.forEach((k) => sessionStorage.removeItem(k));
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Sign out failed';
-      setError(message);
-    }
-  }, [firebaseUser]);
+    },
+    [firebaseUser],
+  );
 
   const getIdToken = useCallback(async (): Promise<string | null> => {
     if (!firebaseUser) return null;

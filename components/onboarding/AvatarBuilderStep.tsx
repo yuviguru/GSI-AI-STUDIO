@@ -244,6 +244,18 @@ export function AvatarBuilderStep({
         </button>
       </div>
 
+      {/* Persistence failure warning — fires when the server returned a
+          data URI (Storage upload failed). The avatar IS visible in the
+          preview above, but it can't be saved to the kid doc as-is, so we
+          block "Next" and prompt the user to regenerate. The server log
+          (avatarStorage.ts) carries the underlying cause for the dev. */}
+      {generated && !generated.persisted && !loading && (
+        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+          We couldn&apos;t save this avatar. Tap &ldquo;Try a different
+          combo&rdquo; above to generate a new one.
+        </p>
+      )}
+
       <div className="mt-3 flex gap-2">
         <button
           type="button"
@@ -254,16 +266,22 @@ export function AvatarBuilderStep({
         </button>
         <button
           type="button"
-          onClick={() => generated && onNext(generated)}
-          disabled={!generated || loading}
+          onClick={() =>
+            generated && generated.persisted && onNext(generated)
+          }
+          disabled={!generated || !generated.persisted || loading}
           className={cn(
             'flex-1 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-sm transition active:scale-[0.98]',
-            generated && !loading
+            generated && generated.persisted && !loading
               ? 'bg-purple-600 hover:bg-purple-700'
               : 'cursor-not-allowed bg-gray-300',
           )}
         >
-          {generated ? 'Looks great →' : 'Draw your avatar first'}
+          {!generated
+            ? 'Draw your avatar first'
+            : !generated.persisted
+              ? 'Regenerate to continue'
+              : 'Looks great →'}
         </button>
       </div>
     </div>

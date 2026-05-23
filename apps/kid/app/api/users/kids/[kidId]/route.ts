@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { verifyAuth } from '@/lib/auth-utils';
 import { updateKid, getKid } from '@gsi/firebase/kidService';
+import { isPersistableAvatarUrl } from '@/lib/images/avatarUrl';
 
 /**
  * PATCH /api/users/kids/[kidId]
@@ -21,7 +22,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { name, avatar, age, grade, board } = body;
+    const { name, avatar, mascotId, avatarUrl, age, grade, board } = body;
 
     // Validate name if provided
     if (name !== undefined) {
@@ -35,9 +36,31 @@ export async function PATCH(
       throw new AppException('INVALID_INPUT', 'Age must be between 8 and 17', 400);
     }
 
+    // Validate mascotId — must be from the known roster (matches POST endpoint).
+    if (mascotId !== undefined) {
+      const { MASCOTS } = await import('@/lib/mascots/roster');
+      const validIds = MASCOTS.map((m) => m.id);
+      if (typeof mascotId !== 'string' || !validIds.includes(mascotId)) {
+        throw new AppException('INVALID_INPUT', 'Unknown mascot', 400);
+      }
+    }
+
+    // Validate avatarUrl against the same allowlist used by POST + claim-session.
+    if (avatarUrl !== undefined && avatarUrl !== null) {
+      if (!isPersistableAvatarUrl(avatarUrl)) {
+        throw new AppException(
+          'INVALID_INPUT',
+          'Avatar URL must come from a trusted host (Firebase Storage, Pollinations, or stock CDN)',
+          400,
+        );
+      }
+    }
+
     const updated = await updateKid(auth.userId, kidId, {
       name: name?.trim(),
       avatar,
+      mascotId,
+      avatarUrl,
       age,
       grade,
       board,
@@ -47,6 +70,8 @@ export async function PATCH(
       id: updated.id,
       name: updated.name,
       avatar: updated.avatar,
+      mascotId: updated.mascotId,
+      avatarUrl: updated.avatarUrl,
       age: updated.age,
       grade: updated.grade,
       board: updated.board,
@@ -82,6 +107,10 @@ export async function GET(
       id: kid.id,
       name: kid.name,
       avatar: kid.avatar,
+      // Mascot + AI-generated avatar URL — mirror the LIST endpoint's
+      // shape so single-kid fetches expose the same identity fields.
+      mascotId: kid.mascotId,
+      avatarUrl: kid.avatarUrl,
       age: kid.age,
       grade: kid.grade,
       board: kid.board,

@@ -10,6 +10,15 @@ const MIGRATION_KEY = 'gsi-points-migrated';
 const SESSION_KEY = 'gsi-session-id';
 const POINTS_KEY = 'gsi-ai-points';
 const CLAIM_KEY = 'gsi-session-claimed';
+/**
+ * Holds the anonymous session id during the sign-in migration window —
+ * captured the instant claim-session succeeds, cleared by the migration
+ * prompt when the user resolves it (keep → carousel, discard → archive).
+ * AppGate uses (this key set) + (server-side claimedSessionSummary present)
+ * as the trigger for the prompt, which makes the trigger one-shot per
+ * sign-in (no more refresh-loop nagging).
+ */
+const PENDING_CLAIM_KEY = 'gsi-pending-claim';
 
 interface ClaimOnboardingPayload {
   name?: string;
@@ -117,10 +126,47 @@ export function SessionInit() {
 
         if (res.ok) {
           localStorage.setItem(CLAIM_KEY, sessionId!);
+          // Stamp the captured anonymous session id so AppGate knows there's
+          // a pending migration decision for this sign-in. Cleared by the
+          // SessionMigrationPrompt's onComplete callback once the user
+          // either accepts (keep) or rejects (discard) the migration.
+          try {
+            localStorage.setItem(PENDING_CLAIM_KEY, sessionId!);
+          } catch {
+            // localStorage unavailable — non-blocking
+          }
+          // Anonymous onboarding cache has been migrated server-side to the
+          // kid doc — drop it so the rest of the app sees the authoritative
+          // Firestore state instead of stale anonymous data.
+          try {
+            localStorage.removeItem(ONBOARDING_PROFILE_STORAGE_KEY);
+          } catch {
+            // localStorage unavailable — non-blocking
+          }
         } else {
-          // Allow retry — claim-session now auto-creates the user doc itself,
-          // so 404 should be impossible. Network blips might still happen.
-          claimAttempted.current = false;
+          // Check the server's failure reason. SESSION_INELIGIBLE codes mean
+          // this session was already claimed/archived/is a kid session — we
+          // don't need to retry and we shouldn't surface a migration prompt
+          // for it. Mark CLAIM_KEY anyway so the guard above short-circuits
+          // next time.
+          let alreadyResolved = false;
+          try {
+            const json = await res.json();
+            const code = json?.error?.code;
+            alreadyResolved =
+              code === 'SESSION_ALREADY_CLAIMED' ||
+              code === 'SESSION_ARCHIVED' ||
+              code === 'SESSION_INELIGIBLE';
+          } catch {
+            // Body wasn't JSON — fall through to retry path
+          }
+          if (alreadyResolved) {
+            localStorage.setItem(CLAIM_KEY, sessionId!);
+          } else {
+            // Allow retry — claim-session auto-creates the user doc itself,
+            // so 404 should be impossible. Network blips might still happen.
+            claimAttempted.current = false;
+          }
         }
       } catch {
         // Network error — will retry on next page load

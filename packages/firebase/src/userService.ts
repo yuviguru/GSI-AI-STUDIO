@@ -1,6 +1,7 @@
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from './admin';
 import { AppException } from '@/lib/api-utils';
+import { assertSessionEligibleForClaim, archiveSession } from './sessionService';
 import type { UserRole, UserPlan } from '@gsi/types';
 
 const USERS_COLLECTION = 'users';
@@ -21,6 +22,14 @@ interface UserDocFirestore {
   kidIds: string[];
   schoolId?: string;
   consentedAt: Timestamp; // When parent confirmed they are 18+ and agreed to T&C
+  /**
+   * IANA timezone name (e.g. 'Asia/Kolkata', 'America/Los_Angeles') captured
+   * at sign-up via the browser's Intl API. This is the *account's* base
+   * timezone — kid sessions are bucketed by this tz regardless of where the
+   * device currently sits, so daily streaks survive international travel.
+   * Legacy users without this field fall back to the device's local tz.
+   */
+  timezone?: string;
   preferences?: {
     language: 'en' | 'hi';
     notifications: boolean;
@@ -57,6 +66,9 @@ export interface CreateUserInput {
   uid: string;
   phone: string;
   role: UserRole;
+  /** IANA timezone name (e.g. 'Asia/Kolkata'). Captured client-side via
+   *  Intl.DateTimeFormat at sign-up. Optional — legacy callers omit it. */
+  timezone?: string;
 }
 
 /**
@@ -65,7 +77,7 @@ export interface CreateUserInput {
  * Called from POST /api/auth/register.
  */
 export async function createUser(input: CreateUserInput): Promise<UserDocFirestore> {
-  const { uid, phone, role } = input;
+  const { uid, phone, role, timezone } = input;
 
   // Check if user already exists
   const existing = await adminDb.collection(USERS_COLLECTION).doc(uid).get();
@@ -83,6 +95,7 @@ export async function createUser(input: CreateUserInput): Promise<UserDocFiresto
     consentedAt: now,
     createdAt: now,
     updatedAt: now,
+    ...(timezone ? { timezone } : {}),
   };
 
   await adminDb.collection(USERS_COLLECTION).doc(uid).set(userDoc);
@@ -158,6 +171,12 @@ export async function claimSession(
       updatedAt: now,
     } satisfies UserDocFirestore);
   }
+
+  // 0b. Refuse to migrate a session that's already been claimed, archived, or
+  //     is a kid-scoped session. This is the architectural invariant that lets
+  //     the client trust the sign-in migration prompt: each anonymous session
+  //     gets one decision, never replayed.
+  await assertSessionEligibleForClaim(sessionId);
 
   // 1. Find and update creations (read outside the transaction — large batches
   //    don't fit in a transaction and creation ownership is monotonic anyway).
@@ -242,7 +261,10 @@ export async function claimSession(
     });
 
     if (sessionSnap.exists) {
-      tx.update(sessionRef, { claimedBy: uid });
+      tx.update(sessionRef, {
+        claimedBy: uid,
+        claimedAt: Timestamp.now(),
+      });
     }
   });
 
@@ -283,6 +305,67 @@ function mergeOnboarding(
   if (mascotId !== undefined) merged.mascotId = mascotId;
   if (avatarUrl !== undefined) merged.avatarUrl = avatarUrl;
   return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
+/**
+ * Discard an anonymous session for the authenticated user. Soft-archives:
+ *   1. the session doc (sets archivedAt + archivedBy)
+ *   2. any creation rows attached to that sessionId (status → 'archived')
+ *   3. the user doc's `claimedSessionData` field (deleted)
+ *
+ * Used by the "Discard" branch of the sign-in migration prompt. The session
+ * and its creations remain in Firestore for the retention window so a future
+ * cron job can hard-delete them — that gives us a recovery window without
+ * cluttering the user's account today.
+ *
+ * Verifies the caller owns the session (claimedBy === uid) before archiving
+ * to prevent cross-account interference.
+ */
+export async function archiveClaimedSession(
+  uid: string,
+  sessionId: string,
+): Promise<{ archivedCreations: number }> {
+  const sessionRef = adminDb.collection(SESSIONS_COLLECTION).doc(sessionId);
+  const snap = await sessionRef.get();
+  if (!snap.exists) {
+    // Nothing to do server-side — still clear the user-doc field so the
+    // client's prompt-suppression path works.
+    await clearOrphanedClaimSnapshot(uid);
+    return { archivedCreations: 0 };
+  }
+  const data = snap.data() as { claimedBy?: string };
+  if (data.claimedBy && data.claimedBy !== uid) {
+    throw new AppException(
+      'FORBIDDEN',
+      'This session was claimed by a different account',
+      403,
+    );
+  }
+
+  // 1. Soft-archive the session
+  await archiveSession(sessionId, uid);
+
+  // 2. Soft-archive creations under that session — set status='archived'.
+  //    Done outside a transaction because large bulk archives don't fit in
+  //    one tx (same reasoning as the claim batch).
+  const creationsSnapshot = await adminDb
+    .collection(CREATIONS_COLLECTION)
+    .where('sessionId', '==', sessionId)
+    .get();
+  let archivedCreations = 0;
+  if (!creationsSnapshot.empty) {
+    const batch = adminDb.batch();
+    creationsSnapshot.docs.forEach((doc) => {
+      batch.update(doc.ref, { status: 'archived' });
+      archivedCreations++;
+    });
+    await batch.commit();
+  }
+
+  // 3. Clear the user-doc holding field
+  await clearOrphanedClaimSnapshot(uid);
+
+  return { archivedCreations };
 }
 
 /**
