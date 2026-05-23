@@ -9,8 +9,8 @@ import {
   type ReactNode,
 } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { auth, signOutUser, ensureAnonymousAuth, isFirebaseConfigured } from '@/lib/firebase/client';
-import type { UserRole, UserPlan } from '@/types/user.types';
+import { auth, signOutUser, ensureAnonymousAuth, isFirebaseConfigured } from '@gsi/firebase/client';
+import type { UserRole, UserPlan } from '@gsi/types';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -118,7 +118,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // No user yet — kick off anonymous auth.
         setUserProfile(null);
         ensureAnonymousAuth()
-          .then((anonUser) => {
+          .then((anonUser: User | null) => {
             // Success: onAuthStateChanged fires again with the new anonymous
             // user and resolves loading in the branch below — do nothing here.
             //

@@ -1,4 +1,4 @@
-import { adminStorage } from '@/lib/firebase/admin';
+import { adminStorage } from '@gsi/firebase/admin';
 
 /** Max bytes we'll accept when mirroring a provider URL to our Storage.
  *  Generated avatars are typically 50–200KB; this cap defends against a
