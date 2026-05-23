@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
-import { adminAuth, adminDb } from '@/lib/firebase/admin';
-import { createOrResumeKidSession } from '@/lib/firebase/sessionService';
+import { adminAuth, adminDb } from '@gsi/firebase/admin';
+import { createOrResumeKidSession } from '@gsi/firebase/sessionService';
 
 /**
  * POST /api/sessions/kid
