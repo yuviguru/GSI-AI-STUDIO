@@ -99,6 +99,20 @@ export function KidProfileProvider({ children }: KidProfileProviderProps) {
   const [activeKid, setActiveKid] = useState<KidProfileSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const initialAuthCheckRef = useRef(false);
+  /**
+   * Tracks the most recent in-flight POST to /api/sessions/kid. Used to:
+   *   1. Dedupe — if a request is already in flight for the same
+   *      (kidId, dayKey), skip the new one. Without this, the rollover
+   *      checker (which fires on every visibility/focus event) would loop
+   *      on a flaky endpoint, spamming POSTs.
+   *   2. Race-cancel — if the user rapidly switches kid A → kid B before
+   *      A's POST returns, abort A so its later response can't overwrite
+   *      B's gsi-session-id.
+   */
+  const sessionRotationRef = useRef<{
+    key: string;
+    controller: AbortController;
+  } | null>(null);
 
   // On every authenticated mount (fresh sign-in OR page refresh), force the
   // profile picker by clearing any previously-saved active kid. This guarantees
@@ -175,12 +189,26 @@ export function KidProfileProvider({ children }: KidProfileProviderProps) {
       //
       // Fire-and-forget — the localStorage swap happens synchronously so
       // immediate writes (points, creations) use the kid-scoped id. The
-      // server-side doc creation completes shortly after. If the network
-      // call fails, the in-memory + localStorage state is still consistent
-      // and a later interaction (or day-rollover effect) will retry.
+      // server-side doc creation completes shortly after.
+      const dayKey = accountDayKey(accountTimezone);
+      const requestKey = `kid-${kidId}-${dayKey}`;
+
+      // Dedupe: same request already in flight (e.g. rollover-on-focus
+      // fired while a prior POST is pending) → skip. Prevents the request
+      // storm a flaky endpoint would otherwise trigger.
+      if (sessionRotationRef.current?.key === requestKey) return;
+
+      // Race-cancel: different in-flight request (rapid kid switch, or
+      // day-rollover firing mid-flight) → abort it before starting the
+      // new one. Without this, the older response could overwrite
+      // gsi-session-id with a stale id after the newer one wrote.
+      sessionRotationRef.current?.controller.abort();
+
+      const controller = new AbortController();
+      sessionRotationRef.current = { key: requestKey, controller };
+
       (async () => {
         try {
-          const dayKey = accountDayKey(accountTimezone);
           const token = await getIdToken();
           if (!token) return;
           const res = await fetch('/api/sessions/kid', {
@@ -190,7 +218,9 @@ export function KidProfileProvider({ children }: KidProfileProviderProps) {
               Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ kidId, dayKey }),
+            signal: controller.signal,
           });
+          if (controller.signal.aborted) return;
           if (res.ok) {
             const json = await res.json();
             const newSessionId = json?.data?.sessionId;
@@ -199,7 +229,15 @@ export function KidProfileProvider({ children }: KidProfileProviderProps) {
             }
           }
         } catch {
-          // Network blip — non-blocking. A later interaction will retry.
+          // Network blip or abort — non-blocking. The rollover effect
+          // will retry on the next visibility/focus event (and the
+          // dedup guard above prevents storm-spamming).
+        } finally {
+          // Clear in-flight pointer ONLY if it's still us; a later
+          // switchKid may have already replaced it with a new controller.
+          if (sessionRotationRef.current?.controller === controller) {
+            sessionRotationRef.current = null;
+          }
         }
       })();
     },

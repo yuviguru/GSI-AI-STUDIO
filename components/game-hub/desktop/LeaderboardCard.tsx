@@ -1,9 +1,7 @@
 'use client';
 
 import { useAiPoints } from '@/contexts/AiPointsContext';
-import { useKidProfile } from '@/hooks/useKidProfile';
-import { useOnboardingProfile } from '@/hooks/useOnboardingProfile';
-import { DEFAULT_MASCOT_ID, getMascot } from '@/lib/mascots/roster';
+import { useResolvedIdentity } from '@/hooks/useResolvedIdentity';
 
 // Placeholder leaderboard data — to be wired to real backend later.
 const TOP_3 = [
@@ -14,19 +12,15 @@ const TOP_3 = [
 
 export function LeaderboardCard() {
   const { totalPoints } = useAiPoints();
-  const { activeKid } = useKidProfile();
-  const { profile: onboardingProfile } = useOnboardingProfile();
-
-  // Identity: AI-generated avatar URL when present → mascot emoji as the
-  // visual fallback. The legacy `kid.avatar` string field (e.g. "parrot")
-  // is intentionally NOT used here — it was a pre-mascot text label that
-  // would render as plain text in the emoji slot.
-  const youName = activeKid?.name ?? onboardingProfile?.name ?? 'You';
-  const youAvatarUrl =
-    activeKid?.avatarUrl ?? onboardingProfile?.avatarUrl ?? null;
-  const youMascotId =
-    activeKid?.mascotId ?? onboardingProfile?.mascotId ?? DEFAULT_MASCOT_ID;
-  const youMascotEmoji = getMascot(youMascotId).art;
+  // useResolvedIdentity gives us avatarUrl + mascotEmoji + name from the
+  // canonical precedence chain. The legacy `kid.avatar` string field (e.g.
+  // "parrot") is intentionally NOT used here — it was a pre-mascot text
+  // label that would render as plain text in the emoji slot.
+  const {
+    name: youName,
+    avatarUrl: youAvatarUrl,
+    mascotEmoji: youMascotEmoji,
+  } = useResolvedIdentity();
 
   return (
     <div className="game-hud-frame game-glass shrink-0 rounded-lg p-3 shadow-glass">

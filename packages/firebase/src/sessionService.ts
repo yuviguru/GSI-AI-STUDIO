@@ -479,14 +479,19 @@ export async function updateSessionPoints(
 
     tx.update(sessionRef, pointsUpdate);
 
-    if (kidRef) {
+    if (kidRef && kidData) {
       const totalCreations = Object.values(updated.creationsByType).reduce(
         (sum, n) => sum + n,
         0,
       );
-      // Use set-with-merge so the write succeeds even when the kid doc
-      // doesn't exist yet (e.g. deleted/recreated profile).  Previously
-      // this was guarded by `kidData` which silently skipped the write.
+      // Mirror onto the kid doc — gated on the kid actually existing
+      // (kidData was populated from tx.get above). If the kid was deleted
+      // concurrently, the set-with-merge would otherwise resurrect a
+      // ghost record with only points fields and no parentId / name /
+      // age — a malformed doc that downstream queries can't trust.
+      // Session-level writes still happen, so points aren't lost for any
+      // flow that reads the session doc directly; the kid mirror simply
+      // skips when there's no kid to mirror to.
       tx.set(
         kidRef,
         { ...pointsUpdate, totalCreations, updatedAt: Timestamp.now() },

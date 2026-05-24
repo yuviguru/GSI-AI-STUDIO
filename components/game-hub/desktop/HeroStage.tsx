@@ -3,9 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { ArrowRight } from 'lucide-react';
 import { MascotAvatar } from '@/components/mascot/MascotAvatar';
-import { useKidProfile } from '@/hooks/useKidProfile';
-import { useOnboardingProfile } from '@/hooks/useOnboardingProfile';
-import { DEFAULT_MASCOT_ID } from '@/lib/mascots/roster';
+import { useResolvedIdentity } from '@/hooks/useResolvedIdentity';
 import { playSound } from '@/lib/sounds';
 
 interface HeroStageProps {
@@ -15,14 +13,10 @@ interface HeroStageProps {
 
 export function HeroStage({ resumeLabel, resumeHref }: HeroStageProps) {
   const router = useRouter();
-  const { activeKid } = useKidProfile();
-  const { profile: onboardingProfile } = useOnboardingProfile();
-
-  // Resolve the user's chosen mascot — auth kid first, anonymous onboarding
-  // second, default (Pixie) third. NEVER hardcoded — the hub must always
-  // greet kids with the buddy they picked.
-  const mascotId =
-    activeKid?.mascotId ?? onboardingProfile?.mascotId ?? DEFAULT_MASCOT_ID;
+  // Resolve the user's chosen mascot — auth kid → anonymous onboarding →
+  // Pixie default. NEVER hardcoded — the hub must always greet kids with
+  // the buddy they picked.
+  const { mascotId } = useResolvedIdentity();
 
   const handleResume = () => {
     if (!resumeHref) return;

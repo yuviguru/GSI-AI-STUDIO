@@ -3,6 +3,24 @@ import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { adminAuth, adminDb } from '@gsi/firebase/admin';
 import { createOrResumeKidSession } from '@gsi/firebase/sessionService';
 
+/** Reject dayKey values more than this many days from today (UTC). Two
+ *  days accommodates time-zone edge cases at midnight without letting a
+ *  malicious client seed arbitrary future-dated session docs. */
+const DAY_KEY_DRIFT_LIMIT = 2;
+
+/** Parse `YYYY-MM-DD` strictly and verify it's within the allowed drift
+ *  window from today (UTC). Returns null on any failure. */
+function isDayKeyWithinAllowedDrift(dayKey: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dayKey)) return false;
+  const parsed = Date.parse(`${dayKey}T00:00:00Z`);
+  if (!Number.isFinite(parsed)) return false;
+  const todayMs = Date.parse(
+    `${new Date().toISOString().slice(0, 10)}T00:00:00Z`,
+  );
+  const driftDays = Math.abs(parsed - todayMs) / (24 * 60 * 60 * 1000);
+  return driftDays <= DAY_KEY_DRIFT_LIMIT;
+}
+
 /**
  * POST /api/sessions/kid
  *
@@ -42,11 +60,11 @@ export async function POST(request: NextRequest) {
     if (
       !dayKey ||
       typeof dayKey !== 'string' ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(dayKey)
+      !isDayKeyWithinAllowedDrift(dayKey)
     ) {
       throw new AppException(
         'INVALID_INPUT',
-        'dayKey required in YYYY-MM-DD format',
+        `dayKey required in YYYY-MM-DD format, within ±${DAY_KEY_DRIFT_LIMIT} days of today (UTC)`,
         400,
       );
     }

@@ -6,10 +6,8 @@ import { ArrowRight } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MascotAvatar } from '@/components/mascot/MascotAvatar';
 import { useAiPoints } from '@/contexts/AiPointsContext';
-import { useKidProfile } from '@/hooks/useKidProfile';
-import { useOnboardingProfile } from '@/hooks/useOnboardingProfile';
 import { useAuth } from '@/hooks/useAuth';
-import { DEFAULT_MASCOT_ID, getMascot } from '@/lib/mascots/roster';
+import { useResolvedIdentity } from '@/hooks/useResolvedIdentity';
 import { ModeTile } from '../shared/ModeTile';
 import { ModeGroupTabs } from '../shared/ModeGroupTabs';
 import { XpBar } from '../shared/XpBar';
@@ -22,23 +20,16 @@ const XP_PER_LEVEL = 100;
 export function HubScene() {
   const router = useRouter();
   const { totalPoints, isLoaded } = useAiPoints();
-  const { activeKid } = useKidProfile();
-  const { profile: onboardingProfile } = useOnboardingProfile();
   const { isAuthenticated } = useAuth();
+  const { name, avatarUrl, mascotId, mascotEmoji } = useResolvedIdentity({
+    fallbackName: isAuthenticated ? 'Player' : 'Guest',
+  });
   const [group, setGroup] = useState<ModeGroup>('create');
   const modes = getModesByGroup(group);
 
   const level = Math.floor(totalPoints / XP_PER_LEVEL) + 1;
   const xpInLevel = totalPoints % XP_PER_LEVEL;
   const progressPct = (xpInLevel / XP_PER_LEVEL) * 100;
-
-  // Name + avatar resolution: auth kid → anonymous onboarding → generic fallback.
-  const name =
-    activeKid?.name ?? onboardingProfile?.name ?? (isAuthenticated ? 'Player' : 'Guest');
-  const avatarUrl = activeKid?.avatarUrl ?? onboardingProfile?.avatarUrl ?? null;
-  const mascotId =
-    activeKid?.mascotId ?? onboardingProfile?.mascotId ?? DEFAULT_MASCOT_ID;
-  const mascotEmoji = getMascot(mascotId).art;
 
   const handleResume = () => {
     playSound('buttonTap');

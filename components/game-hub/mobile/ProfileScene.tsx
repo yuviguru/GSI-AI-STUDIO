@@ -2,10 +2,8 @@
 
 import { Settings, Lock } from 'lucide-react';
 import { useAiPoints } from '@/contexts/AiPointsContext';
-import { useKidProfile } from '@/hooks/useKidProfile';
-import { useOnboardingProfile } from '@/hooks/useOnboardingProfile';
 import { useAuth } from '@/hooks/useAuth';
-import { DEFAULT_MASCOT_ID, getMascot } from '@/lib/mascots/roster';
+import { useResolvedIdentity } from '@/hooks/useResolvedIdentity';
 import { PlayerAvatar } from '../shared/PlayerAvatar';
 import { XpBar } from '../shared/XpBar';
 
@@ -28,22 +26,16 @@ const BADGE_DISPLAY = [
 
 export function ProfileScene() {
   const { totalPoints, badges, creationsByType } = useAiPoints();
-  const { activeKid } = useKidProfile();
-  const { profile: onboardingProfile } = useOnboardingProfile();
   const { isAuthenticated } = useAuth();
+  const { name, avatarUrl, mascotEmoji } = useResolvedIdentity({
+    fallbackName: isAuthenticated ? 'Player' : 'Guest',
+  });
 
   const level = Math.floor(totalPoints / XP_PER_LEVEL) + 1;
   const xpInLevel = totalPoints % XP_PER_LEVEL;
   const xpToNext = XP_PER_LEVEL - xpInLevel;
   const progressPct = (xpInLevel / XP_PER_LEVEL) * 100;
   const totalCreations = Object.values(creationsByType ?? {}).reduce((s, n) => s + (n ?? 0), 0);
-
-  const name =
-    activeKid?.name ?? onboardingProfile?.name ?? (isAuthenticated ? 'Player' : 'Guest');
-  const avatarUrl = activeKid?.avatarUrl ?? onboardingProfile?.avatarUrl ?? null;
-  const mascotId =
-    activeKid?.mascotId ?? onboardingProfile?.mascotId ?? DEFAULT_MASCOT_ID;
-  const mascotEmoji = getMascot(mascotId).art;
   const badgeCount = badges?.length ?? 0;
 
   return (

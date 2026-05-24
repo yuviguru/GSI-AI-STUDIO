@@ -38,16 +38,19 @@ const EXACT_ALLOWED_HOSTS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Hostname suffixes matched as `host === suffix.slice(1) || host.endsWith(suffix)`.
- * Each entry MUST start with '.' so we never match a bare suffix string
- * (e.g. '.r2.dev' must not match 'evil-r2.dev').
+ * Hostname regex patterns. Use these for multi-bucket providers where every
+ * deployment gets its own subdomain. Patterns must be anchored (^…$) and
+ * should restrict subdomain depth to prevent attacker-controlled host
+ * spoofing — e.g. `.r2.dev` as a plain suffix would admit
+ * `pub-x.attacker-site.r2.dev`, since `r2.dev` is a TLD that anyone can
+ * register subdomains under.
  */
-const ALLOWED_HOST_SUFFIXES: readonly string[] = [
-  // Cloudflare R2 public dev domain — used by pixazo-flux-schnell. Every
-  // bucket gets a 'pub-{hash}.r2.dev' subdomain; we trust all of them
-  // (same posture as `*.storage.googleapis.com`).
-  '.r2.dev',
-] as const;
+const ALLOWED_HOST_PATTERNS: readonly RegExp[] = [
+  // Cloudflare R2 public dev: bucket subdomain is always one label like
+  // `pub-{hash}.r2.dev`. Require exactly one alphanumeric/hyphen label
+  // before `.r2.dev` so deeper subdomain trees can't sneak through.
+  /^[a-z0-9-]+\.r2\.dev$/,
+];
 
 export function isPersistableAvatarUrl(url: unknown): url is string {
   if (typeof url !== 'string') return false;
@@ -66,5 +69,5 @@ export function isPersistableAvatarUrl(url: unknown): url is string {
   }
 
   if (EXACT_ALLOWED_HOSTS.has(host)) return true;
-  return ALLOWED_HOST_SUFFIXES.some((suffix) => host.endsWith(suffix));
+  return ALLOWED_HOST_PATTERNS.some((pattern) => pattern.test(host));
 }
