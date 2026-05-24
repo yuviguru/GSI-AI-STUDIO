@@ -20,7 +20,6 @@ const SECTION_LABELS: Record<string, string> = {
   '/create/quiz': 'Quiz Maker',
   '/create/comic': 'Comic Studio',
   '/create/game': 'Game Studio',
-  '/homework': 'Homework',
   '/homework/history': 'Homework History',
   '/creations': 'My Creations',
   '/explore': 'Explore',
@@ -32,7 +31,7 @@ const SECTION_LABELS: Record<string, string> = {
  * Paths that are purely structural groupings (no real page). When a
  * parent resolves to one of these, we skip it and walk further up.
  */
-const SKIP_PATHS = new Set(['/create', '/ceo/profile']);
+const SKIP_PATHS = new Set(['/create', '/homework', '/ceo/profile']);
 
 /**
  * Walk up the pathname until we find a known section (or `/`).
