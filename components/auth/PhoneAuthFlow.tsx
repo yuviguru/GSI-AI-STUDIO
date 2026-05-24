@@ -120,13 +120,6 @@ export function PhoneAuthFlow({ onComplete, onClose }: PhoneAuthFlowProps) {
     }
   }, [otp]);
 
-  // Auto-verify when all 6 digits entered
-  useEffect(() => {
-    const code = otp.join('');
-    if (code.length === 6 && verificationId) handleVerifyOtp(code);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [otp, verificationId]);
-
   // ── Verify OTP + link/sign-in + auto-register ─────────────────────────
   //
   // Three outcomes via verifyPhoneOtp():
@@ -134,80 +127,96 @@ export function PhoneAuthFlow({ onComplete, onClose }: PhoneAuthFlowProps) {
   // 2. Anonymous → phone (conflict): signed into existing account;
   //    conflictAnonymousUid set → SessionInit claim handles migration.
   // 3. No anonymous user → plain phone sign-in.
+  //
+  // useCallback so the auto-verify effect below can include this in its
+  // deps without re-firing on every render. Reference changes only when
+  // verificationId or refreshProfile change — both genuinely affect the
+  // captured closure, so a fresh handler in those cases is correct.
+  const handleVerifyOtp = useCallback(
+    async (code: string) => {
+      if (!verificationId) return;
+      setError(null);
+      setLoading(true);
 
-  async function handleVerifyOtp(code: string) {
-    if (!verificationId) return;
-    setError(null);
-    setLoading(true);
+      try {
+        const result = await verifyPhoneOtp(verificationId, code);
+        const user = result.user;
+        if (!user) throw new Error('Authentication failed');
 
-    try {
-      const result = await verifyPhoneOtp(verificationId, code);
-      const user = result.user;
-      if (!user) throw new Error('Authentication failed');
-
-      // If there was a conflict (phone already linked to another account),
-      // store the orphaned anonymous UID so SessionInit can claim its data.
-      if (result.conflictAnonymousUid && typeof window !== 'undefined') {
-        sessionStorage.setItem(
-          'gsi-conflict-anonymous-uid',
-          result.conflictAnonymousUid,
-        );
-      }
-
-      // Auto-register: create user doc if it doesn't exist (silent, no user input)
-      const token = await user.getIdToken();
-      const meRes = await fetch('/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!meRes.ok) {
-        // New user — auto-register with default role. We also capture the
-        // browser's IANA timezone here so the account has a base timezone
-        // for daily-session bucketing (streaks survive international travel
-        // because we use this stored tz, not whatever device the user is
-        // holding at the time).
-        let detectedTimezone: string | undefined;
-        try {
-          detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        } catch {
-          // Older browsers without Intl support — leave undefined and
-          // the server falls back to no-tz (device-local on the client).
+        // If there was a conflict (phone already linked to another account),
+        // store the orphaned anonymous UID so SessionInit can claim its data.
+        if (result.conflictAnonymousUid && typeof window !== 'undefined') {
+          sessionStorage.setItem(
+            'gsi-conflict-anonymous-uid',
+            result.conflictAnonymousUid,
+          );
         }
-        const registerRes = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            role: 'parent',
-            ...(detectedTimezone ? { timezone: detectedTimezone } : {}),
-          }),
+
+        // Auto-register: create user doc if it doesn't exist (silent, no user input)
+        const token = await user.getIdToken();
+        const meRes = await fetch('/api/auth/me', {
+          headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (!registerRes.ok) {
-          const registerJson = await registerRes.json().catch(() => ({}));
-          throw new Error(registerJson.error?.message || 'Account setup failed. Please try again.');
-        }
-      }
+        if (!meRes.ok) {
+          // New user — auto-register with default role. We also capture the
+          // browser's IANA timezone here so the account has a base timezone
+          // for daily-session bucketing (streaks survive international travel
+          // because we use this stored tz, not whatever device the user is
+          // holding at the time).
+          let detectedTimezone: string | undefined;
+          try {
+            detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          } catch {
+            // Older browsers without Intl support — leave undefined and
+            // the server falls back to no-tz (device-local on the client).
+          }
+          const registerRes = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              role: 'parent',
+              ...(detectedTimezone ? { timezone: detectedTimezone } : {}),
+            }),
+          });
 
-      await refreshProfile();
-      setStep('success');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Invalid OTP';
-      if (message.includes('invalid-verification-code')) {
-        setError('Incorrect OTP. Please check and try again.');
-      } else if (message.includes('code-expired')) {
-        setError('OTP has expired. Please request a new one.');
-      } else {
-        setError(message);
+          if (!registerRes.ok) {
+            const registerJson = await registerRes.json().catch(() => ({}));
+            throw new Error(registerJson.error?.message || 'Account setup failed. Please try again.');
+          }
+        }
+
+        await refreshProfile();
+        setStep('success');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Invalid OTP';
+        if (message.includes('invalid-verification-code')) {
+          setError('Incorrect OTP. Please check and try again.');
+        } else if (message.includes('code-expired')) {
+          setError('OTP has expired. Please request a new one.');
+        } else {
+          setError(message);
+        }
+        setOtp(['', '', '', '', '', '']);
+        otpRefs.current[0]?.focus();
+      } finally {
+        setLoading(false);
       }
-      setOtp(['', '', '', '', '', '']);
-      otpRefs.current[0]?.focus();
-    } finally {
-      setLoading(false);
-    }
-  }
+    },
+    [verificationId, refreshProfile],
+  );
+
+  // Auto-verify when all 6 digits entered. handleVerifyOtp is in the deps
+  // (the eslint-disable is gone) because it's memoized above — the effect
+  // only re-fires when verificationId, otp, or refreshProfile actually
+  // change, never just because of a parent re-render.
+  useEffect(() => {
+    const code = otp.join('');
+    if (code.length === 6 && verificationId) handleVerifyOtp(code);
+  }, [otp, verificationId, handleVerifyOtp]);
 
   function handleChangeNumber() {
     setOtpSent(false);

@@ -1,9 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useAuth } from './useAuth';
-import { useKidProfile } from './useKidProfile';
-import { useOnboardingProfile } from './useOnboardingProfile';
+import { useUserSessionStatus } from './useUserSessionStatus';
 import { shouldShowGuestWarning } from '@/components/auth/GuestWarningModal';
 
 /** Session-scoped flag — survives navigations within a browser tab. */
@@ -48,21 +46,25 @@ interface UseEntryGate {
 /**
  * Entry-gate state machine for `/`.
  *
- * Decision tree (top to bottom — first match wins):
- *   1. Anything still loading → 'loading'
- *   2. Authenticated + activeKid missing mascot/avatar → 'missing-fields'
- *   3. Authenticated + complete kid → 'ready'
- *   4. Anonymous + completed local profile + missing fields → 'missing-fields'
- *   5. Anonymous + completed local profile + 24h+ since last warning → 'guest-warning'
- *   6. Anonymous + completed local profile → 'ready'
- *   7. Anonymous + user already passed auth choice this session → 'onboarding'
- *   8. Anonymous, fresh visitor → 'auth-choice'
+ * Consumes the shared `useUserSessionStatus` selector for the auth/kid
+ * phase, then maps that phase to a page-level overlay decision.
+ *
+ * Decision tree (first match wins):
+ *   - 'loading' phase → 'loading' overlay (MascotLoader)
+ *   - 'authenticated-migrating' / 'authenticated-needs-kid' /
+ *     'authenticated-needs-pick' → 'loading' (AppGate is already
+ *     rendering the layout-level UI for these; page never paints)
+ *   - 'authenticated-ready' + kid missing mascot/avatar → 'missing-fields'
+ *   - 'authenticated-ready' + complete kid → 'ready'
+ *   - 'anonymous-onboarded' + missing fields → 'missing-fields'
+ *   - 'anonymous-onboarded' + 24h+ since last warning → 'guest-warning'
+ *   - 'anonymous-onboarded' + everything fine → 'ready'
+ *   - 'anonymous-fresh' + user picked "Continue as guest" this session
+ *     → 'onboarding'
+ *   - 'anonymous-fresh' brand-new visitor → 'auth-choice'
  */
 export function useEntryGate(): UseEntryGate {
-  const { isAuthenticated, loading: authLoading } = useAuth();
-  const { activeKid, loading: kidLoading } = useKidProfile();
-  const { profile: onboardingProfile, hydrated: onboardingHydrated } =
-    useOnboardingProfile();
+  const status = useUserSessionStatus();
 
   // Session-scoped flags. We persist `hadAuthChoice` to sessionStorage so
   // the gate survives soft reloads inside a tab without leaking across days.
@@ -107,76 +109,62 @@ export function useEntryGate(): UseEntryGate {
   }, []);
 
   const state = useMemo<EntryState>(() => {
-    // Wait for both auth + the onboarding cache before deciding anything.
-    if (authLoading || !onboardingHydrated) return { kind: 'loading' };
+    switch (status.phase) {
+      case 'loading':
+      // AppGate is rendering the layout-level UI for these — the page
+      // should keep its loader up so we don't paint stale content
+      // between gate transitions.
+      case 'authenticated-migrating':
+      case 'authenticated-needs-kid':
+      case 'authenticated-needs-pick':
+        return { kind: 'loading' };
 
-    // Authenticated path — AppGate has already screened for "needs setup" /
-    // "needs selection," so the only decision left is missing-fields vs ready.
-    if (isAuthenticated) {
-      if (kidLoading) return { kind: 'loading' };
-      // If we're authenticated but somehow have no activeKid here, the layout
-      // gate is still resolving — render the loader rather than a fresh
-      // auth-choice prompt that would be confusing for a signed-in user.
-      if (!activeKid) return { kind: 'loading' };
-
-      if (!missingFieldsDismissed) {
-        const hasMascot = Boolean(activeKid.mascotId);
-        const hasAvatar = Boolean(activeKid.avatarUrl);
-        if (!hasMascot || !hasAvatar) {
-          return {
-            kind: 'missing-fields',
-            targetKidId: activeKid.id,
-            initialStep: hasMascot && !hasAvatar ? 'avatar' : 'mascot',
-          };
+      case 'authenticated-ready': {
+        if (!missingFieldsDismissed) {
+          const hasMascot = Boolean(status.activeKid.mascotId);
+          const hasAvatar = Boolean(status.activeKid.avatarUrl);
+          if (!hasMascot || !hasAvatar) {
+            return {
+              kind: 'missing-fields',
+              targetKidId: status.activeKid.id,
+              initialStep: hasMascot && !hasAvatar ? 'avatar' : 'mascot',
+            };
+          }
         }
+        return { kind: 'ready' };
       }
-      return { kind: 'ready' };
-    }
 
-    // Anonymous path —————————————————————————————————————————————————
-
-    // Returning guest: a completed onboarding profile exists in localStorage.
-    if (onboardingProfile?.completedAt) {
-      if (!missingFieldsDismissed) {
-        const hasMascot = Boolean(onboardingProfile.mascotId);
-        const hasAvatar = Boolean(onboardingProfile.avatarUrl);
-        if (!hasMascot || !hasAvatar) {
-          return {
-            kind: 'missing-fields',
-            initialStep: hasMascot && !hasAvatar ? 'avatar' : 'mascot',
-          };
+      case 'anonymous-onboarded': {
+        if (!missingFieldsDismissed) {
+          const hasMascot = Boolean(status.profile.mascotId);
+          const hasAvatar = Boolean(status.profile.avatarUrl);
+          if (!hasMascot || !hasAvatar) {
+            return {
+              kind: 'missing-fields',
+              initialStep: hasMascot && !hasAvatar ? 'avatar' : 'mascot',
+            };
+          }
         }
+        // 24h+ warning — only when we haven't warned recently AND the user
+        // hasn't dismissed in this session AND we didn't just complete the
+        // onboarding flow (which freshly stamps completedAt).
+        if (
+          !guestWarningDismissed &&
+          !onboardingJustCompleted &&
+          shouldShowGuestWarning(status.profile.completedAt)
+        ) {
+          return { kind: 'guest-warning' };
+        }
+        return { kind: 'ready' };
       }
 
-      // 24h+ warning — only when we haven't warned recently AND the user
-      // hasn't dismissed in this session AND we didn't just complete the
-      // onboarding flow (which freshly stamps completedAt).
-      if (
-        !guestWarningDismissed &&
-        !onboardingJustCompleted &&
-        shouldShowGuestWarning(onboardingProfile.completedAt)
-      ) {
-        return { kind: 'guest-warning' };
-      }
-
-      return { kind: 'ready' };
+      case 'anonymous-fresh':
+        return hadAuthChoice
+          ? { kind: 'onboarding' }
+          : { kind: 'auth-choice' };
     }
-
-    // No completed profile yet. If the user has already picked "Continue as
-    // guest" in this session, drop them into the onboarding carousel.
-    if (hadAuthChoice) {
-      return { kind: 'onboarding' };
-    }
-
-    // Brand-new visitor — full-bleed auth-choice take-over.
-    return { kind: 'auth-choice' };
   }, [
-    authLoading,
-    kidLoading,
-    onboardingHydrated,
-    isAuthenticated,
-    activeKid,
-    onboardingProfile,
+    status,
     hadAuthChoice,
     missingFieldsDismissed,
     guestWarningDismissed,
