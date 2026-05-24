@@ -10,7 +10,7 @@ import { SideBySideReveal } from '@/components/beat-the-ai/SideBySideReveal';
 import { ResultsScreen } from '@/components/beat-the-ai/ResultsScreen';
 import { StatsBoard } from '@/components/beat-the-ai/StatsBoard';
 import { Mascot } from '@/components/mascot/Mascot';
-import { ArrowLeft, Bot, Swords } from 'lucide-react';
+import { Bot, Swords } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const transition = { duration: 0.25, ease: 'easeOut' };
@@ -36,13 +36,6 @@ export function BeatTheAiClient() {
   if (showStats) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-6">
-        <button
-          onClick={() => setShowStats(false)}
-          className="mb-4 flex items-center gap-1.5 text-sm font-medium text-brand-primary hover:text-brand-ai transition-colors"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Back to Challenges
-        </button>
         <StatsBoard
           skills={skillsData.skills}
           onChallenge={() => {

@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { notFound, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import { FOUNDATION_CARDS, getCard, type CardId } from '@/lib/learn/cards';
 import { useLearnProgress } from '@/hooks/useLearnProgress';
 import { FoundationCardEmbed } from '@/components/learn/FoundationCardEmbed';
@@ -40,14 +40,6 @@ export default function FoundationCardPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-50 via-white to-white">
       <div className="mx-auto max-w-3xl px-4 py-8">
-        <Link
-          href="/learn"
-          className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-indigo-700 hover:text-indigo-800"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-          AI Lab
-        </Link>
-
         <article>
           <header className="mb-6 flex items-start gap-4">
             <span className="text-5xl" aria-hidden="true">

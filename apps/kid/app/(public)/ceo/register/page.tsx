@@ -1,9 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
 import { BusinessRegistration } from '@/components/ceo/BusinessRegistration';
 import {
   useCeoBusiness,
@@ -60,14 +58,6 @@ export default function CeoRegisterPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-50 via-white to-white">
       <div className="mx-auto max-w-3xl px-4 py-8">
-        <Link
-          href="/ceo"
-          className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-brand-primary hover:text-brand-ai"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Kid CEO
-        </Link>
-
         <div className="mb-6">
           <h1 className="font-display text-3xl font-bold text-brand-text">
             Start your business

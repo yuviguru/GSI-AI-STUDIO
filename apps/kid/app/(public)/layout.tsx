@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Header } from '@/components/layout/Header';
-import { BottomNav } from '@/components/layout/BottomNav';
+import { GameNavBar } from '@/components/navigation/GameNavBar';
+import { LayoutBackLink } from '@/components/navigation/LayoutBackLink';
 import { SessionInit } from '@/components/layout/SessionInit';
 import { AiPointsProvider } from '@/contexts/AiPointsContext';
 import { CelebrationModal } from '@/components/learning/CelebrationModal';
@@ -11,17 +11,10 @@ import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { KidProfileProvider, useKidProfile } from '@/hooks/useKidProfile';
 import { useUserSessionStatus } from '@/hooks/useUserSessionStatus';
-// LoginPrompt removed. Sign-in encouragement now lives in two places:
-// (1) AuthChoiceScreen (full-bleed take-over) for brand-new visitors on `/`,
-// (2) GuestWarningModal that re-appears for returning guests after 24h. The
-// sidebar profile chip still provides ongoing re-engagement once the user
-// is inside the app.
 import { ProfilePicker } from '@/components/profile/ProfilePicker';
 import { SessionMigrationPrompt } from '@/components/profile/SessionMigrationPrompt';
 import { ProfileSetupCarousel } from '@/components/onboarding/ProfileSetupCarousel';
 import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
-import { DashboardSidebar } from '@/components/navigation';
-import { kidDashboardConfig } from '@/lib/dashboard/configs/kid.config';
 
 const REQUIRE_LOGIN = process.env.NEXT_PUBLIC_REQUIRE_LOGIN === 'true';
 
@@ -109,10 +102,9 @@ function AppGate({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Splits "chrome on the page" from "page content." The home route (`/`) is the
- * self-contained Game Hub with its own header/sidebar/bottom-nav, so we skip
- * the dashboard chrome there. Every other route renders inside the standard
- * dashboard frame.
+ * Home route (`/`) is the self-contained Game Hub — no extra chrome.
+ * All other routes get the GameNavBar (logo, profile, points).
+ * LayoutBackLink auto-renders below the nav on every inner page.
  */
 function PublicLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -130,17 +122,9 @@ function PublicLayoutInner({ children }: { children: React.ReactNode }) {
   return (
     <>
       <div className="flex min-h-screen flex-col">
-        <DashboardSidebar config={kidDashboardConfig} />
-
-        <div className="lg:hidden">
-          <Header />
-        </div>
-
-        <main className="flex-1 pb-nav lg:pb-0 lg:pl-[220px]">{children}</main>
-
-        <div className="lg:hidden">
-          <BottomNav />
-        </div>
+        <GameNavBar />
+        <LayoutBackLink />
+        <main className="flex-1">{children}</main>
       </div>
       <CelebrationModal />
     </>

@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, Plus, Sparkles } from 'lucide-react';
+import { Plus, Sparkles } from 'lucide-react';
 import { useBookList } from '@/hooks/useBookList';
 import { Mascot } from '@/components/mascot/Mascot';
 import { BookCard } from './BookCard';
@@ -31,27 +30,6 @@ export function BookStudioClient() {
       </div>
 
       <div className="relative mx-auto max-w-5xl">
-        <div className="mb-3">
-          {view === 'library' ? (
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-brand-purple"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to home
-            </Link>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setView('library')}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-brand-purple"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              My Books
-            </button>
-          )}
-        </div>
-
         {view === 'library' ? (
           <>
             {/* Hero header with Koko */}
