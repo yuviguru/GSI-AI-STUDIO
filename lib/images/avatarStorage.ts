@@ -1,5 +1,13 @@
 import { adminStorage } from '@gsi/firebase/admin';
 
+/**
+ * Allowed Storage path prefixes. Constraining the type prevents a future
+ * caller from passing attacker-controlled / traversal-laden strings (e.g.
+ * `'avatars/../../admin'`) that would land outside the intended GCS prefix.
+ * Add new buckets here, not at the call site.
+ */
+export type AvatarPathPrefix = 'avatars/preview' | 'avatars/generated';
+
 /** Max bytes we'll accept when mirroring a provider URL to our Storage.
  *  Generated avatars are typically 50–200KB; this cap defends against a
  *  rogue/misconfigured provider returning a huge file. */
@@ -34,7 +42,7 @@ const MIRRORABLE_CONTENT_TYPES = new Set([
 export async function uploadAvatarToStorage(
   buffer: Buffer,
   contentType: string,
-  pathPrefix: string,
+  pathPrefix: AvatarPathPrefix,
 ): Promise<string | null> {
   const bucketName =
     process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
@@ -125,7 +133,7 @@ export async function uploadAvatarToStorage(
  */
 export async function mirrorAvatarToStorage(
   sourceUrl: string,
-  pathPrefix: string,
+  pathPrefix: AvatarPathPrefix,
 ): Promise<string | null> {
   // Validate scheme — we only mirror https URLs (no data:, no http://, no
   // file://). The route layer's allowlist is the trust boundary; this is
@@ -146,11 +154,16 @@ export async function mirrorAvatarToStorage(
     const timer = setTimeout(() => controller.abort(), MIRROR_FETCH_TIMEOUT_MS);
     // Promise.finally clears the timer whether fetch resolves or rejects,
     // without confusing TS's definite-assignment narrowing on `res`.
+    // `redirect: 'error'` is an SSRF guard: the https-only check above
+    // applies to the *original* sourceUrl, but a 3xx redirect from an
+    // allowlisted HTTPS host could send the resolved request to an internal
+    // target (169.254.169.254 metadata, RFC1918 hosts, localhost). Failing
+    // closed on any 3xx forces the provider to serve the image directly.
     const res = await fetch(sourceUrl, {
       method: 'GET',
       headers: { Accept: 'image/*' },
       signal: controller.signal,
-      redirect: 'follow',
+      redirect: 'error',
     }).finally(() => clearTimeout(timer));
     if (!res.ok) {
       console.warn(

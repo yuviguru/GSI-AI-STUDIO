@@ -234,12 +234,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         ]);
 
         if (typeof window !== 'undefined') {
-          // Redirect immediately — stops React effects from running with
-          // empty localStorage while the page is still alive.
-          window.location.href = '/';
-
-          // These run synchronously before the browser actually navigates,
-          // ensuring the next page load starts clean.
+          // Wipe FIRST, navigate second. Earlier this order was inverted
+          // (navigate, then mutate storage in the same tick) — but the
+          // browser can start tearing down JS execution mid-navigation,
+          // leaving stale gsi-* keys around. wipe-then-navigate guarantees
+          // the destination page hydrates against the cleared state.
           const lsKeys: string[] = [];
           for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
@@ -255,6 +254,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
             if (key && key.startsWith('gsi-')) ssKeys.push(key);
           }
           ssKeys.forEach((k) => sessionStorage.removeItem(k));
+
+          // Storage cleared — safe to navigate. '/' re-inits every context
+          // against the (selectively) wiped state.
+          window.location.href = '/';
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Sign out failed';

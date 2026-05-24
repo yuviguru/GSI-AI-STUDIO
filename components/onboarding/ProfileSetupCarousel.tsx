@@ -269,18 +269,17 @@ export function ProfileSetupCarousel({
   ]);
 
   const skip = useCallback(() => {
-    // Write a minimal default profile so downstream features (greeting, leaderboard
-    // self-row, mascot-aware copy) always have a mascot to render. Better than
-    // null-checking everywhere. The kid can change it later from settings.
-    const existing = (() => {
-      try {
-        const raw = localStorage.getItem('gsi-kid-profile');
-        return raw ? (JSON.parse(raw) as OnboardingProfile) : null;
-      } catch {
-        return null;
-      }
-    })();
-    if (!existing) {
+    // Write a minimal default profile so downstream features (greeting,
+    // leaderboard self-row, mascot-aware copy) always have a mascot to
+    // render. Better than null-checking everywhere. The kid can change it
+    // later from settings.
+    //
+    // Use the existingOnboarding value already loaded by the hook above as
+    // the "do I need to write a default?" signal — earlier this read a
+    // separate localStorage key directly, but that key (`gsi-kid-profile`)
+    // is never the one useOnboardingProfile writes to, so the read always
+    // missed and the check was dead code.
+    if (!existingOnboarding) {
       save({
         name: name || 'Friend',
         age: age,
@@ -295,7 +294,7 @@ export function ProfileSetupCarousel({
       // non-blocking
     }
     onComplete();
-  }, [name, age, mascotId, avatar, save, onComplete]);
+  }, [existingOnboarding, name, age, mascotId, avatar, save, onComplete]);
 
   const mascot = getMascot(mascotId);
 

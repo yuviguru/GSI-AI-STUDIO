@@ -35,14 +35,37 @@ export async function POST(request: NextRequest) {
     // Body is optional — older callers POST with no body to clear just the
     // user-doc snapshot. Newer flows include the sessionId to also archive
     // the session and its orphan creations.
+    //
+    // Format check defends two things at once:
+    //   (a) length cap so attackers can't probe Firestore error paths with
+    //       1KB strings, and
+    //   (b) charset match against the actual session-id shapes we mint —
+    //       anonymous UUIDs and `kid-{kidId}-{dayKey}` patterns are both
+    //       within [A-Za-z0-9_-]. A garbage value would otherwise fall
+    //       through to clearOrphanedClaimSnapshot and silently wipe the
+    //       user's pending migration data.
     let sessionId: string | undefined;
     try {
       const body = await request.json();
-      if (body && typeof body.sessionId === 'string' && body.sessionId.length > 0) {
-        sessionId = body.sessionId;
+      const raw = body?.sessionId;
+      if (
+        typeof raw === 'string' &&
+        raw.length > 0 &&
+        raw.length <= 128 &&
+        /^[A-Za-z0-9_-]+$/.test(raw)
+      ) {
+        sessionId = raw;
+      } else if (raw !== undefined) {
+        throw new AppException(
+          'INVALID_INPUT',
+          'sessionId must be 1-128 chars of [A-Za-z0-9_-]',
+          400,
+        );
       }
-    } catch {
-      // Empty body → fine, fall through to the legacy path.
+    } catch (err) {
+      // Re-throw our own validation error; swallow JSON-parse failures
+      // (empty body is the legacy contract).
+      if (err instanceof AppException) throw err;
     }
 
     if (sessionId) {

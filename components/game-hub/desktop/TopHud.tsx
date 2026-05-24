@@ -7,7 +7,7 @@ import { useAiPoints } from '@/contexts/AiPointsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useKidProfile } from '@/hooks/useKidProfile';
 import { useOnboardingProfile } from '@/hooks/useOnboardingProfile';
-import { DEFAULT_MASCOT_ID, getMascot } from '@/lib/mascots/roster';
+import { useResolvedIdentity } from '@/hooks/useResolvedIdentity';
 import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
 import { ProfilePicker } from '@/components/profile/ProfilePicker';
 
@@ -24,14 +24,16 @@ export function TopHud({ onlineCount = 12, streakDays = 7 }: TopHudProps) {
   const [showAuthFlow, setShowAuthFlow] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
 
-  // Identity resolution — auth kid → anonymous onboarding → null (no identity).
-  const profileName = activeKid?.name ?? onboardingProfile?.name ?? null;
-  const profileAvatarUrl =
-    activeKid?.avatarUrl ?? onboardingProfile?.avatarUrl ?? null;
-  const profileMascotId =
-    activeKid?.mascotId ?? onboardingProfile?.mascotId ?? DEFAULT_MASCOT_ID;
-  const profileMascotEmoji = getMascot(profileMascotId).art;
-  const hasProfile = profileName !== null;
+  // TopHud needs to distinguish "real profile" from "no identity yet" to
+  // pick the right auth-chip variant (logged-in pill / anonymous-with-
+  // profile pill / sign-in button). hasProfile carries that signal so we
+  // don't have to compare names against fallbacks.
+  const {
+    name: profileName,
+    avatarUrl: profileAvatarUrl,
+    mascotEmoji: profileMascotEmoji,
+    hasProfile,
+  } = useResolvedIdentity();
 
   return (
     <>
