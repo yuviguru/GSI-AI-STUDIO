@@ -13,3 +13,7 @@ export { DashboardShell } from './DashboardShell';
 export { DashboardSidebar } from './DashboardSidebar';
 export { DashboardRightRail } from './DashboardRightRail';
 export { KidSidebarUserChip, KidAvatar } from './KidSidebarUserChip';
+export { GameNavBar } from './GameNavBar';
+export { AuthChip } from './AuthChip';
+export { BackLink } from './BackLink';
+export { LayoutBackLink } from './LayoutBackLink';

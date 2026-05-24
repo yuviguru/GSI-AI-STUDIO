@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import Link from 'next/link';
-import { ArrowLeft, Gamepad2 } from 'lucide-react';
+import { Gamepad2 } from 'lucide-react';
 import { useAiGeneration } from '@/hooks/useAiGeneration';
 import { useSession } from '@/hooks/useSession';
 import { useAiPoints } from '@/contexts/AiPointsContext';
@@ -55,17 +54,7 @@ export function GameStudioClient() {
     <div className="min-h-screen bg-gradient-to-b from-emerald-500/5 to-white px-4 py-4">
       <div className="mx-auto max-w-3xl">
         {/* Header */}
-        {step === 'share' ? (
-          <div className="mb-3">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 transition-colors hover:text-brand-purple"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to home
-            </Link>
-          </div>
-        ) : (
+        {step !== 'share' && (
           <div className="mb-3 flex items-center justify-center gap-3">
             <Gamepad2 className="h-8 w-8 text-cyan-500" />
             <div>

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, PartyPopper } from 'lucide-react';
+import { ArrowRight, PartyPopper } from 'lucide-react';
 import { BusinessDashboard } from '@/components/ceo/BusinessDashboard';
 import { CeoProfileCard } from '@/components/ceo/CeoProfileCard';
 import { DecisionFeedback } from '@/components/ceo/DecisionFeedback';
@@ -214,12 +214,6 @@ function PlayPageInner() {
             We couldn&apos;t load your business.
           </div>
           <p className="mt-1 text-sm text-red-700/80">{error}</p>
-          <Link
-            href="/ceo"
-            className="mt-4 inline-block rounded-full bg-brand-primary px-5 py-2 text-sm font-semibold text-white hover:bg-brand-ai"
-          >
-            Back to Kid CEO
-          </Link>
         </div>
       </div>
     );
@@ -238,14 +232,6 @@ function PlayPageInner() {
 
     return (
       <div className="mx-auto max-w-3xl px-4 py-8">
-        <Link
-          href="/ceo"
-          className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-brand-primary hover:text-brand-ai"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Kid CEO
-        </Link>
-
         <div className="rounded-3xl bg-gradient-to-br from-purple-500 to-brand-primary p-8 text-center text-white shadow-2xl">
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-white/20">
             <PartyPopper className="h-7 w-7" />
@@ -288,14 +274,6 @@ function PlayPageInner() {
   // Active: main play surface
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 pb-16">
-      <Link
-        href="/ceo"
-        className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-brand-primary hover:text-brand-ai"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Kid CEO
-      </Link>
-
       {decideError && (
         <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {decideError}

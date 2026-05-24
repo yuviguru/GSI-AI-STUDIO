@@ -84,13 +84,6 @@ export function HomeworkTranscriptClient({ id }: { id: string }) {
   return (
     <div className="px-4 py-8">
       <div className="mx-auto max-w-2xl">
-        <Link
-          href="/homework/history"
-          className="text-sm text-purple-600 hover:underline"
-        >
-          ← Back to homework history
-        </Link>
-
         {loading && (
           <div className="mt-6 space-y-3" aria-busy="true">
             <div className="h-32 animate-pulse rounded-xl bg-gray-100" />

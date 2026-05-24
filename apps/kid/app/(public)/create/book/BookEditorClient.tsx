@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft, Eye, Image as ImageIcon, Trash2, Upload } from 'lucide-react';
+import { Eye, Image as ImageIcon, Trash2, Upload } from 'lucide-react';
 import { useBook } from '@/hooks/useBook';
 import { useBookPages } from '@/hooks/useBookPages';
 import { BUCKET_LAYOUTS } from '@/lib/templates/bookTemplates';
@@ -66,9 +65,6 @@ export function BookEditorClient({ bookId }: BookEditorClientProps) {
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
         <div className="text-4xl">📕</div>
         <p className="text-sm font-semibold text-red-700">{error}</p>
-        <Link href="/create/book" className="text-sm text-brand-purple underline">
-          ← Back to library
-        </Link>
       </div>
     );
   }
@@ -113,15 +109,7 @@ export function BookEditorClient({ bookId }: BookEditorClientProps) {
       {/* Top bar */}
       <header className="sticky top-0 z-10 border-b border-gray-200 bg-white/95 px-3 py-2 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
-          <Link
-            href="/create/book"
-            className="inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-brand-purple"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">My Books</span>
-          </Link>
-
-          <h1 className="line-clamp-1 flex-1 text-center text-base font-semibold text-gray-900">
+          <h1 className="line-clamp-1 flex-1 text-base font-semibold text-gray-900">
             {book.title}
           </h1>
 
