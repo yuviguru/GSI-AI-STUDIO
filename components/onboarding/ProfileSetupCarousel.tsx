@@ -11,13 +11,13 @@ import {
 import { XrayTeachingStep } from './XrayTeachingStep';
 import { DEFAULT_MASCOT_ID, getMascot } from '@/lib/mascots/roster';
 import { MascotAvatar } from '@/components/mascot/MascotAvatar';
-import { useAuth } from '@/hooks/useAuth';
 import { useKidProfile } from '@/hooks/useKidProfile';
 import {
   useOnboardingProfile,
   persistableAvatarUrl,
   type OnboardingProfile,
 } from '@/hooks/useOnboardingProfile';
+import { useKidPersistence } from '@/hooks/useKidPersistence';
 
 const ONBOARDING_DONE_KEY = 'gsi-onboarding-complete';
 
@@ -58,8 +58,17 @@ export function ProfileSetupCarousel({
   targetKidId,
 }: ProfileSetupCarouselProps) {
   const { profile: existingOnboarding, save } = useOnboardingProfile();
-  const { isAuthenticated, getIdToken, user } = useAuth();
-  const { activeKid, refreshKids, updateKidLocal } = useKidProfile();
+  const { activeKid } = useKidProfile();
+  // Persistence (PATCH/POST/localStorage + submit state) lives in this hook
+  // so the carousel stays a pure UI state-machine. patchKid is the
+  // per-step incremental save; commit is the terminal end-of-flow save.
+  const {
+    patchKid,
+    commit,
+    submitting,
+    submitError,
+    clearError,
+  } = useKidPersistence({ targetKidId, createKidProfile });
   const [step, setStep] = useState<Step>(initialStep);
 
   // Pre-fill from whatever profile data already exists, in priority order:
@@ -83,190 +92,21 @@ export function ProfileSetupCarousel({
   const [name, setName] = useState(initialName);
   const [age, setAge] = useState<number | null>(initialAge);
   const [avatar, setAvatar] = useState<GeneratedAvatar | null>(initialAvatar);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  /**
-   * Incremental kid-doc save. Used in `targetKidId` mode (the missing-fields
-   * gate scenario) so that each step persists its own field as the user
-   * completes it — instead of all data piling up until the final "Open my
-   * dashboard" click. Two reasons:
-   *   1. Drop-off safety: if the user closes the carousel mid-flow, what
-   *      they've already done is saved. Refresh re-opens the gate only on
-   *      the fields that are still missing.
-   *   2. Visibility: the user (and dev console) sees the PATCH go out
-   *      immediately after each step, instead of a hidden batch at the end.
-   *
-   * No-op when targetKidId is unset (the createKid path still uses the
-   * end-of-flow POST).
-   */
-  const patchKid = useCallback(
-    async (fields: {
-      mascotId?: string;
-      avatarUrl?: string;
-      name?: string;
-      age?: number;
-    }) => {
-      if (!targetKidId || !isAuthenticated) return;
-      const token = await getIdToken();
-      if (!token) throw new Error('Not authenticated — please sign in again');
-      const res = await fetch(`/api/users/kids/${targetKidId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(fields),
-      });
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        throw new Error(json.error?.message ?? 'Could not save your profile');
-      }
-      // Use the PATCH response to update local kid state directly — no
-      // need for a follow-up GET /api/users/kids since we already have
-      // the authoritative new values. This eliminates the redundant kids
-      // refresh that previously fired after every incremental save.
-      try {
-        const json = await res.json();
-        if (json?.success && json.data && typeof json.data === 'object') {
-          updateKidLocal(targetKidId, json.data);
-        } else {
-          // Defensive — if the response shape is unexpected, fall back to
-          // the full refresh so we don't leave the UI showing stale state.
-          await refreshKids();
-        }
-      } catch {
-        // Couldn't parse JSON — fall back to full refresh.
-        await refreshKids();
-      }
-    },
-    [targetKidId, isAuthenticated, getIdToken, refreshKids, updateKidLocal],
-  );
-
+  // Terminal save at the end of the flow. The hook owns the three
+  // persistence modes (PATCH existing kid / POST new kid / localStorage-
+  // only) and the submit/error state; we just hand it the final payload
+  // and route on success.
   const finish = useCallback(async () => {
-    setSubmitError(null);
-
-    const finalMascot = mascotId ?? DEFAULT_MASCOT_ID;
-    const finalAvatarUrl = avatar?.persisted
-      ? persistableAvatarUrl(avatar.imageUrl)
-      : null;
-    const finalName = name || 'Friend';
-
-    // Always cache to localStorage so future visits get the personalised UI
-    // even before the kid profile finishes loading.
-    const profile: OnboardingProfile = {
-      name: finalName,
-      age,
-      mascotId: finalMascot,
-      avatarUrl: finalAvatarUrl,
-      completedAt: new Date().toISOString(),
-    };
-    save(profile);
-
-    // Authenticated PATCH mode: an existing kid is being updated to fill in
-    // missing mascot/avatar. Uses /api/users/kids/[kidId] instead of POST.
-    if (targetKidId && isAuthenticated) {
-      setSubmitting(true);
-      try {
-        const token = await getIdToken();
-        if (!token) throw new Error('Not authenticated — please sign in again');
-
-        const res = await fetch(`/api/users/kids/${targetKidId}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            name: finalName,
-            mascotId: finalMascot,
-            ...(finalAvatarUrl ? { avatarUrl: finalAvatarUrl } : {}),
-            ...(age != null ? { age } : {}),
-          }),
-        });
-
-        if (!res.ok) {
-          const json = await res.json().catch(() => ({}));
-          throw new Error(json.error?.message ?? 'Could not update your profile');
-        }
-
-        await refreshKids();
-      } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : 'Something went wrong');
-        setSubmitting(false);
-        return;
-      }
-      setSubmitting(false);
-      onComplete();
-      return;
-    }
-
-    // Authenticated mode: create the verified kid profile in Firestore.
-    // This is the path taken by the AppGate when the parent has 0 kids —
-    // we skip the legacy KidProfileSetup form because we already collected
-    // everything in this carousel.
-    if (createKidProfile && isAuthenticated) {
-      setSubmitting(true);
-      try {
-        const token = await getIdToken();
-        if (!token) throw new Error('Not authenticated — please sign in again');
-
-        // Synthesise a kid email from the parent's phone (deterministic, hidden
-        // from the kid). The email field is required by the createKid API as
-        // a unique identifier; for parent-managed kids the real email comes
-        // later via Google linking. This pattern matches the legacy form.
-        const kidEmailSeed = user?.phoneNumber ?? user?.uid ?? Date.now().toString();
-        const kidEmail = `kid-${kidEmailSeed.replace(/[^a-z0-9]/gi, '')}-${Date.now()}@kid.gsi.local`;
-
-        const res = await fetch('/api/users/kids', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            name: finalName,
-            email: kidEmail,
-            mascotId: finalMascot,
-            avatarUrl: finalAvatarUrl,
-            age: age ?? undefined,
-          }),
-        });
-
-        if (!res.ok) {
-          const json = await res.json().catch(() => ({}));
-          throw new Error(json.error?.message ?? 'Could not save your profile');
-        }
-
-        await refreshKids();
-      } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : 'Something went wrong');
-        setSubmitting(false);
-        return;
-      }
-      setSubmitting(false);
-    }
-
+    const ok = await commit({ name, age, mascotId, avatar });
+    if (!ok) return;
     try {
       localStorage.setItem(ONBOARDING_DONE_KEY, 'true');
     } catch {
       // non-blocking
     }
     onComplete();
-  }, [
-    name,
-    age,
-    mascotId,
-    avatar,
-    save,
-    onComplete,
-    createKidProfile,
-    targetKidId,
-    isAuthenticated,
-    getIdToken,
-    user,
-    refreshKids,
-  ]);
+  }, [commit, name, age, mascotId, avatar, onComplete]);
 
   const skip = useCallback(() => {
     // Write a minimal default profile so downstream features (greeting,
@@ -345,24 +185,13 @@ export function ProfileSetupCarousel({
                 onSelect={setMascotId}
                 onNext={async () => {
                   // Incremental save: persist mascot to the kid doc right
-                  // away in targetKidId mode. Block advancement on failure
-                  // so the user sees the error instead of moving on with
-                  // unsaved state.
-                  if (targetKidId && mascotId) {
-                    setSubmitError(null);
-                    setSubmitting(true);
-                    try {
-                      await patchKid({ mascotId });
-                    } catch (err) {
-                      setSubmitError(
-                        err instanceof Error
-                          ? err.message
-                          : 'Could not save mascot',
-                      );
-                      setSubmitting(false);
-                      return;
-                    }
-                    setSubmitting(false);
+                  // away in targetKidId mode (no-op otherwise). patchKid
+                  // manages submitting/submitError internally and returns
+                  // false on failure so we can block advancement; the
+                  // submitError banner above surfaces the error.
+                  if (mascotId) {
+                    const ok = await patchKid({ mascotId });
+                    if (!ok) return;
                   }
                   setStep('name');
                 }}
@@ -408,29 +237,16 @@ export function ProfileSetupCarousel({
                 initial={avatar}
                 onNext={async (a) => {
                   setAvatar(a);
-                  // Incremental save: persist avatarUrl to the kid doc as
-                  // soon as the generated avatar is on the allowlist. If the
-                  // server returned persisted=false (Storage upload failed),
-                  // AvatarBuilderStep already blocks the Next button — but
-                  // we double-check here too so a stale state can't slip
-                  // past.
-                  if (targetKidId && a.persisted) {
+                  // Incremental save: persist avatarUrl as soon as the
+                  // generated avatar is on the allowlist (AvatarBuilderStep
+                  // already blocks Next when persisted=false; this is a
+                  // second-line check). patchKid is a no-op outside
+                  // targetKidId mode, so this is safe in all flows.
+                  if (a.persisted) {
                     const url = persistableAvatarUrl(a.imageUrl);
                     if (url) {
-                      setSubmitError(null);
-                      setSubmitting(true);
-                      try {
-                        await patchKid({ avatarUrl: url });
-                      } catch (err) {
-                        setSubmitError(
-                          err instanceof Error
-                            ? err.message
-                            : 'Could not save avatar',
-                        );
-                        setSubmitting(false);
-                        return;
-                      }
-                      setSubmitting(false);
+                      const ok = await patchKid({ avatarUrl: url });
+                      if (!ok) return;
                     }
                   }
                   setStep('xray');

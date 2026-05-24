@@ -10,6 +10,7 @@ import { CelebrationModal } from '@/components/learning/CelebrationModal';
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { KidProfileProvider, useKidProfile } from '@/hooks/useKidProfile';
+import { useUserSessionStatus } from '@/hooks/useUserSessionStatus';
 // LoginPrompt removed. Sign-in encouragement now lives in two places:
 // (1) AuthChoiceScreen (full-bleed take-over) for brand-new visitors on `/`,
 // (2) GuestWarningModal that re-appears for returning guests after 24h. The
@@ -24,19 +25,22 @@ import { kidDashboardConfig } from '@/lib/dashboard/configs/kid.config';
 
 const REQUIRE_LOGIN = process.env.NEXT_PUBLIC_REQUIRE_LOGIN === 'true';
 
-/** localStorage key written by SessionInit on successful claim, consumed by
- *  the migration prompt resolution path. Presence = "there's an active
- *  sign-in migration decision to make." */
 const PENDING_CLAIM_KEY = 'gsi-pending-claim';
 
+/**
+ * Layout-level gate. Maps `useUserSessionStatus` phases to a routing
+ * decision: block the app with a full-screen UI, or pass through to the
+ * page. The status hook owns the underlying derivation so this file only
+ * has switch cases — adding a new phase = add a case here (and in
+ * useEntryGate for page-level overlays), no auth/kid plumbing duplicated.
+ */
 function AppGate({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, user, loading: authLoading, refreshProfile } = useAuth();
-  const { needsProfileSetup, needsProfileSelection, hasKids, kids, refreshKids } =
-    useKidProfile();
+  const status = useUserSessionStatus();
+  const { isAuthenticated, user, refreshProfile } = useAuth();
+  const { hasKids, kids, refreshKids } = useKidProfile();
   const [claimResolved, setClaimResolved] = useState(false);
 
-  // Still loading auth/profile state
-  if (authLoading) return null;
+  if (status.phase === 'loading') return null;
 
   // Pilot login-only mode: force phone auth before showing anything else.
   // Toggle via NEXT_PUBLIC_REQUIRE_LOGIN env var (defaults to false = open beta).
@@ -50,59 +54,36 @@ function AppGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Anonymous user (open beta) — no gate, full access
-  if (!isAuthenticated) return <>{children}</>;
-
-  // Authenticated with pending anonymous session data → show the migration
-  // prompt before any other gate. Trigger is two-part:
-  //   1. Server says there's something to migrate (claimedSessionSummary)
-  //   2. Client just-signed-in flag is set (gsi-pending-claim) — set by
-  //      SessionInit at the auth-transition moment, cleared by the prompt's
-  //      onResolved callback.
-  //
-  // The combination ensures the prompt is one-shot per sign-in:
-  //   - Refresh after dismissal: gsi-pending-claim is gone → no prompt.
-  //   - Refresh before dismissal: both signals present → prompt re-renders.
-  //   - New sign-in after sign-out: handleSignOut wiped gsi-* keys; if server
-  //     still has stale claimedSessionData, the new claim flow re-stamps
-  //     gsi-pending-claim → prompt fires again, as intended.
-  const pendingClaimSessionId =
-    typeof window !== 'undefined'
-      ? (() => {
-          try {
-            return localStorage.getItem(PENDING_CLAIM_KEY);
-          } catch {
-            return null;
-          }
-        })()
-      : null;
-
+  // Pending sign-in migration. The status hook AND a local "resolved this
+  // session" flag together ensure the prompt is one-shot per sign-in:
+  //   - Refresh after dismissal: claimResolved + clearing PENDING_CLAIM_KEY
+  //     make the status hook return a non-migrating phase next render.
+  //   - Refresh before dismissal: both signals still present → re-renders.
+  //   - New sign-in after sign-out: handleSignOut wiped gsi-* keys; if
+  //     server still has claimedSessionData, the new claim re-stamps the
+  //     key → prompt fires again, as intended.
   if (
-    user?.claimedSessionSummary &&
-    pendingClaimSessionId &&
-    !claimResolved
+    status.phase === 'authenticated-migrating' &&
+    !claimResolved &&
+    user?.claimedSessionSummary
   ) {
     return (
       <SessionMigrationPrompt
         claimedData={user.claimedSessionSummary}
         hasKids={hasKids}
         kidCount={kids.length}
-        pendingSessionId={pendingClaimSessionId}
+        pendingSessionId={status.pendingSessionId}
         onResolved={async (outcome) => {
-          // Clear the pending-claim flag in every resolution path so the
-          // prompt won't re-fire on refresh. The signed-out path also clears
-          // it (handleSignOut's wipe loop catches it), but doing it here too
-          // is idempotent and explicit.
+          // Clear the flag in every resolution path so the prompt won't
+          // re-fire on refresh. handleSignOut's wipe also catches this
+          // key — clearing it here too is idempotent and explicit.
           try {
             localStorage.removeItem(PENDING_CLAIM_KEY);
           } catch {
             // localStorage unavailable — non-blocking
           }
           setClaimResolved(true);
-          if (outcome === 'signed-out') {
-            // signOut() already triggered a full reload — no further routing.
-            return;
-          }
+          if (outcome === 'signed-out') return; // signOut redirected
           await refreshProfile();
           await refreshKids();
         }}
@@ -110,19 +91,20 @@ function AppGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Authenticated but no kids — run the rich onboarding carousel which creates
-  // the verified kid profile (mascot + AI avatar + X-Ray lesson) in one flow.
-  // (createKid() auto-consumes claimedSessionData for the first kid.)
-  if (needsProfileSetup) {
+  // Authenticated but no kids — run the rich onboarding carousel which
+  // creates the verified kid profile in one flow. (createKid() auto-
+  // consumes claimedSessionData for the first kid.)
+  if (status.phase === 'authenticated-needs-kid') {
     return <ProfileSetupCarousel createKidProfile onComplete={refreshKids} />;
   }
 
-  // Authenticated with kids but none selected — show Netflix picker
-  if (needsProfileSelection) {
+  // Authenticated with kids but none selected — Netflix-style picker
+  if (status.phase === 'authenticated-needs-pick') {
     return <ProfilePicker forceSelection />;
   }
 
-  // All good — show the app
+  // All other phases (authenticated-ready, anonymous-*) → render the page.
+  // useEntryGate on `/` adds page-level overlays for the anonymous phases.
   return <>{children}</>;
 }
 
