@@ -243,16 +243,20 @@ export function KidProfileProvider({ children }: KidProfileProviderProps) {
     const checkRollover = () => {
       try {
         const currentSessionId = localStorage.getItem('gsi-session-id');
-        if (!currentSessionId) return;
-        // Only kid-scoped session ids contain the dayKey suffix.
-        const expectedPrefix = `kid-${activeKid.id}-`;
-        if (!currentSessionId.startsWith(expectedPrefix)) return;
         // Bucket by the *account's* base timezone, not the device's, so a
         // parent traveling abroad doesn't see their kid's streak split or
         // merged at the wrong moment.
-        const todaySuffix = accountDayKey(accountTimezone);
-        if (currentSessionId === `${expectedPrefix}${todaySuffix}`) return;
-        // Day rolled over — re-establish today's kid session.
+        const expected = `kid-${activeKid.id}-${accountDayKey(accountTimezone)}`;
+        if (currentSessionId === expected) return; // Already on today's session
+
+        // The current id doesn't match today's expected kid session. Three
+        // ways we land here, all handled by re-rotation:
+        //   - Day rolled over (stale dayKey suffix)
+        //   - Different kid was active (stale kidId in suffix)
+        //   - A prior switchKid POST failed and left a non-kid id (e.g. an
+        //     anonymous gsi-session-id) — without this branch the original
+        //     early-return on non-`kid-*` prefix swallowed the retry case,
+        //     so points/creations would keep writing to the wrong session.
         switchKid(activeKid.id);
       } catch {
         // localStorage unavailable — non-blocking

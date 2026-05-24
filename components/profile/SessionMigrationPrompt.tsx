@@ -117,9 +117,14 @@ export function SessionMigrationPrompt({
     setError(null);
     setLoading(true);
     try {
-      onResolved('signed-out');
-      // signOut redirects to '/' so the prompt unmounts naturally.
+      // Await signOut FIRST. Only mark resolved once it actually succeeds —
+      // otherwise a transient signOut failure would leave the user signed in
+      // with the migration prompt suppressed (AppGate clears the pending-
+      // claim flag on resolution) and no way to recover the prompt this
+      // session. In the happy path signOut redirects to '/' and unmounts the
+      // prompt before the next line runs, which is fine.
       await signOut({ preserveAnonymous: true });
+      onResolved('signed-out');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign out failed');
       setLoading(false);

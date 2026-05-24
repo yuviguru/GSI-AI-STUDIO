@@ -205,13 +205,22 @@ export async function claimSession(
   let pointsMigrated = 0;
 
   await adminDb.runTransaction(async (tx) => {
+    // 2a. RE-CHECK eligibility transactionally. The pre-check at step 0b runs
+    //     outside the transaction, so two concurrent claim requests could
+    //     both pass it; without this in-tx re-read, the second one would
+    //     overwrite claimedBy / merge points into a second account. Firestore
+    //     transactions retry on contention, so this guarantees only one
+    //     claim wins the race.
+    await assertSessionEligibleForClaim(sessionId, tx);
+
     const userSnap = await tx.get(userRef);
     if (!userSnap.exists) {
       throw new AppException('USER_NOT_FOUND', 'User profile vanished', 500);
     }
     const userData = userSnap.data() as UserDocFirestore;
 
-    // Already claimed this session — no-op.
+    // Already claimed this session by THIS user — no-op. (Cross-user races
+    // are caught by the assertSessionEligibleForClaim re-check above.)
     if (userData.claimedSessionIds?.includes(sessionId)) {
       return;
     }
