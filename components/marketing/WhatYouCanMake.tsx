@@ -18,13 +18,13 @@ export function WhatYouCanMake() {
         {/* Header */}
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-caption font-semibold uppercase tracking-wide text-brand-primary">
-            What your child can make
+            What your child walks away with
           </p>
           <h2 className="mt-3 font-display text-[32px] font-extrabold leading-tight tracking-tight text-brand-text text-balance sm:text-[44px]">
-            Two flagships. Eight studios. One playground.
+            Pick a mood. Walk away with something they're proud of.
           </h2>
           <p className="mt-4 text-body-lg leading-relaxed text-brand-text-secondary">
-            Hover any tile to see what it does. Tap to try it.
+            Every studio turns one wild idea into a finished thing — a story, a song, a game — worth sharing in the family WhatsApp.
           </p>
         </div>
 

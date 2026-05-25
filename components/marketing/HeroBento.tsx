@@ -66,7 +66,7 @@ export function HeroBento() {
           hoverDetail={{
             name: 'Kid CEO · Flagship',
             description:
-              'Run a real business sim over weeks. Make decisions as events hit and discover your CEO DNA. Telegram bot pings you when something changes.',
+              "Find out what your kid is great at when nobody's grading them. Six weeks running a real business reveals it — Visionary, Operator, Diplomat, or something we haven't named yet.",
             ctaLabel: 'Start a business',
           }}
         >
@@ -82,7 +82,7 @@ export function HeroBento() {
           hoverDetail={{
             name: 'AI Homework · Flagship',
             description:
-              'A Telegram tutor that gives hints, never answers. Per-subject scores and full transcripts logged for parents — every session.',
+              "Help that teaches — never cheats. Your kid solves it themselves, sleeps better, and walks into class actually knowing it. You get the proof in your inbox.",
             ctaLabel: 'Try it on Telegram',
           }}
         >
@@ -98,7 +98,7 @@ export function HeroBento() {
           hoverDetail={{
             name: 'Story Studio',
             description:
-              'Your kid imagines, AI illustrates. Build illustrated storybooks scene by scene from a single idea.',
+              'Tonight\'s bedtime story, but they wrote it. One "what if?" turns into a 6-page picture book with their name on the cover.',
           }}
         >
           <StoryTile />
@@ -111,7 +111,7 @@ export function HeroBento() {
           hoverDetail={{
             name: 'Music Lab',
             description:
-              'Compose original tracks from a mood and a genre. Sing along, share with friends, and remix.',
+              'An original song with their name on it — finished before the Maggi is done. Friends ask "you made this?" Yes, they did.',
           }}
         >
           <MusicTile />
@@ -124,7 +124,7 @@ export function HeroBento() {
           hoverDetail={{
             name: 'Quiz Maker',
             description:
-              'Build trivia on any topic, then challenge friends. Earn AI Points and badges as you climb the leaderboard.',
+              "Turn what they just studied into a game their friends actually want to play. Revision they ask for, instead of dragging through.",
           }}
         >
           <QuizTile />
@@ -137,7 +137,7 @@ export function HeroBento() {
           hoverDetail={{
             name: 'Comic Studio',
             description:
-              'Panel-by-panel comics with AI-illustrated art and your speech bubbles. Tell the stories you want to read.',
+              "The comic they wished existed — now with their name on the cover. The kind of thing they print out and tape to the bedroom wall.",
           }}
         >
           <ComicsTile />
@@ -152,7 +152,7 @@ export function HeroBento() {
           hoverDetail={{
             name: 'Game Studio',
             description:
-              'Choose-your-own-adventure games written and illustrated by AI. You decide what happens next.',
+              "A pocket adventure where every choice is theirs. Replayable on long car rides, shareable in the class WhatsApp by lunchtime.",
           }}
         >
           <GamesTile />
@@ -165,7 +165,7 @@ export function HeroBento() {
           hoverDetail={{
             name: 'AI X-Ray',
             description:
-              'See exactly how AI made every output. Concepts mapped to your school AI curriculum — across every Indian board.',
+              "Knowing how AI works is the new edge. Every creation comes with a 30-second lesson — your kid stops thinking AI is magic, starts directing it.",
           }}
         >
           <XRayTile />
@@ -178,7 +178,7 @@ export function HeroBento() {
           hoverDetail={{
             name: 'Beat the AI',
             description:
-              '9 head-to-head challenges. Same prompt, you and the AI. Whoever is clearer and faster wins.',
+              "The class kids who can out-think AI will own the next decade. Weekly head-to-heads where your kid learns to be that kid.",
           }}
         >
           <BeatAiTile />
@@ -191,7 +191,7 @@ export function HeroBento() {
           hoverDetail={{
             name: 'MindX Skill Arena',
             description:
-              'Quickfire drills across Speak, Listen, Think, Read. Personal feedback. Climb from Explorer to Champion.',
+              "10 minutes a day, sharper every week. The speaking-listening-thinking-reading drills that quietly turn a shy kid into the one who raises their hand first.",
           }}
         >
           <MindXTile />
