@@ -14,7 +14,7 @@ import {
   mirrorAvatarToStorage,
 } from '@/lib/images/avatarStorage';
 import { isPersistableAvatarUrl } from '@/lib/images/avatarUrl';
-import { assertEntitled, resolveBillingContext, toAppException } from '@/lib/billing';
+import { enforceBilling } from '@/lib/billing';
 
 /** Allowed trait values — restricts the prompt surface so kids can't inject
  *  unsafe descriptors via the trait picker. Free-text is filtered separately. */
@@ -230,16 +230,9 @@ export async function POST(request: NextRequest) {
     // Safety filter — throws AppException on unsafe content
     filterImagePrompt(prompt);
 
-    // BILLING-001 Phase 2: charge for avatar re-rolls. Anonymous (onboarding)
-    // users pass through at zero cost since resolveBillingContext returns {}
-    // with no kidId — perfect for the first-avatar flow. Authed kids
-    // re-rolling their portrait pay 2 credits (image.fast).
-    const billingCtx = await resolveBillingContext(request);
-    try {
-      await assertEntitled(billingCtx, { feature: 'image.fast' });
-    } catch (billingErr) {
-      throw toAppException(billingErr);
-    }
+    // Anonymous (onboarding) users have no kidId → no debit. Authed kids
+    // re-rolling pay `image.fast` (2 credits).
+    await enforceBilling(request, { feature: 'image.fast' });
 
     const { imageFunction, providerName } = getImageProvider();
 

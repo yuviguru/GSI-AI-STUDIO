@@ -1,19 +1,11 @@
 /**
- * Glue between the billing guard and the existing API error pipeline.
+ * Glue between the billing guard and the API error pipeline.
  *
- * Routes should:
- *   ```
- *   try {
- *     const billingCtx = await resolveBillingContext(request);
- *     await assertEntitled(billingCtx, { feature: 'story.generate' });
- *     // ... model call ...
- *   } catch (err) {
- *     throw toAppException(err);  // converts billing errors; rethrows others
- *   }
- *   ```
- *
- * `toAppException` is idempotent on already-mapped errors so chaining
- * helpers that re-throw is safe.
+ * Routes normally use the all-in-one `enforceBilling(request, options)` —
+ * it resolves the billing context, runs the guard, and maps any thrown
+ * billing error into an `AppException` that flows through the existing
+ * `handleApiError`. The lower-level pieces are exported for callers that
+ * need finer control (e.g. attaching a refund on downstream failure).
  */
 
 import type { NextRequest } from 'next/server';
@@ -21,111 +13,87 @@ import { AppException } from '@/lib/api-utils';
 import { hybridAuth } from '@/lib/auth-utils';
 import { adminDb } from '@gsi/firebase/admin';
 import {
+  assertEntitled,
   PlanError,
-  InsufficientCreditsError,
   planErrorDetails,
   insufficientCreditsDetails,
+  type AssertEntitledOptions,
+  type AssertEntitledResult,
   type BillingContext,
 } from './guard';
+import { InsufficientCreditsError } from './credits';
 
 /**
  * Build a `BillingContext` from the request.
  *
- * Auth modes:
- *   - Authenticated parent + `X-Active-Kid-Id` header → full ctx with kidId
- *     and the kid's effective plan (looked up from the kid doc; falls back
- *     to the parent's plan, falls back to 'free').
- *   - Authenticated parent, no kid header → no kidId, plan from user doc.
- *   - Anonymous session (X-Session-Id) → empty ctx (plan='free', no kidId).
- *     Anonymous callers are exempt from credit debits — they're already
- *     gated by the per-session creation cap in `sessionService`.
+ * - Authenticated parent + `X-Active-Kid-Id` → ctx with kidId and the
+ *   kid's plan (looked up from the kid doc; falls back to parent's plan).
+ * - Authenticated parent, no kid header → ctx with plan from user doc.
+ * - Anonymous session (X-Session-Id) → empty ctx (no kidId → no debit).
  *
- * Never throws — returns a sensible default rather than blocking the
- * route. Hard-auth checks should still happen elsewhere (e.g. `verifyAuth`
- * for routes that require sign-in).
+ * Never throws — returns a sensible default. Hard-auth checks belong
+ * elsewhere (`verifyAuth` for sign-in-required routes).
  */
 export async function resolveBillingContext(request: NextRequest): Promise<BillingContext> {
-  // Best-effort hybridAuth. If it throws (no auth headers at all), fall
-  // back to anonymous defaults — billing isn't the gatekeeper for auth.
   let authResult;
   try {
     authResult = await hybridAuth(request);
   } catch {
     return {};
   }
-
-  if (authResult.type === 'anonymous') {
-    return {};
-  }
+  if (authResult.type === 'anonymous') return {};
 
   const { auth } = authResult;
-  const kidIdHeader = request.headers.get('X-Active-Kid-Id') ?? undefined;
+  const kidId = request.headers.get('X-Active-Kid-Id') ?? undefined;
+  if (!kidId) return { plan: auth.plan, role: auth.role };
 
-  if (!kidIdHeader) {
-    return { plan: auth.plan, role: auth.role };
-  }
-
-  // Resolve the kid's effective plan. Kid docs cache `plan` for fast
-  // guard reads (BILLING-001 schema); fall back to the parent's plan if
-  // the kid doc is missing the field (pre-migration kids).
   try {
-    const kidSnap = await adminDb.collection('kids').doc(kidIdHeader).get();
-    const kidPlan = kidSnap.exists ? (kidSnap.data()?.plan as BillingContext['plan']) : undefined;
-    return {
-      kidId: kidIdHeader,
-      plan: kidPlan ?? auth.plan,
-      role: auth.role,
-    };
+    const snap = await adminDb.collection('kids').doc(kidId).get();
+    const kidPlan = snap.exists ? (snap.data()?.plan as BillingContext['plan']) : undefined;
+    return { kidId, plan: kidPlan ?? auth.plan, role: auth.role };
   } catch {
-    // Firestore unreachable or kid doc malformed — default to the parent's
-    // plan, no debit. The credit ledger writes will fail downstream if
-    // the kid doc truly doesn't exist, which is the right behavior.
-    return {
-      kidId: kidIdHeader,
-      plan: auth.plan,
-      role: auth.role,
-    };
+    // Firestore unreachable — fall back to the parent's plan. The actual
+    // debit (if any) will fail downstream with a proper error.
+    return { kidId, plan: auth.plan, role: auth.role };
   }
 }
 
 /**
- * Convert billing errors to `AppException` with the documented `details`
- * shape (see `docs/api-contracts.md#plancredit-error-response-shape`).
- *
- * - `PlanError`         → 403 FORBIDDEN_BY_PLAN with `{currentPlan, requiredPlan, feature, upgradeUrl}`
- * - `InsufficientCreditsError` → 402 INSUFFICIENT_CREDITS with `{required, available, feature, topupUrl}`
- *
- * Other errors pass through unchanged so the existing `handleApiError`
- * pipeline catches them as 500s (or whatever the original AppException
- * specified).
+ * Convert billing errors to `AppException` with the documented
+ * `error.details` shape. Other errors pass through unchanged so the
+ * existing `handleApiError` pipeline catches them as 500s.
  */
 export function toAppException(err: unknown): unknown {
   if (err instanceof PlanError) {
-    const details = planErrorDetails(err);
-    return new AppException('FORBIDDEN_BY_PLAN', err.message, 403, details);
+    return new AppException('FORBIDDEN_BY_PLAN', err.message, 403, planErrorDetails(err));
   }
   if (err instanceof InsufficientCreditsError) {
-    const details = insufficientCreditsDetails(err);
-    return new AppException('INSUFFICIENT_CREDITS', err.message, 402, details);
+    return new AppException(
+      'INSUFFICIENT_CREDITS',
+      err.message,
+      402,
+      insufficientCreditsDetails(err),
+    );
   }
   return err;
 }
 
 /**
- * Convenience: catch-and-rethrow wrapper for routes. Use inside route
- * handlers when you want a tighter try/catch around the billing call:
+ * All-in-one: resolve context, run guard, map errors. The one call AI
+ * routes need.
  *
- *   await withBillingErrors(async () => {
- *     await assertEntitled(ctx, { feature: 'story.generate' });
- *     return await createStory(input);
- *   });
+ *   await enforceBilling(request, { feature: 'story.generate' });
  *
- * Anything inside that throws a `PlanError` or `InsufficientCreditsError`
- * gets converted to `AppException`; everything else flows through.
+ * For routes that need the result (charged amount, balance after, etc.),
+ * the call returns the `AssertEntitledResult`.
  */
-export async function withBillingErrors<T>(fn: () => Promise<T>): Promise<T> {
+export async function enforceBilling(
+  request: NextRequest,
+  options: AssertEntitledOptions,
+): Promise<AssertEntitledResult> {
+  const ctx = await resolveBillingContext(request);
   try {
-    return await fn();
+    return await assertEntitled(ctx, options);
   } catch (err) {
     throw toAppException(err);
   }

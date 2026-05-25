@@ -122,7 +122,7 @@ describe('lib/billing/guard.assertEntitled', () => {
 
     it('propagates InsufficientCreditsError thrown by debitCredits', async () => {
       mockDebitCredits.mockRejectedValue(
-        new InsufficientCreditsError({ required: 25, available: 5, feature: 'image.sdxl' }),
+        new InsufficientCreditsError(25, 5, 'image.sdxl'),
       );
 
       await expect(
@@ -150,7 +150,7 @@ describe('lib/billing/guard.assertEntitled', () => {
 
 describe('planErrorDetails / insufficientCreditsDetails — API response helpers', () => {
   it('planErrorDetails suggests the lowest plan with the capability', () => {
-    const err = new PlanError({ currentPlan: 'free', capability: 'canExportPdf' });
+    const err = new PlanError('free', 'canExportPdf');
     const details = planErrorDetails(err);
 
     expect(details.currentPlan).toBe('free');
@@ -159,7 +159,7 @@ describe('planErrorDetails / insufficientCreditsDetails — API response helpers
   });
 
   it('insufficientCreditsDetails rounds up to the next bundle size', () => {
-    const err = new InsufficientCreditsError({ required: 25, available: 5, feature: 'image.sdxl' });
+    const err = new InsufficientCreditsError(25, 5, 'image.sdxl');
     const details = insufficientCreditsDetails(err);
 
     // shortfall = 20, smallest bundle covering it = 100
@@ -169,7 +169,7 @@ describe('planErrorDetails / insufficientCreditsDetails — API response helpers
   });
 
   it('insufficientCreditsDetails clamps to the largest bundle if shortfall is huge', () => {
-    const err = new InsufficientCreditsError({ required: 99_999, available: 0 });
+    const err = new InsufficientCreditsError(99_999, 0);
     const details = insufficientCreditsDetails(err);
     expect(details.topupUrl).toContain('suggested=2000');
   });

@@ -1,85 +1,44 @@
 /**
- * Per-plan capability matrix.
+ * Per-plan capability matrix. Edit ONE row to move a feature between
+ * tiers (e.g. flip `canExportPdf: true` on Creator to unlock PDF export
+ * for that plan).
  *
- * Edit ONE row to move a feature between tiers. e.g. to make PDF export
- * available on Creator instead of Pro, just flip `canExportPdf: true` in
- * the `creator` block. No other file needs to change.
- *
- * Boolean fields are simple yes/no gates. Numeric fields are quotas.
- * Use `Number.POSITIVE_INFINITY` for "no cap".
- *
- * Server enforcement: `lib/billing/guard.ts` calls `hasEntitlement(plan, cap)`
- * before invoking any model. Routes pass the capability they need, e.g.
- *   await assertEntitled(authCtx, { capability: 'canExportPdf' });
- *
- * UI: client code can read entitlements too, to hide/disable upgrade-only
- * actions before the user clicks (e.g. greying out the "Export PDF" button
- * on Creator). Never trust the client — the server check is the gate.
+ * Booleans = yes/no gates. Numbers = quotas (`Infinity` for "no cap").
+ * Convention: `canX` for booleans, `maxX` for numeric limits.
  */
 
 import type { UserPlan } from '@gsi/types';
 
-/**
- * All capability keys. Adding one is a 3-step diff:
- *   1. add it to this interface (with the type),
- *   2. add a value for every plan in `ENTITLEMENTS` below,
- *   3. call `assertEntitled(ctx, { capability: 'newKey' })` in the route(s).
- *
- * Capability names: prefer `canX` for booleans (canExportPdf) and `maxX`
- * for numeric limits (maxBookPages). This keeps grep-ability high.
- */
 export interface PlanEntitlements {
-  // ─── Studio caps ─────────────────────────────────────────────────────
-  /** Max pages in a Book Studio book. Used by bookService. */
+  // Studio caps
   maxBookPages: number;
-  /** Max images per generation request (multi-image stories etc.). */
   maxImagesPerCreation: number;
-  /** Max kids a single parent account can manage. */
   maxKidsPerAccount: number;
 
-  // ─── AI provider gates ───────────────────────────────────────────────
-  /** Use premium image models (SDXL) vs. free tier (Flux Schnell, Pollinations). */
+  // AI provider gates
   priorityImageGen: boolean;
-  /** Use the premium LLM (Claude) vs. fast/free (Groq). */
   priorityLlm: boolean;
 
-  // ─── Export & sharing ────────────────────────────────────────────────
-  /** PDF export of books and stories. */
+  // Export & sharing
   canExportPdf: boolean;
-  /** MP4 export of music creations. */
   canExportVideo: boolean;
-  /** Mark a creation private (default behavior is public/remix-able). */
   canMakePrivate: boolean;
-  /** Add a custom watermark (Pro+ only). */
   canCustomizeWatermark: boolean;
 
-  // ─── Parent & insights ───────────────────────────────────────────────
-  /** Weekly parent progress reports via email/PDF. */
+  // Parent & insights
   canAccessParentDashboard: boolean;
-  /** GrowthMap deep insight reports. */
   canViewGrowthMap: boolean;
 
-  // ─── Studio access flags ─────────────────────────────────────────────
-  /** Early access to beta studios (e.g. new release locked to Pro for 30d). */
+  // Studio access flags
   canAccessBetaStudios: boolean;
 
-  // ─── School-only ─────────────────────────────────────────────────────
-  /** Teacher dashboard with class management. */
+  // School-only
   canAccessTeacherDashboard: boolean;
-  /** Auto-generated CBSE compliance report. */
   canGenerateComplianceReports: boolean;
 }
 
 const UNLIMITED = Number.POSITIVE_INFINITY;
 
-/**
- * THE matrix. To re-tier a feature, change ONE value here.
- *
- * Recommendation: keep boolean rows roughly in order of progression
- * (free → creator → pro) so it's easy to read at a glance which plans
- * unlock what. School and admin can break the progression where it
- * makes sense (e.g. school gets teacher dashboard that pro doesn't).
- */
 export const ENTITLEMENTS: Record<UserPlan, PlanEntitlements> = {
   free: {
     maxBookPages: 5,
@@ -163,29 +122,23 @@ export const ENTITLEMENTS: Record<UserPlan, PlanEntitlements> = {
   },
 };
 
-/**
- * Resolve entitlements for a plan. Unknown plans fall back to `free` (same
- * defensive policy as `getPlan` — never throw on a stale doc value).
- */
+/** Unknown plans fall back to `free`. */
 export function getEntitlements(plan: UserPlan | string | undefined | null): PlanEntitlements {
-  if (!plan) return ENTITLEMENTS.free;
-  const known = ENTITLEMENTS[plan as UserPlan];
-  return known ?? ENTITLEMENTS.free;
+  return (plan && ENTITLEMENTS[plan as UserPlan]) || ENTITLEMENTS.free;
 }
 
 /**
- * Check a single capability. The guard uses this; UI code can too.
+ * Check a single capability.
  *
  *   if (!hasEntitlement(kid.plan, 'canExportPdf')) showUpgradePrompt();
  *
- * Numeric quotas are truthy when > 0 — for limit checks, read the number
- * directly via `getEntitlements(plan).maxBookPages`.
+ * Numeric quotas are truthy when > 0; read the number directly via
+ * `getEntitlements(plan).maxBookPages` when you need it.
  */
 export function hasEntitlement<K extends keyof PlanEntitlements>(
   plan: UserPlan | string | undefined | null,
   capability: K,
 ): boolean {
   const value = getEntitlements(plan)[capability];
-  if (typeof value === 'number') return value > 0;
-  return Boolean(value);
+  return typeof value === 'number' ? value > 0 : Boolean(value);
 }

@@ -1,40 +1,19 @@
 /**
- * @file Billing module barrel — single import path for entitlement +
- * credit + bypass logic.
+ * Billing module barrel.
  *
- *   import { assertEntitled, PLANS, ENTITLEMENTS } from '@/lib/billing';
+ *   import { enforceBilling, PLANS, ENTITLEMENTS } from '@/lib/billing';
  *
- * See the individual files for full docs:
- *   - plans.ts          tier catalog (price, monthly credits, marketing copy)
- *   - entitlements.ts   capability matrix per plan
- *   - creditCosts.ts    feature → credit cost map
- *   - credits.ts        ledger read/write (atomic debit, monthly grant, topup, bonus)
- *   - guard.ts          assertEntitled (the choke point routes call)
- *   - bypass.ts         dev override (BILLING_BYPASS env vars)
+ * - `enforceBilling(request, options)` is the one-line entry every AI
+ *   route uses: resolves the context, runs the guard, maps errors.
+ * - The lower-level pieces (`assertEntitled`, `resolveBillingContext`,
+ *   `toAppException`) are exported for routes that need finer control.
  */
 
-export {
-  PLANS,
-  PLAN_IDS,
-  DEFAULT_PLAN,
-  getPlan,
-  type Plan,
-  type PlanPrice,
-  type PlanMarketing,
-} from './plans';
+export { PLANS, PLAN_IDS, DEFAULT_PLAN, getPlan, type Plan } from './plans';
 
-export {
-  ENTITLEMENTS,
-  getEntitlements,
-  hasEntitlement,
-  type PlanEntitlements,
-} from './entitlements';
+export { ENTITLEMENTS, getEntitlements, hasEntitlement, type PlanEntitlements } from './entitlements';
 
-export {
-  CREDIT_COSTS,
-  getCost,
-  listCosts,
-} from './creditCosts';
+export { CREDIT_COSTS, getCost, listCosts } from './creditCosts';
 
 export {
   getBalance,
@@ -58,14 +37,10 @@ export {
   type BillingContext,
 } from './guard';
 
-export {
-  shouldBypass,
-  isUnmetered,
-  logBypassStatusOnce,
-} from './bypass';
+export { shouldBypass } from './bypass';
 
 export {
+  enforceBilling,
   resolveBillingContext,
   toAppException,
-  withBillingErrors,
 } from './apiErrors';
