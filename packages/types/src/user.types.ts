@@ -102,9 +102,29 @@ export interface KidProfile {
   /** Effective plan for this kid. Inherited from parent/school; cached here
    *  for fast guard checks. `lib/billing/guard.ts` reads this. Absent = free. */
   plan?: UserPlan;
-  /** Denormalized credit balance. Authoritative ledger is the
-   *  `kids/{kidId}/creditLedger` subcollection. Absent = 0. */
+  /**
+   * Denormalized total credit balance, equal to
+   * `creditBalanceGrant + creditBalanceTopup` at all times. The kid-doc
+   * write inside every transaction enforces this invariant.
+   *
+   * Authoritative ledger is the `kids/{kidId}/creditLedger` subcollection.
+   * Absent = 0.
+   */
   creditBalance?: number;
+  /**
+   * Unspent portion of the current monthly plan grant. Resets to
+   * `PLANS[plan].creditsPerMonth` at each cycle (the unspent remainder is
+   * zeroed and re-granted, via an `expire` + `grant` ledger pair). Debits
+   * subtract from this pool first so paid topups are spent last.
+   */
+  creditBalanceGrant?: number;
+  /**
+   * Purchased + admin-issued credits. **Never expires.** Topups (Razorpay)
+   * and bonus grants land here; only refunds (or explicit `expire` from
+   * support) decrement it. Debits draw from this pool only after the grant
+   * pool is exhausted.
+   */
+  creditBalanceTopup?: number;
   /** Size of the most recent monthly grant. Used by the renewal job to know
    *  what to re-grant on `creditsMonthlyResetAt`. Mirrors PLANS[plan].creditsPerMonth. */
   creditsMonthlyGrantAmount?: number;
