@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Check, ArrowRight } from 'lucide-react';
+import { PLANS, type Plan } from '@/lib/billing/plans';
 
 interface Tier {
   name: string;
@@ -12,70 +13,37 @@ interface Tier {
   featured?: boolean;
 }
 
-const TIERS: Tier[] = [
-  {
-    name: 'Free',
-    tagline: 'For any kid who wants to try AI.',
-    price: '₹0',
-    priceUnit: '/ forever',
-    priceNote: 'No card. No trial. No time limit.',
-    features: [
-      '3 creations per day across all studios',
-      'All 10 studios (Story, Music, Game, Comic…)',
-      'AI X-Ray on every creation',
-      'WhatsApp share + public remix feed',
-      'Unlock 6 beginner badges',
-    ],
-    cta: { label: 'Start creating', href: '/create/story' },
-  },
-  {
-    name: 'Creator',
-    tagline: 'For kids who like making a few things every day.',
-    price: '₹99',
-    priceUnit: '/ month',
-    priceNote: 'Or ₹899/year · Cancel anytime',
-    features: [
-      '15 creations per day across all studios',
-      'All 10 studios + AI X-Ray on every creation',
-      '6 badges + creation streaks',
-      'Faster image generation',
-      'Cancel anytime, keep all your creations',
-    ],
-    cta: { label: 'Try Creator', href: '/create/story?upgrade=creator' },
-  },
-  {
-    name: 'Pro',
-    tagline: 'For kids who create every day.',
-    price: '₹299',
-    priceUnit: '/ month',
-    priceNote: 'Or ₹2,499/year · Cancel anytime',
-    features: [
-      'Up to 50 creations per day, every studio',
-      'Full 12-badge collection + streaks',
-      'Parent dashboard with weekly reports',
-      'Priority AI (fastest image models)',
-      'Private creations + export to PDF/MP4',
-      'Early access to new studios',
-    ],
-    cta: { label: 'Go Pro', href: '/create/story?upgrade=1' },
-    featured: true,
-  },
-  {
-    name: 'Schools',
-    tagline: 'For principals solving the 2026-27 mandate.',
-    price: 'Custom',
-    priceNote: 'From ₹149/student/month · 50-student minimum',
-    features: [
-      'Everything in Pro — for every student',
-      'Teacher dashboard: classes, assignments, reports',
-      'CBSE AI &amp; CT lesson plans (Class 3–12)',
-      'Auto-generated compliance reports',
-      'Inter-school competitions + leaderboards',
-      'Onboarding + teacher training included',
-    ],
-    cta: { label: 'Book a pilot', href: '/school' },
-  },
-];
+/**
+ * Marketing tiers are derived from the billing config in `lib/billing/plans.ts`.
+ * To change pricing, features, or marketing copy, edit `PLANS` there — this
+ * component re-renders from the single source of truth. The `admin` plan is
+ * filtered out (internal-only, not customer-facing).
+ *
+ * Price formatting: free shows "₹0", custom-priced plans (school) show
+ * "Custom", everything else shows "₹<inr>".
+ */
+function formatPrice(plan: Plan): string {
+  if (plan.price.inr === null) return 'Custom';
+  if (plan.price.inr === 0) return '₹0';
+  return `₹${plan.price.inr}`;
+}
+
+function planToTier(plan: Plan): Tier {
+  return {
+    name: plan.displayName,
+    tagline: plan.marketing.tagline,
+    price: formatPrice(plan),
+    priceUnit: plan.price.period || undefined,
+    priceNote: plan.price.subline ?? '',
+    features: plan.marketing.features,
+    cta: plan.marketing.cta,
+    featured: plan.marketing.featured,
+  };
+}
+
+const TIERS: Tier[] = Object.values(PLANS)
+  .filter((p) => p.id !== 'admin')
+  .map(planToTier);
 
 export function Pricing() {
   return (
