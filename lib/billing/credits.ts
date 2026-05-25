@@ -50,6 +50,14 @@ export interface CreditSnapshot {
   kidId: string;
   plan: UserPlan;
   balance: number;
+  /**
+   * The grant + topup split that backs `balance`. Topup credits never
+   * expire; the grant pool is zeroed at each monthly cycle (see
+   * `grantMonthlyCredits`). Debits draw from grant first so paid topups
+   * are spent last.
+   */
+  balanceGrant: number;
+  balanceTopup: number;
   monthlyGrantAmount: number;
   monthlyGrantedAt: Date | null;
   monthlyResetAt: Date | null;
@@ -64,6 +72,32 @@ function tsToDate(value: unknown): Date | null {
 }
 
 /**
+ * Extract the per-pool credit balances from a kid-doc data blob.
+ *
+ * Backwards-compatible default for legacy docs (pre-two-pool migration):
+ * a doc that has `creditBalance` set but no per-pool fields is treated as
+ * **all topup** — never-expiring. This is the kid-friendly default: a
+ * legacy balance was already in their wallet, so we don't want a renewal
+ * to suddenly expire it. New writes always populate both pools.
+ */
+function readPools(data: Record<string, unknown>): { grant: number; topup: number; total: number } {
+  const grantRaw = data.creditBalanceGrant;
+  const topupRaw = data.creditBalanceTopup;
+  const totalRaw = (data.creditBalance as number) ?? 0;
+
+  if (typeof grantRaw === 'number' || typeof topupRaw === 'number') {
+    const grant = (grantRaw as number) ?? 0;
+    const topup = (topupRaw as number) ?? 0;
+    return { grant, topup, total: grant + topup };
+  }
+
+  // Legacy doc: only `creditBalance` is set. Treat as all-topup so a
+  // subsequent expiry doesn't zero credits the kid never bought but had
+  // sitting in the cache from before the migration.
+  return { grant: 0, topup: totalRaw, total: totalRaw };
+}
+
+/**
  * Read the current credit balance + plan + monthly cycle metadata. Returns
  * a zero-balance snapshot for kids that don't have a billing record yet
  * (don't throw — callers want a default they can render).
@@ -74,10 +108,13 @@ export async function getCreditSnapshot(kidId: string): Promise<CreditSnapshot> 
   const data = snap.exists ? (snap.data() as Record<string, unknown>) : {};
 
   const plan = (data.plan as UserPlan) ?? 'free';
+  const pools = readPools(data);
   return {
     kidId,
     plan,
-    balance: (data.creditBalance as number) ?? 0,
+    balance: pools.total,
+    balanceGrant: pools.grant,
+    balanceTopup: pools.topup,
     monthlyGrantAmount: (data.creditsMonthlyGrantAmount as number) ?? 0,
     monthlyGrantedAt: tsToDate(data.creditsMonthlyGrantedAt),
     monthlyResetAt: tsToDate(data.creditsMonthlyResetAt),
@@ -160,28 +197,47 @@ export async function debitCredits(input: DebitInput): Promise<DebitResult> {
   return adminDb.runTransaction(async (tx) => {
     const kidDoc = await tx.get(kidRef);
     const data = kidDoc.exists ? (kidDoc.data() as Record<string, unknown>) : {};
-    const balance = (data.creditBalance as number) ?? 0;
+    const pools = readPools(data);
 
-    if (balance < input.amount) {
+    if (pools.total < input.amount) {
       throw new InsufficientCreditsError({
         required: input.amount,
-        available: balance,
+        available: pools.total,
         feature: input.feature,
       });
     }
 
-    const balanceAfter = balance - input.amount;
-    tx.update(kidRef, {
-      creditBalance: balanceAfter,
-      creditsLastDebitAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    });
+    // Drain grant first — paid topups are spent last so the monthly
+    // cycle expiry never burns purchased credits.
+    const fromGrant = Math.min(pools.grant, input.amount);
+    const fromTopup = input.amount - fromGrant;
+    const newGrant = pools.grant - fromGrant;
+    const newTopup = pools.topup - fromTopup;
+    const balanceAfter = newGrant + newTopup;
+
+    // `set` with merge (not `update`) so a brand-new kid doc — created
+    // implicitly by an admin grant or a bypass-debug debit — also works.
+    tx.set(
+      kidRef,
+      {
+        creditBalance: balanceAfter,
+        creditBalanceGrant: newGrant,
+        creditBalanceTopup: newTopup,
+        creditsLastDebitAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
     tx.set(ledgerRef, {
       type: 'debit',
       amount: -input.amount,
       balanceAfter,
       feature: input.feature,
-      metadata: input.metadata ?? null,
+      metadata: {
+        ...(input.metadata ?? {}),
+        fromGrant,
+        fromTopup,
+      },
       createdAt: FieldValue.serverTimestamp(),
     });
 
@@ -201,7 +257,8 @@ interface GrantInput {
 /**
  * Award the monthly grant for `plan`. If the kid had a previous grant with
  * unspent credits, those expire in this same transaction (one `expire`
- * entry + one `grant` entry). Topup credits are preserved.
+ * entry + one `grant` entry). **Topup credits are preserved** — only the
+ * `creditBalanceGrant` pool is zeroed, never `creditBalanceTopup`.
  *
  * `amount = Infinity` (admin plan) short-circuits: the kid is marked
  * unlimited and no ledger entry is written.
@@ -216,16 +273,29 @@ export async function grantMonthlyCredits(input: GrantInput): Promise<{ balanceA
   const grantSize = input.amount ?? plan.creditsPerMonth;
 
   // Admin / unlimited tier — no metering. Set a sentinel and bail.
+  //
+  // Uses `set(..., { merge: true })` instead of `update(...)` because the
+  // latter throws `not-found` on a kid doc that doesn't exist yet. The
+  // first-ever admin grant on a brand-new kid would otherwise fail.
   if (!Number.isFinite(grantSize)) {
     const kidRef = adminDb.collection(KIDS_COLLECTION).doc(input.kidId);
-    await kidRef.update({
-      plan: input.plan,
-      creditsMonthlyGrantAmount: Number.MAX_SAFE_INTEGER,
-      creditsMonthlyGrantedAt: FieldValue.serverTimestamp(),
-      // No reset — admin doesn't expire.
-      creditsMonthlyResetAt: FieldValue.delete(),
-      updatedAt: FieldValue.serverTimestamp(),
-    });
+    await kidRef.set(
+      {
+        plan: input.plan,
+        // Park the unlimited sentinel in the topup pool so it never expires.
+        // Direct debit calls (bypassing the assertEntitled short-circuit)
+        // remain safe with massive headroom.
+        creditBalance: Number.MAX_SAFE_INTEGER,
+        creditBalanceGrant: 0,
+        creditBalanceTopup: Number.MAX_SAFE_INTEGER,
+        creditsMonthlyGrantAmount: Number.MAX_SAFE_INTEGER,
+        creditsMonthlyGrantedAt: FieldValue.serverTimestamp(),
+        // No reset — admin doesn't expire.
+        creditsMonthlyResetAt: FieldValue.delete(),
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
     return { balanceAfter: Number.MAX_SAFE_INTEGER };
   }
 
@@ -239,30 +309,33 @@ export async function grantMonthlyCredits(input: GrantInput): Promise<{ balanceA
   return adminDb.runTransaction(async (tx) => {
     const kidDoc = await tx.get(kidRef);
     const data = kidDoc.exists ? (kidDoc.data() as Record<string, unknown>) : {};
-    const balance = (data.creditBalance as number) ?? 0;
-    const lastGrant = (data.creditsMonthlyGrantAmount as number) ?? 0;
+    const pools = readPools(data);
 
-    // Step 1: expire the previous monthly grant if there's an unspent
-    // remainder. We can't tell "grant credits" from "topup credits" without
-    // walking the ledger, so we cap the expiry at the smaller of
-    // (current balance, last grant amount). Topup credits (which never
-    // expire) are preserved by this clamp.
-    const expireAmount = Math.min(balance, lastGrant);
-    let workingBalance = balance;
+    // Step 1: zero the grant pool. Whatever was left there is the
+    // expiring amount. The topup pool is untouched — paid credits never
+    // expire (this is the invariant Codex flagged in the original
+    // single-pool design).
+    const expireAmount = pools.grant;
+    const balanceAfterExpire = pools.topup;
 
     if (expireAmount > 0) {
-      workingBalance = balance - expireAmount;
       tx.set(expireRef, {
         type: 'expire',
         amount: -expireAmount,
-        balanceAfter: workingBalance,
-        metadata: { plan: input.plan, previousGrant: lastGrant },
+        balanceAfter: balanceAfterExpire,
+        metadata: {
+          plan: input.plan,
+          previousGrant: (data.creditsMonthlyGrantAmount as number) ?? 0,
+        },
         createdAt: FieldValue.serverTimestamp(),
       });
     }
 
-    // Step 2: write the new grant.
-    const balanceAfter = workingBalance + grantSize;
+    // Step 2: write the new grant into the grant pool.
+    const newGrant = grantSize;
+    const newTopup = pools.topup;
+    const balanceAfter = newGrant + newTopup;
+
     tx.set(grantRef, {
       type: 'grant',
       amount: grantSize,
@@ -277,6 +350,8 @@ export async function grantMonthlyCredits(input: GrantInput): Promise<{ balanceA
       {
         plan: input.plan,
         creditBalance: balanceAfter,
+        creditBalanceGrant: newGrant,
+        creditBalanceTopup: newTopup,
         creditsMonthlyGrantAmount: grantSize,
         creditsMonthlyGrantedAt: FieldValue.serverTimestamp(),
         creditsMonthlyResetAt: Timestamp.fromDate(nextReset),
@@ -336,8 +411,11 @@ export async function addTopupCredits(
 
     const kidDoc = await tx.get(kidRef);
     const data = kidDoc.exists ? (kidDoc.data() as Record<string, unknown>) : {};
-    const balance = (data.creditBalance as number) ?? 0;
-    const balanceAfter = balance + input.amount;
+    const pools = readPools(data);
+
+    // Topups land in the never-expiring pool.
+    const newTopup = pools.topup + input.amount;
+    const balanceAfter = pools.grant + newTopup;
 
     tx.set(topupRef, {
       type: 'topup',
@@ -352,6 +430,8 @@ export async function addTopupCredits(
       kidRef,
       {
         creditBalance: balanceAfter,
+        creditBalanceGrant: pools.grant,
+        creditBalanceTopup: newTopup,
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true },
@@ -372,6 +452,10 @@ interface BonusInput {
  * Admin-issued credit grant. Use for support gestures, beta access, or
  * manual reimbursements (not Razorpay-backed — for those, write a `refund`
  * via the webhook handler).
+ *
+ * Bonus credits land in the **topup pool** (never expire) — admin gifts
+ * shouldn't disappear at the next monthly cycle. Same semantics as a
+ * paid topup, just without a `paymentRef`.
  */
 export async function addBonusCredits(input: BonusInput): Promise<{ balanceAfter: number }> {
   if (input.amount <= 0) {
@@ -384,8 +468,9 @@ export async function addBonusCredits(input: BonusInput): Promise<{ balanceAfter
   return adminDb.runTransaction(async (tx) => {
     const kidDoc = await tx.get(kidRef);
     const data = kidDoc.exists ? (kidDoc.data() as Record<string, unknown>) : {};
-    const balance = (data.creditBalance as number) ?? 0;
-    const balanceAfter = balance + input.amount;
+    const pools = readPools(data);
+    const newTopup = pools.topup + input.amount;
+    const balanceAfter = pools.grant + newTopup;
 
     tx.set(bonusRef, {
       type: 'bonus',
@@ -399,6 +484,8 @@ export async function addBonusCredits(input: BonusInput): Promise<{ balanceAfter
       kidRef,
       {
         creditBalance: balanceAfter,
+        creditBalanceGrant: pools.grant,
+        creditBalanceTopup: newTopup,
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true },

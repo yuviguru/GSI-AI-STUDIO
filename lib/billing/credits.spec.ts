@@ -200,6 +200,46 @@ describe('lib/billing/credits', () => {
       expect(result.entryId).toBe('');
       expect(ledgerStore.get('kids/kid_a/creditLedger')).toBeUndefined();
     });
+
+    it('drains the grant pool before touching topup (Codex P1)', async () => {
+      // Mixed pools: grant 50 + topup 50 = 100. Debit 75 should fully
+      // empty the grant pool and take only 25 from topup. The remaining
+      // 25 topup is then safe from the next monthly expiry.
+      docStore.set('kids/kid_a', {
+        creditBalance: 100,
+        creditBalanceGrant: 50,
+        creditBalanceTopup: 50,
+      });
+
+      const result = await debitCredits({
+        kidId: 'kid_a',
+        amount: 75,
+        feature: 'image.sdxl',
+      });
+
+      expect(result.balanceAfter).toBe(25);
+      const doc = docStore.get('kids/kid_a');
+      expect(doc?.creditBalanceGrant).toBe(0);
+      expect(doc?.creditBalanceTopup).toBe(25);
+
+      const ledger = ledgerStore.get('kids/kid_a/creditLedger') ?? [];
+      const meta = ledger[0]?.metadata as Record<string, unknown>;
+      expect(meta.fromGrant).toBe(50);
+      expect(meta.fromTopup).toBe(25);
+    });
+
+    it('debits draw entirely from topup when grant pool is empty', async () => {
+      docStore.set('kids/kid_a', {
+        creditBalance: 80,
+        creditBalanceGrant: 0,
+        creditBalanceTopup: 80,
+      });
+
+      const result = await debitCredits({ kidId: 'kid_a', amount: 25, feature: 'image.flux' });
+
+      expect(result.balanceAfter).toBe(55);
+      expect(docStore.get('kids/kid_a')?.creditBalanceTopup).toBe(55);
+    });
   });
 
   describe('grantMonthlyCredits()', () => {
@@ -218,10 +258,12 @@ describe('lib/billing/credits', () => {
     });
 
     it('expires the previous grant remainder before granting new credits', async () => {
-      // Existing state: 300 credits left from a 500-credit creator grant.
-      // Renewal should expire those 300, then grant 500 fresh.
+      // Existing state: 300 credits left in the grant pool, 0 topup.
+      // Renewal expires those 300, then grants 500 fresh.
       docStore.set('kids/kid_a', {
         creditBalance: 300,
+        creditBalanceGrant: 300,
+        creditBalanceTopup: 0,
         creditsMonthlyGrantAmount: 500,
         plan: 'creator',
       });
@@ -237,22 +279,54 @@ describe('lib/billing/credits', () => {
       expect(ledger[1]?.amount).toBe(500);
     });
 
-    it('preserves topup credits when expiring monthly remainder', async () => {
-      // Balance = 800: 300 unspent grant + 500 topup (which never expires).
-      // Renewal should expire only 300, preserve 500 topup, then add 500.
+    it('preserves paid topups when expiring monthly remainder (Codex P1)', async () => {
+      // Bug scenario from PR #65 review: kid has grant 500 + topup 500 = 1000,
+      // spends 700 (drains grant entirely + 200 of topup). Balance: 0 grant +
+      // 300 topup. Renewal must NOT touch the 300 topup remainder.
       docStore.set('kids/kid_a', {
-        creditBalance: 800,
-        creditsMonthlyGrantAmount: 500, // clamp: min(800, 500) = 500 expires
+        creditBalance: 300,
+        creditBalanceGrant: 0,
+        creditBalanceTopup: 300,
+        creditsMonthlyGrantAmount: 500,
         plan: 'creator',
       });
 
       const result = await grantMonthlyCredits({ kidId: 'kid_a', plan: 'creator' });
 
-      // 800 - 500 (expired) + 500 (granted) = 800
-      // Note: this is the clamped-expiry behavior — we can't distinguish
-      // grant vs topup in the balance cache, so we use lastGrantAmount as
-      // an upper bound. Conservative: never expire more than was granted.
+      // 0 (expired, grant pool was empty) + 500 (new grant) + 300 (topup
+      // intact) = 800. The OLD single-pool code would have produced 500
+      // here — burning the 300 of paid credits.
       expect(result.balanceAfter).toBe(800);
+      expect(docStore.get('kids/kid_a')?.creditBalanceGrant).toBe(500);
+      expect(docStore.get('kids/kid_a')?.creditBalanceTopup).toBe(300);
+
+      const ledger = ledgerStore.get('kids/kid_a/creditLedger') ?? [];
+      // Grant pool was 0, so no expire entry — only the new grant.
+      expect(ledger).toHaveLength(1);
+      expect(ledger[0]?.type).toBe('grant');
+    });
+
+    it('handles mixed remainder: grant 300 + topup 500 → renewal preserves both', async () => {
+      docStore.set('kids/kid_a', {
+        creditBalance: 800,
+        creditBalanceGrant: 300,
+        creditBalanceTopup: 500,
+        creditsMonthlyGrantAmount: 500,
+        plan: 'creator',
+      });
+
+      const result = await grantMonthlyCredits({ kidId: 'kid_a', plan: 'creator' });
+
+      // 300 grant pool expires → topup 500 preserved → grant 500 fresh.
+      // Final: 500 grant + 500 topup = 1000.
+      expect(result.balanceAfter).toBe(1000);
+      expect(docStore.get('kids/kid_a')?.creditBalanceTopup).toBe(500);
+
+      const ledger = ledgerStore.get('kids/kid_a/creditLedger') ?? [];
+      expect(ledger).toHaveLength(2);
+      expect(ledger[0]?.type).toBe('expire');
+      expect(ledger[0]?.amount).toBe(-300);
+      expect(ledger[1]?.type).toBe('grant');
     });
 
     it('admin plan short-circuits — no ledger, unlimited cache value', async () => {
@@ -260,6 +334,22 @@ describe('lib/billing/credits', () => {
 
       expect(result.balanceAfter).toBe(Number.MAX_SAFE_INTEGER);
       expect(ledgerStore.get('kids/kid_admin/creditLedger')).toBeUndefined();
+    });
+
+    it('admin plan grant succeeds on brand-new kid doc (Codex P2)', async () => {
+      // Codex flagged: the admin branch used `update()` which throws
+      // `not-found` when the kid doc doesn't exist yet. Switching to
+      // `set(..., {merge: true})` is the fix — and this test pins it down.
+      docStore.clear(); // ensure kid doc doesn't exist
+
+      const result = await grantMonthlyCredits({ kidId: 'kid_brand_new', plan: 'admin' });
+
+      expect(result.balanceAfter).toBe(Number.MAX_SAFE_INTEGER);
+      // Verify the doc actually got written (set+merge created it).
+      const doc = docStore.get('kids/kid_brand_new');
+      expect(doc).toBeDefined();
+      expect(doc?.plan).toBe('admin');
+      expect(doc?.creditBalanceTopup).toBe(Number.MAX_SAFE_INTEGER);
     });
   });
 

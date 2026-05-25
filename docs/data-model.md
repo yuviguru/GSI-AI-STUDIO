@@ -509,7 +509,9 @@ Kid profiles. **Top-level collection** — `parentId` links back to `users/{user
 | learningProgress | map | no | `{beginner: 0.4, intermediate: 0.0}` completion ratios |
 | badges | array\<string\> | no | Earned badge IDs |
 | plan | string | no | Effective plan for this kid: `free` \| `creator` \| `pro` \| `school` \| `admin`. Inherited from parent or school; cached here for fast guard checks. Default `free` if absent. |
-| creditBalance | number | no | Cached current credit balance. Authoritative ledger is `kids/{kidId}/creditLedger`. Default `0`. |
+| creditBalance | number | no | Cached **total** balance = `creditBalanceGrant + creditBalanceTopup`. Authoritative ledger is `kids/{kidId}/creditLedger`. Default `0`. |
+| creditBalanceGrant | number | no | Unspent portion of the current monthly plan grant. Zeroed at each cycle (via `expire` + fresh `grant` ledger pair). Debits draw from this pool first. Default `0`. |
+| creditBalanceTopup | number | no | Purchased + bonus credits. **Never expires.** Razorpay topups and admin `bonus` grants land here. Debits draw from this pool only after the grant pool is exhausted. Default `0`. |
 | creditsMonthlyGrantAmount | number | no | Last monthly grant size (so we know how to refresh on reset). Mirrors `PLANS[plan].creditsPerMonth` at time of grant. |
 | creditsMonthlyGrantedAt | timestamp | no | When the current monthly grant landed. |
 | creditsMonthlyResetAt | timestamp | no | When the next monthly grant should fire (typically `creditsMonthlyGrantedAt + 30d`). |
@@ -519,8 +521,9 @@ Kid profiles. **Top-level collection** — `parentId` links back to `users/{user
 
 **Credit-field invariants**:
 - `creditBalance` is a denormalized cache; the ledger (subcollection) is the source of truth. A nightly reconciliation Cloud Function can recompute balance from ledger sums and flag drift.
-- All ledger writes happen inside a Firestore transaction that also updates `creditBalance` atomically — clients never see a balance that disagrees with the latest ledger entry.
-- Monthly grant credits expire at `creditsMonthlyResetAt`. Topup credits never expire. The `expire` ledger entry zeroes the unspent monthly portion when a new grant lands.
+- `creditBalance === creditBalanceGrant + creditBalanceTopup` at all times. The kid-doc write inside every transaction enforces this invariant.
+- All ledger writes happen inside a Firestore transaction that also updates the pool fields atomically — clients never see a state that disagrees with the latest ledger entry.
+- **Two-pool model**: `creditBalanceGrant` tracks the monthly-cycle pool (expires); `creditBalanceTopup` tracks the paid + bonus pool (never expires). Debits drain grant first so paid topups are spent last. The `expire` ledger entry zeroes only the grant pool when a new grant lands — topups are untouched.
 
 ---
 
