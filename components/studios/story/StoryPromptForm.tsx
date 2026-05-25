@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { getTemplatesByType, type Template } from '@/lib/templates';
 import { SurpriseButton } from '@/components/shared/SurpriseButton';
 import { SamplePromptCards } from '@/components/studios/story/SamplePromptCards';
+import { CreditCostBadge } from '@/components/billing/CreditCostBadge';
 import type { StoryInput } from '@/lib/validators';
 
 interface StoryPromptFormProps {
@@ -268,6 +269,7 @@ export function StoryPromptForm({
           <div className="flex items-center gap-3">
             {error && <span className="text-xs text-red-500">{error}</span>}
             <span className="text-xs text-gray-400">{premise.length}/500</span>
+            <CreditCostBadge feature="story.generate" compact />
 
             {/* Create button */}
             <motion.button

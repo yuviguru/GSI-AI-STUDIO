@@ -8,6 +8,7 @@ import { getTemplatesByType, type Template } from '@/lib/templates';
 import { SurpriseButton } from '@/components/shared/SurpriseButton';
 import { QuizSampleCards } from '@/components/studios/quiz/QuizSampleCards';
 import type { QuizInput } from '@/lib/validators';
+import { CreditCostBadge } from '@/components/billing/CreditCostBadge';
 
 interface QuizPromptFormProps {
   onSubmit: (input: QuizInput & { templateId?: string; remixedFromId?: string }) => void;
@@ -236,6 +237,7 @@ export function QuizPromptForm({
           <div className="flex items-center gap-3">
             {error && <span className="text-xs text-red-500">{error}</span>}
             <span className="text-xs text-gray-400">{topic.length}/200</span>
+            <CreditCostBadge feature="quiz.generate" compact />
 
             {/* Create button */}
             <motion.button

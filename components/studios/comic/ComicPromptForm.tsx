@@ -8,6 +8,7 @@ import { getTemplatesByType, type Template } from '@/lib/templates';
 import { SurpriseButton } from '@/components/shared/SurpriseButton';
 import { ComicSampleCards } from '@/components/studios/comic/ComicSampleCards';
 import type { ComicInput } from '@/lib/validators';
+import { CreditCostBadge } from '@/components/billing/CreditCostBadge';
 
 interface ComicPromptFormProps {
   onSubmit: (input: ComicInput & { templateId?: string; remixedFromId?: string }) => void;
@@ -250,6 +251,7 @@ export function ComicPromptForm({
           <div className="flex items-center gap-3">
             {error && <span className="text-xs text-red-500">{error}</span>}
             <span className="text-xs text-gray-400">{premise.length}/500</span>
+            <CreditCostBadge feature="comic.generate" compact />
 
             {/* Create button */}
             <motion.button
