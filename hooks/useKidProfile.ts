@@ -9,8 +9,27 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
+import { mutate as swrMutate } from 'swr';
 import { useAuth } from './useAuth';
 import { accountDayKey } from '@/lib/sessions/dayKey';
+
+/**
+ * Predicate used by the SWR cache invalidator. Any cache key that points at
+ * a kid-scoped API endpoint should be wiped + revalidated when the active
+ * kid (or their kid-scoped session id) changes. The Hub/Explore public
+ * endpoints currently live under `/api/creations/public` and `/api/users/kids`,
+ * which are parent-or-public scoped — we leave their cache alone.
+ *
+ * Conservatively: anything under `/api/` that isn't on the parent-scoped
+ * allowlist below is treated as kid-scoped.
+ */
+const PARENT_SCOPED_PREFIXES = ['/api/users/kids', '/api/creations/public'];
+
+function isKidScopedKey(key: unknown): boolean {
+  if (typeof key !== 'string') return false;
+  if (!key.startsWith('/api/')) return false;
+  return !PARENT_SCOPED_PREFIXES.some((prefix) => key.startsWith(prefix));
+}
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -29,6 +48,8 @@ export interface KidProfileSummary {
   creationsByType?: Record<string, number>;
   conceptsLearned?: string[];
   streak?: { current: number; longest: number; lastActiveDate: string };
+  /** Per-studio daily activity streaks, mirrored from the session doc. */
+  perStudioStreaks?: Record<string, { count: number; lastDay: string }>;
 }
 
 interface KidProfileState {
@@ -44,6 +65,25 @@ interface KidProfileState {
   needsProfileSetup: boolean;
   /** True if authenticated and has kids but none selected yet (needs picker) */
   needsProfileSelection: boolean;
+  /**
+   * Monotonic counter bumped EVERY time the kid-scoped data scope changes
+   * (kid switch completes, session rotation lands, kid logout). All
+   * `useEffect`-based hooks that fetch `/api/*` data must include this in
+   * their effect dependency array so they refire when a different kid is
+   * active. SWR-based hooks don't need this — they're auto-invalidated
+   * inside `switchKid` / `clearActiveKid` via `swrMutate`.
+   *
+   * Why a counter (and not just `activeKid?.id`)? `setActiveKid` flips
+   * React state synchronously, but the kid-scoped `gsi-session-id` rotation
+   * happens **asynchronously** via POST `/api/sessions/kid`. Hooks that
+   * refire on `activeKid?.id` alone would fetch with the OLD session id
+   * (still in localStorage) and get the previous kid's data back. The
+   * counter is bumped only AFTER the new session id is committed, so
+   * dependents that watch it fetch against the correct session.
+   *
+   * See `docs/architecture.md#kid-scoped-data-fetching` for the rule.
+   */
+  kidScopeVersion: number;
   /** Switch active kid */
   switchKid: (kidId: string) => void;
   /** Refresh kids list from server */
@@ -74,6 +114,7 @@ const KidProfileContext = createContext<KidProfileState>({
   hasKids: false,
   needsProfileSetup: false,
   needsProfileSelection: false,
+  kidScopeVersion: 0,
   switchKid: () => {},
   refreshKids: async () => {},
   updateKidLocal: () => {},
@@ -98,7 +139,33 @@ export function KidProfileProvider({ children }: KidProfileProviderProps) {
   const [kids, setKids] = useState<KidProfileSummary[]>([]);
   const [activeKid, setActiveKid] = useState<KidProfileSummary | null>(null);
   const [loading, setLoading] = useState(false);
+  // Bumped after every kid-scope change (kid switch + session-id rotation
+  // committed, kid logout). Read by useEffect-based fetch hooks as their
+  // refresh trigger. SWR-based hooks rely on the swrMutate call alongside
+  // each bump.
+  const [kidScopeVersion, setKidScopeVersion] = useState(0);
   const initialAuthCheckRef = useRef(false);
+
+  /**
+   * Single source of truth for "the kid scope changed — invalidate every
+   * kid-scoped data fetcher". Called inside `switchKid` (after the new
+   * session id is committed to localStorage) and `clearActiveKid`.
+   *
+   * Does two things in lock-step:
+   *   1. Invalidates the SWR cache for `/api/*` keys (excluding the
+   *      parent-scoped allowlist) and revalidates them — every active
+   *      `useSWR` consumer refetches against the new session id.
+   *   2. Bumps `kidScopeVersion` — every `useEffect` hook that lists this
+   *      in its deps refires and refetches.
+   *
+   * Both must be called together; running only one leaves half the page
+   * stale. Centralizing here is the whole point of the architecture — no
+   * other code path mutates the kid scope.
+   */
+  const bumpKidScope = useCallback(() => {
+    void swrMutate(isKidScopedKey, undefined, { revalidate: true });
+    setKidScopeVersion((v) => v + 1);
+  }, []);
   /**
    * Tracks the most recent in-flight POST to /api/sessions/kid. Used to:
    *   1. Dedupe — if a request is already in flight for the same
@@ -226,12 +293,21 @@ export function KidProfileProvider({ children }: KidProfileProviderProps) {
             const newSessionId = json?.data?.sessionId;
             if (typeof newSessionId === 'string' && newSessionId.length > 0) {
               localStorage.setItem('gsi-session-id', newSessionId);
+              // Critical ordering: the SWR mutate + kidScopeVersion bump
+              // MUST happen AFTER the new session id is committed. If we
+              // bumped before, subscribers would refetch with the OLD
+              // session id and store the previous kid's data back into
+              // SWR's cache — the exact bug this whole mechanism prevents.
+              bumpKidScope();
             }
           }
         } catch {
           // Network blip or abort — non-blocking. The rollover effect
           // will retry on the next visibility/focus event (and the
-          // dedup guard above prevents storm-spamming).
+          // dedup guard above prevents storm-spamming). We deliberately
+          // do NOT bump the scope on failure — the session id stayed
+          // stale, so refetching now would just refill the cache with
+          // the wrong kid's data.
         } finally {
           // Clear in-flight pointer ONLY if it's still us; a later
           // switchKid may have already replaced it with a new controller.
@@ -241,13 +317,16 @@ export function KidProfileProvider({ children }: KidProfileProviderProps) {
         }
       })();
     },
-    [kids, getIdToken, accountTimezone],
+    [kids, getIdToken, accountTimezone, bumpKidScope],
   );
 
   const clearActiveKid = useCallback(() => {
     setActiveKid(null);
     localStorage.removeItem(ACTIVE_KID_KEY);
-  }, []);
+    // Wipe kid-scoped caches so the next sign-in / pick starts cold.
+    // Same invalidation as a switch — both transitions flush stale data.
+    bumpKidScope();
+  }, [bumpKidScope]);
 
   /**
    * Merge known field changes into local kid state without hitting the
@@ -321,6 +400,7 @@ export function KidProfileProvider({ children }: KidProfileProviderProps) {
     hasKids,
     needsProfileSetup,
     needsProfileSelection,
+    kidScopeVersion,
     switchKid,
     refreshKids: fetchKids,
     updateKidLocal,

@@ -730,6 +730,32 @@ Teacher portal, assignments, and school analytics form a distinct module layered
 ### fetchWithSession Wrapper
 `lib/fetchWithSession.ts` wraps the Fetch API to auto-inject `X-Session-Id` from localStorage on every client-side API call. All hooks and components use this instead of raw `fetch()`, preventing the common bug of forgetting the session header.
 
+### Kid-scoped data fetching
+
+A multi-kid parent account has one parent identity but **N kid scopes**. Almost every `/api/*` endpoint reads from the kid-scoped session, so its response changes the moment a different kid is picked. The client must invalidate any cached kid data the instant the kid scope changes — otherwise the new kid sees the previous kid's books, creations, points, badges, streaks.
+
+**Classification**:
+
+| Type | Examples | Refetch on kid switch? |
+|---|---|---|
+| **Static** | `lib/templates/bookTemplates.ts`, `lib/badges.ts`, `lib/mascots/roster.ts`, brand assets, design tokens | No — bundled constants, never fetched |
+| **Dynamic / kid-scoped** | Anything under `/api/*` that returns per-kid data (books, creations, performances, points, badges, skills, CEO, homework, …) | **Yes — every kid switch** |
+| **Dynamic / parent-or-public** | `/api/users/kids`, `/api/creations/public`, the public Explore feed | No — same response regardless of which kid is active |
+
+**Mechanism — `kidScopeVersion` + SWR mutate**: `useKidProfile` owns a `bumpKidScope()` function that does two things atomically:
+1. Invalidates the SWR cache for every `/api/*` key NOT on the parent-scoped allowlist, with `revalidate: true`. Active `useSWR` consumers refetch automatically.
+2. Bumps the `kidScopeVersion` counter exposed on the context.
+
+`bumpKidScope()` runs inside `switchKid` **after** the new kid-scoped `gsi-session-id` is committed to localStorage, and inside `clearActiveKid`. The ordering is essential — if we bump before the new session id lands, subscribers refetch with the old session id and store the previous kid's data back into the cache, defeating the whole mechanism.
+
+**Rule for new hooks**:
+- **SWR-based hook** (`useSWR(url, fetcher)`): nothing to do. The central mutate covers it.
+- **`useEffect`-based hook** that fetches `/api/*` on mount: read `useKidProfile().kidScopeVersion` and include it in the effect's dependency array. Hook refires when scope changes.
+
+Hooks already conforming to the rule: `useCreations`, `usePerformances`, `useSkills`, `useSkillArenaProgress`, plus all SWR hooks (`useBookList`, `useBook`, `useCreation`, `useMyCreations`). Hooks that subscribe to `activeKid?.id` directly (`useCeoProfile`, `useCeoBusinesses`, `useCeoBusiness`, `useCeoAgents`, `useAssignmentContext`) work too — `activeKid` changes on switch, just earlier in the timeline. Use `kidScopeVersion` when correctness depends on the new session id being committed.
+
+**Caveat — localStorage caches inside hooks**: `useSkills` and `useSkillArenaProgress` mirror their last-good response into `localStorage` (offline-friendly). The keys are NOT per-kid right now, so a network failure right after a kid switch can briefly surface the previous kid's cached numbers. Acceptable for v1; long-term fix is to namespace those keys with the active kid id.
+
 ### Error Boundary
 `components/layout/ErrorBoundary.tsx` wraps the provider tree in `app/(public)/layout.tsx`. Catches render errors from context providers (AiPointsContext, AuthProvider, etc.) and shows a kid-friendly retry UI instead of crashing the entire app.
 

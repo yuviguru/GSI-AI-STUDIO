@@ -14,6 +14,7 @@ import {
 } from '@/lib/templates/bookTemplates';
 import { useBookList } from '@/hooks/useBookList';
 import { useCharacterPortrait } from '@/hooks/useCharacterPortrait';
+import { useAiPoints } from '@/contexts/AiPointsContext';
 import { Mascot, type MascotExpression } from '@/components/mascot/Mascot';
 import type {
   BookBucket,
@@ -25,6 +26,11 @@ import type {
 
 interface NewBookWizardProps {
   onClose: () => void;
+  /** When supplied, pre-selects this book type and starts the wizard at
+   *  step 2 (format), skipping the type picker. Used by the template
+   *  gallery row on the library home page so a kid can deep-link straight
+   *  into "I want a recipe book" without re-picking the type. */
+  initialType?: BookType;
 }
 
 interface WizardCharacter {
@@ -152,19 +158,26 @@ function emptyPlot(): BookPlot {
   return { idea: '', beginning: '', problem: '', adventure: '', ending: '' };
 }
 
-export function NewBookWizard({ onClose }: NewBookWizardProps) {
+export function NewBookWizard({ onClose, initialType }: NewBookWizardProps) {
   const router = useRouter();
   const { createBook, creating, createError } = useBookList();
   const portrait = useCharacterPortrait();
-  const [step, setStep] = useState(1);
+  const { trackCreation } = useAiPoints();
+  // Resolve the seed card from `initialType` once at mount. Looking it up
+  // here (rather than threading the full card through props) keeps the
+  // template-gallery API simple — callers only pass the BookType id.
+  const seedCard = initialType
+    ? BOOK_TYPE_CARDS.find((c) => c.type === initialType)
+    : undefined;
+  const [step, setStep] = useState(seedCard ? 2 : 1);
   const [state, setState] = useState<WizardState>({
-    type: null,
-    bucket: null,
+    type: seedCard?.type ?? null,
+    bucket: seedCard?.bucket ?? null,
     format: null,
     size: null,
     pageLimit: null,
     font: null,
-    themeColor: null,
+    themeColor: seedCard?.suggestedThemeColor ?? null,
     title: '',
     author: '',
     characters: [],
@@ -305,6 +318,13 @@ export function NewBookWizard({ onClose }: NewBookWizardProps) {
     });
 
     if (book) {
+      // Bump points/badges/streak for the book studio — mirrors the
+      // Story/Music/Quiz pattern. Awaited so the optimistic counter is in
+      // place before navigation, then the kid lands on the editor with
+      // their Book Badges already reflecting the new book. Failures are
+      // swallowed inside trackCreation (network blip shouldn't block the
+      // editor handoff).
+      await trackCreation('book');
       router.push(`/create/book/${book.id}`);
     }
   };

@@ -78,9 +78,58 @@ All five studios (Story, Music, Quiz, Game, Comic) follow the same 3-step patter
 
 **Lifecycle**: `Library → Wizard → Editor (loops per page) → Cover → Preview → Publish`. The kid can leave at any point and resume from the library card.
 
-#### Library (Book Studio home)
+#### Library (Book Studio home) — "studio shell" layout
 
-Grid of book cards grouped by status: **In progress** (drafts with a `pageCount / pageLimit` indicator) and **Published**. `[+ New Book]` opens the wizard. Tap a card to resume.
+The library home page is the kid's **author dashboard**. It inherits the same visual chrome as the Game Hub (`GameNavBar` + `game-glass` cards + `font-display` headings + gradient hero) but is scoped to *being a book author*, not the global game. The same shell pattern is intended to transplant cleanly to Story / Music / Quiz / Comic / Game studio homes.
+
+Zones, top to bottom:
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│ [GameNavBar — injected by layout: brand · ✨points · auth · mute]  │
+│ ← Back to home   (LayoutBackLink — injected by layout)             │
+├────────────────────────────────────────────────────────────────────┤
+│ ┌─ HERO ──────────────────────────────────────┬─ AUTHOR STATS ───┐ │
+│ │  [Koko]  Continue: "The Dragon Quest"        │  12     3        │ │
+│ │          ▓▓▓▓▓▓▓░░░  7 pages left            │  Made   WIP      │ │
+│ │          [Resume →]  [+ New Book]            │  8      2⭐      │ │
+│ └──────────────────────────────────────────────┴──────────────────┘ │
+│ ┌─ BOOK BADGES (6 strip) ──────────────┬─ BOOK STREAK ────────────┐ │
+│ │ 📖 ✍️ 📚 🏆 🔒 🔒                     │ 🔥 3-day book streak     │ │
+│ └──────────────────────────────────────┴──────────────────────────┘ │
+│                                                                     │
+│ ✏️  IN PROGRESS               [📌 Today's quest: write a page +20] │
+│ [book card grid: 2 cols mobile, 3 sm, 4 md]                        │
+│                                                                     │
+│ 🎉  PUBLISHED                                                       │
+│ [book card grid: 2 cols mobile, 3 sm, 4 md]                        │
+│                                                                     │
+│ ⭐  FEATURED THIS WEEK   (showcase rail — covers + author names)   │
+│ [horizontal scroll, 3-5 books, click to read]                      │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+**Author stats — four tiles**:
+- **Written** — lifetime total (`items.length`)
+- **In progress** — count where `status ∈ {draft, complete}`
+- **Published** — count where `status === 'published'`
+- **Featured ⭐** — editorial picks (v1: always `0` with hint "Submit your best book to be featured" until a curation pipeline exists)
+
+**Hero behavior**:
+- If there's at least one draft → show "Continue *<latest draft title>*" with a page-progress bar and a primary `[Resume →]` plus secondary `[+ New Book]`.
+- If no drafts → show "Start your first book" CTA inline with the mascot.
+
+**Book badges strip**: 4-6 book-only badges from `BADGE_CATALOG` (e.g. `book_first`, `book_5`, `book_pages_10`, `book_published`, `book_streak_3`). Locked slots show a `Lock` icon. Tapping the strip opens the global `BadgeGallery` sheet filtered to book badges. Global (non-book) badges remain accessible from the Hub.
+
+**Book streak card**: shows `perStudioStreaks.book.count` with a 🔥 icon. Empty state ("Start a streak today!") if `count === 0`.
+
+**Today's quest pill**: a single contextual quest tied to the studio (e.g. "Write a page today +20 XP"). Studio pages do **not** duplicate the Hub's full `QuestsCard` — at most one pill. Hide if no active book quest.
+
+**Featured this week rail**: a *showcase*, not a leaderboard. Cover + book title + author first name. Click → public read view. Aspirational, not ranked. **No competitive leaderboard inside studios** — research (Mekler 2014; Cluelabs LXD) shows competitive ranks harm intrinsic motivation in creative contexts for kids, especially bottom-quartile learners. Hub keeps the only `LeaderboardCard`; studios use Featured instead.
+
+**Back link**: handled by `LayoutBackLink` (auto-rendered by `(public)/layout.tsx`). The studio component must **not** include its own "Back to home" link — that would duplicate it.
+
+**Mobile**: Hero + stats collapse into a single stacked hero card. Badge strip and streak inline below. Library grids drop to 2 columns. Featured rail becomes a horizontal scroll.
 
 #### Wizard — locks the layout in 5 steps
 

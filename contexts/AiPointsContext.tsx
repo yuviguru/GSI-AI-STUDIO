@@ -60,11 +60,19 @@ function markMilestoneShown(id: string) {
 
 // ─── Context types ────────────────────────────────────────────────────────────
 
+/** Per-studio daily streak entry — mirrors the server-side shape so it can
+ *  flow straight from the points API to UI without re-shaping. */
+export interface StudioStreak {
+  count: number;
+  lastDay: string;
+}
+
 interface AiPointsState {
   totalPoints: number;
   conceptsLearned: string[];
   badges: string[];
   creationsByType: Record<string, number>;
+  perStudioStreaks: Record<string, StudioStreak>;
   pendingPoints: number;
   newBadges: string[]; // non-empty triggers CelebrationModal badge mode
   celebration: MilestoneCelebration | null; // non-null triggers CelebrationModal milestone mode
@@ -75,6 +83,20 @@ interface AiPointsState {
   reloadFromServer: () => Promise<void>;
   dismissBadgeCelebration: () => void;
   dismissCelebration: () => void;
+}
+
+/** Today's ISO YYYY-MM-DD aligned to Asia/Kolkata — the same day-boundary
+ *  convention used by the homework streak path. Keeps "wrote today" honest
+ *  for kids across timezones without leaking server-clock skew. */
+function todayKolkataISO(): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+  // en-CA formats as YYYY-MM-DD directly
+  return parts;
 }
 
 const AiPointsContext = createContext<AiPointsState | null>(null);
@@ -88,6 +110,7 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
   const [conceptsLearned, setConceptsLearned] = useState<string[]>([]);
   const [badges, setBadges] = useState<string[]>([]);
   const [creationsByType, setCreationsByType] = useState<Record<string, number>>({});
+  const [perStudioStreaks, setPerStudioStreaks] = useState<Record<string, StudioStreak>>({});
   const [pendingPoints, setPendingPoints] = useState(0);
   const [newBadges, setNewBadges] = useState<string[]>([]);
   const [celebration, setCelebration] = useState<MilestoneCelebration | null>(null);
@@ -117,6 +140,7 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
     setConceptsLearned(data.conceptsLearned);
     setBadges(data.badges);
     setCreationsByType(data.creationsByType);
+    setPerStudioStreaks(data.perStudioStreaks ?? {});
     if (data.newBadges?.length > 0) {
       setNewBadges((prev) => [...prev, ...data.newBadges]);
     }
@@ -190,6 +214,7 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
     setBadges(activeKid.badges ?? []);
     setCreationsByType(activeKid.creationsByType ?? {});
     setConceptsLearned(activeKid.conceptsLearned ?? []);
+    setPerStudioStreaks(activeKid.perStudioStreaks ?? {});
     if (typeof window !== 'undefined') {
       localStorage.setItem(POINTS_KEY, String(activeKid.aiPoints ?? 0));
     }
@@ -257,7 +282,13 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
         ...prev,
         [creationType]: (prev[creationType] ?? 0) + 1,
       }));
-      await patchPoints({ action: 'track_creation', creationType });
+      // Send today's date (kid local day, Asia/Kolkata) so the server can
+      // bump the per-studio streak when this creationType is a studio.
+      await patchPoints({
+        action: 'track_creation',
+        creationType,
+        todayDate: todayKolkataISO(),
+      });
     },
     [patchPoints]
   );
@@ -303,6 +334,7 @@ export function AiPointsProvider({ children }: { children: ReactNode }) {
         conceptsLearned,
         badges,
         creationsByType,
+        perStudioStreaks,
         pendingPoints,
         newBadges,
         celebration,
