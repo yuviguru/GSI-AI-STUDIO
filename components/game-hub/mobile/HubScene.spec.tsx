@@ -29,6 +29,22 @@ vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ isAuthenticated: false }),
 }));
 
+vi.mock('@/hooks/useKidProfile', () => ({
+  useKidProfile: () => ({
+    activeKid: {
+      id: 'test-kid',
+      displayName: 'Test Player',
+      mascotId: 'pixie',
+      aiPoints: 250,
+      badges: [],
+      totalCreations: 0,
+      streak: { current: 12, longest: 14, lastActiveDate: '2026-05-25' },
+    },
+    kids: [],
+    loading: false,
+  }),
+}));
+
 vi.mock('@/hooks/useResolvedIdentity', () => ({
   useResolvedIdentity: () => ({
     name: 'Test Player',
@@ -41,6 +57,13 @@ vi.mock('@/hooks/useResolvedIdentity', () => ({
 
 vi.mock('@/components/mascot/MascotAvatar', () => ({
   MascotAvatar: ({ id }: { id: string }) => <div data-testid="mascot" data-mascot-id={id} />,
+}));
+
+// NotificationBell hits /api/notifications and gates on auth. Stub it out
+// so the smoke tests don't depend on Firebase / network — we only verify
+// that HubScene renders it, not its internal behaviour.
+vi.mock('@/components/shared/NotificationBell', () => ({
+  NotificationBell: () => <div data-testid="notification-bell" />,
 }));
 
 vi.mock('@/lib/sounds', () => ({
@@ -113,15 +136,26 @@ describe('HubScene', () => {
     expect(screen.getAllByRole('button', { name: 'Explore' }).length).toBeGreaterThan(0);
   });
 
-  it('renders all 6 side-stack actions and marks Streak as passive', () => {
+  it('renders all 6 side-stack actions and marks Streak as a passive, live-counted status', () => {
     render(<HubScene />);
     // Every interactive side action is a button with its label.
     for (const label of ['Daily', 'Squad', 'Quests', 'Badges', 'Explore']) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
     }
-    // Streak is a status badge — role="status", not a button.
-    const streak = screen.getByRole('status', { name: 'Streak 7' });
+    // Streak is a status badge — role="status", not a button. Label comes
+    // from the active kid's profile (mocked as { current: 12 }), proving
+    // the chip is sourced from state and not a hardcoded literal.
+    const streak = screen.getByRole('status', { name: 'Streak 12' });
     expect(streak.tagName).toBe('DIV');
+  });
+
+  it('renders the real NotificationBell in the HUD (not an inert button)', () => {
+    render(<HubScene />);
+    // The stubbed NotificationBell shows up via its testid — confirms
+    // HubScene wires the bell to a real component instead of declaring
+    // a focusable button with no click handler.
+    expect(screen.getByTestId('notification-bell')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Notifications' })).toBeNull();
   });
 
   it('calls onTabChange with "quests" when the Quests button is tapped', () => {

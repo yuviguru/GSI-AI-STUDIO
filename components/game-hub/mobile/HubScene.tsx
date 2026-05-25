@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight, Bell } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { MascotAvatar } from '@/components/mascot/MascotAvatar';
+import { NotificationBell } from '@/components/shared/NotificationBell';
 import { useAiPoints } from '@/contexts/AiPointsContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useKidProfile } from '@/hooks/useKidProfile';
 import { useResolvedIdentity } from '@/hooks/useResolvedIdentity';
 import { ModeGroupTabs } from '../shared/ModeGroupTabs';
 import { PortalCard } from '../shared/PortalCard';
@@ -18,16 +20,6 @@ import type { MobileTab } from './TabBar';
 import { DailyRewardModal } from './DailyRewardModal';
 
 const XP_PER_LEVEL = 100;
-
-/** Left rail: claim, status, social. */
-const LEFT_ACTIONS: SideAction[] = [
-  { key: 'daily',  emoji: '🎁', label: 'Daily',    pip: '!', g1: 'from-amber-200', g2: 'to-amber-500' },
-  // Streak is passive — see SideActionButton's `passive` flag. It's a
-  // status indicator that always reflects the kid's current streak count.
-  { key: 'streak', emoji: '🔥', label: 'Streak 7',           g1: 'from-rose-200',  g2: 'to-rose-500', passive: true },
-  // TODO(squad): wire this once we have a /squad or /friends route.
-  { key: 'squad',  emoji: '👥', label: 'Squad',              g1: 'from-blue-200',  g2: 'to-blue-500' },
-];
 
 /** Right rail: progress, achievement, discovery. */
 const RIGHT_ACTIONS: SideAction[] = [
@@ -70,6 +62,7 @@ export function HubScene({ onTabChange }: HubSceneProps = {}) {
   const router = useRouter();
   const { totalPoints, isLoaded } = useAiPoints();
   const { isAuthenticated } = useAuth();
+  const { activeKid } = useKidProfile();
   const { name, avatarUrl, mascotId, mascotEmoji } = useResolvedIdentity({
     fallbackName: isAuthenticated ? 'Player' : 'Guest',
   });
@@ -80,6 +73,21 @@ export function HubScene({ onTabChange }: HubSceneProps = {}) {
   const level = Math.floor(totalPoints / XP_PER_LEVEL) + 1;
   const xpInLevel = totalPoints % XP_PER_LEVEL;
   const progressPct = (xpInLevel / XP_PER_LEVEL) * 100;
+
+  // Real streak count from the active kid's profile. Falls back to 0 for
+  // guests / first-time users so the chip stays in the side stack as a
+  // baseline "start your streak" indicator. The Streak chip is rendered
+  // via SideActionButton's `passive` flag (status badge, not a button).
+  const streakCount = activeKid?.streak?.current ?? 0;
+
+  /** Left rail: claim, status, social. Built per-render so the Streak
+   *  label reflects the current count instead of being a hardcoded literal. */
+  const leftActions: SideAction[] = [
+    { key: 'daily',  emoji: '🎁', label: 'Daily',                pip: '!', g1: 'from-amber-200', g2: 'to-amber-500' },
+    { key: 'streak', emoji: '🔥', label: `Streak ${streakCount}`,           g1: 'from-rose-200',  g2: 'to-rose-500', passive: true },
+    // TODO(squad): wire this once we have a /squad or /friends route.
+    { key: 'squad',  emoji: '👥', label: 'Squad',                          g1: 'from-blue-200',  g2: 'to-blue-500' },
+  ];
 
   const handleResume = () => {
     playSound('buttonTap');
@@ -169,13 +177,10 @@ export function HubScene({ onTabChange }: HubSceneProps = {}) {
               {isLoaded ? totalPoints.toLocaleString() : '—'}
             </span>
           </div>
-          <button
-            aria-label="Notifications"
-            className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/80 ring-1 ring-brand-primary/20 hover:bg-white"
-          >
-            <Bell className="h-3.5 w-3.5 text-brand-text" />
-            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500 ring-1 ring-white" />
-          </button>
+          {/* Real notifications bell with dropdown — handles its own auth
+              gating (returns null for guests, so the HUD just shows
+              without the bell when there's nothing to notify about). */}
+          <NotificationBell />
         </div>
       </div>
 
@@ -183,7 +188,7 @@ export function HubScene({ onTabChange }: HubSceneProps = {}) {
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         {/* LEFT side stack */}
         <div className="pointer-events-none absolute left-2 top-3 z-20 flex flex-col gap-2">
-          {LEFT_ACTIONS.map((a) => (
+          {leftActions.map((a) => (
             <SideActionButton key={a.key} action={a} onClick={() => handleAction(a)} />
           ))}
         </div>

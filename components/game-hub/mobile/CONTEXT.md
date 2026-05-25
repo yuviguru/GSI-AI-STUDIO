@@ -34,13 +34,19 @@ HubScene is split into five vertical bands, top to bottom:
 ### Side-stack action dispatch
 Each tap routes through HubScene's `handleAction(action)`:
 - `daily` → opens `DailyRewardModal` via local state
-- `streak` → no-op (the chip is a passive status badge)
+- `streak` → no-op (the chip is a passive status badge; label is computed
+  from `useKidProfile().activeKid?.streak?.current ?? 0`)
 - `squad` → stubbed (`console.warn`) until a /squad route exists
 - `quests` → calls `onTabChange('quests')` — `MobileHub` passes `setTab`
 - `badges` → calls `onTabChange('profile')` — the badge wall lives there
 - anything with `href` → `router.push(href)` (Explore today)
 
-Adding a new side-stack action: extend the `SideAction` array (`LEFT_ACTIONS` / `RIGHT_ACTIONS` in `HubScene.tsx`) and add a case to the switch in `handleAction`.
+`LEFT_ACTIONS` (Daily / Streak / Squad) is built per-render inside the component so the Streak label tracks the live count instead of being a hardcoded literal. `RIGHT_ACTIONS` is a module-level constant — Quests' "3" pip is still a placeholder until we have a real quests count.
+
+Adding a new side-stack action: extend the array (`leftActions` inside the component or `RIGHT_ACTIONS` at the top of `HubScene.tsx`) and add a case to the switch in `handleAction`.
+
+### HUD notifications bell
+The HUD's notification bell is `components/shared/NotificationBell` — a real component that hits `/api/notifications`, shows the unread count, and opens a dropdown. It returns `null` for unauthenticated users, so the HUD just renders without the bell on guest screens (intentional — there's nothing to notify a guest about).
 
 ### Why MobileHub owns the active tab
 Tab switching happens in two places: the TabBar (user taps a tab) and HubScene side-stack actions (Quests / Badges shortcut). Lifting `tab` state to MobileHub lets both call `setTab` without duplicating nav logic.
