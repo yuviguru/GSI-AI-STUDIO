@@ -96,7 +96,24 @@ interface SessionDoc {
     longestStreak: number;
     lastCompletedDate: string | null;
   };
+  /** Per-studio daily activity streaks. Bumped by `track_creation` when
+   *  the action carries a `todayDate` and the `creationType` is a known
+   *  studio (book/story/music/quiz/comic/game). See lib/badges.ts
+   *  `studio_streak` criteria. */
+  perStudioStreaks?: Record<string, { count: number; lastDay: string }>;
 }
+
+/** Studio creationTypes that maintain a daily-activity streak. Other types
+ *  (e.g. `beat-the-ai`, `homework`) have their own dedicated counters and
+ *  are intentionally excluded from this map to keep it focused. */
+const STUDIO_STREAK_TYPES = new Set([
+  'book',
+  'story',
+  'music',
+  'quiz',
+  'comic',
+  'game',
+]);
 
 // ─── Points types ─────────────────────────────────────────────────────────────
 
@@ -109,12 +126,22 @@ export interface SessionPointsData {
   /** Homework completion counters. Absent on sessions that predate the
    *  homework feature — treat missing/undefined as all-zero. */
   homeworkStats?: HomeworkStatsSnapshot;
+  /** Per-studio daily activity streaks. Read by `studio_streak` badge
+   *  criteria. Absent on sessions that predate the streak feature. */
+  perStudioStreaks?: Record<string, { count: number; lastDay: string }>;
 }
 
 export type PointsAction =
   | { action: 'add_points'; points: number; concept?: string }
   | { action: 'learn_concept'; concept: string }
-  | { action: 'track_creation'; creationType: string }
+  | {
+      action: 'track_creation';
+      creationType: string;
+      /** Optional ISO `YYYY-MM-DD` in the kid's local day. When supplied
+       *  and `creationType` is a known studio, bumps the per-studio streak
+       *  using the same yesterday/today/older logic as homework streaks. */
+      todayDate?: string;
+    }
   | { action: 'track_share' }
   | {
       /** Completion of a homework session via the bot. Awards points and
@@ -141,7 +168,33 @@ function extractPointsData(data: SessionDoc): SessionPointsData {
     homeworkStats: data.homeworkStats
       ? { ...data.homeworkStats }
       : undefined,
+    perStudioStreaks: data.perStudioStreaks
+      ? { ...data.perStudioStreaks }
+      : undefined,
   };
+}
+
+/** Mirror of `computeHomeworkStreak` for per-studio daily streaks. Same
+ *  semantics: same-day = idempotent, yesterday = bump, older/null = reset to 1. */
+export function computeStudioStreak(params: {
+  previousCount: number;
+  lastDay: string | null | undefined;
+  today: string;
+}): { count: number; lastDay: string } {
+  const { previousCount, lastDay, today } = params;
+
+  if (lastDay === today) {
+    return { count: Math.max(previousCount, 1), lastDay: today };
+  }
+
+  const yesterdayISO = (() => {
+    const d = new Date(`${today}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - 1);
+    return d.toISOString().slice(0, 10);
+  })();
+
+  const next = lastDay === yesterdayISO ? previousCount + 1 : 1;
+  return { count: next, lastDay: today };
 }
 
 /** Compute the new streak state given the previous `lastCompletedDate`
@@ -201,10 +254,26 @@ function applyAction(current: SessionPointsData, action: PointsAction): SessionP
     }
     case 'track_creation': {
       const prev = current.creationsByType[action.creationType] ?? 0;
-      return {
+      const updated: SessionPointsData = {
         ...current,
         creationsByType: { ...current.creationsByType, [action.creationType]: prev + 1 },
       };
+      // Bump per-studio streak only when the caller supplied today's date
+      // AND the creationType is a known studio. Other types (e.g.
+      // 'beat-the-ai') have dedicated counters elsewhere.
+      if (action.todayDate && STUDIO_STREAK_TYPES.has(action.creationType)) {
+        const prevStreak = current.perStudioStreaks?.[action.creationType];
+        const next = computeStudioStreak({
+          previousCount: prevStreak?.count ?? 0,
+          lastDay: prevStreak?.lastDay ?? null,
+          today: action.todayDate,
+        });
+        updated.perStudioStreaks = {
+          ...(current.perStudioStreaks ?? {}),
+          [action.creationType]: next,
+        };
+      }
+      return updated;
     }
     case 'track_share':
       return { ...current, shareCount: current.shareCount + 1 };
@@ -445,6 +514,9 @@ export async function updateSessionPoints(
           homeworkStats:
             (kidData.homeworkStats as SessionPointsData['homeworkStats']) ??
             undefined,
+          perStudioStreaks:
+            (kidData.perStudioStreaks as SessionPointsData['perStudioStreaks']) ??
+            undefined,
         };
       } else {
         current = extractPointsData(sessionDoc.data() as SessionDoc);
@@ -475,6 +547,11 @@ export async function updateSessionPoints(
     // seen a homework action (harmless but noisy in Firestore exports).
     if (updated.homeworkStats) {
       pointsUpdate.homeworkStats = updated.homeworkStats;
+    }
+    // Same idea for perStudioStreaks — only written when track_creation
+    // with a `todayDate` actually bumped a studio counter.
+    if (updated.perStudioStreaks) {
+      pointsUpdate.perStudioStreaks = updated.perStudioStreaks;
     }
 
     tx.update(sessionRef, pointsUpdate);
@@ -540,6 +617,9 @@ export async function updateKidPoints(
       conceptsLearned: (kidData.conceptsLearned as string[]) ?? [],
       creationsByType: (kidData.creationsByType as Record<string, number>) ?? {},
       shareCount: (kidData.shareCount as number) ?? 0,
+      perStudioStreaks:
+        (kidData.perStudioStreaks as SessionPointsData['perStudioStreaks']) ??
+        undefined,
     };
 
     const updated = applyAction(current, action);
@@ -557,19 +637,20 @@ export async function updateKidPoints(
       0,
     );
 
-    tx.set(
-      kidRef,
-      {
-        aiPoints: updated.aiPoints,
-        badges: updated.badges,
-        conceptsLearned: updated.conceptsLearned,
-        creationsByType: updated.creationsByType,
-        shareCount: updated.shareCount,
-        totalCreations,
-        updatedAt: Timestamp.now(),
-      },
-      { merge: true },
-    );
+    const writeFields: Record<string, unknown> = {
+      aiPoints: updated.aiPoints,
+      badges: updated.badges,
+      conceptsLearned: updated.conceptsLearned,
+      creationsByType: updated.creationsByType,
+      shareCount: updated.shareCount,
+      totalCreations,
+      updatedAt: Timestamp.now(),
+    };
+    if (updated.perStudioStreaks) {
+      writeFields.perStudioStreaks = updated.perStudioStreaks;
+    }
+
+    tx.set(kidRef, writeFields, { merge: true });
 
     return { data: updated, newBadges };
   });

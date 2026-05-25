@@ -432,6 +432,7 @@ Anonymous session tracking for Phase 1 rate limiting, AI Points, and badges.
 | creationsByType | map | no | Denormalized creation counts per type `{story: 3, music: 1, quiz: 2}` |
 | shareCount | number | no | Total shares across all creations (default 0) |
 | homeworkStats | map | no | Homework rewards counters — `{sessionsCompleted, currentStreak, longestStreak, lastCompletedDate}`. Added for Homework Hero badge family. `lastCompletedDate` is an ISO `YYYY-MM-DD` string in the kid's local day (UTC fallback); streak increments when `lastCompletedDate` is yesterday, resets when it's older than that, no-ops when same day. |
+| perStudioStreaks | map | no | Per-studio daily-activity streaks. Shape: `{ book: { count, lastDay }, story: { count, lastDay }, music: { count, lastDay }, quiz: { count, lastDay }, comic: { count, lastDay }, game: { count, lastDay } }`. `lastDay` is an ISO `YYYY-MM-DD` in the kid's local day. Increments when `lastDay` is yesterday, resets to 1 when older, no-ops same-day. Written transactionally by `updateSessionPoints` on the matching `track_creation` action. Drives per-studio streak displays and book/studio streak badges (see `lib/badges.ts`). |
 
 **Rate Limits (Phase 1)**:
 - 5 creations per session per day
