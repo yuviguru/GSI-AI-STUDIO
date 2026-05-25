@@ -7,6 +7,7 @@ import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { gameInputSchema } from '@/lib/validators';
 import { checkRateLimit, enforceIpRateLimit } from '@gsi/firebase/sessionService';
 import { createGame } from '@/lib/capabilities/createGame';
+import { assertEntitled, resolveBillingContext, toAppException } from '@/lib/billing';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,6 +24,14 @@ export async function POST(request: NextRequest) {
       null;
     await enforceIpRateLimit(ipAddress);
     await checkRateLimit(sessionId);
+
+    // BILLING-001 Phase 2: meter creative AI generation.
+    const billingCtx = await resolveBillingContext(request);
+    try {
+      await assertEntitled(billingCtx, { feature: 'game.generate' });
+    } catch (billingErr) {
+      throw toAppException(billingErr);
+    }
 
     const result = await createGame({ sessionId, ...input });
 

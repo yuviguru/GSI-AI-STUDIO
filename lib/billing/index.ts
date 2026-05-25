@@ -63,3 +63,9 @@ export {
   isUnmetered,
   logBypassStatusOnce,
 } from './bypass';
+
+export {
+  resolveBillingContext,
+  toAppException,
+  withBillingErrors,
+} from './apiErrors';
