@@ -32,11 +32,13 @@ firestore/
 │       ├── [book document]
 │       └── pages/          # Page documents (TipTap rich text + optional image)
 │           └── {pageId}
-├── users/                  # Phase 2: parent accounts
-│   └── {userId}/
-│       ├── [user document]
-│       └── kids/           # Kid profiles under parent
-│           └── {kidId}
+├── users/                  # Phase 2: parent accounts (top-level)
+│   └── {userId}
+├── kids/                   # Phase 2: kid profiles (top-level — parentId links back to users)
+│   └── {kidId}/
+│       ├── [kid document]
+│       └── creditLedger/   # Billing: append-only ledger of grants, debits, topups (Phase 5)
+│           └── {entryId}
 ├── sessions/               # Phase 1: anonymous sessions for rate limiting
 │   └── {sessionId}
 ├── beatTheAiRounds/        # Human vs AI creative challenge rounds
@@ -471,8 +473,11 @@ Parent user accounts.
 | name | string | yes | Parent display name |
 | email | string | no | Optional email |
 | role | string | yes | `parent` \| `teacher` \| `admin` |
-| plan | string | yes | `free` \| `creator` \| `family` |
-| planExpiresAt | timestamp | no | Subscription expiry |
+| plan | string | yes | `free` \| `creator` \| `pro` \| `school` \| `admin` (see [Billing](#billing-plans--credits)) |
+| planExpiresAt | timestamp | no | Subscription expiry — managed by Razorpay webhook |
+| planRenewsAt | timestamp | no | Next auto-renewal date if `planStatus = active` |
+| planStatus | string | no | `active` \| `canceled` \| `past_due` \| `trialing` — mirrors Razorpay subscription state |
+| razorpaySubscriptionId | string | no | Razorpay subscription handle (for cancel/upgrade flows) |
 | schoolId | string | no | Linked school (Phase 3) |
 | preferences | map | no | `{language, notifications, theme}` |
 | createdAt | timestamp | yes | Account creation |
@@ -480,24 +485,82 @@ Parent user accounts.
 
 ---
 
-### users/{userId}/kids (Phase 2+)
+### kids (Phase 2+)
 
-Kid profiles under a parent account.
+Kid profiles. **Top-level collection** — `parentId` links back to `users/{userId}`. Each kid has their own credit balance (chosen architecture: per-kid wallet, not shared parent pool).
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| id | string | auto | Kid profile ID |
+| id | string | auto | Kid profile ID (Firebase Auth UID or auto-generated) |
 | name | string | yes | Kid's display name |
-| age | number | yes | Current age |
-| grade | string | yes | Class/grade (e.g., "5", "9") |
+| age | number | no | Current age (set after parent/teacher verification) |
+| grade | string | no | Class/grade (e.g., "5", "9") |
 | board | string | no | `cbse` \| `icse` \| `state` |
-| avatar | string | no | Selected avatar identifier |
+| avatar | string | no | Legacy emoji-avatar id |
+| mascotId | string | no | AI-buddy chosen during onboarding |
+| avatarUrl | string | no | AI-generated avatar URL |
+| parentId | string \| null | yes | Linked parent user ID (null for school-only kids) |
+| schoolId | string \| null | yes | Linked school ID (null for parent-only kids) |
+| verifiedBy | string \| null | yes | `parent` \| `teacher` \| null — DPDPA verifier |
+| verifiedAt | timestamp | no | When the verifier signed off |
 | totalCreations | number | yes | Lifetime creation count (default 0) |
-| aiPoints | number | yes | AI Knowledge Points earned (default 0) |
+| aiPoints | number | yes | AI Knowledge Points / XP — gamification only, NOT currency (default 0) |
 | streak | map | no | `{current: 3, longest: 7, lastActiveDate: "..."}` |
 | learningProgress | map | no | `{beginner: 0.4, intermediate: 0.0}` completion ratios |
 | badges | array\<string\> | no | Earned badge IDs |
+| plan | string | no | Effective plan for this kid: `free` \| `creator` \| `pro` \| `school` \| `admin`. Inherited from parent or school; cached here for fast guard checks. Default `free` if absent. |
+| creditBalance | number | no | Cached current credit balance. Authoritative ledger is `kids/{kidId}/creditLedger`. Default `0`. |
+| creditsMonthlyGrantAmount | number | no | Last monthly grant size (so we know how to refresh on reset). Mirrors `PLANS[plan].creditsPerMonth` at time of grant. |
+| creditsMonthlyGrantedAt | timestamp | no | When the current monthly grant landed. |
+| creditsMonthlyResetAt | timestamp | no | When the next monthly grant should fire (typically `creditsMonthlyGrantedAt + 30d`). |
+| creditsLastDebitAt | timestamp | no | Last successful AI debit (telemetry). |
 | createdAt | timestamp | yes | Profile creation |
+| updatedAt | timestamp | yes | Last update |
+
+**Credit-field invariants**:
+- `creditBalance` is a denormalized cache; the ledger (subcollection) is the source of truth. A nightly reconciliation Cloud Function can recompute balance from ledger sums and flag drift.
+- All ledger writes happen inside a Firestore transaction that also updates `creditBalance` atomically — clients never see a balance that disagrees with the latest ledger entry.
+- Monthly grant credits expire at `creditsMonthlyResetAt`. Topup credits never expire. The `expire` ledger entry zeroes the unspent monthly portion when a new grant lands.
+
+---
+
+### kids/{kidId}/creditLedger
+
+Append-only audit log of every credit movement. Subcollection of kids. Never updated — only inserted. Drives both `creditBalance` reconciliation and parent-facing transaction history.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | auto | Ledger entry ID (auto-generated; sortable by `createdAt`) |
+| type | string | yes | `grant` (monthly plan credits) \| `topup` (paid Razorpay purchase) \| `debit` (AI feature consumption) \| `refund` (manual reversal by admin or webhook) \| `expire` (monthly grant expiry) \| `bonus` (manual admin grant, e.g. support gesture) |
+| amount | number | yes | Credit delta. Positive for grant/topup/refund/bonus, negative for debit/expire. |
+| balanceAfter | number | yes | Resulting `creditBalance` after this entry. Lets us audit consistency. |
+| feature | string | no | For `debit`: feature key from `CREDIT_COSTS` (e.g. `story.generate`, `image.sdxl`). Absent on grants/topups. |
+| metadata | map | no | Free-form: `{ plan, sessionId, creationId, model, tokens }` for analytics. |
+| paymentRef | string | no | For `topup`/`refund`: Razorpay payment or order ID. |
+| paymentProvider | string | no | `razorpay` \| `stripe` \| `manual` (admin grant). |
+| reversedBy | string | no | If this entry was later refunded, the ID of the refund entry. |
+| expiresAt | timestamp | no | For `grant` entries: when the monthly grant expires (mirrors the kid doc `creditsMonthlyResetAt`). Topups omit this — they never expire. |
+| createdAt | timestamp | yes | When the entry was written. |
+
+**Indexes**:
+- `createdAt` (desc) — single-field, default — recent-first transaction history
+- `type` + `createdAt` (desc) — filter parent UI to "purchases" or "AI usage"
+
+**Idempotency**: `topup` entries from Razorpay webhooks include `paymentRef` as a uniqueness check — webhook handler rejects duplicate `paymentRef` to handle delivery retries safely.
+
+---
+
+## Billing: Plans & Credits
+
+The full billing model — plan definitions, credit costs per feature, capability matrix, and the `assertEntitled` guard — is implemented in `lib/billing/`:
+
+- `lib/billing/plans.ts` — single config: each plan's display name, INR price, monthly credit grant. Used by both the marketing `Pricing.tsx` page and server-side enforcement.
+- `lib/billing/entitlements.ts` — capability matrix per plan: `canExportPdf`, `priorityImageGen`, `maxBookPages`, `maxKidsPerAccount`, etc. Edit one row to move a feature between tiers.
+- `lib/billing/creditCosts.ts` — `{ feature → credit cost }` map. Edit one number to reprice a feature.
+- `lib/billing/guard.ts` — `assertEntitled(authCtx, { feature, capability })` is the single choke point every AI API route calls. Order: bypass check → entitlement check → credit cost lookup → atomic debit.
+- `lib/billing/bypass.ts` — dev override. `BILLING_BYPASS=true` env flag or `BILLING_BYPASS_KIDS=uid1,uid2` allowlist. Refused in production unless `ALLOW_BILLING_BYPASS_IN_PROD=true`.
+
+**What costs credits**: creative AI generation only — story, music, image, quiz, book pages, comic panels, beat-the-AI rounds. AI X-Ray, learn-tab content, and other learning surfaces are free. (Aligns with the product's "AI literacy first" positioning.)
 
 ---
 

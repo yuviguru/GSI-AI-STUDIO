@@ -758,3 +758,106 @@ In addition to the general breach response above:
 3. Offer immediate erasure of the kid's data without the usual process
 4. Log the incident in a dedicated register retained for 3 years
 5. Post-incident: review AI safety filters and consent enforcement paths
+
+---
+
+## Billing: Bypass and Payment Safety
+
+### Dev bypass (BILLING_BYPASS)
+
+`lib/billing/bypass.ts` honors two env vars to disable entitlement checks during development:
+
+- `BILLING_BYPASS=true` — skip all plan/credit checks for every kid. Used in `pnpm dev` so feature work isn't blocked by billing.
+- `BILLING_BYPASS_KIDS=uid1,uid2,uid3` — selective bypass for specific kid IDs (comma-separated). Used to QA tier-specific UI in staging while still exercising the guard for everyone else.
+
+**Production guardrail**:
+
+```ts
+// lib/billing/bypass.ts (intent)
+export function shouldBypass(kidId: string): boolean {
+  const inProd = process.env.NODE_ENV === 'production';
+  const allowProdBypass = process.env.ALLOW_BILLING_BYPASS_IN_PROD === 'true';
+  if (inProd && !allowProdBypass) return false;  // hard refusal
+
+  // ... env-var checks, with a console.warn() if bypass fires in prod
+}
+```
+
+- In `NODE_ENV=production`, both env vars are ignored unless `ALLOW_BILLING_BYPASS_IN_PROD=true` is also set (escape hatch for emergencies only).
+- A bypass that fires in production logs a `console.warn` with the kid ID for audit.
+- A startup assertion logs `"BILLING_BYPASS active — never enable in prod without ALLOW_BILLING_BYPASS_IN_PROD"` when the flag is on.
+
+### Razorpay webhook signature verification
+
+Every Razorpay webhook (`POST /api/billing/razorpay/webhook`) MUST verify the `X-Razorpay-Signature` header before doing anything else.
+
+```ts
+// Pseudocode for the route handler:
+const raw = await req.text();
+const sig = req.headers.get('X-Razorpay-Signature');
+const expected = createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET!)
+  .update(raw)
+  .digest('hex');
+if (!sig || !timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
+  return NextResponse.json({ error: 'invalid_signature' }, { status: 400 });
+}
+```
+
+- Use **timing-safe comparison** (`crypto.timingSafeEqual`), not `===` — defends against timing-oracle attacks.
+- Verify against the **raw body** (read via `req.text()` before any JSON parsing). Re-serializing parsed JSON changes byte order and breaks the HMAC.
+- The `RAZORPAY_WEBHOOK_SECRET` lives in Netlify env vars only — never committed, never logged.
+- Reject (400) and log the source IP on any signature failure. Do **not** return 200 — Razorpay's retry behavior is a safety net for real failures, not silent acceptance of forgeries.
+
+### Webhook idempotency
+
+Razorpay retries failed webhooks aggressively. The handler must be idempotent on the payment / order ID:
+
+- Every `topup`, `refund`, or `grant` ledger write that originates from a webhook includes `paymentRef` = Razorpay payment ID or order ID.
+- Before writing, check `kids/{kidId}/creditLedger.where('paymentRef', '==', paymentId).limit(1).get()` — if a matching entry exists, return 200 `{received: true, duplicate: true}` and skip the write.
+- The check + write happens in a Firestore transaction to defeat race conditions on rapid retries.
+
+### Credit ledger immutability
+
+- Ledger entries are **append-only**. The server never updates an existing entry.
+- Corrections happen by writing a new entry: `refund` (reverses a `topup`), `bonus` (manual admin grant for support cases).
+- Firestore rules deny `update` and `delete` on `kids/{kidId}/creditLedger/{entryId}` for all roles except admin migration scripts.
+- The `creditBalance` cache on the kid doc is the only mutable billing field. It is rebuilt from the ledger sums by a nightly Cloud Function and the drift alert pages on-call if reconciliation fails.
+
+### Atomic debit pattern
+
+Every `assertEntitled` debit:
+
+```ts
+await runTransaction(db, async (tx) => {
+  const kidSnap = await tx.get(kidRef);
+  const balance = kidSnap.data().creditBalance ?? 0;
+  if (balance < cost) throw new InsufficientCreditsError({ required: cost, available: balance });
+
+  tx.update(kidRef, {
+    creditBalance: balance - cost,
+    creditsLastDebitAt: serverTimestamp(),
+  });
+  tx.set(ledgerRef.doc(), {
+    type: 'debit',
+    amount: -cost,
+    balanceAfter: balance - cost,
+    feature,
+    createdAt: serverTimestamp(),
+    metadata: { plan, sessionId, ...telemetry },
+  });
+});
+```
+
+- One transaction: either both writes land or neither does. Never debit credits without writing the ledger entry. Never write a ledger entry without updating the balance cache.
+- The transaction RE-READS the balance inside — defends against TOCTOU between an earlier client `GET /credits` and this debit.
+
+### What happens when a kid runs out of credits mid-session
+
+- The AI route returns `402 INSUFFICIENT_CREDITS` (see `docs/api-contracts.md`).
+- The client shows an upgrade / topup CTA. No model is invoked — zero cost to us.
+- Anonymous (no kid) sessions: fall back to the existing `sessions/{sessionId}.creationCount` rate limit. Anonymous users get no credit wallet (Phase 1 behavior preserved).
+
+### What happens when a parent disputes a charge
+
+- Manually post a `refund` ledger entry via `POST /api/billing/admin/grant` (or the admin tool that wraps it) with a negative balance impact AND issue the actual Razorpay refund. The two are tied via `paymentRef`.
+- Refunding credits the kid has already spent: ledger goes negative is NOT allowed — the balance is clamped at zero and the rest is treated as a one-sided refund (Razorpay refund without ledger debit). The mismatch is logged so finance can reconcile.
