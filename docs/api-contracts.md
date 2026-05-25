@@ -62,6 +62,44 @@ Error responses:
 | `SESSION_NOT_FOUND` | 404 | Session ID not found in Firestore |
 | `SESSION_EXPIRED` | 401 | Anonymous session has expired |
 | `CREATION_LIMIT` | 429 | Daily creation limit reached |
+| `FORBIDDEN_BY_PLAN` | 403 | Feature requires a higher plan tier (capability gate). Response `error` includes `{ requiredPlan, currentPlan, upgradeUrl, feature }`. |
+| `INSUFFICIENT_CREDITS` | 402 | Not enough credits to perform this AI action. Response `error` includes `{ required, available, plan, topupUrl }`. |
+
+**Plan/Credit error response shape**:
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "INSUFFICIENT_CREDITS",
+    "message": "You need 25 credits to generate this image. You have 12.",
+    "details": {
+      "required": 25,
+      "available": 12,
+      "feature": "image.sdxl",
+      "plan": "creator",
+      "topupUrl": "/billing/topup?suggested=100"
+    }
+  }
+}
+```
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "FORBIDDEN_BY_PLAN",
+    "message": "Export to PDF is a Pro feature.",
+    "details": {
+      "requiredPlan": "pro",
+      "currentPlan": "creator",
+      "feature": "canExportPdf",
+      "upgradeUrl": "/billing/upgrade?to=pro"
+    }
+  }
+}
+```
 
 ---
 
@@ -2308,3 +2346,115 @@ All Phase 4 endpoints require authenticated `teacher` or `schoolAdmin` role unle
 - Every AI-generating endpoint (`/api/hpc`, `/api/papers`, `/api/lessons`, `/api/comms/*`, `/api/assignments/.../suggest-feedback`) logs a `teacherAiUsage` record and checks consent before writing / sending.
 - Every cross-student batch endpoint must isolate prompt context per student (no bleed).
 - All PDF exports route through `lib/pdf/schoolBranding.ts` to apply school letterhead uniformly.
+
+---
+
+## Billing Endpoints (BILLING-001)
+
+All billing endpoints require an authenticated parent or school-admin user. Kid-scoped balances are accessed by the parent who owns the kid, or by the kid themselves if the kid has direct auth.
+
+### GET /api/billing/credits
+
+Read the current credit balance, plan, and recent ledger entries for a kid.
+
+**Query**: `?kidId=<kidId>` (required)
+
+**Response (200)**:
+```json
+{
+  "success": true,
+  "data": {
+    "kidId": "kid_abc123",
+    "plan": "creator",
+    "creditBalance": 312,
+    "creditsMonthlyGrantAmount": 500,
+    "creditsMonthlyGrantedAt": "2026-05-01T00:00:00Z",
+    "creditsMonthlyResetAt": "2026-05-31T00:00:00Z",
+    "recentLedger": [
+      { "id": "ldg_1", "type": "debit", "amount": -25, "balanceAfter": 312, "feature": "image.sdxl", "createdAt": "2026-05-24T15:32:00Z" },
+      { "id": "ldg_2", "type": "grant", "amount": 500, "balanceAfter": 337, "expiresAt": "2026-05-31T00:00:00Z", "createdAt": "2026-05-01T00:00:00Z" }
+    ]
+  }
+}
+```
+
+**Errors**: `401 UNAUTHORIZED`, `403 FORBIDDEN` (caller is not parent of this kid), `404 NOT_FOUND`.
+
+---
+
+### POST /api/billing/razorpay/order
+
+Create a Razorpay order for a credit topup or plan upgrade. Returns the client-side handle needed to open the Razorpay checkout sheet.
+
+**Request**:
+```json
+{
+  "kidId": "kid_abc123",
+  "purpose": "topup" | "plan_upgrade" | "plan_renew",
+  "topupSku"?: "credits_100" | "credits_500" | "credits_2000",
+  "targetPlan"?: "creator" | "pro",
+  "billingCycle"?: "monthly" | "annual"
+}
+```
+Exactly one of `topupSku` or `targetPlan` must be present (matched against `purpose`).
+
+**Response (200)**:
+```json
+{
+  "success": true,
+  "data": {
+    "orderId": "order_NXXX",
+    "amount": 9900,
+    "currency": "INR",
+    "razorpayKeyId": "rzp_test_XXX",
+    "purpose": "plan_upgrade",
+    "displayLines": [
+      { "label": "Creator monthly", "amount": "₹99" }
+    ]
+  }
+}
+```
+
+**Errors**: `400 INVALID_INPUT` (unknown SKU, mismatched purpose), `401 UNAUTHORIZED`, `403 FORBIDDEN`.
+
+---
+
+### POST /api/billing/razorpay/webhook
+
+Razorpay → server webhook. Handles `payment.captured`, `subscription.activated`, `subscription.charged`, `subscription.cancelled`, `subscription.completed`, `refund.created`.
+
+**Headers**: `X-Razorpay-Signature` (HMAC-SHA256 of raw body using webhook secret — verified server-side; reject 400 if invalid).
+
+**Behavior** (idempotent on Razorpay payment/order ID via `paymentRef`):
+- `payment.captured` with `purpose=topup` → write `topup` ledger entry on the kid + add credits.
+- `payment.captured` with `purpose=plan_upgrade` → update kid's `plan`, write first `grant` entry, set `creditsMonthlyResetAt`.
+- `subscription.charged` → write `grant` for new cycle, write `expire` entry to zero leftover monthly portion.
+- `subscription.cancelled` → set `planStatus = canceled`. Plan remains active until `planExpiresAt`.
+- `refund.created` → write `refund` entry, deduct credits if still in balance (clamped at 0).
+
+**Response**: `200 { received: true }` always (even on duplicate). Failures are alerted via server logs, not surfaced to Razorpay (which would retry).
+
+---
+
+### POST /api/billing/admin/grant
+
+Admin-only — manually grant credits to a kid (for support, refunds, beta testers). Writes a `bonus` ledger entry.
+
+**Request**: `{ kidId, amount, note }` (amount > 0).
+**Response (200)**: `{ creditBalance, entryId }`.
+**Errors**: `403 FORBIDDEN` for non-admin callers, `400 INVALID_INPUT`.
+
+---
+
+### Plan/credit enforcement in all AI endpoints
+
+Every AI-generating endpoint (`/api/ai/story`, `/api/ai/music`, `/api/ai/quiz`, `/api/ai/image`, `/api/books/pages`, `/api/comics/...`, `/api/beat-the-ai/...`, etc.) calls `assertEntitled(authCtx, { feature, capability? })` BEFORE invoking any model. The guard:
+
+1. Checks `BILLING_BYPASS` env override (dev only, see `security.md#dev-bypass`).
+2. Checks the kid's plan against the route's required `capability` if specified.
+3. Looks up the feature's credit cost in `lib/billing/creditCosts.ts`.
+4. Atomically debits credits and writes a `debit` ledger entry.
+
+If any check fails, the route returns `402 INSUFFICIENT_CREDITS` or `403 FORBIDDEN_BY_PLAN` (see shapes above) and the model is never invoked — saving cost.
+
+Free features (AI X-Ray explanations, learn-tab content) skip `assertEntitled` entirely or pass without a `feature` key so no credits are debited.

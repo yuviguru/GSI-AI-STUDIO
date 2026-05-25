@@ -370,6 +370,72 @@ Tokens are stored in the `botLinkCodes` collection (server-write-only, 10-minute
 
 **Reference**: See `docs/MESSENGER_BOT_ARCHITECTURE.md` for the full spec — adapter interface, router, context, per-module contracts, session model, safety, and the Phase 1/2/3 rollout.
 
+---
+
+## Billing (Tiers + Credits + Payment)
+
+A horizontal concern, like safety and rate limiting — every AI route routes through it. Three layers, each a single-file source of truth:
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  AI API ROUTES  (app/api/ai/*, app/api/books/*, ...)               │
+│  every route calls assertEntitled(authCtx, { feature, capability })│
+└──────────────────────────────┬─────────────────────────────────────┘
+                               ▼
+┌────────────────────────────────────────────────────────────────────┐
+│  lib/billing/guard.ts — assertEntitled()                           │
+│  1. shouldBypass(kidId)? → return early (dev only)                 │
+│  2. capability gate → ENTITLEMENTS[plan][capability] ?             │
+│  3. credit cost lookup → CREDIT_COSTS[feature]                     │
+│  4. atomic debit (Firestore tx: kid.creditBalance + ledger entry)  │
+│  Throws PlanError (403) or InsufficientCreditsError (402)          │
+└──┬───────────────────────────┬───────────────────────┬─────────────┘
+   ▼                           ▼                       ▼
+┌──────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐
+│ plans.ts         │  │ entitlements.ts     │  │ creditCosts.ts      │
+│ Per-plan config: │  │ Capability matrix   │  │ Feature → credits   │
+│   displayName,   │  │ per plan:           │  │   story.generate:5  │
+│   price (INR),   │  │   canExportPdf,     │  │   image.flux:10     │
+│   creditsPerMonth│  │   priorityImageGen, │  │   image.sdxl:25     │
+│ Edit one row to  │  │   maxBookPages,     │  │ Edit one number to  │
+│ change tier cost │  │   ...               │  │ reprice a feature   │
+└──────────────────┘  └─────────────────────┘  └─────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────┐
+│  lib/billing/credits.ts                                            │
+│  Ledger ops: getBalance, debit, grantMonthly, addTopup             │
+│  Firestore: kids/{kidId}.creditBalance (cache)                     │
+│             kids/{kidId}/creditLedger/{entryId} (source of truth)  │
+└────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────┐
+│  lib/billing/bypass.ts                                             │
+│  Reads BILLING_BYPASS=true (whole app)                             │
+│        BILLING_BYPASS_KIDS=uid1,uid2 (selective)                   │
+│  Refuses in NODE_ENV=production unless                             │
+│  ALLOW_BILLING_BYPASS_IN_PROD=true (logged warning)                │
+└────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────┐
+│  Payment provider: Razorpay (Phase 5)                              │
+│  app/api/billing/razorpay/order  — create order                    │
+│  app/api/billing/razorpay/webhook — HMAC-verified callbacks        │
+│  Idempotent on payment ID via paymentRef on ledger entries         │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+**Why this design**:
+- **Single-edit changes**: move a feature between tiers → edit `entitlements.ts`. Reprice an AI call → edit `creditCosts.ts`. Change credits-per-tier → edit `plans.ts`. Marketing `Pricing.tsx` and server enforcement read the same `PLANS` object — no source-of-truth drift.
+- **Two metrics, separate concerns**: entitlements gate *what you can do*; credits gate *how much*. Mirrors Stripe, Linear, Cursor, Replicate, OpenAI.
+- **One choke point**: every LLM call passes through `assertEntitled`. Easy to audit, easy to add cost telemetry, easy to bypass during dev.
+- **AI Points vs Credits are distinct**: `kid.aiPoints` is XP / gamification (earned by creating, drives badges). `kid.creditBalance` is currency (spent on AI calls, granted by plan, bought via Razorpay). Never confused, never combined.
+
+**Phase 5 rollout**: Phase 1 of BILLING-001 ships the foundation + dev bypass (this PR). Phase 2 wires each AI route through `assertEntitled` (incremental, one route per commit). Phase 3 adds Razorpay integration and parent-facing UI ("Buy credits", "Upgrade plan", transaction history).
+
+**Reference**: `docs/data-model.md#billing-plans--credits`, `docs/api-contracts.md#billing-endpoints-billing-001`, `docs/security.md#billing-bypass-and-payment-safety`.
+
+---
+
 ## Data Flow
 
 ### Creation Flow (Phase 1 — Anonymous)
