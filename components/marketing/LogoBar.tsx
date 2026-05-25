@@ -4,7 +4,7 @@ const AUTHORITIES = [
   { icon: BadgeCheck, label: 'AI & CT Curriculum-Aligned', sub: 'Playtime that counts as homework' },
   { icon: School, label: 'GSI School Network', sub: 'Already trusted in 100+ Indian schools' },
   { icon: Globe2, label: 'Made in Chennai', sub: 'Built for Indian kids — not translated' },
-  { icon: Sparkles, label: 'DPDPA-ready', sub: "Your child's data never leaves India" },
+  { icon: Sparkles, label: 'DPDPA-ready', sub: 'Stored in India · never trains AI models' },
 ];
 
 const STATS = [
