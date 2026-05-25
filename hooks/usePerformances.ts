@@ -5,6 +5,7 @@ import { fetchWithSession } from '@/lib/fetchWithSession';
 import type { PerformanceFeedItem, PerformanceKind } from '@gsi/types';
 import type { CreationType } from '@gsi/types';
 import type { ApiResponse } from '@gsi/types';
+import { useKidProfile } from './useKidProfile';
 
 export type PerformanceListMode =
   | { mode: 'mine' }
@@ -41,6 +42,12 @@ interface UsePerformancesReturn {
  *   - public      → Explore Performances tab
  */
 export function usePerformances(input: PerformanceListMode): UsePerformancesReturn {
+  // Refire when the active kid switches. Only the `mine` mode is strictly
+  // kid-scoped, but `parent` and `public` modes have no harm from refiring
+  // either — they'll just return the same data and the request is cheap.
+  // Listing this dep unconditionally keeps the rule uniform across the
+  // codebase: any /api/* useEffect fetch deps on `kidScopeVersion`.
+  const { kidScopeVersion } = useKidProfile();
   const [performances, setPerformances] = useState<PerformanceFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -109,7 +116,7 @@ export function usePerformances(input: PerformanceListMode): UsePerformancesRetu
     return () => {
       cancelled = true;
     };
-  }, [fetchPage]);
+  }, [fetchPage, kidScopeVersion]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || !nextCursor || loadingMore.current) return;

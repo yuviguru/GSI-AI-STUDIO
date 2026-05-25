@@ -16,7 +16,8 @@ export type BadgeCriteria =
   | { type: 'ceo_quick_decisions'; responseSeconds: number; count: number }
   | { type: 'ceo_completed_with_cash_ratio'; min: number }
   | { type: 'homework_sessions_completed'; min: number }
-  | { type: 'homework_streak'; min: number };
+  | { type: 'homework_streak'; min: number }
+  | { type: 'studio_streak'; studio: string; min: number };
 
 export interface Badge {
   id: string;
@@ -215,6 +216,49 @@ export const BADGE_CATALOG: Badge[] = [
     emoji: '⚡',
     criteria: { type: 'homework_streak', min: 7 },
   },
+  // ── Book Studio badges ─────────────────────────────────────────
+  {
+    id: 'book_first',
+    name: 'First Book',
+    description: 'Start your very first book',
+    emoji: '📖',
+    criteria: { type: 'creations_of_type', creationType: 'book', min: 1 },
+  },
+  {
+    id: 'book_explorer',
+    name: 'Book Explorer',
+    description: 'Start 3 books',
+    emoji: '✍️',
+    criteria: { type: 'creations_of_type', creationType: 'book', min: 3 },
+  },
+  {
+    id: 'book_master',
+    name: 'Book Master',
+    description: 'Start 5 books',
+    emoji: '📚',
+    criteria: { type: 'creations_of_type', creationType: 'book', min: 5 },
+  },
+  {
+    id: 'book_collector',
+    name: 'Book Collector',
+    description: 'Start 10 books',
+    emoji: '🏆',
+    criteria: { type: 'creations_of_type', creationType: 'book', min: 10 },
+  },
+  {
+    id: 'book_streak_3',
+    name: 'Daily Writer',
+    description: 'Write in your book 3 days in a row',
+    emoji: '🔥',
+    criteria: { type: 'studio_streak', studio: 'book', min: 3 },
+  },
+  {
+    id: 'book_streak_7',
+    name: 'Week of Words',
+    description: 'Write in your book 7 days in a row',
+    emoji: '⚡',
+    criteria: { type: 'studio_streak', studio: 'book', min: 7 },
+  },
 ];
 
 // ─── Unlock evaluator ─────────────────────────────────────────────────────────
@@ -274,6 +318,9 @@ function meetsCriteria(
 
     case 'homework_streak':
       return (homeworkStats?.currentStreak ?? 0) >= criteria.min;
+
+    case 'studio_streak':
+      return (data.perStudioStreaks?.[criteria.studio]?.count ?? 0) >= criteria.min;
   }
 }
 
@@ -379,6 +426,13 @@ export function getBadgeProgressHint(
       return remaining <= 0
         ? ''
         : `Keep going — ${remaining} more day${remaining === 1 ? '' : 's'} in a row`;
+    }
+    case 'studio_streak': {
+      const current = data.perStudioStreaks?.[badge.criteria.studio]?.count ?? 0;
+      const remaining = badge.criteria.min - current;
+      return remaining <= 0
+        ? ''
+        : `Write ${remaining} more day${remaining === 1 ? '' : 's'} in a row`;
     }
   }
 }

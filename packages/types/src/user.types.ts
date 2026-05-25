@@ -70,6 +70,9 @@ export interface KidProfile {
     longest: number;
     lastActiveDate: string; // YYYY-MM-DD
   };
+  /** Per-studio daily activity streaks. Mirrored from the session doc on
+   *  each `track_creation`. Absent on kid docs that predate the feature. */
+  perStudioStreaks?: Record<string, { count: number; lastDay: string }>;
 
   // Game progress
   beatTheAiSkills?: Record<string, { xp: number; level: number }>;

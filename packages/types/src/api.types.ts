@@ -65,6 +65,10 @@ export interface PointsResponse {
   conceptsLearned: string[];
   creationsByType: Record<string, number>;
   shareCount: number;
+  /** Per-studio daily activity streaks. Keyed by studio creationType
+   *  (`book`, `story`, `music`, `quiz`, `comic`, `game`). Drives per-studio
+   *  streak displays + `studio_streak` badges. */
+  perStudioStreaks?: Record<string, { count: number; lastDay: string }>;
 }
 
 /** Share types */

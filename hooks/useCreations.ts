@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import type { Creation, CreationType } from '@gsi/types';
 import type { ApiResponse, PaginatedResponse } from '@gsi/types';
 import { fetchWithSession } from '@/lib/fetchWithSession';
+import { useKidProfile } from './useKidProfile';
 
 interface UseCreationsReturn {
   creations: Creation[];
@@ -20,6 +21,11 @@ interface UseCreationsReturn {
  * Uses cursor-based pagination matching the GET /api/creations endpoint.
  */
 export function useCreations(type?: CreationType | null): UseCreationsReturn {
+  // Subscribe to kid-scope changes — the effect below refires whenever a
+  // different kid is activated (after the kid-scoped session id is
+  // committed). Without this, switching profiles would keep the previous
+  // kid's creations on screen until the next page reload.
+  const { kidScopeVersion } = useKidProfile();
   const [creations, setCreations] = useState<Creation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +51,10 @@ export function useCreations(type?: CreationType | null): UseCreationsReturn {
     [type]
   );
 
-  // Initial fetch + re-fetch when type changes
+  // Initial fetch + re-fetch when type changes OR the active kid switches.
+  // `kidScopeVersion` is bumped centrally in `useKidProfile.switchKid` after
+  // the kid-scoped session id is committed to localStorage — see the
+  // "Kid-scoped data fetching" section in docs/architecture.md.
   useEffect(() => {
     let cancelled = false;
 
@@ -73,7 +82,7 @@ export function useCreations(type?: CreationType | null): UseCreationsReturn {
     return () => {
       cancelled = true;
     };
-  }, [fetchPage]);
+  }, [fetchPage, kidScopeVersion]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || !nextCursor || loadingMore.current) return;
