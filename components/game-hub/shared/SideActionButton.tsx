@@ -28,6 +28,10 @@ export interface SideAction {
   g2: string;
   /** Optional href — the parent's click handler typically routes here. */
   href?: string;
+  /** When true the button is a non-interactive status badge: no tap
+   *  animation, no pointer cursor, no aria-button semantics. Used for
+   *  passive indicators like the current streak count. */
+  passive?: boolean;
 }
 
 interface SideActionButtonProps {
@@ -36,13 +40,35 @@ interface SideActionButtonProps {
 }
 
 export function SideActionButton({ action, onClick }: SideActionButtonProps) {
+  const sharedClasses =
+    'pointer-events-auto relative flex w-[52px] flex-col items-center gap-0.5 rounded-2xl bg-white/85 p-1.5 shadow-md ring-1 ring-white/70 backdrop-blur-md';
+
+  // Passive indicators (e.g. the streak counter) render as a div so they
+  // don't show a tap animation and don't appear in the keyboard tab order.
+  if (action.passive) {
+    return (
+      <div className={`${sharedClasses} cursor-default`} aria-label={action.label} role="status">
+        <PassiveContent action={action} />
+      </div>
+    );
+  }
+
   return (
     <motion.button
       whileTap={{ scale: 0.92 }}
       onClick={onClick}
-      className="pointer-events-auto relative flex w-[52px] flex-col items-center gap-0.5 rounded-2xl bg-white/85 p-1.5 shadow-md ring-1 ring-white/70 backdrop-blur-md"
+      className={sharedClasses}
       aria-label={action.label}
     >
+      <PassiveContent action={action} />
+    </motion.button>
+  );
+}
+
+/** Visual content shared between the interactive and passive variants. */
+function PassiveContent({ action }: { action: SideAction }) {
+  return (
+    <>
       <div
         className={`flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br ${action.g1} ${action.g2} text-base shadow-sm`}
       >
@@ -56,6 +82,6 @@ export function SideActionButton({ action, onClick }: SideActionButtonProps) {
           {action.pip}
         </span>
       )}
-    </motion.button>
+    </>
   );
 }

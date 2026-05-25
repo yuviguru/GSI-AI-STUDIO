@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, Bell } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { MascotAvatar } from '@/components/mascot/MascotAvatar';
 import { useAiPoints } from '@/contexts/AiPointsContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -14,15 +14,22 @@ import { SideActionButton, type SideAction } from '../shared/SideActionButton';
 import { XpBar } from '../shared/XpBar';
 import { getModesByGroup, type ModeGroup } from '../shared/GameModes';
 import { playSound } from '@/lib/sounds';
+import type { MobileTab } from './TabBar';
+import { DailyRewardModal } from './DailyRewardModal';
 
 const XP_PER_LEVEL = 100;
 
+/** Left rail: claim, status, social. */
 const LEFT_ACTIONS: SideAction[] = [
-  { key: 'daily',  emoji: '🎁', label: 'Daily',    pip: '!',  g1: 'from-amber-200',  g2: 'to-amber-500' },
-  { key: 'streak', emoji: '🔥', label: 'Streak 7',           g1: 'from-rose-200',   g2: 'to-rose-500' },
-  { key: 'squad',  emoji: '👥', label: 'Squad',              g1: 'from-blue-200',   g2: 'to-blue-500' },
+  { key: 'daily',  emoji: '🎁', label: 'Daily',    pip: '!', g1: 'from-amber-200', g2: 'to-amber-500' },
+  // Streak is passive — see SideActionButton's `passive` flag. It's a
+  // status indicator that always reflects the kid's current streak count.
+  { key: 'streak', emoji: '🔥', label: 'Streak 7',           g1: 'from-rose-200',  g2: 'to-rose-500', passive: true },
+  // TODO(squad): wire this once we have a /squad or /friends route.
+  { key: 'squad',  emoji: '👥', label: 'Squad',              g1: 'from-blue-200',  g2: 'to-blue-500' },
 ];
 
+/** Right rail: progress, achievement, discovery. */
 const RIGHT_ACTIONS: SideAction[] = [
   { key: 'quests',  emoji: '⚡', label: 'Quests',  pip: 3,    g1: 'from-violet-200',  g2: 'to-violet-600' },
   { key: 'badges',  emoji: '🏆', label: 'Badges',             g1: 'from-yellow-200',  g2: 'to-yellow-500' },
@@ -38,6 +45,13 @@ const GRID_COLS: Record<ModeGroup, string> = {
   learn:  'grid-cols-2',
 };
 
+interface HubSceneProps {
+  /** Switches the MobileHub's active bottom-nav tab. Used by side-stack
+   *  actions that route to another tab (Quests → quests, Badges →
+   *  profile) instead of navigating to a new page. */
+  onTabChange?: (tab: MobileTab) => void;
+}
+
 /**
  * Mobile hub scene — "Game Lobby" layout.
  *
@@ -52,7 +66,7 @@ const GRID_COLS: Record<ModeGroup, string> = {
  *   5. Portal grid — every mode in the active group visible on one screen
  *      (no horizontal scroll). Circular-icon tiles with a 1-line tagline.
  */
-export function HubScene() {
+export function HubScene({ onTabChange }: HubSceneProps = {}) {
   const router = useRouter();
   const { totalPoints, isLoaded } = useAiPoints();
   const { isAuthenticated } = useAuth();
@@ -60,6 +74,7 @@ export function HubScene() {
     fallbackName: isAuthenticated ? 'Player' : 'Guest',
   });
   const [group, setGroup] = useState<ModeGroup>('create');
+  const [showDailyReward, setShowDailyReward] = useState(false);
   const modes = getModesByGroup(group);
 
   const level = Math.floor(totalPoints / XP_PER_LEVEL) + 1;
@@ -73,9 +88,44 @@ export function HubScene() {
     router.push('/create/story');
   };
 
+  /**
+   * Dispatches a side-stack tap to the right destination.
+   *   - daily → open the DailyRewardModal (placeholder until the real
+   *     reward flow ships).
+   *   - streak → passive, no destination (the SideActionButton itself
+   *     also short-circuits, but the no-op keeps the contract explicit).
+   *   - squad → stub; logs once until we have a /squad route.
+   *   - quests → swap to the bottom-nav "quests" tab. Falls back to a
+   *     console warning if no onTabChange is wired.
+   *   - badges → swap to the bottom-nav "profile" tab (badges live in
+   *     ProfileScene). Same fallback.
+   *   - default: any action with `href` routes there.
+   */
   const handleAction = (action: SideAction) => {
     playSound('buttonTap');
-    if (action.href) router.push(action.href);
+    switch (action.key) {
+      case 'daily':
+        setShowDailyReward(true);
+        break;
+      case 'streak':
+        // passive — nothing to do
+        break;
+      case 'squad':
+        // TODO(squad): wire to /squad or /friends once the route exists.
+        console.warn('[HubScene] Squad tapped — no destination wired yet.');
+        break;
+      case 'quests':
+        if (onTabChange) onTabChange('quests');
+        else console.warn('[HubScene] Quests tapped but onTabChange is not wired.');
+        break;
+      case 'badges':
+        // Badges live in the Profile scene's "Achievements" panel.
+        if (onTabChange) onTabChange('profile');
+        else console.warn('[HubScene] Badges tapped but onTabChange is not wired.');
+        break;
+      default:
+        if (action.href) router.push(action.href);
+    }
   };
 
   const handleMode = (href: string) => {
@@ -208,6 +258,12 @@ export function HubScene() {
           </motion.div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showDailyReward && (
+          <DailyRewardModal key="daily-reward" onClose={() => setShowDailyReward(false)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

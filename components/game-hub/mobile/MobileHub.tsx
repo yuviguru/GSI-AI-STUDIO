@@ -30,7 +30,7 @@ export function MobileHub() {
             transition={{ duration: 0.18 }}
             className="absolute inset-0 flex flex-col"
           >
-            {tab === 'hub' && <HubScene />}
+            {tab === 'hub' && <HubScene onTabChange={setTab} />}
             {tab === 'profile' && <ProfileScene />}
             {tab === 'ranks' && <RanksScene />}
             {tab === 'quests' && <QuestsScene />}
