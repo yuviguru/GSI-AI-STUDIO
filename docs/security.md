@@ -831,7 +831,7 @@ Every `assertEntitled` debit:
 await runTransaction(db, async (tx) => {
   const kidSnap = await tx.get(kidRef);
   const balance = kidSnap.data().creditBalance ?? 0;
-  if (balance < cost) throw new InsufficientCreditsError({ required: cost, available: balance });
+  if (balance < cost) throw new InsufficientCreditsError(cost, balance);
 
   tx.update(kidRef, {
     creditBalance: balance - cost,

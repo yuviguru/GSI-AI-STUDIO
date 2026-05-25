@@ -19,7 +19,7 @@ import {
   detectLevelUp,
 } from '@/lib/beat-the-ai/skillEngine';
 import { updateSessionPoints } from '@gsi/firebase/sessionService';
-import { assertEntitled, resolveBillingContext, toAppException } from '@/lib/billing';
+import { enforceBilling } from '@/lib/billing';
 import type {
   BeatTheAiDifficulty,
   BeatTheAiPrompt,
@@ -42,15 +42,9 @@ export async function POST(request: NextRequest) {
 
     // Detect phase by request body shape
     if ('kidResponse' in body) {
-      // BILLING-001 Phase 2: a single round = one AI generation (Phase 1
-      // here). The judging in Phase 2 is part of the same round and isn't
-      // charged separately — the cost is intentionally low (~1 credit).
-      const billingCtx = await resolveBillingContext(request);
-      try {
-        await assertEntitled(billingCtx, { feature: 'beatTheAi.round' });
-      } catch (billingErr) {
-        throw toAppException(billingErr);
-      }
+      // One round = one AI generation (Phase 1). Phase 2 (judging) is
+      // part of the same round and isn't charged again — cost ~1 credit.
+      await enforceBilling(request, { feature: 'beatTheAi.round' });
       return handlePhase1(sessionId, body);
     } else if ('judge' in body) {
       return handlePhase2(sessionId, body);

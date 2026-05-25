@@ -1,76 +1,50 @@
 /**
- * Plan catalog — single source of truth for tier configuration.
+ * Plan catalog — the single source of truth for tier configuration. Read
+ * by the marketing Pricing page, the server-side guard, and the rate-limit
+ * adapter. To change pricing, monthly credits, or marketing copy: edit
+ * ONE row in `PLANS` below.
  *
- * Read by:
- * - `components/marketing/Pricing.tsx` (welcome-page pricing table)
- * - `lib/billing/guard.ts` (server-side entitlement + credit enforcement)
- * - `lib/billing/credits.ts` (monthly grant amounts)
- * - `lib/rateLimits.ts` (legacy adapter — `creationsPerDay` derived from creditsPerMonth)
- *
- * To change pricing, monthly credit grants, or marketing copy for a tier,
- * edit ONE row in `PLANS` below. No code changes anywhere else.
- *
- * Env overrides let ops tune a single tier without a deploy:
- *   PLAN_PRO_CREDITS=3000          # bump pro from 2000 -> 3000 credits/mo
- *   PLAN_CREATOR_PRICE_INR=149     # bump creator price from 99 -> 149
- *   PLAN_FREE_CREDITS=100          # double free-tier credits for a promo
+ * Env overrides (e.g. `PLAN_PRO_CREDITS=3000`) let ops tune a single tier
+ * without a deploy. See `envNumber` for the full key pattern.
  */
 
 import type { UserPlan } from '@gsi/types';
 
-/** Plan IDs in display order. Free first, school last (custom-priced). */
-export const PLAN_IDS: readonly UserPlan[] = [
-  'free',
-  'creator',
-  'pro',
-  'school',
-  'admin',
-] as const;
+/** Plan IDs in display order. */
+export const PLAN_IDS: readonly UserPlan[] = ['free', 'creator', 'pro', 'school', 'admin'] as const;
+export const DEFAULT_PLAN: UserPlan = 'free';
 
 export interface PlanPrice {
-  /** Indian Rupees, monthly. `null` for custom-quoted plans (school). */
+  /** INR/month. `null` for custom-quoted plans (school, admin). */
   inr: number | null;
-  /** Optional annual price (billed once). Display-only for now. */
+  /** Annual price, billed once. Display-only. */
   annualInr?: number;
-  /** UI label after the price, e.g. "/ month", "/ student / month". */
+  /** UI suffix, e.g. "/ month". */
   period: string;
-  /** Subline shown under the price, e.g. "Or ₹899/year". */
+  /** Subline shown under the price. */
   subline?: string;
 }
 
 export interface PlanMarketing {
-  /** Short pitch shown under the plan name. */
   tagline: string;
-  /** Bullet points — order matters; read left-to-right top-to-bottom on cards. */
   features: string[];
-  /** CTA shown on the pricing card. */
   cta: { label: string; href: string };
-  /** Highlight this tier as the recommended one on the pricing page. */
+  /** Highlight this tier on the pricing page. */
   featured?: boolean;
 }
 
 export interface Plan {
   id: UserPlan;
   displayName: string;
-  /** Marketing-only fields. Server enforcement ignores these. */
-  marketing: PlanMarketing;
-  price: PlanPrice;
   /**
-   * Credits granted at the start of each monthly cycle. Unspent grant
-   * credits expire at cycle end; paid topups never expire (see
-   * `lib/billing/credits.ts`).
-   *
-   * `Infinity` means "no metered cap" — used for `admin` accounts and could
-   * be used for a future "unlimited" tier. The guard short-circuits the
-   * debit when this is Infinity so the ledger doesn't grow unbounded.
+   * Credits granted at the start of each monthly cycle. `Infinity` means
+   * "no metering" — the guard short-circuits and never debits.
    */
   creditsPerMonth: number;
+  price: PlanPrice;
+  marketing: PlanMarketing;
 }
 
-/**
- * Resolve an env override to a number, falling back to the default. Returns
- * the default for invalid/empty values rather than NaN.
- */
 function envNumber(key: string, fallback: number): number {
   const raw = process.env[key];
   if (!raw) return fallback;
@@ -79,16 +53,13 @@ function envNumber(key: string, fallback: number): number {
 }
 
 function envString(key: string, fallback: string): string {
-  const raw = process.env[key];
-  return raw && raw.length > 0 ? raw : fallback;
+  return process.env[key] || fallback;
 }
 
 /**
- * THE config. Edit values here to change tier behavior.
- *
- * Keep `marketing.features` short (≤6 bullets) and consistent in voice
- * across tiers — the Pricing component renders them as-is and they're the
- * thing parents skim fastest.
+ * The catalog. Marketing copy stays here on purpose — it's tied 1:1 to
+ * the tier config, and keeping them in one file means `Pricing.tsx` and
+ * `guard.ts` can never drift.
  */
 export const PLANS: Record<UserPlan, Plan> = {
   free: {
@@ -172,7 +143,7 @@ export const PLANS: Record<UserPlan, Plan> = {
       features: [
         'Everything in Pro — for every student',
         'Teacher dashboard: classes, assignments, reports',
-        'CBSE AI &amp; CT lesson plans (Class 3–12)',
+        'CBSE AI & CT lesson plans (Class 3–12)',
         'Auto-generated compliance reports',
         'Inter-school competitions + leaderboards',
         'Onboarding + teacher training included',
@@ -183,7 +154,6 @@ export const PLANS: Record<UserPlan, Plan> = {
   admin: {
     id: 'admin',
     displayName: 'Admin',
-    // Infinity = "don't meter" — the guard short-circuits and never debits.
     creditsPerMonth: Number.POSITIVE_INFINITY,
     price: { inr: null, period: '' },
     marketing: {
@@ -195,15 +165,9 @@ export const PLANS: Record<UserPlan, Plan> = {
 };
 
 /**
- * Look up a plan by ID. Unknown IDs fall back to `free` (defensive — every
- * server path that touches billing must produce *some* answer, never throw
- * on an unrecognized plan string from a stale doc).
+ * Resolve a plan by ID. Unknown IDs fall back to `free` — defensive so a
+ * stale doc value never throws.
  */
 export function getPlan(planId: UserPlan | string | undefined | null): Plan {
-  if (!planId) return PLANS.free;
-  const known = PLANS[planId as UserPlan];
-  return known ?? PLANS.free;
+  return (planId && PLANS[planId as UserPlan]) || PLANS.free;
 }
-
-/** Default plan assigned to brand-new accounts. */
-export const DEFAULT_PLAN: UserPlan = 'free';

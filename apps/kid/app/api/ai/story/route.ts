@@ -11,35 +11,19 @@ import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { storyInputSchema } from '@/lib/validators';
 import { checkRateLimit, enforceIpRateLimit } from '@gsi/firebase/sessionService';
 import { createStory } from '@/lib/capabilities/createStory';
-import { assertEntitled, resolveBillingContext, toAppException } from '@/lib/billing';
+import { enforceBilling } from '@/lib/billing';
+import { ipFromRequest } from '@/lib/api/requestUtils';
 
+/** POST /api/ai/story — thin HTTP wrapper around the createStory capability. */
 export async function POST(request: NextRequest) {
   try {
     const sessionId = request.headers.get('X-Session-Id');
-    if (!sessionId) {
-      throw new AppException('UNAUTHORIZED', 'Missing session', 401);
-    }
+    if (!sessionId) throw new AppException('UNAUTHORIZED', 'Missing session', 401);
 
     const input = storyInputSchema.parse(await request.json());
-
-    const ipAddress =
-      request.headers.get('x-nf-client-connection-ip') ??
-      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-      null;
-    await enforceIpRateLimit(ipAddress);
+    await enforceIpRateLimit(ipFromRequest(request));
     await checkRateLimit(sessionId);
-
-    // BILLING-001 Phase 2: meter creative AI generation. Anonymous callers
-    // (no kidId) pass through at zero cost — they're already gated by the
-    // per-session creation cap above. Throws 402/403 (converted by
-    // toAppException) before the model is invoked, so an out-of-credits
-    // user never burns provider tokens.
-    const billingCtx = await resolveBillingContext(request);
-    try {
-      await assertEntitled(billingCtx, { feature: 'story.generate' });
-    } catch (billingErr) {
-      throw toAppException(billingErr);
-    }
+    await enforceBilling(request, { feature: 'story.generate' });
 
     const result = await createStory({ sessionId, ...input });
 
