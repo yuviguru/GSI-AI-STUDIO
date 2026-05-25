@@ -9,23 +9,13 @@ import { useAiPoints } from '@/contexts/AiPointsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useResolvedIdentity } from '@/hooks/useResolvedIdentity';
 import { ModeGroupTabs } from '../shared/ModeGroupTabs';
+import { PortalCard } from '../shared/PortalCard';
+import { SideActionButton, type SideAction } from '../shared/SideActionButton';
 import { XpBar } from '../shared/XpBar';
-import { getModesByGroup, type GameMode, type ModeGroup } from '../shared/GameModes';
+import { getModesByGroup, type ModeGroup } from '../shared/GameModes';
 import { playSound } from '@/lib/sounds';
 
 const XP_PER_LEVEL = 100;
-
-interface SideAction {
-  key: string;
-  emoji: string;
-  label: string;
-  pip?: number | '!';
-  /** Tailwind class for the "from" colour stop of the icon's bg-gradient. */
-  g1: string;
-  /** Tailwind class for the "to" colour stop of the icon's bg-gradient. */
-  g2: string;
-  href?: string;
-}
 
 const LEFT_ACTIONS: SideAction[] = [
   { key: 'daily',  emoji: '🎁', label: 'Daily',    pip: '!',  g1: 'from-amber-200',  g2: 'to-amber-500' },
@@ -222,75 +212,3 @@ export function HubScene() {
   );
 }
 
-/** Compact side-stack action button. Small enough to flank the hero stage
- *  without crowding the mascot, large enough to read as a tap target. */
-function SideActionButton({
-  action,
-  onClick,
-}: {
-  action: SideAction;
-  onClick: () => void;
-}) {
-  return (
-    <motion.button
-      whileTap={{ scale: 0.92 }}
-      onClick={onClick}
-      className="pointer-events-auto relative flex w-[52px] flex-col items-center gap-0.5 rounded-2xl bg-white/85 p-1.5 shadow-md ring-1 ring-white/70 backdrop-blur-md"
-      aria-label={action.label}
-    >
-      <div
-        className={`flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br ${action.g1} ${action.g2} text-base shadow-sm`}
-      >
-        <span aria-hidden>{action.emoji}</span>
-      </div>
-      <span className="text-[8px] font-bold uppercase tracking-wide text-slate-600">
-        {action.label}
-      </span>
-      {action.pip && (
-        <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full border-2 border-white bg-rose-500 px-1 text-[8px] font-extrabold text-white">
-          {action.pip}
-        </span>
-      )}
-    </motion.button>
-  );
-}
-
-/** Portal card — circular icon with halo + label + 1-line tagline. Sized
- *  so a 3-column grid of these fits all six Create modes on one screen
- *  with no horizontal scroll. */
-function PortalCard({
-  mode,
-  onClick,
-}: {
-  mode: GameMode;
-  onClick: () => void;
-}) {
-  return (
-    <motion.button
-      whileTap={{ scale: 0.95 }}
-      whileHover={{ y: -3 }}
-      transition={{ type: 'spring', stiffness: 340, damping: 16 }}
-      onClick={onClick}
-      className="game-mode-tile group relative flex h-[100px] flex-col items-center justify-start gap-0.5 overflow-hidden rounded-2xl px-1.5 pb-2 pt-2 text-center shadow-tile ring-1 ring-white/70"
-      style={{ background: mode.bg }}
-      aria-label={mode.label}
-    >
-      <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/80 text-xl shadow-md ring-[3px] ring-white">
-        <span aria-hidden>{mode.emoji}</span>
-        {mode.badge && (
-          <span
-            className={`absolute -right-1 -top-1 rounded-full ${mode.badgeBg ?? 'bg-brand-primary'} border-2 border-white px-1 py-0 text-[7px] font-extrabold uppercase tracking-wider text-white`}
-          >
-            {mode.badge}
-          </span>
-        )}
-      </div>
-      <div className={`font-display text-[11px] font-extrabold leading-tight ${mode.textColor}`}>
-        {mode.shortLabel}
-      </div>
-      <div className={`text-[9px] font-medium leading-tight line-clamp-2 ${mode.taglineColor}`}>
-        {mode.tagline}
-      </div>
-    </motion.button>
-  );
-}
