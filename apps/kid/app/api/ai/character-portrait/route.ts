@@ -4,6 +4,7 @@ import { characterPortraitSchema } from '@/lib/validators';
 import { filterImagePrompt } from '@gsi/safety';
 import { checkRateLimit, trackCreation } from '@gsi/firebase/sessionService';
 import { getImageProvider } from '@gsi/ai/imageProvider';
+import { assertEntitled, resolveBillingContext, toAppException } from '@/lib/billing';
 
 /**
  * POST /api/ai/character-portrait — Generate an anchor portrait for a character.
@@ -29,6 +30,16 @@ export async function POST(request: NextRequest) {
     const fullPrompt = buildPortraitPrompt(input.lookDescription, input.styleHint);
     filterImagePrompt(fullPrompt);
     await checkRateLimit(sessionId);
+
+    // BILLING-001 Phase 2: character portraits are the anchor image for a
+    // book (every per-page scene reuses this look) — slightly more expensive
+    // than a single scene image because of the higher value per call.
+    const billingCtx = await resolveBillingContext(request);
+    try {
+      await assertEntitled(billingCtx, { feature: 'character.generate' });
+    } catch (billingErr) {
+      throw toAppException(billingErr);
+    }
 
     const { imageFunction, providerName } = getImageProvider();
 

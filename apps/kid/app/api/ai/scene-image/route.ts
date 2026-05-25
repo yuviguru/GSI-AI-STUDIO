@@ -7,6 +7,7 @@ import { getBook } from '@gsi/firebase/bookService';
 import { getImageProvider, type ImageStyle } from '@gsi/ai/imageProvider';
 import { dimsForBookAndLayout } from '@gsi/ai/imageDims';
 import type { BookCharacter } from '@gsi/types';
+import { assertEntitled, resolveBillingContext, toAppException } from '@/lib/billing';
 
 const STYLE_HINT_MAP: Record<string, ImageStyle> = {
   watercolor: 'watercolor',
@@ -58,6 +59,17 @@ export async function POST(request: NextRequest) {
 
     filterImagePrompt(fullPrompt);
     await checkRateLimit(sessionId);
+
+    // BILLING-001 Phase 2: charge for image generation. Flat 'image.flux'
+    // for now — when the provider router becomes plan-aware (Pro → SDXL,
+    // free → Pollinations), we can swap to 'image.sdxl' for priority
+    // accounts. Charging SDXL while Flux actually runs would mislead kids.
+    const billingCtx = await resolveBillingContext(request);
+    try {
+      await assertEntitled(billingCtx, { feature: 'image.flux' });
+    } catch (billingErr) {
+      throw toAppException(billingErr);
+    }
 
     // Per-page slot aspect when pageId is provided; book aspect (cover) otherwise
     const pageLayout = input.pageId

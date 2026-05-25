@@ -11,6 +11,7 @@ import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { storyInputSchema } from '@/lib/validators';
 import { checkRateLimit, enforceIpRateLimit } from '@gsi/firebase/sessionService';
 import { createStory } from '@/lib/capabilities/createStory';
+import { assertEntitled, resolveBillingContext, toAppException } from '@/lib/billing';
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,6 +28,18 @@ export async function POST(request: NextRequest) {
       null;
     await enforceIpRateLimit(ipAddress);
     await checkRateLimit(sessionId);
+
+    // BILLING-001 Phase 2: meter creative AI generation. Anonymous callers
+    // (no kidId) pass through at zero cost — they're already gated by the
+    // per-session creation cap above. Throws 402/403 (converted by
+    // toAppException) before the model is invoked, so an out-of-credits
+    // user never burns provider tokens.
+    const billingCtx = await resolveBillingContext(request);
+    try {
+      await assertEntitled(billingCtx, { feature: 'story.generate' });
+    } catch (billingErr) {
+      throw toAppException(billingErr);
+    }
 
     const result = await createStory({ sessionId, ...input });
 

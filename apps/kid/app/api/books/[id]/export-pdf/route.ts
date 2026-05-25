@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { getBook } from '@gsi/firebase/bookService';
 import { generateBookPdf } from '@/lib/export/pdfGenerator';
+import { assertEntitled, resolveBillingContext, toAppException } from '@/lib/billing';
 
 /**
  * POST /api/books/[id]/export-pdf — Generate a PDF for a book.
@@ -20,6 +21,16 @@ export async function POST(
     }
 
     const { book, pages } = await getBook(params.id, { sessionId });
+
+    // BILLING-001 Phase 2: PDF export is a Pro-tier capability. No credit
+    // cost — purely a feature gate. Free/Creator kids see a 403
+    // FORBIDDEN_BY_PLAN with the upgrade CTA.
+    const billingCtx = await resolveBillingContext(request);
+    try {
+      await assertEntitled(billingCtx, { capability: 'canExportPdf' });
+    } catch (billingErr) {
+      throw toAppException(billingErr);
+    }
 
     const blob = await generateBookPdf(book, pages);
     const arrayBuffer = await blob.arrayBuffer();

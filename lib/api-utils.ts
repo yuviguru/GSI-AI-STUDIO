@@ -4,7 +4,14 @@ export class AppException extends Error {
   constructor(
     public code: string,
     message: string,
-    public statusCode: number = 500
+    public statusCode: number = 500,
+    /**
+     * Optional structured payload. Mirrors the `error.details` field
+     * documented in `docs/api-contracts.md` — used by 402/403 billing
+     * errors to ship upgrade/topup CTAs alongside the message.
+     * Free-form on purpose; the client picks what it understands.
+     */
+    public details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'AppException';
@@ -13,9 +20,14 @@ export class AppException extends Error {
 
 export function handleApiError(error: unknown): NextResponse {
   if (error instanceof AppException) {
+    const errorBody: { code: string; message: string; details?: Record<string, unknown> } = {
+      code: error.code,
+      message: error.message,
+    };
+    if (error.details) errorBody.details = error.details;
     return NextResponse.json(
-      { success: false, data: null, error: { code: error.code, message: error.message } },
-      { status: error.statusCode }
+      { success: false, data: null, error: errorBody },
+      { status: error.statusCode },
     );
   }
 
