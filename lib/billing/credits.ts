@@ -224,6 +224,36 @@ export async function getRecentLedger(kidId: string, limit = 20): Promise<Credit
   return page.entries;
 }
 
+interface SetKidSubscriptionInput {
+  kidId: string;
+  plan: UserPlan;
+  razorpaySubscriptionId: string;
+  planStatus: 'active' | 'canceled' | 'past_due' | 'trialing';
+  /** When the current paid period ends (sub.current_end in seconds, ISO, or Date). */
+  planRenewsAt?: Date | null;
+  planExpiresAt?: Date | null;
+}
+
+/**
+ * Write subscription state onto the kid doc. Used by the webhook handler
+ * when subscription.activated / subscription.cancelled / subscription.charged
+ * fires. Idempotent — repeated calls with the same payload are a no-op.
+ *
+ * Does NOT touch the credit pools. Pair with `grantMonthlyCredits` on
+ * activation/charge if a fresh grant should land alongside.
+ */
+export async function setKidSubscription(input: SetKidSubscriptionInput): Promise<void> {
+  const update: Record<string, unknown> = {
+    plan: input.plan,
+    razorpaySubscriptionId: input.razorpaySubscriptionId,
+    planStatus: input.planStatus,
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+  if (input.planRenewsAt) update.planRenewsAt = Timestamp.fromDate(input.planRenewsAt);
+  if (input.planExpiresAt) update.planExpiresAt = Timestamp.fromDate(input.planExpiresAt);
+  await kidDocRef(input.kidId).set(update, { merge: true });
+}
+
 // ─── Writes ──────────────────────────────────────────────────────────────
 
 interface DebitInput {

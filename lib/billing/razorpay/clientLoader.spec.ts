@@ -60,14 +60,18 @@ describe('lib/billing/razorpay/clientLoader', () => {
     const { openCheckout } = await import('./clientLoader');
 
     const result = await openCheckout({
+      kind: 'order',
       orderId: 'order_test',
       razorpayKeyId: 'rzp_test_xxx',
       amount: 19900,
       currency: 'INR',
     });
 
+    expect(result.kind).toBe('order');
     expect(result.paymentId).toBe('pay_test');
-    expect(result.orderId).toBe('order_test');
+    if (result.kind === 'order') {
+      expect(result.orderId).toBe('order_test');
+    }
     expect(result.signature).toBe('sig_test');
     // We didn't need to inject a <script> since Razorpay was already global
     expect(createElementSpy).not.toHaveBeenCalledWith('script');
@@ -91,7 +95,7 @@ describe('lib/billing/razorpay/clientLoader', () => {
 
     const { openCheckout } = await import('./clientLoader');
     await expect(
-      openCheckout({ orderId: 'o', razorpayKeyId: 'k', amount: 100, currency: 'INR' }),
+      openCheckout({ kind: 'order', orderId: 'o', razorpayKeyId: 'k', amount: 100, currency: 'INR' }),
     ).rejects.toThrow(/cancelled/i);
 
     delete (globalThis.window as unknown as { Razorpay?: unknown }).Razorpay;

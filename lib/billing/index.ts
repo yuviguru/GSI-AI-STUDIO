@@ -19,13 +19,16 @@ export {
   getBalance,
   getCreditSnapshot,
   getRecentLedger,
+  getLedgerPage,
   debitCredits,
   grantMonthlyCredits,
   ensureInitialGrant,
   addTopupCredits,
   addBonusCredits,
+  setKidSubscription,
   InsufficientCreditsError,
   type CreditSnapshot,
+  type LedgerPage,
 } from './credits';
 
 export {
