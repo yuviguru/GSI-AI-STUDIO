@@ -1,29 +1,27 @@
 /**
- * Telegram webhook handler for @GSIKidCeoAssistantBot.
+ * Telegram webhook handler for @GSIPersonalAssistantBot.
  *
- * Receives update payloads from Telegram, verifies the optional secret-token
- * header, normalizes the update into a `BotIncomingMessage`, and routes it
- * through a `BotRouter` that has the CEO module registered.
- *
- * Always returns 200 once the request has been accepted — Telegram retries
- * with the same `update_id` on non-2xx responses, which would cause duplicate
- * processing for transient downstream failures.
+ * Registers studio deep-link commands + the interactive homework helper.
+ * Challenge, skills, and notifications modules will be added in later
+ * sprints — order of registration doesn't matter (the router dispatches
+ * by command/prefix/forward-predicate).
  *
  * Environment variables:
- *  - TELEGRAM_BOT_TOKEN_CEO       (required) — Bot API token for @GSIKidCeoAssistantBot.
- *  - TELEGRAM_WEBHOOK_SECRET_CEO  (optional) — Shared secret token sent by
+ *  - TELEGRAM_BOT_TOKEN_STUDIO       (required) — Bot API token for @GSIPersonalAssistantBot.
+ *  - TELEGRAM_WEBHOOK_SECRET_STUDIO  (optional) — Shared secret token sent by
  *    Telegram in `X-Telegram-Bot-Api-Secret-Token`. When set, requests
  *    without a matching header are rejected with 401.
  */
 
 import type { Handler } from '@netlify/functions';
-import { BotRouter } from '../../lib/bot/router';
-import { TelegramAdapter } from '../../lib/bot/adapters/telegram';
-import { ceoModule } from '../../lib/bot/modules/ceo';
+import { BotRouter } from '../../../../lib/bot/router';
+import { TelegramAdapter } from '../../../../lib/bot/adapters/telegram';
+import { studioLinksModule } from '../../../../lib/bot/modules/studioLinks';
+import { homeworkModule } from '../../../../lib/bot/modules/homework';
 
 // Instantiate at module load. Netlify warm containers reuse this.
-const TOKEN = process.env.TELEGRAM_BOT_TOKEN_CEO ?? '';
-const SECRET = process.env.TELEGRAM_WEBHOOK_SECRET_CEO;
+const TOKEN = process.env.TELEGRAM_BOT_TOKEN_STUDIO ?? '';
+const SECRET = process.env.TELEGRAM_WEBHOOK_SECRET_STUDIO;
 // Graceful fallback: if the token is missing at cold start we still construct
 // nothing that would throw, and surface the misconfiguration as a 500 at
 // request time. This avoids crashing the whole function container.
@@ -33,7 +31,9 @@ const telegram = TOKEN
 const router = new BotRouter();
 if (telegram) {
   router.registerAdapter(telegram);
-  router.registerModule(ceoModule);
+  router.registerModule(studioLinksModule);
+  router.registerModule(homeworkModule);
+  // Future: register challenge, skills, notifications modules here.
 }
 
 const handler: Handler = async (event) => {
@@ -41,7 +41,7 @@ const handler: Handler = async (event) => {
     return { statusCode: 400, body: 'Bad request' };
   }
   if (!TOKEN || !telegram) {
-    return { statusCode: 500, body: 'TELEGRAM_BOT_TOKEN_CEO not set' };
+    return { statusCode: 500, body: 'TELEGRAM_BOT_TOKEN_STUDIO not set' };
   }
 
   const headers = normalizeHeaders(event.headers);
@@ -62,14 +62,12 @@ const handler: Handler = async (event) => {
   }
 
   try {
-    await router.route(message, 'GSIKidCeoAssistantBot');
+    await router.route(message, 'GSIPersonalAssistantBot');
     return { statusCode: 200, body: 'OK' };
   } catch (err) {
-    // Log with enough context for on-call grep. chatId + updateId narrow
-    // down which kid's message hit which code path.
     const raw = parsed as { update_id?: number | string };
     console.error(
-      '[telegram-webhook-ceo] route error',
+      '[telegram-webhook-studio] route error',
       JSON.stringify({
         chatId: message.chatId,
         updateId: raw?.update_id,
@@ -77,20 +75,14 @@ const handler: Handler = async (event) => {
         errorName: (err as Error).name,
       }),
     );
-    // Best-effort: tell the kid something went wrong so they don't stare
-    // at silence. A failure to send this fallback is itself caught so the
-    // webhook still returns 200 and Telegram doesn't retry.
     try {
       await telegram.send({
         chatId: message.chatId,
         text: 'Something went wrong on my side. Try again in a moment.',
       });
     } catch (sendErr) {
-      console.error('[telegram-webhook-ceo] fallback send also failed', sendErr);
+      console.error('[telegram-webhook-studio] fallback send also failed', sendErr);
     }
-    // Return 200 so Telegram doesn't retry the same update_id — the kid
-    // already saw the error toast (or at least we tried), and retrying a
-    // genuine bug would just burn the same code path again.
     return { statusCode: 200, body: 'OK (error logged + user notified)' };
   }
 };

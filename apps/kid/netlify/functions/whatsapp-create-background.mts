@@ -56,7 +56,7 @@ export default async function handler(req: Request, _context: Context): Promise<
 
   // Lazy import — avoids paying for Firebase/AI module init in the webhook lambda.
   const { handleIncomingMessage } = await import(
-    '../../lib/channels/whatsapp/orchestrator'
+    '../../../../lib/channels/whatsapp/orchestrator'
   );
 
   try {

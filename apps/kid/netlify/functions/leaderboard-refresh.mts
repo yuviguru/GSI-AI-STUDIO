@@ -23,8 +23,8 @@ interface LeaderboardCacheDoc {
 }
 
 export default async function handler(_req: Request, _ctx: Context): Promise<Response> {
-  const { backend } = await import('../../lib/backend');
-  const { getTopCreators } = await import('../../lib/repositories/creationRepository');
+  const { backend } = await import('../../../../lib/backend');
+  const { getTopCreators } = await import('../../../../lib/repositories/creationRepository');
 
   try {
     const top = await getTopCreators(5);
