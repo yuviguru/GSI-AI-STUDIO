@@ -97,6 +97,25 @@ export interface RazorpayOrder {
 }
 
 /**
+ * Fetch an order from Razorpay. Used by the payment-verify route to
+ * read back the `notes` we set during order creation — the trusted
+ * source for which kid + how many credits to apply (we never trust the
+ * client to tell us those after the fact).
+ */
+export async function fetchOrder(orderId: string): Promise<RazorpayOrder> {
+  const client = getRazorpayClient();
+  const o = await client.orders.fetch(orderId);
+  return {
+    id: o.id,
+    amount: typeof o.amount === 'number' ? o.amount : Number(o.amount),
+    currency: o.currency,
+    receipt: o.receipt ?? undefined,
+    status: o.status,
+    notes: (o.notes as Record<string, string>) ?? undefined,
+  };
+}
+
+/**
  * Create a Razorpay order. The order ID is what the client-side
  * checkout sheet consumes — without an order, the checkout can't open.
  *

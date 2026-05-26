@@ -6,12 +6,14 @@ export {
   getRazorpayClient,
   getRazorpayPublicKey,
   createOrder,
+  fetchOrder,
   __resetRazorpayClientForTests,
   type CreateOrderInput,
   type RazorpayOrder,
 } from './client';
 
 export { verifyWebhookSignature } from './webhookSignature';
+export { verifyPaymentSignature } from './paymentSignature';
 
 export {
   TOPUPS,
