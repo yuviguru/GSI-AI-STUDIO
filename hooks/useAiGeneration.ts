@@ -4,6 +4,10 @@ import { useState, useCallback } from 'react';
 import type { ApiResponse, AiXrayData } from '@gsi/types';
 import { friendlyError } from '@/lib/utils';
 import { fetchWithSession } from '@/lib/fetchWithSession';
+import {
+  handleBillingApiError,
+  useBillingNotifications,
+} from '@/contexts/BillingNotificationContext';
 
 const PROGRESS_MESSAGES: Record<string, string[]> = {
   story: [
@@ -48,6 +52,7 @@ interface GenerationState<T> {
 }
 
 export function useAiGeneration<T>(studioType: 'story' | 'music' | 'quiz' | 'game' | 'comic') {
+  const { show: showBillingNotification } = useBillingNotifications();
   const [state, setState] = useState<GenerationState<T>>({
     data: null,
     aiXray: null,
@@ -80,6 +85,12 @@ export function useAiGeneration<T>(studioType: 'story' | 'music' | 'quiz' | 'gam
         const json: ApiResponse<Record<string, unknown> & { aiXray: AiXrayData }> = await res.json();
 
         if (!json.success || !json.data) {
+          // Billing errors get a global actionable modal (BILLING-001)
+          // rather than a generic "Something went wrong" inline.
+          if (handleBillingApiError(res.status, json, showBillingNotification)) {
+            setState((prev) => ({ ...prev, loading: false, error: null }));
+            return null;
+          }
           const errorMsg = json.error ? friendlyError(json.error.code) : 'Generation failed';
           setState((prev) => ({ ...prev, loading: false, error: errorMsg }));
           return null;
@@ -108,7 +119,7 @@ export function useAiGeneration<T>(studioType: 'story' | 'music' | 'quiz' | 'gam
         clearInterval(interval);
       }
     },
-    [studioType]
+    [studioType, showBillingNotification]
   );
 
   const reset = useCallback(() => {

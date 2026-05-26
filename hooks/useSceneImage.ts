@@ -2,6 +2,10 @@
 
 import { useState } from 'react';
 import { fetchWithSession } from '@/lib/fetchWithSession';
+import {
+  handleBillingApiError,
+  useBillingNotifications,
+} from '@/contexts/BillingNotificationContext';
 
 export interface SceneImageOptions {
   bookId: string;
@@ -27,6 +31,7 @@ export interface SceneImageResult {
  * `usePageImage` instead.
  */
 export function useSceneImage() {
+  const { show: showBillingNotification } = useBillingNotifications();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<SceneImageResult | null>(null);
@@ -42,6 +47,7 @@ export function useSceneImage() {
       });
       const json = await res.json();
       if (!json.success) {
+        if (handleBillingApiError(res.status, json, showBillingNotification)) return null;
         throw new Error(json.error?.message ?? 'Could not draw this scene');
       }
       const result = json.data as SceneImageResult;

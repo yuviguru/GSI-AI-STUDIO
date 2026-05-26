@@ -15,6 +15,8 @@ import { ProfilePicker } from '@/components/profile/ProfilePicker';
 import { SessionMigrationPrompt } from '@/components/profile/SessionMigrationPrompt';
 import { ProfileSetupCarousel } from '@/components/onboarding/ProfileSetupCarousel';
 import { PhoneAuthFlow } from '@/components/auth/PhoneAuthFlow';
+import { BillingNotificationProvider } from '@/contexts/BillingNotificationContext';
+import { BillingNotificationModal } from '@/components/billing/BillingNotificationModal';
 
 const REQUIRE_LOGIN = process.env.NEXT_PUBLIC_REQUIRE_LOGIN === 'true';
 
@@ -137,10 +139,13 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <AuthProvider>
         <KidProfileProvider>
           <AiPointsProvider>
-            <SessionInit />
-            <AppGate>
-              <PublicLayoutInner>{children}</PublicLayoutInner>
-            </AppGate>
+            <BillingNotificationProvider>
+              <SessionInit />
+              <AppGate>
+                <PublicLayoutInner>{children}</PublicLayoutInner>
+              </AppGate>
+              <BillingNotificationModal />
+            </BillingNotificationProvider>
           </AiPointsProvider>
         </KidProfileProvider>
       </AuthProvider>

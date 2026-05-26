@@ -5,6 +5,10 @@ import useSWR from 'swr';
 import { fetchWithSession } from '@/lib/fetchWithSession';
 import type { Book, BookPage } from '@gsi/types';
 import type { BookPatchInput, CoverPatchInput } from '@/lib/validators';
+import {
+  handleBillingApiError,
+  useBillingNotifications,
+} from '@/contexts/BillingNotificationContext';
 
 interface BookFetchResponse {
   book: Book;
@@ -29,6 +33,7 @@ const bookFetcher = async (url: string): Promise<BookFetchResponse> => {
  * into a separate hook (`useBookPages`).
  */
 export function useBook(bookId: string | null) {
+  const { show: showBillingNotification } = useBillingNotifications();
   const { data, error, isLoading, mutate } = useSWR<BookFetchResponse>(
     bookId ? `/api/books/${bookId}` : null,
     bookFetcher
@@ -106,7 +111,14 @@ export function useBook(bookId: string | null) {
         method: 'POST',
       });
       const json = await res.json();
-      if (!json.success) throw new Error(json.error?.message ?? 'PDF generation failed');
+      if (!json.success) {
+        // PDF export is a `canExportPdf` Pro capability — surface the
+        // upgrade modal instead of a silent error banner.
+        if (handleBillingApiError(res.status, json, showBillingNotification)) {
+          return null;
+        }
+        throw new Error(json.error?.message ?? 'PDF generation failed');
+      }
       return json.data as { pdfUrl: string; sizeBytes: number; generatedAt: string };
     });
 
