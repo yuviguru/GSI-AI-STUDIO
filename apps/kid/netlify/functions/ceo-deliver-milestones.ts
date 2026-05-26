@@ -45,9 +45,9 @@
 
 import type { Handler, HandlerContext } from '@netlify/functions';
 import { schedule } from '@netlify/functions';
-import { isAuthorizedCronCall } from '../../lib/netlify-cron-auth';
+import { isAuthorizedCronCall } from '../../../../lib/netlify-cron-auth';
 import { Timestamp } from 'firebase-admin/firestore';
-import { TelegramAdapter } from '../../lib/bot/adapters/telegram';
+import { TelegramAdapter } from '../../../../lib/bot/adapters/telegram';
 import {
   expireStaleMilestone,
   getCeoBusiness,
@@ -57,18 +57,18 @@ import {
   markMilestoneDelivered,
   saveCeoEvent,
   type StaleMilestoneExpiryResult,
-} from '../../lib/firebase/ceoService';
-import { generateMilestoneEvent } from '../../lib/ceo/eventEngine';
-import { pickNextMilestone } from '../../lib/ceo/phases';
+} from '@gsi/firebase/ceoService';
+import { generateMilestoneEvent } from '../../../../lib/ceo/eventEngine';
+import { pickNextMilestone } from '../../../../lib/ceo/phases';
 import {
   DEFAULT_MILESTONE_HOUR_IST,
   DEFAULT_MILESTONE_MINUTE_IST,
   DELIVERY_TOLERANCE_MS,
   isSameIstDay,
-} from '../../lib/ceo/cadence';
-import { findBotSessionsForKid } from '../../lib/bot/services/sessionStore';
-import type { CeoBusiness, CeoEvent, CeoPace } from '../../types';
-import { coerceLegacyPace } from '../../lib/ceo/constants';
+} from '../../../../lib/ceo/cadence';
+import { findBotSessionsForKid } from '../../../../lib/bot/services/sessionStore';
+import type { CeoBusiness, CeoEvent, CeoPace } from '@gsi/types';
+import { coerceLegacyPace } from '../../../../lib/ceo/constants';
 
 const DEPLOY_SECRET = process.env.BOT_SETUP_SECRET;
 const CEO_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN_CEO ?? '';

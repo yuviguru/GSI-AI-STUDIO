@@ -7,12 +7,15 @@
 #   schools.gsi.ai → base = apps/school → reads apps/school/netlify.toml
 #
 # This root file is a fallback that builds the kid app — useful if a
-# Netlify site is misconfigured without a base directory.
+# Netlify site is misconfigured without a base directory. Kid-context
+# scheduled functions live in apps/kid/netlify/functions/; school ones
+# live in apps/school/netlify/functions/. The split keeps a school
+# function failure from blocking the kid deploy and vice versa.
 
 [build]
   command = "pnpm --filter @gsi/app-kid build"
   publish = "apps/kid/.next"
-  functions = "netlify/functions"
+  functions = "apps/kid/netlify/functions"
 
 [build.environment]
   NODE_VERSION = "20"

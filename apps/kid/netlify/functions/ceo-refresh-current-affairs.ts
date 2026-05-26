@@ -23,8 +23,8 @@
 
 import type { Handler } from '@netlify/functions';
 import { schedule } from '@netlify/functions';
-import { getOrFreshenCurrentAffairs } from '../../lib/ceo/currentAffairs';
-import { isAuthorizedCronCall } from '../../lib/netlify-cron-auth';
+import { getOrFreshenCurrentAffairs } from '../../../../lib/ceo/currentAffairs';
+import { isAuthorizedCronCall } from '../../../../lib/netlify-cron-auth';
 
 const DEPLOY_SECRET = process.env.BOT_SETUP_SECRET;
 

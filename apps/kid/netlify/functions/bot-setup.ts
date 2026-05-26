@@ -24,7 +24,7 @@
  */
 
 import type { Handler } from '@netlify/functions';
-import { TelegramAdapter } from '../../lib/bot/adapters/telegram';
+import { TelegramAdapter } from '../../../../lib/bot/adapters/telegram';
 
 const DEPLOY_SECRET = process.env.BOT_SETUP_SECRET;
 const SITE_URL = process.env.URL ?? process.env.NEXT_PUBLIC_URL ?? '';

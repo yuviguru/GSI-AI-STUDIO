@@ -15,7 +15,7 @@
  */
 
 import type { Handler } from '@netlify/functions';
-import { runWeeklyDigest } from '../../lib/bot/digests/weeklyHomeworkDigest';
+import { runWeeklyDigest } from '../../../../lib/bot/digests/weeklyHomeworkDigest';
 
 const DIGEST_SECRET = process.env.WEEKLY_DIGEST_SECRET;
 
