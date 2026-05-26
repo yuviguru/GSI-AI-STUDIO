@@ -21,6 +21,7 @@ export {
   getRecentLedger,
   debitCredits,
   grantMonthlyCredits,
+  ensureInitialGrant,
   addTopupCredits,
   addBonusCredits,
   InsufficientCreditsError,
@@ -38,6 +39,13 @@ export {
 } from './guard';
 
 export { shouldBypass } from './bypass';
+
+export {
+  getDeviceCreditSnapshot,
+  debitDeviceCredits,
+  resetDeviceCredits,
+  type DeviceCreditSnapshot,
+} from './deviceCredits';
 
 export {
   enforceBilling,

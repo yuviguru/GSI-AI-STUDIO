@@ -143,6 +143,26 @@ export async function getBalance(kidId: string): Promise<number> {
   return (await getCreditSnapshot(kidId)).balance;
 }
 
+/**
+ * Idempotent first-time grant: if the kid has never been granted credits
+ * (no `creditsMonthlyGrantedAt`), provision them with the default plan's
+ * monthly amount. No-op if they've already received a grant.
+ *
+ * Used by routes that surface the balance (`GET /api/billing/credits`)
+ * so a kid created before BILLING-001 still gets seeded automatically.
+ * The `POST /api/users/kids` path seeds at creation time for new accounts;
+ * this function is the safety net for everyone else.
+ */
+export async function ensureInitialGrant(
+  kidId: string,
+  plan?: UserPlan,
+): Promise<CreditSnapshot> {
+  const snap = await getCreditSnapshot(kidId);
+  if (snap.monthlyGrantedAt) return snap;
+  await grantMonthlyCredits({ kidId, plan: plan ?? snap.plan ?? 'free' });
+  return getCreditSnapshot(kidId);
+}
+
 /** Recent ledger entries, newest first. Capped at 100. */
 export async function getRecentLedger(kidId: string, limit = 20): Promise<CreditLedgerEntry[]> {
   const n = Math.max(1, Math.min(100, limit));
