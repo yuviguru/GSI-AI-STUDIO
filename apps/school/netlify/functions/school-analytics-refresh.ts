@@ -12,9 +12,9 @@
 
 import type { Handler } from '@netlify/functions';
 import { schedule } from '@netlify/functions';
-import { adminDb } from '../../lib/firebase/admin';
-import { refreshSchoolAnalytics } from '../../lib/firebase/analyticsService';
-import { isAuthorizedCronCall } from '../../lib/netlify-cron-auth';
+import { adminDb } from '@gsi/firebase/admin';
+import { refreshSchoolAnalytics } from '@gsi/firebase/analyticsService';
+import { isAuthorizedCronCall } from '../../../../lib/netlify-cron-auth';
 
 const DEPLOY_SECRET = process.env.BOT_SETUP_SECRET;
 

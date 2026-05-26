@@ -4,13 +4,14 @@
 #   - Repository: yuviguru/GSI-AI-STUDIO
 #   - Base directory: apps/kid
 #   - Build command: pnpm --filter @gsi/app-kid build
-#   - Publish directory: apps/kid/.next
-#   - Functions directory: netlify/functions (workspace root)
+#   - Publish directory: .next (relative to base = apps/kid/.next)
+#   - Functions directory: netlify/functions (relative to base = apps/kid/netlify/functions)
 
 [build]
   base = "apps/kid"
   command = "pnpm --filter @gsi/app-kid build"
   publish = ".next"
+  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "20"
@@ -20,9 +21,8 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# Scheduled functions live at the workspace root in netlify/functions/.
-# Both sites can reference them; pick the kid site to own kid-context
-# schedules so the function deploys with its closest data.
+# Kid-context scheduled functions. Files live in apps/kid/netlify/functions/
+# so a school function failure can never block the kid deploy.
 
 [functions."homework-weekly-digest"]
   schedule = "30 13 * * 0"

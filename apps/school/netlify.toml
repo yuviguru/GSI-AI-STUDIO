@@ -4,13 +4,14 @@
 #   - Repository: yuviguru/GSI-AI-STUDIO
 #   - Base directory: apps/school
 #   - Build command: pnpm --filter @gsi/app-school build
-#   - Publish directory: apps/school/.next
-#   - Functions directory: netlify/functions (workspace root)
+#   - Publish directory: .next (relative to base = apps/school/.next)
+#   - Functions directory: netlify/functions (relative to base = apps/school/netlify/functions)
 
 [build]
   base = "apps/school"
   command = "pnpm --filter @gsi/app-school build"
   publish = ".next"
+  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "20"
@@ -20,7 +21,7 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# School-context scheduled functions.
+# School-context scheduled functions. Files live in apps/school/netlify/functions/.
 
 [functions."school-analytics-refresh"]
   schedule = "0 2 * * *"
