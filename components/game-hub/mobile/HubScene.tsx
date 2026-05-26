@@ -14,6 +14,7 @@ import { XpBar } from '../shared/XpBar';
 import { getModesByGroup, type ModeGroup } from '../shared/GameModes';
 import { bentoContainer, bentoShape, bentoSpan } from '../shared/bento';
 import { playSound } from '@/lib/sounds';
+import { CreditsBadge } from '@/components/billing/CreditsBadge';
 
 const XP_PER_LEVEL = 100;
 
@@ -67,7 +68,11 @@ export function HubScene() {
               <XpBar percent={progressPct} height={5} />
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-amber-400/20 to-orange-400/20 px-2 py-0.5 ring-1 ring-amber-300/40">
+          <CreditsBadge />
+          <div
+            className="flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-amber-400/20 to-orange-400/20 px-2 py-0.5 ring-1 ring-amber-300/40"
+            title="AI Points — your lifetime creator score"
+          >
             <span className="text-[10px]">✨</span>
             <span className="font-mono text-[10px] font-bold text-amber-700">
               {isLoaded ? totalPoints.toLocaleString() : '—'}
