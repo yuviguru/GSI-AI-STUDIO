@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { verifyAuth } from '@/lib/auth-utils';
 import { requireKidOwnership } from '@/lib/api/kidOwnership';
-import { getCreditSnapshot, getRecentLedger } from '@/lib/billing';
+import { ensureInitialGrant, getRecentLedger } from '@/lib/billing';
 
 /** GET /api/billing/credits?kidId=… — balance + plan + recent ledger. */
 export async function GET(request: NextRequest) {
@@ -13,8 +13,11 @@ export async function GET(request: NextRequest) {
 
     await requireKidOwnership(auth, kidId);
 
+    // Seeds the kid's wallet with the default plan's monthly grant on
+    // first read — for accounts created before BILLING-001 shipped.
+    // No-op once the kid has received any grant.
     const [snapshot, ledger] = await Promise.all([
-      getCreditSnapshot(kidId),
+      ensureInitialGrant(kidId),
       getRecentLedger(kidId, 20),
     ]);
 

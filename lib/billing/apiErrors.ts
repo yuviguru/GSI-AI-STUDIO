@@ -8,10 +8,15 @@
  * need finer control (e.g. attaching a refund on downstream failure).
  */
 
+import { createHash } from 'node:crypto';
 import type { NextRequest } from 'next/server';
 import { AppException } from '@/lib/api-utils';
 import { hybridAuth } from '@/lib/auth-utils';
 import { adminDb } from '@gsi/firebase/admin';
+import { ipFromRequest } from '@/lib/api/requestUtils';
+import { getCost } from './creditCosts';
+import { debitDeviceCredits } from './deviceCredits';
+import { shouldBypass } from './bypass';
 import {
   assertEntitled,
   PlanError,
@@ -22,6 +27,10 @@ import {
   type BillingContext,
 } from './guard';
 import { InsufficientCreditsError } from './credits';
+
+function hashIpSha256(ip: string): string {
+  return createHash('sha256').update(ip).digest('hex');
+}
 
 /**
  * Build a `BillingContext` from the request.
@@ -84,16 +93,65 @@ export function toAppException(err: unknown): unknown {
  *
  *   await enforceBilling(request, { feature: 'story.generate' });
  *
- * For routes that need the result (charged amount, balance after, etc.),
- * the call returns the `AssertEntitledResult`.
+ * For authed callers with an active kid, debits the kid wallet via
+ * `assertEntitled`. For anonymous callers, debits the device-bound
+ * trial wallet (`deviceCredits/{ipHash}`) so trial usage is capped
+ * even after a localStorage wipe — BILLING-001 anti-abuse measure.
  */
 export async function enforceBilling(
   request: NextRequest,
   options: AssertEntitledOptions,
 ): Promise<AssertEntitledResult> {
   const ctx = await resolveBillingContext(request);
+
+  // Authed path — kid wallet (or admin / bypass short-circuit inside the guard).
+  if (ctx.kidId) {
+    try {
+      return await assertEntitled(ctx, options);
+    } catch (err) {
+      throw toAppException(err);
+    }
+  }
+
+  // Capability-only checks for non-kid callers still go through the
+  // guard (it'll throw PlanError if the caller's plan lacks the cap).
+  if (options.capability) {
+    try {
+      return await assertEntitled(ctx, options);
+    } catch (err) {
+      throw toAppException(err);
+    }
+  }
+
+  // Anonymous + feature has a cost → debit the device trial wallet.
+  // Dev-bypass mirrors the per-kid path so feature work isn't blocked
+  // when running locally.
+  const cost = getCost(options.feature);
+  if (cost === 0 || shouldBypass(undefined)) {
+    return { bypassed: shouldBypass(undefined), charged: 0, balanceAfter: null, entryId: '' };
+  }
+
+  const ip = ipFromRequest(request);
+  if (!ip) {
+    // No way to attribute usage to a device (local dev / missing
+    // header). Let it through — anonymous-session creation caps in
+    // `enforceIpRateLimit` already protect this case.
+    return { bypassed: false, charged: 0, balanceAfter: null, entryId: '' };
+  }
+
+  const ipHash = hashIpSha256(ip);
   try {
-    return await assertEntitled(ctx, options);
+    const result = await debitDeviceCredits({
+      ipHash,
+      amount: cost,
+      feature: options.feature!,
+    });
+    return {
+      bypassed: false,
+      charged: cost,
+      balanceAfter: result.balanceAfter,
+      entryId: '', // device debits don't write a per-kid ledger entry
+    };
   } catch (err) {
     throw toAppException(err);
   }
