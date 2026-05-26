@@ -1,14 +1,20 @@
 /**
  * Client-side Razorpay checkout loader.
  *
- * Lazy-loads https://checkout.razorpay.com/v1/checkout.js once per page,
- * then opens the checkout sheet. Returns a promise that resolves on
- * successful payment (handler) or rejects on dismiss / failure.
+ * Lazy-loads https://checkout.razorpay.com/v1/checkout.js once per
+ * page, then opens the checkout sheet for either:
  *
- * The webhook is the authoritative path that actually credits the kid's
- * wallet (idempotent on paymentRef). This client-side success callback
- * is just a UX cue — the page should poll `/api/billing/credits` after
- * resolve to reflect the new balance once the webhook has run.
+ *   - a one-shot Order (topup) — pass `{ orderId }`
+ *   - a recurring Subscription — pass `{ subscriptionId }`
+ *
+ * Both resolve with a typed `CheckoutResult` discriminated by `kind`.
+ * Subscriptions return a different signature payload (paymentId +
+ * subscriptionId) which `verifySubscriptionSignature` is built to
+ * verify — distinct from the order signature path.
+ *
+ * The verify / webhook is the authoritative path that credits the
+ * wallet; this client callback is just a UX cue. After resolve,
+ * refresh `/api/billing/credits` to show the new balance.
  */
 
 const RAZORPAY_SCRIPT = 'https://checkout.razorpay.com/v1/checkout.js';
@@ -21,14 +27,16 @@ declare global {
 
 interface RazorpayOptions {
   key: string;
-  amount: number; // paise
-  currency: string;
+  amount?: number; // paise — required for orders, ignored for subscriptions
+  currency?: string;
   name: string;
   description?: string;
-  order_id: string;
+  order_id?: string;
+  subscription_id?: string;
   handler: (response: {
     razorpay_payment_id: string;
-    razorpay_order_id: string;
+    razorpay_order_id?: string;
+    razorpay_subscription_id?: string;
     razorpay_signature: string;
   }) => void;
   prefill?: {
@@ -50,7 +58,6 @@ interface RazorpayInstance {
 
 let loadPromise: Promise<void> | null = null;
 
-/** Inject the Razorpay script tag once. Subsequent calls reuse the promise. */
 function loadScript(): Promise<void> {
   if (typeof window === 'undefined') {
     return Promise.reject(new Error('Razorpay checkout can only run in the browser'));
@@ -70,7 +77,7 @@ function loadScript(): Promise<void> {
     script.async = true;
     script.onload = () => resolve();
     script.onerror = () => {
-      loadPromise = null; // allow retry
+      loadPromise = null;
       reject(new Error('Razorpay script failed to load — check network'));
     };
     document.head.appendChild(script);
@@ -78,55 +85,83 @@ function loadScript(): Promise<void> {
   return loadPromise;
 }
 
-export interface OpenCheckoutInput {
-  orderId: string;
-  razorpayKeyId: string;
-  amount: number; // paise
-  currency: string;
-  name?: string;
-  description?: string;
-  prefill?: RazorpayOptions['prefill'];
-}
+export type OpenCheckoutInput =
+  | {
+      kind?: 'order';
+      orderId: string;
+      razorpayKeyId: string;
+      amount: number;
+      currency: string;
+      name?: string;
+      description?: string;
+      prefill?: RazorpayOptions['prefill'];
+    }
+  | {
+      kind: 'subscription';
+      subscriptionId: string;
+      razorpayKeyId: string;
+      name?: string;
+      description?: string;
+      prefill?: RazorpayOptions['prefill'];
+    };
 
-export interface CheckoutResult {
-  paymentId: string;
-  orderId: string;
-  signature: string;
-}
+export type CheckoutResult =
+  | {
+      kind: 'order';
+      paymentId: string;
+      orderId: string;
+      signature: string;
+    }
+  | {
+      kind: 'subscription';
+      paymentId: string;
+      subscriptionId: string;
+      signature: string;
+    };
 
-/**
- * Open the Razorpay checkout sheet. Promise resolves on success handler
- * fire, rejects on dismiss or load failure.
- *
- * Note: the success resolution doesn't mean the wallet has been credited
- * yet — that happens asynchronously when the webhook fires. Poll
- * `/api/billing/credits` after resolve to surface the new balance.
- */
 export async function openCheckout(input: OpenCheckoutInput): Promise<CheckoutResult> {
   await loadScript();
   if (!window.Razorpay) throw new Error('Razorpay script loaded but global is missing');
 
   return new Promise<CheckoutResult>((resolve, reject) => {
-    const rzp = new window.Razorpay!({
+    const isSubscription = 'subscriptionId' in input;
+    const options: RazorpayOptions = {
       key: input.razorpayKeyId,
-      amount: input.amount,
-      currency: input.currency,
       name: input.name ?? 'GSI AI Studio',
-      description: input.description ?? 'AI Coins topup',
-      order_id: input.orderId,
-      handler: (resp) => {
-        resolve({
-          paymentId: resp.razorpay_payment_id,
-          orderId: resp.razorpay_order_id,
-          signature: resp.razorpay_signature,
-        });
-      },
+      description:
+        input.description ?? (isSubscription ? 'Plan subscription' : 'AI Coins topup'),
       prefill: input.prefill,
-      theme: { color: '#6366f1' }, // indigo, matches the CreditsBadge palette
+      theme: { color: '#6366f1' },
+      handler: (resp) => {
+        if (isSubscription) {
+          resolve({
+            kind: 'subscription',
+            paymentId: resp.razorpay_payment_id,
+            subscriptionId: resp.razorpay_subscription_id!,
+            signature: resp.razorpay_signature,
+          });
+        } else {
+          resolve({
+            kind: 'order',
+            paymentId: resp.razorpay_payment_id,
+            orderId: resp.razorpay_order_id!,
+            signature: resp.razorpay_signature,
+          });
+        }
+      },
       modal: {
         ondismiss: () => reject(new Error('Checkout cancelled')),
       },
-    });
-    rzp.open();
+    };
+
+    if (isSubscription) {
+      options.subscription_id = input.subscriptionId;
+    } else {
+      options.order_id = input.orderId;
+      options.amount = input.amount;
+      options.currency = input.currency;
+    }
+
+    new window.Razorpay!(options).open();
   });
 }

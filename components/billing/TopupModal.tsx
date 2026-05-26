@@ -114,12 +114,16 @@ export function TopupModal({ open, onClose }: TopupModalProps) {
         // on payment capture; rejects on dismiss.
         setStatus({ kind: 'awaitingPayment', sku: bundle.sku });
         const checkoutResult = await openCheckout({
+          kind: 'order',
           orderId: order.orderId,
           razorpayKeyId: order.razorpayKeyId,
           amount: order.amount,
           currency: order.currency,
           description: bundle.displayName,
         });
+        if (checkoutResult.kind !== 'order') {
+          throw new Error('Unexpected checkout result kind');
+        }
 
         // ③ Server-side verify + credit. Authoritative real-time path —
         // doesn't depend on the webhook reaching us.

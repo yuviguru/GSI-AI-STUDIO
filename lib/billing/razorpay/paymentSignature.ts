@@ -45,17 +45,41 @@ export function verifyPaymentSignature(
   signature: string | null | undefined,
   secret: string | undefined = process.env.RAZORPAY_KEY_SECRET,
 ): boolean {
+  return verifySignature(`${orderId}|${paymentId}`, signature, secret, 'payment');
+}
+
+/**
+ * Verify a Razorpay subscription-payment signature.
+ *
+ * Subscription checkouts return a different payload from one-shot
+ * orders: `${payment_id}|${subscription_id}` (note the ORDER is
+ * swapped vs. order checkouts where order_id is first). Keep these
+ * verifiers distinct so the swap can never be wrong by accident.
+ */
+export function verifySubscriptionSignature(
+  paymentId: string,
+  subscriptionId: string,
+  signature: string | null | undefined,
+  secret: string | undefined = process.env.RAZORPAY_KEY_SECRET,
+): boolean {
+  return verifySignature(`${paymentId}|${subscriptionId}`, signature, secret, 'subscription');
+}
+
+function verifySignature(
+  payload: string,
+  signature: string | null | undefined,
+  secret: string | undefined,
+  kind: 'payment' | 'subscription',
+): boolean {
   if (!secret) {
-    console.error('[razorpay-payment] RAZORPAY_KEY_SECRET is not set. Refusing to verify.');
+    console.error(`[razorpay-${kind}] RAZORPAY_KEY_SECRET is not set. Refusing to verify.`);
     return false;
   }
-  if (!orderId || !paymentId || !signature) return false;
+  if (!signature || !payload || payload === '|') return false;
 
-  const expected = createHmac('sha256', secret).update(`${orderId}|${paymentId}`).digest('hex');
-
+  const expected = createHmac('sha256', secret).update(payload).digest('hex');
   const expectedBuf = Buffer.from(expected, 'utf8');
   const actualBuf = Buffer.from(signature, 'utf8');
   if (expectedBuf.length !== actualBuf.length) return false;
-
   return timingSafeEqual(expectedBuf, actualBuf);
 }

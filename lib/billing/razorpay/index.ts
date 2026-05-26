@@ -13,7 +13,17 @@ export {
 } from './client';
 
 export { verifyWebhookSignature } from './webhookSignature';
-export { verifyPaymentSignature } from './paymentSignature';
+export { verifyPaymentSignature, verifySubscriptionSignature } from './paymentSignature';
+export {
+  createSubscription,
+  fetchSubscription,
+  cancelSubscription,
+  resolveRazorpayPlanId,
+  isSubscribablePlan,
+  type SubscribablePlan,
+  type CreatedSubscription,
+  type CreateSubscriptionInput,
+} from './subscriptions';
 
 export {
   TOPUPS,

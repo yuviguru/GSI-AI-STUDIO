@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useCredits, type CreditsLedgerEntry } from '@/hooks/useCredits';
 import { TopupModal } from '@/components/billing/TopupModal';
+import { SubscribeModal } from '@/components/billing/SubscribeModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useKidProfile } from '@/hooks/useKidProfile';
 import { fetchWithKidAuth } from '@/lib/fetchWithKidAuth';
@@ -19,12 +20,36 @@ import { fetchWithKidAuth } from '@/lib/fetchWithKidAuth';
  * context providers from `(public)/layout.tsx` wrap this page.
  */
 export default function CreditsPage() {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, getIdToken } = useAuth();
   const { activeKid, loading: kidLoading } = useKidProfile();
-  const { snapshot, balance, isLoading, error } = useCredits();
+  const { snapshot, balance, isLoading, error, refresh } = useCredits();
   const [topupOpen, setTopupOpen] = useState(false);
+  const [subscribeOpen, setSubscribeOpen] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const stillResolving = authLoading || kidLoading || (isAuthenticated && activeKid && isLoading);
+
+  const handleCancel = async () => {
+    if (!activeKid) return;
+    if (!confirm('Cancel subscription? Plan benefits stay until the period ends.')) return;
+    setCancelLoading(true);
+    setCancelError(null);
+    try {
+      const res = await fetchWithKidAuth(
+        '/api/billing/razorpay/cancel-subscription',
+        { getIdToken, kidId: activeKid.id },
+        { method: 'POST', body: JSON.stringify({ kidId: activeKid.id }) },
+      );
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message ?? 'Could not cancel');
+      await refresh();
+    } catch (err) {
+      setCancelError(err instanceof Error ? err.message : 'Could not cancel');
+    } finally {
+      setCancelLoading(false);
+    }
+  };
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
@@ -64,6 +89,14 @@ export default function CreditsPage() {
               onBuy={() => setTopupOpen(true)}
             />
 
+            <PlanSection
+              currentPlan={snapshot.plan}
+              onSubscribe={() => setSubscribeOpen(true)}
+              onCancel={handleCancel}
+              cancelLoading={cancelLoading}
+              cancelError={cancelError}
+            />
+
             <section className="mt-8">
               <h2 className="mb-3 font-display text-lg font-bold text-brand-text">Recent activity</h2>
               <LedgerSection
@@ -76,6 +109,7 @@ export default function CreditsPage() {
         )}
 
         <TopupModal open={topupOpen} onClose={() => setTopupOpen(false)} />
+        <SubscribeModal open={subscribeOpen} onClose={() => setSubscribeOpen(false)} />
     </main>
   );
 }
@@ -127,6 +161,58 @@ function BalanceCard({ balance, plan, monthlyResetAt, monthlyGrant, onBuy }: Bal
           Buy coins
         </button>
       </div>
+    </section>
+  );
+}
+
+interface PlanSectionProps {
+  currentPlan: string;
+  onSubscribe: () => void;
+  onCancel: () => void;
+  cancelLoading: boolean;
+  cancelError: string | null;
+}
+
+function PlanSection({ currentPlan, onSubscribe, onCancel, cancelLoading, cancelError }: PlanSectionProps) {
+  const isFree = currentPlan === 'free';
+  const isPaid = currentPlan === 'creator' || currentPlan === 'pro';
+
+  return (
+    <section className="mt-8 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
+      <h2 className="font-display text-lg font-bold text-brand-text">
+        {isPaid ? 'Your plan' : 'Upgrade your plan'}
+      </h2>
+      {isFree ? (
+        <>
+          <p className="mt-1 text-sm text-gray-600">
+            You&apos;re on the <strong>Free</strong> plan. Upgrade for more monthly coins and
+            priority AI.
+          </p>
+          <button
+            onClick={onSubscribe}
+            className="mt-3 rounded-full bg-indigo-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-indigo-700"
+          >
+            See plans
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="mt-1 text-sm text-gray-600">
+            You&apos;re subscribed to the <strong className="uppercase">{currentPlan}</strong> plan.
+            Monthly credits land automatically.
+          </p>
+          <button
+            onClick={onCancel}
+            disabled={cancelLoading}
+            className="mt-3 rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {cancelLoading ? 'Cancelling…' : 'Cancel subscription'}
+          </button>
+          {cancelError && (
+            <p className="mt-2 text-xs text-red-600">{cancelError}</p>
+          )}
+        </>
+      )}
     </section>
   );
 }
