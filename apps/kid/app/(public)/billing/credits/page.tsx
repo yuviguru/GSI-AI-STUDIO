@@ -6,6 +6,7 @@ import { useCredits, type CreditsLedgerEntry } from '@/hooks/useCredits';
 import { TopupModal } from '@/components/billing/TopupModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useKidProfile } from '@/hooks/useKidProfile';
+import { fetchWithKidAuth } from '@/lib/fetchWithKidAuth';
 
 /**
  * /billing/credits — wallet page.
@@ -65,7 +66,11 @@ export default function CreditsPage() {
 
             <section className="mt-8">
               <h2 className="mb-3 font-display text-lg font-bold text-brand-text">Recent activity</h2>
-              <LedgerList entries={snapshot.recentLedger} />
+              <LedgerSection
+                kidId={snapshot.kidId}
+                initialEntries={snapshot.recentLedger}
+                initialCursor={snapshot.nextCursor}
+              />
             </section>
           </>
         )}
@@ -126,7 +131,46 @@ function BalanceCard({ balance, plan, monthlyResetAt, monthlyGrant, onBuy }: Bal
   );
 }
 
-function LedgerList({ entries }: { entries: CreditsLedgerEntry[] }) {
+interface LedgerSectionProps {
+  kidId: string;
+  initialEntries: CreditsLedgerEntry[];
+  initialCursor: string | null;
+}
+
+/**
+ * Self-managing ledger list with "Load more" pagination. Owns the
+ * accumulated entries + next-cursor + loading state so the page itself
+ * doesn't have to thread it.
+ */
+function LedgerSection({ kidId, initialEntries, initialCursor }: LedgerSectionProps) {
+  const { getIdToken } = useAuth();
+  const [entries, setEntries] = useState<CreditsLedgerEntry[]>(initialEntries);
+  const [cursor, setCursor] = useState<string | null>(initialCursor);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadMore = async () => {
+    if (!cursor || loading) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const url = `/api/billing/credits?kidId=${encodeURIComponent(kidId)}&before=${encodeURIComponent(cursor)}`;
+      const res = await fetchWithKidAuth(url, { getIdToken, kidId }, { method: 'GET' });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message ?? 'Could not load more');
+      const data = json.data as {
+        recentLedger: CreditsLedgerEntry[];
+        nextCursor: string | null;
+      };
+      setEntries((prev) => [...prev, ...data.recentLedger]);
+      setCursor(data.nextCursor);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load more entries');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (entries.length === 0) {
     return (
       <p className="rounded-xl bg-gray-50 p-6 text-center text-sm text-gray-500">
@@ -134,25 +178,40 @@ function LedgerList({ entries }: { entries: CreditsLedgerEntry[] }) {
       </p>
     );
   }
+
   return (
-    <ul className="divide-y divide-gray-100 rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
-      {entries.map((e) => (
-        <li key={e.id} className="flex items-center justify-between px-4 py-3">
-          <div>
-            <p className="text-sm font-medium text-gray-900">{describeEntry(e)}</p>
-            <p className="text-xs text-gray-400">{formatDate(e.createdAt)}</p>
-          </div>
-          <p
-            className={`font-mono text-sm font-bold ${
-              e.amount >= 0 ? 'text-emerald-600' : 'text-red-600'
-            }`}
-          >
-            {e.amount >= 0 ? '+' : ''}
-            {e.amount}
-          </p>
-        </li>
-      ))}
-    </ul>
+    <div>
+      <ul className="divide-y divide-gray-100 rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
+        {entries.map((e) => (
+          <li key={e.id} className="flex items-center justify-between px-4 py-3">
+            <div>
+              <p className="text-sm font-medium text-gray-900">{describeEntry(e)}</p>
+              <p className="text-xs text-gray-400">{formatDate(e.createdAt)}</p>
+            </div>
+            <p
+              className={`font-mono text-sm font-bold ${
+                e.amount >= 0 ? 'text-emerald-600' : 'text-red-600'
+              }`}
+            >
+              {e.amount >= 0 ? '+' : ''}
+              {e.amount}
+            </p>
+          </li>
+        ))}
+      </ul>
+      {error && (
+        <p className="mt-2 text-center text-xs text-red-600">{error}</p>
+      )}
+      {cursor && (
+        <button
+          onClick={loadMore}
+          disabled={loading}
+          className="mt-3 w-full rounded-xl border border-gray-200 bg-white py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading ? 'Loading…' : 'Load more'}
+        </button>
+      )}
+    </div>
   );
 }
 

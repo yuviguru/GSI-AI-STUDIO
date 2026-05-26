@@ -1,6 +1,6 @@
 'use client';
 
-import { getCostClient } from '@/lib/billing/creditCostsDefaults';
+import { useCreditCost } from '@/hooks/useCreditCosts';
 import { cn } from '@/lib/utils';
 
 interface CreditCostBadgeProps {
@@ -29,7 +29,7 @@ export function CreditCostBadge({
   showFree = false,
   className,
 }: CreditCostBadgeProps) {
-  const cost = getCostClient(feature);
+  const cost = useCreditCost(feature);
 
   if (cost === 0 && !showFree) return null;
 
