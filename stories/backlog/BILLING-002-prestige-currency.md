@@ -1,12 +1,17 @@
-# BILLING-002: Prestige Currency — Three-Currency Model with Real-World Redemption
+# BILLING-002: AI Royalties — Three-Currency Model with Real-World Redemption
+
+> **Naming locked-in (2026-05-27):** the prestige currency is **AI Royalties**.
+> Code field: `royaltyBalance`. UI label: "AI Royalties" (or "Royalties" when
+> the context already implies the brand). Matches the AI prefix on the other
+> two currencies (AI Coins, AI Points) and conveys "earned real-world value".
 
 ## Description
 
 Add a **third currency** on top of the BILLING-001 foundation. The platform will have three distinct currencies, each serving a different psychological and economic role:
 
-| | **AI Coins** (currency) | **XP** (progress) | **Prestige Currency** (NEW — name TBD) |
+| | **AI Coins** (currency) | **AI Points** (progress) | **AI Royalties** (prestige) |
 |---|---|---|---|
-| Code field | `creditBalance` (BILLING-001) | `aiPoints` (existing) | NEW field |
+| Code field | `creditBalance` (BILLING-001) | `aiPoints` (existing) | `royaltyBalance` (NEW) |
 | How earned | Bought + monthly plan grant | Activity: every creation, game, lesson | Rare milestones only |
 | How spent | AI generation (assertEntitled) | **Never spent** — lifetime score | Redeemed for real-world rewards |
 | Resets | Grants expire monthly; topups don't | Never | Never |
@@ -16,20 +21,9 @@ Add a **third currency** on top of the BILLING-001 foundation. The platform will
 
 **Hard rule: no conversion between currencies.** Cross-currency exchange devalues all three. A kid who can grind XP into AI Coins will dodge paying for credits; a kid who can buy prestige rewards with AI Coins loses the "rare achievement" feeling. Each currency stays in its lane.
 
-## Design Decisions
+## Naming history (for context)
 
-### Naming candidates (decision pending)
-
-The kid faces this currency on every milestone screen, so the name has to feel like **earned real-world value**, not whimsy. Shortlist:
-
-| Name | Why it fits | Code-level field | Tradeoff |
-|---|---|---|---|
-| **Royalties** | Frames kid as paid creator. Real-world earnings concept. Dovetails with creator-economy positioning. Teaches a useful word. | `royaltyBalance` | Slightly long. "5 Royalties" reads fine but UI is denser. |
-| **Gold** / Gold Coins | Universal game-money signal — every kid understands "gold = valuable" instantly. | `goldBalance` | Distinguishing from "AI Coins" in UI requires care. |
-| **Treasure** | Playful + rare + discovery-coded. | `treasureBalance` | Less earnings-specific than the others. |
-| **Crowns** | Prestige + achievement. Duolingo's top-tier signal. | `crownBalance` | Feels more competitive than earnings-driven. |
-
-**Initial author recommendation: Royalties** — it's the only option that teaches a real-world earnings concept while feeling rare. But the name decision was deferred from the BILLING-001 session.
+We considered Royalties / Gold / Treasure / Crowns. **Royalties** won because it's the only option that frames the kid as a paid creator and teaches a real-world earnings concept while feeling rare. Prefixed with "AI" to match the other two currencies.
 
 ### Earning triggers — keep them genuinely rare
 
