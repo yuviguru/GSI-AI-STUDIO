@@ -15,6 +15,8 @@ export interface CreditsSnapshotResponse {
   creditsMonthlyResetAt: string | null;
   creditsLastDebitAt: string | null;
   recentLedger: CreditsLedgerEntry[];
+  /** Pass back as `before` to fetch the next page; null = end of ledger. */
+  nextCursor: string | null;
 }
 
 export interface CreditsLedgerEntry {

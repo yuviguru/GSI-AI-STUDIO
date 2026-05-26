@@ -12,6 +12,7 @@ import {
   FieldValue,
   Timestamp,
   type DocumentReference,
+  type Query,
   type Transaction,
 } from 'firebase-admin/firestore';
 import { adminDb } from '@gsi/firebase';
@@ -163,16 +164,37 @@ export async function ensureInitialGrant(
   return getCreditSnapshot(kidId);
 }
 
-/** Recent ledger entries, newest first. Capped at 100. */
-export async function getRecentLedger(kidId: string, limit = 20): Promise<CreditLedgerEntry[]> {
-  const n = Math.max(1, Math.min(100, limit));
-  const q = await kidDocRef(kidId)
-    .collection(LEDGER)
-    .orderBy('createdAt', 'desc')
-    .limit(n)
-    .get();
+export interface LedgerPage {
+  entries: CreditLedgerEntry[];
+  /** Pass back as `before` on the next request to fetch older entries. */
+  nextCursor: string | null;
+}
 
-  return q.docs.map((doc) => {
+/**
+ * Paginated ledger fetch — newest first. Pass `before` (a previous
+ * entry's `createdAt` ISO string) to fetch the next page. Returns a
+ * cursor for the page after if more entries exist.
+ */
+export async function getLedgerPage(
+  kidId: string,
+  options: { limit?: number; before?: string | null } = {},
+): Promise<LedgerPage> {
+  const n = Math.max(1, Math.min(100, options.limit ?? 20));
+
+  let q: Query = kidDocRef(kidId).collection(LEDGER).orderBy('createdAt', 'desc');
+
+  if (options.before) {
+    const beforeDate = new Date(options.before);
+    if (!Number.isNaN(beforeDate.getTime())) {
+      q = q.startAfter(Timestamp.fromDate(beforeDate));
+    }
+  }
+
+  const snap = await q.limit(n + 1).get();
+  const docs = snap.docs.slice(0, n);
+  const hasMore = snap.docs.length > n;
+
+  const entries = docs.map((doc) => {
     const d = doc.data();
     return {
       id: doc.id,
@@ -186,8 +208,20 @@ export async function getRecentLedger(kidId: string, limit = 20): Promise<Credit
       metadata: d.metadata,
       reversedBy: d.reversedBy,
       createdAt: tsToDate(d.createdAt) ?? new Date(0),
-    };
+    } satisfies CreditLedgerEntry;
   });
+
+  const last = entries[entries.length - 1];
+  return {
+    entries,
+    nextCursor: hasMore && last ? last.createdAt.toISOString() : null,
+  };
+}
+
+/** Backwards-compatible single-page fetch. Prefer `getLedgerPage` for new code. */
+export async function getRecentLedger(kidId: string, limit = 20): Promise<CreditLedgerEntry[]> {
+  const page = await getLedgerPage(kidId, { limit });
+  return page.entries;
 }
 
 // ─── Writes ──────────────────────────────────────────────────────────────
