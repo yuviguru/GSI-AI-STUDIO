@@ -22,36 +22,40 @@ interface OrderResponse {
   displayLines: Array<{ label: string; amount: string }>;
 }
 
+interface VerifyResponse {
+  kidId: string;
+  creditsAdded: number;
+  creditBalance: number;
+  duplicate: boolean;
+}
+
+/**
+ * Status state machine for the topup flow:
+ *
+ *   idle ──[user clicks bundle]── creatingOrder ── awaitingPayment
+ *                                                      │
+ *           ┌──────────────[checkout dismissed]────────┘
+ *           ▼                                          │
+ *   error('cancelled')              [payment captured] ▼
+ *                                                  verifying
+ *                                                      │
+ *                                       ┌──────────────┴───────────┐
+ *                                       ▼                          ▼
+ *                                  success(balance)            error(...)
+ */
 type Status =
   | { kind: 'idle' }
   | { kind: 'loadingCatalog' }
   | { kind: 'creatingOrder'; sku: string }
   | { kind: 'awaitingPayment'; sku: string }
-  | { kind: 'awaitingWebhook'; sku: string; previousBalance: number }
-  | { kind: 'success'; sku: string }
+  | { kind: 'verifying'; sku: string }
+  | { kind: 'success'; sku: string; newBalance: number; added: number }
   | { kind: 'error'; message: string };
-
-/** Poll /api/billing/credits up to N times waiting for the webhook-driven
- *  balance increase. Stops as soon as the balance moves. */
-async function pollForBalanceIncrease(
-  refresh: () => Promise<unknown>,
-  getBalance: () => number,
-  previous: number,
-  maxAttempts = 6,
-  delayMs = 1500,
-): Promise<boolean> {
-  for (let i = 0; i < maxAttempts; i++) {
-    await new Promise((r) => setTimeout(r, delayMs));
-    await refresh();
-    if (getBalance() > previous) return true;
-  }
-  return false;
-}
 
 export function TopupModal({ open, onClose }: TopupModalProps) {
   const { getIdToken } = useAuth();
   const { activeKid } = useKidProfile();
-  const { balance, refresh: refreshCredits } = useCredits();
+  const { refresh: refreshCredits } = useCredits();
 
   const [topups, setTopups] = useState<TopupBundle[]>([]);
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
@@ -86,11 +90,11 @@ export function TopupModal({ open, onClose }: TopupModalProps) {
         setStatus({ kind: 'error', message: 'Pick a kid profile first.' });
         return;
       }
-      const previousBalance = balance;
       setStatus({ kind: 'creatingOrder', sku: bundle.sku });
 
       try {
-        const res = await fetchWithKidAuth(
+        // ① Create order
+        const orderRes = await fetchWithKidAuth(
           '/api/billing/razorpay/order',
           { getIdToken, kidId: activeKid.id },
           {
@@ -102,12 +106,14 @@ export function TopupModal({ open, onClose }: TopupModalProps) {
             }),
           },
         );
-        const json = await res.json();
-        if (!json.success) throw new Error(json.error?.message ?? 'Could not create order');
-        const order = json.data as OrderResponse;
+        const orderJson = await orderRes.json();
+        if (!orderJson.success) throw new Error(orderJson.error?.message ?? 'Could not create order');
+        const order = orderJson.data as OrderResponse;
 
+        // ② Open Razorpay checkout. Resolves with the signature triple
+        // on payment capture; rejects on dismiss.
         setStatus({ kind: 'awaitingPayment', sku: bundle.sku });
-        await openCheckout({
+        const checkoutResult = await openCheckout({
           orderId: order.orderId,
           razorpayKeyId: order.razorpayKeyId,
           amount: order.amount,
@@ -115,19 +121,38 @@ export function TopupModal({ open, onClose }: TopupModalProps) {
           description: bundle.displayName,
         });
 
-        // Payment captured client-side. Webhook is the authoritative
-        // crediting path — poll until the balance reflects it.
-        setStatus({ kind: 'awaitingWebhook', sku: bundle.sku, previousBalance });
-        const credited = await pollForBalanceIncrease(refreshCredits, () => balance, previousBalance);
-        if (!credited) {
-          setStatus({
-            kind: 'error',
-            message:
-              'Payment captured — credits will appear shortly. If they don\'t in a minute, contact support.',
-          });
-          return;
+        // ③ Server-side verify + credit. Authoritative real-time path —
+        // doesn't depend on the webhook reaching us.
+        setStatus({ kind: 'verifying', sku: bundle.sku });
+        const verifyRes = await fetchWithKidAuth(
+          '/api/billing/razorpay/verify',
+          { getIdToken, kidId: activeKid.id },
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              razorpayPaymentId: checkoutResult.paymentId,
+              razorpayOrderId: checkoutResult.orderId,
+              razorpaySignature: checkoutResult.signature,
+            }),
+          },
+        );
+        const verifyJson = await verifyRes.json();
+        if (!verifyJson.success) {
+          throw new Error(verifyJson.error?.message ?? 'Could not verify payment');
         }
-        setStatus({ kind: 'success', sku: bundle.sku });
+        const verified = verifyJson.data as VerifyResponse;
+
+        // ④ Refresh the SWR cache so the nav badge picks up the new
+        // balance immediately. We don't depend on this — the success
+        // banner shows the balance from the verify response.
+        await refreshCredits();
+
+        setStatus({
+          kind: 'success',
+          sku: bundle.sku,
+          newBalance: verified.creditBalance,
+          added: verified.creditsAdded,
+        });
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Topup failed';
         if (message === 'Checkout cancelled') {
@@ -137,7 +162,7 @@ export function TopupModal({ open, onClose }: TopupModalProps) {
         setStatus({ kind: 'error', message });
       }
     },
-    [activeKid, balance, getIdToken, refreshCredits],
+    [activeKid, getIdToken, refreshCredits],
   );
 
   if (!open) return null;
@@ -145,7 +170,7 @@ export function TopupModal({ open, onClose }: TopupModalProps) {
   const busy =
     status.kind === 'creatingOrder' ||
     status.kind === 'awaitingPayment' ||
-    status.kind === 'awaitingWebhook';
+    status.kind === 'verifying';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -203,7 +228,7 @@ export function TopupModal({ open, onClose }: TopupModalProps) {
                       <div className="mt-1 text-xs text-indigo-600">
                         {status.kind === 'creatingOrder' && 'Creating order…'}
                         {status.kind === 'awaitingPayment' && 'Pay in Razorpay…'}
-                        {status.kind === 'awaitingWebhook' && 'Crediting…'}
+                        {status.kind === 'verifying' && 'Verifying…'}
                       </div>
                     )}
                   </div>
@@ -218,7 +243,8 @@ export function TopupModal({ open, onClose }: TopupModalProps) {
         )}
         {status.kind === 'success' && (
           <p className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
-            🎉 Credits added! Your new balance is {balance.toLocaleString()}.
+            🎉 Added {status.added.toLocaleString()} coins! Your new balance is{' '}
+            <strong>{status.newBalance.toLocaleString()}</strong>.
           </p>
         )}
       </div>
