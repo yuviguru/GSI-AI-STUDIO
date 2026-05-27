@@ -41,6 +41,7 @@ import {
   aggregateBookAuthorship,
   recomputePageAuthorship,
 } from './bookAuthorship';
+import { computeEffortBadge } from '@/lib/books/effortBadge';
 
 const BOOKS_COLLECTION = 'books';
 const PAGES_SUBCOLLECTION = 'pages';
@@ -1066,7 +1067,8 @@ function mintShareSlug(): string {
 
 /**
  * Move book to `published`. Validates pageCount >= 1, mints shareUrl, sets
- * publishedAt. PDF generation is the caller's responsibility (separate step).
+ * publishedAt, and awards the effort badge (BOOK-003) from the denormalized
+ * authorship summary. PDF generation is the caller's responsibility.
  */
 export async function publishBook(
   bookId: string,
@@ -1084,12 +1086,33 @@ export async function publishBook(
 
   const shareUrl = book.shareUrl ?? `/view/book/${mintShareSlug()}`;
   const now = Timestamp.now();
+  const nowDate = now.toDate();
+
+  // BOOK-003 — compute and stamp the effort badge. If authorship is missing
+  // (legacy pre-BOOK-002 books) we synthesize a neutral default that lands
+  // in pure_imagination (the kid wrote everything pre-AI).
+  const authorship = book.authorship ?? {
+    initialSource: 'wizard_blank' as const,
+    aiCharTotal: 0,
+    kidCharTotal: 0,
+    aiImagePageCount: 0,
+    kidImagePageCount: 0,
+    updatedAt: nowDate,
+  };
+  const effortBadge = computeEffortBadge(authorship, nowDate);
+  const effortBadgeStored = {
+    key: effortBadge.key,
+    aiPercentage: effortBadge.aiPercentage,
+    awardedAt: Timestamp.fromDate(effortBadge.awardedAt),
+    breakdown: { ...effortBadge.breakdown },
+  };
 
   await ref.update({
     status: 'published' as BookStatus,
     isPublic: options.isPublic ?? false,
     publishedAt: now,
     shareUrl,
+    effortBadge: effortBadgeStored,
     updatedAt: now,
   });
 

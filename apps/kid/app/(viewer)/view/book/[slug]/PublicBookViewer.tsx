@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { Sparkles } from 'lucide-react';
 import { FlipbookPreview } from '@/components/studios/book/FlipbookPreview';
-import type { Book, BookPage } from '@gsi/types';
+import { EffortBadge } from '@/components/studios/book/EffortBadge';
+import type { Book, BookPage, EffortBadge as EffortBadgeData } from '@gsi/types';
 
 interface SerializedBook extends Omit<Book, 'createdAt' | 'updatedAt' | 'publishedAt'> {
   createdAt: string;
@@ -24,11 +25,25 @@ interface PublicBookViewerProps {
 }
 
 function reviveBook(b: SerializedBook): Book {
+  // BOOK-003 — effortBadge has its own Date field that needs reviving when
+  // it round-trips through JSON. Older books (pre-BOOK-003) will have null.
+  const badge = b.effortBadge as unknown;
+  let effortBadge: EffortBadgeData | null = null;
+  if (badge && typeof badge === 'object') {
+    const e = badge as Record<string, unknown>;
+    effortBadge = {
+      key: e.key as EffortBadgeData['key'],
+      aiPercentage: e.aiPercentage as number,
+      awardedAt: typeof e.awardedAt === 'string' ? new Date(e.awardedAt) : new Date(),
+      breakdown: e.breakdown as EffortBadgeData['breakdown'],
+    };
+  }
   return {
     ...b,
     createdAt: new Date(b.createdAt),
     updatedAt: new Date(b.updatedAt),
     publishedAt: b.publishedAt ? new Date(b.publishedAt) : null,
+    effortBadge,
   };
 }
 
@@ -52,6 +67,11 @@ export function PublicBookViewer({ payload }: PublicBookViewerProps) {
           <p className="mt-1 text-sm text-gray-600">
             By {book.author} • Published on GSI AI Studio
           </p>
+          {book.effortBadge && (
+            <div className="mt-3 flex justify-center">
+              <EffortBadge badge={book.effortBadge} size="lg" />
+            </div>
+          )}
         </div>
 
         <div className="rounded-3xl bg-white p-4 shadow-card">

@@ -18,6 +18,7 @@ import { useResolvedIdentity } from '@/hooks/useResolvedIdentity';
 import { NewBookWizard } from './NewBookWizard';
 import { BookCreationModeChooser, type BookCreationMode } from './BookCreationModeChooser';
 import { AiGenerateBookForm } from './AiGenerateBookForm';
+import { EffortBadge } from './EffortBadge';
 import { FeaturedBooksRail } from './FeaturedBooksRail';
 import { BookTemplateGallery } from './BookTemplateGallery';
 import { BookTile } from '@/components/studios/shared/BookTile';
@@ -512,8 +513,13 @@ function BookRailTile({ book }: { book: BookListItem }) {
     <span className="text-5xl drop-shadow-sm">{typeCard?.emoji ?? '📖'}</span>
   );
 
+  // BOOK-003 — for published books, the effort badge replaces the corner
+  // status icon (it conveys "published" implicitly + the kid's effort).
+  // Drafts keep the lock icon.
   const corner =
-    book.status === 'published' ? (
+    book.status === 'published' && book.effortBadge ? (
+      <EffortBadge badge={book.effortBadge} size="sm" showTooltip={false} />
+    ) : book.status === 'published' ? (
       <div className="rounded-full bg-white/95 p-1 shadow-sm">
         <BookOpen className="h-3 w-3 text-indigo-600" />
       </div>
