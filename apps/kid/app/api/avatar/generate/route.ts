@@ -14,6 +14,7 @@ import {
   mirrorAvatarToStorage,
 } from '@/lib/images/avatarStorage';
 import { isPersistableAvatarUrl } from '@/lib/images/avatarUrl';
+import { enforceBilling } from '@/lib/billing';
 
 /** Allowed trait values — restricts the prompt surface so kids can't inject
  *  unsafe descriptors via the trait picker. Free-text is filtered separately. */
@@ -228,6 +229,10 @@ export async function POST(request: NextRequest) {
 
     // Safety filter — throws AppException on unsafe content
     filterImagePrompt(prompt);
+
+    // Anonymous (onboarding) users have no kidId → no debit. Authed kids
+    // re-rolling pay `image.fast` (2 credits).
+    await enforceBilling(request, { feature: 'image.fast' });
 
     const { imageFunction, providerName } = getImageProvider();
 

@@ -2,6 +2,10 @@
 
 import { useState } from 'react';
 import { fetchWithSession } from '@/lib/fetchWithSession';
+import {
+  handleBillingApiError,
+  useBillingNotifications,
+} from '@/contexts/BillingNotificationContext';
 
 export interface PageImageOptions {
   prompt: string;
@@ -22,6 +26,7 @@ export interface PageImageResult {
  * imageProvider cascade server-side. Counts toward AI rate limit.
  */
 export function usePageImage() {
+  const { show: showBillingNotification } = useBillingNotifications();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<PageImageResult | null>(null);
@@ -37,6 +42,7 @@ export function usePageImage() {
       });
       const json = await res.json();
       if (!json.success) {
+        if (handleBillingApiError(res.status, json, showBillingNotification)) return null;
         throw new Error(json.error?.message ?? 'Image generation failed');
       }
       const result = json.data as PageImageResult;

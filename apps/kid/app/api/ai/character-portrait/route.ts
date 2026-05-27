@@ -4,6 +4,7 @@ import { characterPortraitSchema } from '@/lib/validators';
 import { filterImagePrompt } from '@gsi/safety';
 import { checkRateLimit, trackCreation } from '@gsi/firebase/sessionService';
 import { getImageProvider } from '@gsi/ai/imageProvider';
+import { enforceBilling } from '@/lib/billing';
 
 /**
  * POST /api/ai/character-portrait — Generate an anchor portrait for a character.
@@ -29,6 +30,9 @@ export async function POST(request: NextRequest) {
     const fullPrompt = buildPortraitPrompt(input.lookDescription, input.styleHint);
     filterImagePrompt(fullPrompt);
     await checkRateLimit(sessionId);
+    // Anchor portraits are re-used across every scene of a book — slightly
+    // more expensive than a one-off scene image.
+    await enforceBilling(request, { feature: 'character.generate' });
 
     const { imageFunction, providerName } = getImageProvider();
 

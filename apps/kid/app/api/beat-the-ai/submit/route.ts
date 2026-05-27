@@ -19,6 +19,7 @@ import {
   detectLevelUp,
 } from '@/lib/beat-the-ai/skillEngine';
 import { updateSessionPoints } from '@gsi/firebase/sessionService';
+import { enforceBilling } from '@/lib/billing';
 import type {
   BeatTheAiDifficulty,
   BeatTheAiPrompt,
@@ -41,6 +42,9 @@ export async function POST(request: NextRequest) {
 
     // Detect phase by request body shape
     if ('kidResponse' in body) {
+      // One round = one AI generation (Phase 1). Phase 2 (judging) is
+      // part of the same round and isn't charged again — cost ~1 credit.
+      await enforceBilling(request, { feature: 'beatTheAi.round' });
       return handlePhase1(sessionId, body);
     } else if ('judge' in body) {
       return handlePhase2(sessionId, body);

@@ -6,6 +6,7 @@ import type {
   BookType,
   PageLayout,
 } from '@gsi/types';
+import { ENTITLEMENTS } from '@/lib/billing/entitlements';
 
 export interface BookTypeCard {
   type: BookType;
@@ -388,11 +389,24 @@ export const BOOK_KIT_PRESETS: readonly BookKitPreset[] = [
   { label: 'Full Book (32 pages)', pageLimit: 32, tier: 'paid' },
 ] as const;
 
-/** Free-tier hard cap on pageLimit. */
-export const FREE_TIER_PAGE_LIMIT = 5;
+/**
+ * Free-tier hard cap on pageLimit. Sourced from
+ * `lib/billing/entitlements.ts` — to change, edit
+ * `ENTITLEMENTS.free.maxBookPages`.
+ */
+export const FREE_TIER_PAGE_LIMIT = ENTITLEMENTS.free.maxBookPages;
 
-/** Paid-tier hard cap (custom kit). Below industry "completable" threshold for kids. */
-export const PAID_TIER_PAGE_MAX = 40;
+/** Paid-tier hard cap (custom kit). Sourced from the highest paid plan's
+ *  capability so adding a higher tier later (e.g. "Studio") automatically
+ *  lifts the ceiling for the form UI without a code change here.
+ *
+ *  Below industry "completable" threshold for kids — the cap is a UX choice
+ *  more than a technical one. */
+export const PAID_TIER_PAGE_MAX = Math.max(
+  ENTITLEMENTS.creator.maxBookPages,
+  ENTITLEMENTS.pro.maxBookPages,
+  ENTITLEMENTS.school.maxBookPages,
+);
 
 /** Look up a type card by its `type`. Returns undefined for unknown types. */
 export function getBookTypeCard(type: BookType): BookTypeCard | undefined {

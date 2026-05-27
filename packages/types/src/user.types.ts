@@ -5,7 +5,15 @@ import type { CreationType } from './creation.types';
 // ─── Roles & Plans ─────────────────────────────────────────────────────────
 
 export type UserRole = 'parent' | 'teacher' | 'schoolAdmin';
-export type UserPlan = 'free' | 'creator' | 'family';
+/**
+ * Unified plan enum. Source of truth lives in `lib/billing/plans.ts`;
+ * this type mirrors the IDs so packages outside `lib/` can type-check.
+ *
+ * Reconciled from a stale `'free' | 'creator' | 'family'` — `family` was
+ * never consumed by any code path. Renamed to `pro` to match the marketing
+ * tiers and `lib/rateLimits.ts`.
+ */
+export type UserPlan = 'free' | 'creator' | 'pro' | 'school' | 'admin';
 
 // ─── Users (parents & teachers) ────────────────────────────────────────────
 
@@ -92,8 +100,72 @@ export interface KidProfile {
   skillArenaStats?: { totalAssessments: number; averageBand: number };
 
   claimedSessionId?: string; // Migrated anonymous session
+
+  // ─── Billing (BILLING-001) ───────────────────────────────────────────────
+  /** Effective plan for this kid. Inherited from parent/school; cached here
+   *  for fast guard checks. `lib/billing/guard.ts` reads this. Absent = free. */
+  plan?: UserPlan;
+  /**
+   * Denormalized total credit balance, equal to
+   * `creditBalanceGrant + creditBalanceTopup` at all times. The kid-doc
+   * write inside every transaction enforces this invariant.
+   *
+   * Authoritative ledger is the `kids/{kidId}/creditLedger` subcollection.
+   * Absent = 0.
+   */
+  creditBalance?: number;
+  /**
+   * Unspent portion of the current monthly plan grant. Resets to
+   * `PLANS[plan].creditsPerMonth` at each cycle (the unspent remainder is
+   * zeroed and re-granted, via an `expire` + `grant` ledger pair). Debits
+   * subtract from this pool first so paid topups are spent last.
+   */
+  creditBalanceGrant?: number;
+  /**
+   * Purchased + admin-issued credits. **Never expires.** Topups (Razorpay)
+   * and bonus grants land here; only refunds (or explicit `expire` from
+   * support) decrement it. Debits draw from this pool only after the grant
+   * pool is exhausted.
+   */
+  creditBalanceTopup?: number;
+  /** Size of the most recent monthly grant. Used by the renewal job to know
+   *  what to re-grant on `creditsMonthlyResetAt`. Mirrors PLANS[plan].creditsPerMonth. */
+  creditsMonthlyGrantAmount?: number;
+  /** When the current monthly grant landed. */
+  creditsMonthlyGrantedAt?: Date;
+  /** When the next monthly grant should fire. Typically grant + 30d. */
+  creditsMonthlyResetAt?: Date;
+  /** Telemetry — when the last successful AI debit happened. */
+  creditsLastDebitAt?: Date;
+
   createdAt: Date;
   updatedAt: Date;
+}
+
+/**
+ * Append-only ledger entry. Subcollection: `kids/{kidId}/creditLedger`.
+ * Source of truth for credit balance. `KidProfile.creditBalance` is a cache.
+ */
+export interface CreditLedgerEntry {
+  id: string;
+  /** What kind of credit movement this is. */
+  type: 'grant' | 'topup' | 'debit' | 'refund' | 'expire' | 'bonus';
+  /** Credit delta. Positive for grant/topup/refund/bonus, negative for debit/expire. */
+  amount: number;
+  /** Cached `creditBalance` after this entry — drift detector. */
+  balanceAfter: number;
+  /** For `debit`: feature key from CREDIT_COSTS (e.g. `story.generate`). */
+  feature?: string;
+  /** For `topup`/`refund`: Razorpay payment or order ID. Idempotency key. */
+  paymentRef?: string;
+  paymentProvider?: 'razorpay' | 'stripe' | 'manual';
+  /** For `grant`: when the grant expires (carries the monthly reset date). */
+  expiresAt?: Date;
+  /** Free-form analytics blob: `{ plan, sessionId, creationId, model, tokens }`. */
+  metadata?: Record<string, unknown>;
+  /** If this entry was later refunded, the ID of the refund entry. */
+  reversedBy?: string;
+  createdAt: Date;
 }
 
 // ─── Auth context (returned by verifyAuth / hybridAuth) ────────────────────

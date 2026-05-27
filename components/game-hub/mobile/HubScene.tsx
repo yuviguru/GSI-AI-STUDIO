@@ -16,6 +16,7 @@ import { SideActionButton, type SideAction } from '../shared/SideActionButton';
 import { XpBar } from '../shared/XpBar';
 import { getModesByGroup, type ModeGroup } from '../shared/GameModes';
 import { playSound } from '@/lib/sounds';
+import { CreditsBadge } from '@/components/billing/CreditsBadge';
 import type { MobileTab } from './TabBar';
 import { DailyRewardModal } from './DailyRewardModal';
 
@@ -171,7 +172,11 @@ export function HubScene({ onTabChange }: HubSceneProps = {}) {
               <XpBar percent={progressPct} height={5} />
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-amber-400/20 to-orange-400/20 px-2 py-0.5 ring-1 ring-amber-300/40">
+          <CreditsBadge />
+          <div
+            className="flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-amber-400/20 to-orange-400/20 px-2 py-0.5 ring-1 ring-amber-300/40"
+            title="AI Points — your lifetime creator score"
+          >
             <span className="text-[10px]">✨</span>
             <span className="font-mono text-[10px] font-bold text-amber-700">
               {isLoaded ? totalPoints.toLocaleString() : '—'}
