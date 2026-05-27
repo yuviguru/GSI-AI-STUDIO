@@ -1,6 +1,8 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { STUDIO_IDS, type StudioId } from '@gsi/types';
+import { StudioLaunchPill } from '@/components/studios/shared/StudioLaunchPill';
 import type { GameMode } from './GameModes';
 
 /**
@@ -14,13 +16,23 @@ import type { GameMode } from './GameModes';
  * Currently consumed by the mobile `HubScene`; if desktop ever reworks
  * its mode grid into the same treatment we can drop the duplication
  * by reusing this component.
+ *
+ * Badge slot: for the six creation studios (StudioId) the launch-state
+ * pill takes priority (LIVE/BETA/COMING_SOON, driven by config/studios).
+ * Other modes (Kid CEO, MindX, Beat the AI, etc.) keep their hardcoded
+ * `mode.badge` from GameModes.ts.
  */
 interface PortalCardProps {
   mode: GameMode;
   onClick: () => void;
 }
 
+function isStudioMode(key: string): key is StudioId {
+  return (STUDIO_IDS as readonly string[]).includes(key);
+}
+
 export function PortalCard({ mode, onClick }: PortalCardProps) {
+  const isStudio = isStudioMode(mode.key);
   return (
     <motion.button
       whileTap={{ scale: 0.95 }}
@@ -33,13 +45,17 @@ export function PortalCard({ mode, onClick }: PortalCardProps) {
     >
       <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/80 text-xl shadow-md ring-[3px] ring-white">
         <span aria-hidden>{mode.emoji}</span>
-        {mode.badge && (
+        {isStudio ? (
+          <span className="absolute -right-1 -top-1">
+            <StudioLaunchPill studioId={mode.key} size="xs" />
+          </span>
+        ) : mode.badge ? (
           <span
             className={`absolute -right-1 -top-1 rounded-full ${mode.badgeBg ?? 'bg-brand-primary'} border-2 border-white px-1 py-0 text-[7px] font-extrabold uppercase tracking-wider text-white`}
           >
             {mode.badge}
           </span>
-        )}
+        ) : null}
       </div>
       <div className={`font-display text-[11px] font-extrabold leading-tight ${mode.textColor}`}>
         {mode.shortLabel}

@@ -19,4 +19,5 @@ export * from './growthMap.types';
 export * from './mindx.types';
 export * from './notification.types';
 export * from './performance.types';
+export * from './studio.types';
 export * from './user.types';

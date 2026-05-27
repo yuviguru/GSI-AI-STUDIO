@@ -246,6 +246,18 @@ service cloud.firestore {
       }
     }
 
+    // ─── Platform Configuration (LAUNCH-001+) ──────────────────
+    // Singleton docs that hold runtime-tunable platform settings:
+    //   - config/studios — LIVE/BETA/COMING_SOON launch state per studio
+    //
+    // Public read because the values are display config (same risk profile
+    // as creditCosts — they tell the UI what to render). Writes are
+    // server-only via Admin SDK or by an admin in the Firebase console.
+    match /config/{configId} {
+      allow read: if true;
+      allow write: if false; // Server-side only via Admin SDK
+    }
+
     // Default: deny all
     match /{document=**} {
       allow read, write: if false;

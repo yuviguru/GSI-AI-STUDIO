@@ -74,8 +74,10 @@ export const GAME_MODES: GameMode[] = [
     iconRing: 'ring-indigo-200/50',
     textColor: 'text-brand-text',
     taglineColor: 'text-brand-text-secondary',
-    badge: 'NEW',
-    badgeBg: 'bg-gradient-to-r from-amber-400 to-orange-500',
+    // Book Studio is the first LIVE creation studio (LAUNCH-001). The
+    // legacy `badge: 'NEW'` is dropped — `PortalCard` now renders the
+    // launch-state pill via `<StudioLaunchPill>` for any StudioId mode,
+    // and the LIVE state defaults to no visible pill (clean baseline).
   },
   {
     key: 'story',

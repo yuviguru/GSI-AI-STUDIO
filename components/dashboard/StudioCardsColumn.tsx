@@ -3,9 +3,25 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Plus, Search } from 'lucide-react';
+import { StudioLaunchPill } from '@/components/studios/shared/StudioLaunchPill';
+import type { StudioId } from '@gsi/types';
 
-const STUDIO_CARDS = [
+interface StudioCard {
+  studioId: StudioId;
+  href: string;
+  emoji: string;
+  title: string;
+  description: string;
+  tag: string;
+  tagBg: string;
+  gradient: string;
+  xp: number;
+  gems: number;
+}
+
+const STUDIO_CARDS: StudioCard[] = [
   {
+    studioId: 'story',
     href: '/create/story',
     emoji: '📖',
     title: 'Story Studio',
@@ -17,6 +33,7 @@ const STUDIO_CARDS = [
     gems: 5,
   },
   {
+    studioId: 'music',
     href: '/create/music',
     emoji: '🎵',
     title: 'Music Lab',
@@ -30,8 +47,8 @@ const STUDIO_CARDS = [
 ];
 
 function StudioCourseCard({
-  href, emoji, title, description, tag, tagBg, gradient, xp, gems,
-}: typeof STUDIO_CARDS[0]) {
+  studioId, href, emoji, title, description, tag, tagBg, gradient, xp, gems,
+}: StudioCard) {
   return (
     <Link href={href} className="group block">
       <motion.div
@@ -42,6 +59,13 @@ function StudioCourseCard({
         {/* Illustration */}
         <div className={`relative flex h-40 items-center justify-center bg-gradient-to-br ${gradient}`}>
           <span className="text-6xl">{emoji}</span>
+
+          {/* Launch-state pill — LAUNCH-001. Top-right of the illustration
+              so it's visible without disturbing the existing XP/gems row
+              along the bottom. */}
+          <span className="absolute right-3 top-3">
+            <StudioLaunchPill studioId={studioId} size="sm" />
+          </span>
 
           {/* XP badges */}
           <div className="absolute bottom-3 left-3 flex items-center gap-1.5">
@@ -86,7 +110,7 @@ export function StudioCardsColumn() {
 
       {/* Course cards */}
       {STUDIO_CARDS.map((s) => (
-        <StudioCourseCard key={s.href} {...s} />
+        <StudioCourseCard key={s.studioId} {...s} />
       ))}
     </div>
   );
