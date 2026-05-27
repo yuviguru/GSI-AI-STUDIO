@@ -36,6 +36,7 @@ import type {
   PageCreateInput,
   PagePatchInput,
   PageReorderInput,
+  SalesConfigPatchInput,
 } from '@/lib/validators';
 import {
   aggregateBookAuthorship,
@@ -1118,6 +1119,115 @@ export async function publishBook(
 
   const snapshot = await ref.get();
   return docToBook(snapshot);
+}
+
+// ── Sales config (BOOK-004 Phase 1) ─────────────────────────────
+
+/**
+ * Update a book's sales config. Author-only. Book must be published
+ * before sales can be enabled.
+ *
+ * Phase 1 — this only sets `book.sales`. No purchases happen until
+ * BOOK-004 Phase 2 ships the Razorpay flow.
+ */
+export async function updateSalesConfig(
+  bookId: string,
+  input: SalesConfigPatchInput,
+  scope: OwnerScope,
+): Promise<Book> {
+  const { ref, book } = await loadOwnedBook(bookId, scope);
+  if (input.enabled && book.status !== 'published') {
+    throw new AppException(
+      'INVALID_STATE',
+      'Publish the book before enabling sales',
+      400,
+    );
+  }
+  if (input.enabled && (input.priceInr ?? null) === null) {
+    throw new AppException('INVALID_INPUT', 'priceInr required when enabling sales', 400);
+  }
+
+  const now = Timestamp.now();
+  const prior = book.sales;
+  const sales = {
+    enabled: input.enabled,
+    priceInr: input.enabled ? input.priceInr ?? null : prior?.priceInr ?? null,
+    listedAt: prior?.listedAt
+      ? Timestamp.fromDate(prior.listedAt)
+      : input.enabled
+        ? now
+        : null,
+  };
+
+  await ref.update({
+    sales,
+    updatedAt: now,
+  });
+
+  const snap = await ref.get();
+  return docToBook(snap);
+}
+
+export interface ListShopBooksFilters {
+  limit?: number;
+  cursor?: string;
+}
+
+export interface ShopBookItem {
+  id: string;
+  title: string;
+  author: string;
+  coverThumbnail: string | null;
+  priceInr: number;
+  effortBadge: Book['effortBadge'];
+  listedAt: Date;
+  shareUrl: string | null;
+}
+
+/**
+ * Browse books listed for sale (BOOK-004 Phase 1). Public — no auth.
+ * Returns published, public-readable, sales-enabled books ordered by
+ * `sales.listedAt desc`.
+ */
+export async function listShopBooks(filters: ListShopBooksFilters = {}): Promise<{
+  items: ShopBookItem[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}> {
+  const limit = Math.min(filters.limit ?? DEFAULT_LIST_LIMIT, MAX_LIST_LIMIT);
+  let query = adminDb
+    .collection(BOOKS_COLLECTION)
+    .where('status', '==', 'published')
+    .where('isPublic', '==', true)
+    .where('sales.enabled', '==', true)
+    .orderBy('sales.listedAt', 'desc')
+    .limit(limit + 1);
+
+  if (filters.cursor) {
+    const cursorDate = new Date(filters.cursor);
+    if (!Number.isNaN(cursorDate.getTime())) {
+      query = query.startAfter(Timestamp.fromDate(cursorDate));
+    }
+  }
+
+  const snap = await query.get();
+  const docs = snap.docs.slice(0, limit);
+  const items: ShopBookItem[] = docs.map((d) => {
+    const b = docToBook(d);
+    return {
+      id: b.id,
+      title: b.title,
+      author: b.author,
+      coverThumbnail: b.coverThumbnail,
+      priceInr: b.sales?.priceInr ?? 0,
+      effortBadge: b.effortBadge,
+      listedAt: b.sales?.listedAt ?? b.updatedAt,
+      shareUrl: b.shareUrl,
+    };
+  });
+  const hasMore = snap.docs.length > limit;
+  const nextCursor = hasMore ? items[items.length - 1]?.listedAt.toISOString() ?? null : null;
+  return { items, nextCursor, hasMore };
 }
 
 // ── Characters ──────────────────────────────────────────────────

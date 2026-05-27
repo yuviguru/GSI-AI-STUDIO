@@ -617,6 +617,17 @@
         { "fieldPath": "shareUrl", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" }
       ]
+    },
+    {
+      "comment": "BOOK-004 Phase 1 — /api/shop/books composite query",
+      "collectionGroup": "books",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "isPublic", "order": "ASCENDING" },
+        { "fieldPath": "sales.enabled", "order": "ASCENDING" },
+        { "fieldPath": "sales.listedAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

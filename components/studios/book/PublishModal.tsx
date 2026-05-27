@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Check, Download, Share2, Truck, X } from 'lucide-react';
 import type { Book } from '@gsi/types';
 import { computeEffortBadge, getEffortBadgeMeta } from '@/lib/books/effortBadge';
+import { SalesConfigForm } from './SalesConfigForm';
 
 interface PublishModalProps {
   book: Book;
@@ -20,6 +21,9 @@ export function PublishModal({ book, onPublish, onExportPdf, onClose }: PublishM
   const [shareUrl, setShareUrl] = useState<string | null>(book.shareUrl);
   const [makePublic, setMakePublic] = useState(false);
   const [copied, setCopied] = useState(false);
+  // BOOK-004 — keep a local mirror of the book so SalesConfigForm can
+  // optimistically update sales fields after save without a full reload.
+  const [bookState, setBookState] = useState<Book>(book);
 
   const isPublished = book.status === 'published';
   const hasCover = !!book.cover.title;
@@ -240,6 +244,14 @@ export function PublishModal({ book, onPublish, onExportPdf, onClose }: PublishM
             Order printed copy — coming soon
           </button>
         </div>
+
+        {/* BOOK-004 Phase 1 — sales setup. Author can configure sales now
+            so the book lists on the shop the moment Phase 2 (purchase flow)
+            ships. The Buy button stays disabled until then. */}
+        <SalesConfigForm
+          book={bookState}
+          onSaved={(updated) => setBookState(updated)}
+        />
       </motion.div>
     </div>
   );

@@ -258,6 +258,25 @@ service cloud.firestore {
       allow write: if false; // Server-side only via Admin SDK
     }
 
+    // ─── Sales / Royalties / KIT (BOOK-004 Phase 1) ────────────
+    // bookSales/{saleId} — purchase records (Phase 2 will populate)
+    match /bookSales/{saleId} {
+      allow read, write: if false; // Server-side only via Admin SDK
+    }
+
+    // kids/{kidId}/royaltyLedger/{entryId} — append-only royalty ledger
+    match /kids/{kidId}/royaltyLedger/{entryId} {
+      allow read, write: if false; // Server-side only
+    }
+
+    // kitFund/global — singleton lifetime KIT contributions tracker.
+    // Public read so the shop page + /royalties page show the running
+    // total. Server-only write.
+    match /kitFund/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Default: deny all
     match /{document=**} {
       allow read, write: if false;
