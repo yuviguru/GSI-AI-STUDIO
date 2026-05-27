@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
   ArrowRight,
@@ -15,6 +16,8 @@ import { useBookList } from '@/hooks/useBookList';
 import { MascotAvatar } from '@/components/mascot/MascotAvatar';
 import { useResolvedIdentity } from '@/hooks/useResolvedIdentity';
 import { NewBookWizard } from './NewBookWizard';
+import { BookCreationModeChooser, type BookCreationMode } from './BookCreationModeChooser';
+import { AiGenerateBookForm } from './AiGenerateBookForm';
 import { FeaturedBooksRail } from './FeaturedBooksRail';
 import { BookTemplateGallery } from './BookTemplateGallery';
 import { BookTile } from '@/components/studios/shared/BookTile';
@@ -23,7 +26,7 @@ import { StudioStreakCard } from '@/components/studios/shared/StudioStreakCard';
 import { getBookTypeCard } from '@/lib/templates/bookTemplates';
 import type { BookListItem, BookType } from '@gsi/types';
 
-type View = 'library' | 'wizard';
+type View = 'library' | 'wizard' | 'ai_form';
 
 /**
  * Book Studio home — mirrors the Hub's split: stacked single-column on
@@ -45,12 +48,38 @@ export function BookStudioClient() {
   // BookType so it skips the type picker. `null` → "Blank book" path
   // (wizard opens at step 1 with nothing pre-selected).
   const [wizardSeed, setWizardSeed] = useState<BookType | null>(null);
+  // BOOK-002: when the chooser is open, tapping "Manual" feeds this seed
+  // into the wizard. Template-gallery picks skip the chooser since the kid
+  // already committed to a specific book type (i.e. they want to write it).
+  const [chooserOpen, setChooserOpen] = useState(false);
+  const [chooserSeed, setChooserSeed] = useState<BookType | null>(null);
   const { items, isLoading, error } = useBookList();
 
+  // Library "Start new book" entry — show the BOOK-002 chooser first.
+  // Template-gallery picks skip the chooser (they're a clear "manual" intent).
   const openWizard = useCallback((type?: BookType) => {
-    setWizardSeed(type ?? null);
-    setView('wizard');
+    if (type) {
+      // Template-gallery pick — straight to the manual wizard.
+      setWizardSeed(type);
+      setView('wizard');
+      return;
+    }
+    setChooserSeed(null);
+    setChooserOpen(true);
   }, []);
+
+  const handlePickMode = useCallback(
+    (mode: BookCreationMode) => {
+      setChooserOpen(false);
+      if (mode === 'manual') {
+        setWizardSeed(chooserSeed);
+        setView('wizard');
+      } else {
+        setView('ai_form');
+      }
+    },
+    [chooserSeed],
+  );
 
   const drafts = useMemo(
     () => items.filter((b) => b.status === 'draft' || b.status === 'complete'),
@@ -82,6 +111,18 @@ export function BookStudioClient() {
             onClose={() => setView('library')}
             initialType={wizardSeed ?? undefined}
           />
+        </div>
+      </div>
+    );
+  }
+
+  // BOOK-002 — AI generate form branch
+  if (view === 'ai_form') {
+    return (
+      <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-amber-50 via-white to-orange-50 px-4 py-4">
+        <DecorativeSparkles />
+        <div className="relative mx-auto max-w-2xl pt-4">
+          <AiGenerateBookForm onClose={() => setView('library')} />
         </div>
       </div>
     );
@@ -206,6 +247,19 @@ export function BookStudioClient() {
           </aside>
         </main>
       </div>
+
+      {/* BOOK-002 — creation mode chooser overlay. Shown above the library
+          when the kid taps "New Book" / "Start your first book". Template
+          gallery picks bypass this and go straight to the manual wizard. */}
+      <AnimatePresence>
+        {chooserOpen && (
+          <BookCreationModeChooser
+            key="creation-mode-chooser"
+            onPick={handlePickMode}
+            onCancel={() => setChooserOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

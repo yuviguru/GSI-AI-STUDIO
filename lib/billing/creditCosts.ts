@@ -34,6 +34,7 @@ const DEFAULTS: Record<string, number> = {
   'comic.panel': 4, // per-panel regen
   'book.page': 4, // per-page generation
   'book.cover': 6,
+  'book.aiGenerate': 10, // BOOK-002 flat LLM cost (image cost charged separately per page)
 
   // Beat the AI
   'beatTheAi.round': 1,

@@ -36,6 +36,7 @@ export const CREDIT_COSTS_DEFAULTS: Readonly<Record<string, number>> = {
   'comic.panel': 4,
   'book.page': 4,
   'book.cover': 6,
+  'book.aiGenerate': 10,
 
   // Beat the AI
   'beatTheAi.round': 1,
