@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>GSI Mobile Hub — Redesign Mockups</title>
+<style>
+  /* ─── Brand tokens (mirrors tailwind theme) ─────────────────────────── */
+  :root{
+    --brand-primary:#7c3aed;
+    --brand-ai:#3b82f6;
+    --brand-accent:#f59e0b;
+    --brand-rose:#f43f5e;
+    --brand-soft:#FFF8EF;
+    --brand-text:#1e1b4b;
+    --brand-text-2:#64748b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif;color:var(--brand-text);background:#0f172a}
+
+  /* ─── Page chrome ──────────────────────────────────────────────────── */
+  .page{
+    min-height:100vh;
+    padding:48px 24px 80px;
+    background:
+      radial-gradient(1200px 600px at 20% 0%, rgba(124,58,237,.15), transparent 60%),
+      radial-gradient(900px 600px at 80% 100%, rgba(59,130,246,.15), transparent 60%),
+      #0f172a;
+  }
+  .page h1{color:#fff;font-size:28px;font-weight:800;letter-spacing:-.02em;margin:0 0 4px}
+  .page .sub{color:#94a3b8;font-size:14px;margin:0 0 36px;max-width:780px;line-height:1.5}
+
+  .row{display:flex;gap:48px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .col{display:flex;flex-direction:column;align-items:center;gap:16px}
+  .col h2{color:#fff;font-size:18px;font-weight:700;margin:0;letter-spacing:-.01em}
+  .col h2 small{color:#94a3b8;font-weight:500;font-size:13px;display:block;margin-top:2px}
+  .col .desc{color:#cbd5e1;font-size:13px;line-height:1.5;max-width:380px;text-align:center;margin:0 0 12px}
+  .col .badge{display:inline-block;background:linear-gradient(135deg,#fbbf24,#f97316);color:#fff;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:99px;box-shadow:0 2px 4px rgba(249,115,22,.4)}
+
+  /* ─── iPhone-style device frame ────────────────────────────────────── */
+  .device{
+    width:390px;height:844px;
+    background:#000;border-radius:50px;
+    padding:14px;
+    box-shadow:0 30px 80px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.05);
+    position:relative;
+  }
+  .screen{
+    width:100%;height:100%;
+    border-radius:38px;
+    overflow:hidden;
+    position:relative;
+    background:
+      radial-gradient(circle at 30% 10%, #fdf4ff 0%, transparent 60%),
+      radial-gradient(circle at 80% 90%, #eef2ff 0%, transparent 55%),
+      linear-gradient(180deg, #fef9ff 0%, #fff4ea 100%);
+  }
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:32px;background:#000;border-radius:0 0 18px 18px;z-index:50}
+  .home-indicator{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:130px;height:4px;background:rgba(0,0,0,.4);border-radius:2px;z-index:50}
+
+  .orb{position:absolute;border-radius:50%;filter:blur(40px);opacity:.5;pointer-events:none}
+  .orb-1{width:200px;height:200px;background:#c4b5fd;top:-30px;left:-40px}
+  .orb-2{width:180px;height:180px;background:#fbbf24;bottom:120px;right:-30px}
+  .orb-3{width:140px;height:140px;background:#67e8f9;top:300px;left:-20px}
+
+  .glass{
+    background:rgba(255,255,255,.7);
+    backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    border:1px solid rgba(255,255,255,.6);
+    box-shadow:0 4px 16px rgba(15,23,42,.06), inset 0 1px 0 rgba(255,255,255,.9);
+    border-radius:14px;
+  }
+
+  /* ─── HUD ────────────────────────────────────────────────────────── */
+  .hud{position:relative;z-index:10;margin:14px 14px 0;padding:8px 10px;display:flex;align-items:center;gap:10px}
+  .hud.lowered{margin-top:32px}        /* Revised B pushes HUD down */
+  .hud .avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#fbcfe8,#c4b5fd);display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 0 0 2px rgba(124,58,237,.3), 0 2px 6px rgba(0,0,0,.1);flex-shrink:0}
+  .hud .info{flex:1;min-width:0}
+  .hud .name-row{display:flex;align-items:center;gap:6px}
+  .hud .name{font-size:13px;font-weight:800;color:var(--brand-text);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hud .lvl{background:linear-gradient(135deg,#fbbf24,#f97316);color:#fff;font-size:9px;font-weight:800;padding:1px 6px;border-radius:99px;box-shadow:0 1px 3px rgba(249,115,22,.4);font-family:ui-monospace,monospace}
+  .hud .xp-bar{margin-top:4px;height:5px;border-radius:3px;background:rgba(124,58,237,.15);overflow:hidden}
+  .hud .xp-fill{height:100%;width:62%;background:linear-gradient(90deg,var(--brand-primary),var(--brand-ai));border-radius:3px}
+  .hud .gem{display:flex;align-items:center;gap:4px;background:linear-gradient(135deg,rgba(251,191,36,.2),rgba(249,115,22,.2));border:1px solid rgba(251,191,36,.4);padding:4px 10px;border-radius:99px;font-family:ui-monospace,monospace;font-size:11px;font-weight:800;color:#b45309;flex-shrink:0}
+  .hud .bell{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.8);border:1px solid rgba(124,58,237,.2);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;position:relative}
+  .hud .bell::after{content:'';position:absolute;top:2px;right:2px;width:7px;height:7px;border-radius:50%;background:var(--brand-rose);border:1px solid #fff}
+
+  /* ─── Variant chooser pill (top-center) ───────────────────────────── */
+  .chooser{position:absolute;left:50%;top:0;transform:translateX(-50%);z-index:60}
+  .chooser .pill{display:inline-flex;align-items:center;gap:2px;background:rgba(0,0,0,.75);padding:2px 4px;border-radius:0 0 99px 99px;box-shadow:0 4px 8px rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.2)}
+  .chooser .lbl{padding:0 4px;font-family:ui-monospace,monospace;font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.5)}
+  .chooser button{border:0;cursor:pointer;background:transparent;color:rgba(255,255,255,.7);padding:2px 8px;border-radius:99px;font-family:ui-monospace,monospace;font-size:9px;font-weight:800}
+  .chooser button.active{background:#fff;color:#0f172a}
+
+  /* ─── Bottom tab bar ──────────────────────────────────────────────── */
+  .tabbar{position:absolute;left:14px;right:14px;bottom:18px;padding:6px;display:flex;justify-content:space-around;z-index:20}
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;border-radius:10px;cursor:pointer}
+  .tab.active{background:rgba(124,58,237,.1)}
+  .tab .ic{font-size:18px;opacity:.5}
+  .tab.active .ic{opacity:1;transform:scale(1.1)}
+  .tab .lbl{font-size:9px;font-weight:800;color:#64748b}
+  .tab.active .lbl{color:var(--brand-primary)}
+
+  /* ─── Create / Play / Learn group switcher ────────────────────────── */
+  .grp{display:inline-flex;align-items:center;gap:4px;padding:4px;border-radius:99px;background:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.8);backdrop-filter:blur(10px);box-shadow:0 2px 8px rgba(0,0,0,.04)}
+  .grp button{border:0;background:transparent;cursor:pointer;padding:6px 14px;border-radius:99px;font-size:11px;font-weight:800;color:#64748b;display:flex;align-items:center;gap:4px;transition:all .2s}
+  .grp button.active{background:linear-gradient(135deg,var(--brand-primary),var(--brand-ai));color:#fff;box-shadow:0 2px 8px rgba(124,58,237,.35)}
+
+  /*  ╔══════════════════════════════════════════════════════════════════╗
+      ║  VARIANT A — GAME LOBBY                                           ║
+      ╚══════════════════════════════════════════════════════════════════╝ */
+  .va-side{position:absolute;display:flex;flex-direction:column;gap:10px;z-index:15}
+  .va-side.left{left:14px;top:120px}
+  .va-side.right{right:14px;top:120px}
+  .va-action{width:56px;background:rgba(255,255,255,.85);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.7);border-radius:14px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;box-shadow:0 4px 12px rgba(15,23,42,.08), inset 0 1px 0 rgba(255,255,255,.9);cursor:pointer;position:relative}
+  .va-action .glyph{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;background:linear-gradient(135deg,var(--g1,#fde68a),var(--g2,#f59e0b));color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+  .va-action .lbl{font-size:8px;font-weight:800;color:#475569;letter-spacing:.04em;text-transform:uppercase}
+  .va-action .pip{position:absolute;top:2px;right:2px;min-width:16px;height:16px;border-radius:99px;background:var(--brand-rose);color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;padding:0 3px}
+
+  .va-stage{position:absolute;left:50%;transform:translateX(-50%);top:140px;width:200px;height:240px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+  .va-stage .glow{position:absolute;left:50%;top:30px;transform:translateX(-50%);width:180px;height:180px;border-radius:50%;background:radial-gradient(circle, rgba(124,58,237,.35), transparent 70%);filter:blur(20px)}
+  .va-stage .mascot{position:relative;z-index:2;font-size:120px;line-height:1;filter:drop-shadow(0 8px 20px rgba(124,58,237,.4))}
+  .va-stage .platform{position:relative;width:120px;height:14px;margin-top:-8px;border-radius:50%;background:radial-gradient(ellipse, rgba(124,58,237,.4), transparent 70%);z-index:1}
+  .va-bubble{position:absolute;left:50%;transform:translateX(-50%);top:90px;background:rgba(255,255,255,.95);border:1px solid rgba(124,58,237,.2);padding:6px 12px;border-radius:14px 14px 14px 4px;font-size:11px;font-weight:600;color:var(--brand-text);box-shadow:0 4px 12px rgba(0,0,0,.08);white-space:nowrap;z-index:5}
+
+  .va-cta-wrap{position:absolute;left:50%;transform:translateX(-50%);top:420px;text-align:center;z-index:10}
+  .va-cta{background:linear-gradient(135deg,#fbbf24 0%, #f59e0b 50%, #f97316 100%);color:#fff;border:none;cursor:pointer;padding:14px 40px;border-radius:99px;font-size:15px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;box-shadow:0 8px 24px rgba(249,115,22,.45),inset 0 1px 0 rgba(255,255,255,.5),inset 0 -3px 0 rgba(0,0,0,.15);display:inline-flex;align-items:center;gap:8px}
+  .va-cta-meta{margin-top:6px;font-size:10px;font-weight:700;color:#64748b;display:flex;align-items:center;justify-content:center;gap:5px}
+  .va-cta-meta .dot{width:4px;height:4px;border-radius:50%;background:#cbd5e1}
+
+  .va-pager{position:absolute;left:0;right:0;bottom:88px;z-index:10}
+  .va-pager-tabs{display:flex;justify-content:center;margin-bottom:10px}
+  .va-pager-scroll{display:flex;gap:10px;overflow-x:auto;padding:0 14px 6px;scrollbar-width:none}
+  .va-pager-scroll::-webkit-scrollbar{display:none}
+  .va-card{flex:0 0 220px;background:linear-gradient(160deg, var(--c1,#EEF2FF), var(--c2,#DBEAFE));border-radius:16px;padding:12px;box-shadow:0 6px 16px rgba(15,23,42,.08), inset 0 1px 0 rgba(255,255,255,.8);position:relative;overflow:hidden;height:110px;display:flex;flex-direction:column;justify-content:space-between}
+  .va-card .em{position:absolute;right:6px;bottom:-6px;font-size:80px;opacity:.85;filter:drop-shadow(0 4px 8px rgba(0,0,0,.1))}
+  .va-card .new-pill{position:absolute;top:8px;right:8px;background:linear-gradient(135deg,#fbbf24,#f97316);color:#fff;font-size:8px;font-weight:800;letter-spacing:.06em;padding:2px 6px;border-radius:99px;text-transform:uppercase;box-shadow:0 2px 4px rgba(0,0,0,.1)}
+  .va-card .ttl{font-size:14px;font-weight:800;color:var(--brand-text);max-width:60%}
+  .va-card .tag{font-size:10px;font-weight:600;color:#64748b;max-width:60%}
+  .va-card .go{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--brand-primary),var(--brand-ai));color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(124,58,237,.3);align-self:flex-start;font-size:14px;font-weight:800}
+
+  /* Revised A — group switcher + arranged portal grid (uses .vb-portal style) */
+  .vra-mode-section{position:absolute;left:12px;right:12px;bottom:88px;z-index:10}
+  .vra-mode-section .va-pager-tabs{margin-bottom:10px}
+  .vra-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+
+  /*  ╔══════════════════════════════════════════════════════════════════╗
+      ║  VARIANT B (REVISED) — ARRANGED PORTAL GRID                       ║
+      ║  Pushed HUD · compact mascot strip · 3×2 portal grid · tagline    ║
+      ╚══════════════════════════════════════════════════════════════════╝ */
+
+  /* Mascot strip + flanking side stacks. Sits right under the HUD. */
+  .vb-strip{position:relative;margin:14px 14px 0;height:150px;display:flex;align-items:center;justify-content:space-between;gap:10px;z-index:8}
+  .vb-stack{display:flex;flex-direction:column;gap:6px}
+  .vb-action{position:relative;width:46px;background:rgba(255,255,255,.85);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.7);border-radius:14px;padding:4px 2px;display:flex;flex-direction:column;align-items:center;gap:1px;box-shadow:0 3px 10px rgba(15,23,42,.08)}
+  .vb-action .glyph{width:28px;height:28px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;background:linear-gradient(135deg,var(--g1,#fde68a),var(--g2,#f59e0b));color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+  .vb-action .lbl{font-size:7px;font-weight:800;color:#475569;letter-spacing:.04em;text-transform:uppercase}
+  .vb-action .pip{position:absolute;top:-3px;right:-3px;min-width:14px;height:14px;border-radius:99px;background:var(--brand-rose);color:#fff;font-size:7px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid #fff;padding:0 3px}
+
+  .vb-mascot{position:relative;flex:1;height:100%;display:flex;align-items:center;justify-content:center}
+  .vb-mascot .ring{position:absolute;width:130px;height:130px;border-radius:50%;border:2px dashed rgba(124,58,237,.25)}
+  .vb-mascot .glow{position:absolute;width:100px;height:100px;border-radius:50%;background:radial-gradient(circle, rgba(124,58,237,.35), transparent 70%);filter:blur(18px)}
+  .vb-mascot .em{position:relative;z-index:3;font-size:88px;line-height:1;filter:drop-shadow(0 6px 14px rgba(124,58,237,.45))}
+  .vb-mascot .nameplate{position:absolute;left:50%;bottom:-4px;transform:translateX(-50%);background:rgba(255,255,255,.95);padding:2px 10px;border-radius:99px;font-size:9px;font-weight:800;color:var(--brand-text);box-shadow:0 2px 6px rgba(0,0,0,.08);border:1px solid rgba(124,58,237,.15);white-space:nowrap;z-index:4}
+
+  /* Portal grid */
+  .vb-grid-wrap{position:absolute;left:12px;right:12px;top:332px;bottom:170px;display:flex;flex-direction:column;justify-content:center;z-index:5}
+  .vb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .vb-grid.play{grid-template-columns:repeat(3,1fr)}
+  .vb-grid.learn{grid-template-columns:repeat(2,1fr)}
+  .vb-portal{position:relative;height:118px;background:var(--bg,#EEF2FF);border-radius:16px;padding:10px 6px 8px;display:flex;flex-direction:column;align-items:center;gap:4px;box-shadow:0 4px 12px rgba(15,23,42,.06), inset 0 1px 0 rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.7);cursor:pointer;text-align:center}
+  .vb-portal .ic{position:relative;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 3px 8px rgba(0,0,0,.1);border:3px solid #fff}
+  .vb-portal .ic .pill{position:absolute;top:-4px;right:-6px;background:linear-gradient(135deg,#fbbf24,#f97316);color:#fff;font-size:7px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:1px 4px;border-radius:99px;border:1.5px solid #fff;line-height:1}
+  .vb-portal .lbl{font-size:11px;font-weight:800;color:var(--brand-text);line-height:1.1}
+  .vb-portal .tag{font-size:9px;font-weight:500;color:#64748b;line-height:1.15;max-width:96px}
+
+  /* Bottom CTA + group tabs */
+  .vb-bottom{position:absolute;left:0;right:0;bottom:88px;display:flex;flex-direction:column;align-items:center;gap:8px;z-index:10}
+  .vb-cta{background:linear-gradient(135deg,#fbbf24 0%, #f59e0b 50%, #f97316 100%);color:#fff;border:none;cursor:pointer;padding:9px 20px;border-radius:99px;font-size:11px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;box-shadow:0 6px 18px rgba(249,115,22,.45),inset 0 1px 0 rgba(255,255,255,.5),inset 0 -2px 0 rgba(0,0,0,.15);display:inline-flex;align-items:center;gap:6px}
+
+  /* Notes panel */
+  .notes{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:24px;margin:48px auto 0;max-width:1100px;color:#cbd5e1;font-size:13px;line-height:1.6}
+  .notes h3{color:#fff;margin:0 0 12px;font-size:16px}
+  .notes h4{color:#fff;margin:16px 0 6px;font-size:14px}
+  .notes ul{margin:0;padding-left:20px}
+  .notes li{margin-bottom:4px}
+  .notes code{background:rgba(124,58,237,.15);color:#c4b5fd;padding:1px 6px;border-radius:4px;font-size:12px}
+  .notes .diff{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:8px}
+  .notes .diff .col{background:rgba(0,0,0,.2);padding:14px 16px;border-radius:10px}
+  .notes .diff h5{color:#fff;margin:0 0 8px;font-size:13px}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <h1>GSI Mobile Hub — Redesign Mockups</h1>
+  <p class="sub">
+    <strong>Final pick: Variant A (revised)</strong> — Variant A's hierarchy + spacing kept,
+    with two changes: the HUD is lowered below the notch, and the horizontal mode
+    scroller is replaced by a 3×2 portal grid (icons + tagline copy) borrowed from
+    the revised Variant B. Variant B (arranged grid) is included as a reference for
+    the cards we lifted into A.
+  </p>
+
+  <div class="row">
+
+    <!--  ════════════════════════════════════════════════════════════════
+          ▓  VARIANT A (REVISED) — Lowered HUD + portal grid
+          ════════════════════════════════════════════════════════════════ -->
+    <div class="col">
+      <h2>Variant A (Revised) — Game Lobby <span class="badge">FINAL</span><small>Hierarchy kept · HUD lowered · scroller → grid</small></h2>
+      <p class="desc">Hero mascot centre-stage with the gold RESUME pill. Side action stacks for Daily/Streak/Squad and Quests/Badges/Explore. Mode picker is now an arranged grid (3×2 for Create, 3 for Play, 2 for Learn) using the circular-icon portal cards from revised B — every mode visible on one screen with its tagline.</p>
+
+      <div class="device">
+        <div class="screen">
+          <div class="notch"></div>
+          <div class="orb orb-1"></div>
+          <div class="orb orb-2"></div>
+          <div class="orb orb-3"></div>
+
+          <div class="chooser">
+            <div class="pill">
+              <span class="lbl">Hub</span>
+              <button>Now</button>
+              <button class="active">A</button>
+              <button>B</button>
+            </div>
+          </div>
+
+          <!-- HUD lowered with the same pt-7 treatment as revised B -->
+          <div class="glass hud lowered">
+            <div class="avatar">🦊</div>
+            <div class="info">
+              <div class="name-row">
+                <div class="name">Arjun</div>
+                <span class="lvl">LVL 5</span>
+              </div>
+              <div class="xp-bar"><div class="xp-fill"></div></div>
+            </div>
+            <div class="gem">✨ 1,250</div>
+            <div class="bell">🔔</div>
+          </div>
+
+          <!-- Side stacks (unchanged from original A) -->
+          <div class="va-side left" style="top:130px">
+            <div class="va-action"><div class="glyph" style="--g1:#fde68a;--g2:#f59e0b">🎁</div><div class="lbl">Daily</div><span class="pip">!</span></div>
+            <div class="va-action"><div class="glyph" style="--g1:#fecdd3;--g2:#f43f5e">🔥</div><div class="lbl">Streak 7</div></div>
+            <div class="va-action"><div class="glyph" style="--g1:#bfdbfe;--g2:#3b82f6">👥</div><div class="lbl">Squad</div></div>
+          </div>
+
+          <div class="va-side right" style="top:130px">
+            <div class="va-action"><div class="glyph" style="--g1:#ddd6fe;--g2:#7c3aed">⚡</div><div class="lbl">Quests</div><span class="pip">3</span></div>
+            <div class="va-action"><div class="glyph" style="--g1:#fef08a;--g2:#eab308">🏆</div><div class="lbl">Badges</div></div>
+            <div class="va-action"><div class="glyph" style="--g1:#a7f3d0;--g2:#10b981">🧭</div><div class="lbl">Explore</div></div>
+          </div>
+
+          <!-- Hero stage: speech bubble + mascot + platform + Resume CTA -->
+          <div class="va-stage" style="top:150px;height:200px">
+            <div class="glow"></div>
+            <div class="va-bubble">Ready for adventure?</div>
+            <div class="mascot">🦊</div>
+            <div class="platform"></div>
+          </div>
+
+          <div class="va-cta-wrap" style="top:360px">
+            <button class="va-cta">▶ RESUME</button>
+            <div class="va-cta-meta"><span>Dragon Story</span><span class="dot"></span><span>Ch 3</span></div>
+          </div>
+
+          <!-- Group switcher + ARRANGED PORTAL GRID (replaces horizontal scroller) -->
+          <div class="vra-mode-section">
+            <div class="va-pager-tabs">
+              <div class="grp">
+                <button class="active">✏️ Create</button>
+                <button>🎮 Play</button>
+                <button>🎓 Learn</button>
+              </div>
+            </div>
+            <div class="vra-grid">
+              <div class="vb-portal" style="--bg:linear-gradient(160deg,#EEF2FF 0%,#DBEAFE 100%)">
+                <div class="ic">📚<span class="pill">New</span></div>
+                <div class="lbl">Books</div>
+                <div class="tag">Write your own books</div>
+              </div>
+              <div class="vb-portal" style="--bg:linear-gradient(160deg,#F5F3FF 0%,#E9D5FF 100%)">
+                <div class="ic">📖</div>
+                <div class="lbl">Stories</div>
+                <div class="tag">Magical tales</div>
+              </div>
+              <div class="vb-portal" style="--bg:linear-gradient(160deg,#ECFDF5 0%,#A7F3D0 100%)">
+                <div class="ic">🎮</div>
+                <div class="lbl">Games</div>
+                <div class="tag">Build games</div>
+              </div>
+              <div class="vb-portal" style="--bg:linear-gradient(160deg,#FFF7ED 0%,#FED7AA 100%)">
+                <div class="ic">🎵</div>
+                <div class="lbl">Music</div>
+                <div class="tag">Compose tracks</div>
+              </div>
+              <div class="vb-portal" style="--bg:linear-gradient(160deg,#FEFCE8 0%,#FDE68A 100%)">
+                <div class="ic">🎨</div>
+                <div class="lbl">Comics</div>
+                <div class="tag">Draw heroes</div>
+              </div>
+              <div class="vb-portal" style="--bg:linear-gradient(160deg,#ECFEFF 0%,#A5F3FC 100%)">
+                <div class="ic">🧠</div>
+                <div class="lbl">Quiz</div>
+                <div class="tag">Test friends</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass tabbar">
+            <div class="tab active"><div class="ic">🎮</div><div class="lbl">Hub</div></div>
+            <div class="tab"><div class="ic">👤</div><div class="lbl">Profile</div></div>
+            <div class="tab"><div class="ic">🏆</div><div class="lbl">Ranks</div></div>
+            <div class="tab"><div class="ic">⚡</div><div class="lbl">Quests</div></div>
+          </div>
+
+          <div class="home-indicator"></div>
+        </div>
+      </div>
+    </div>
+
+    <!--  ════════════════════════════════════════════════════════════════
+          ▓  REVISED VARIANT B — ARRANGED PORTAL GRID
+          ════════════════════════════════════════════════════════════════ -->
+    <div class="col">
+      <h2>Variant B (Revised) — Arranged Portal Grid <span class="badge">UPDATED</span><small>Your feedback applied</small></h2>
+      <p class="desc">Mascot sits in a compact horizontal strip flanked by the side action stacks. The mode portals are now arranged in a tidy grid (3 cols × 2 rows for Create) — every card visible on one screen with no scroll, each carrying its tagline copy.</p>
+
+      <div class="device">
+        <div class="screen">
+          <div class="notch"></div>
+          <div class="orb orb-1"></div>
+          <div class="orb orb-2"></div>
+          <div class="orb orb-3"></div>
+
+          <div class="chooser">
+            <div class="pill">
+              <span class="lbl">Hub</span>
+              <button>Now</button>
+              <button>A</button>
+              <button class="active">B</button>
+            </div>
+          </div>
+
+          <!-- HUD pushed down so it clears the notch -->
+          <div class="glass hud lowered">
+            <div class="avatar">🦊</div>
+            <div class="info">
+              <div class="name-row">
+                <div class="name">Arjun</div>
+                <span class="lvl">LVL 5</span>
+              </div>
+              <div class="xp-bar"><div class="xp-fill"></div></div>
+            </div>
+            <div class="gem">✨ 1,250</div>
+            <div class="bell">🔔</div>
+          </div>
+
+          <!-- Mascot strip with side stacks flanking it -->
+          <div class="vb-strip">
+            <div class="vb-stack">
+              <div class="vb-action"><div class="glyph" style="--g1:#fde68a;--g2:#f59e0b">🎁</div><div class="lbl">Daily</div><span class="pip">!</span></div>
+              <div class="vb-action"><div class="glyph" style="--g1:#fecdd3;--g2:#f43f5e">🔥</div><div class="lbl">Streak 7</div></div>
+              <div class="vb-action"><div class="glyph" style="--g1:#bfdbfe;--g2:#3b82f6">👥</div><div class="lbl">Squad</div></div>
+            </div>
+
+            <div class="vb-mascot">
+              <div class="ring"></div>
+              <div class="glow"></div>
+              <div class="em">🦊</div>
+              <div class="nameplate">Ready to play?</div>
+            </div>
+
+            <div class="vb-stack">
+              <div class="vb-action"><div class="glyph" style="--g1:#ddd6fe;--g2:#7c3aed">⚡</div><div class="lbl">Quests</div><span class="pip">3</span></div>
+              <div class="vb-action"><div class="glyph" style="--g1:#fef08a;--g2:#eab308">🏆</div><div class="lbl">Badges</div></div>
+              <div class="vb-action"><div class="glyph" style="--g1:#a7f3d0;--g2:#10b981">🧭</div><div class="lbl">Explore</div></div>
+            </div>
+          </div>
+
+          <!-- Arranged portal grid (3 cols × 2 rows for Create) -->
+          <div class="vb-grid-wrap">
+            <div class="vb-grid">
+              <div class="vb-portal" style="--bg:linear-gradient(160deg,#EEF2FF 0%,#DBEAFE 100%)">
+                <div class="ic">📚<span class="pill">New</span></div>
+                <div class="lbl">Books</div>
+                <div class="tag">Write your own books</div>
+              </div>
+              <div class="vb-portal" style="--bg:linear-gradient(160deg,#F5F3FF 0%,#E9D5FF 100%)">
+                <div class="ic">📖</div>
+                <div class="lbl">Stories</div>
+                <div class="tag">Magical tales</div>
+              </div>
+              <div class="vb-portal" style="--bg:linear-gradient(160deg,#ECFDF5 0%,#A7F3D0 100%)">
+                <div class="ic">🎮</div>
+                <div class="lbl">Games</div>
+                <div class="tag">Build games</div>
+              </div>
+              <div class="vb-portal" style="--bg:linear-gradient(160deg,#FFF7ED 0%,#FED7AA 100%)">
+                <div class="ic">🎵</div>
+                <div class="lbl">Music</div>
+                <div class="tag">Compose tracks</div>
+              </div>
+              <div class="vb-portal" style="--bg:linear-gradient(160deg,#FEFCE8 0%,#FDE68A 100%)">
+                <div class="ic">🎨</div>
+                <div class="lbl">Comics</div>
+                <div class="tag">Draw heroes</div>
+              </div>
+              <div class="vb-portal" style="--bg:linear-gradient(160deg,#ECFEFF 0%,#A5F3FC 100%)">
+                <div class="ic">🧠</div>
+                <div class="lbl">Quiz</div>
+                <div class="tag">Test friends</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resume CTA + group switcher -->
+          <div class="vb-bottom">
+            <button class="vb-cta">▶ RESUME · DRAGON STORY · CH 3</button>
+            <div class="grp">
+              <button class="active">✏️ Create</button>
+              <button>🎮 Play</button>
+              <button>🎓 Learn</button>
+            </div>
+          </div>
+
+          <!-- Bottom tab bar -->
+          <div class="glass tabbar">
+            <div class="tab active"><div class="ic">🎮</div><div class="lbl">Hub</div></div>
+            <div class="tab"><div class="ic">👤</div><div class="lbl">Profile</div></div>
+            <div class="tab"><div class="ic">🏆</div><div class="lbl">Ranks</div></div>
+            <div class="tab"><div class="ic">⚡</div><div class="lbl">Quests</div></div>
+          </div>
+
+          <div class="home-indicator"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─── Notes ───────────────────────────────────────────────────── -->
+  <div class="notes">
+    <h3>What changed in Revised B</h3>
+    <div class="diff">
+      <div class="col">
+        <h5>Before (scattered)</h5>
+        <ul>
+          <li>HUD card clipped by the camera notch — only ~12px of clearance.</li>
+          <li>Mascot took a 260×260 stage in the centre with lots of empty padding.</li>
+          <li>Portals scattered around the edges — looked playful but only the icon + label were visible (no tagline copy).</li>
+          <li>Vertical stacking left only ~50px of room for the Resume CTA + group switcher → cramped at the bottom.</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h5>After (arranged grid)</h5>
+        <ul>
+          <li>HUD pushed down ~24px (<code>pt-7</code> + safe-area inset) so it sits clearly below the notch.</li>
+          <li>Mascot is now a 150px-tall horizontal strip — smaller mascot (<code>size="lg"</code>) flanked by the side action stacks.</li>
+          <li>Portals laid out as a CSS grid: <code>grid-cols-3</code> for Create / Play, <code>grid-cols-2</code> for Learn. All 6 Create modes visible on one screen with no scroll.</li>
+          <li>Each portal shows the icon (circular halo) + label + 1-line tagline — visual style matches the scattered prototype, layout is disciplined like Variant A.</li>
+          <li>Resume CTA now reads <code>▶ Resume · Dragon Story · Ch 3</code> on a single line so the group switcher fits under it without overlap.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h4>Verified layout (390×844, real React build)</h4>
+    <ul>
+      <li>HUD card: top 28 → bottom 89.</li>
+      <li>Mascot strip + side stacks: y ≈ 100 → 250.</li>
+      <li>Portal grid: top 353 → bottom 597 (6 cards, 2 rows, centered vertically in the gap).</li>
+      <li>Resume CTA: top 683 → bottom 715.</li>
+      <li>Group switcher: bottom 749 (10px buffer before the TabBar).</li>
+    </ul>
+
+    <h4>Live in the dev server</h4>
+    <p>The chooser pill (<strong>Now · A · B</strong>) is wired up at <code>localhost:3456/</code> on a mobile viewport. Selection persists in <code>localStorage</code>, so a refresh keeps you on the variant you picked.</p>
+  </div>
+</div>
+
+</body>
+</html>

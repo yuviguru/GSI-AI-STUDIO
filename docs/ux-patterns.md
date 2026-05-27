@@ -1052,6 +1052,70 @@ Below `lg`: stack to single column. SidebarNav collapses to a hamburger; RightRa
 
 ---
 
+## Mobile Hub — Game Lobby Layout
+
+The mobile home (< `lg` breakpoint) does **not** stack the 3-column desktop hub. It uses a separate "Game Lobby" layout inspired by AAA mobile game home screens (Genshin Impact lobby, Clash Royale hub). Both layouts render simultaneously via `components/game-hub/GameHub.tsx` and toggle visibility with Tailwind's responsive classes — no JS viewport detection (avoids hydration mismatch).
+
+### Shell
+
+`components/game-hub/mobile/MobileHub.tsx` is a fixed-viewport (`100dvh`) shell with three regions: an iOS safe-area-top spacer, an animated scene region (`flex-1`), and a 4-tab `TabBar` at the bottom (Hub · Profile · Ranks · Quests). Each tab swap fades the scene via `AnimatePresence`. The active tab lives on `MobileHub` so side-stack shortcuts in `HubScene` can call `setTab` without re-implementing nav state.
+
+### Hub scene layout
+
+```
+┌─────────────────────────────────┐
+│ ╔═════════════════════════════╗ │ ← HUD: avatar / LVL / XP / ✨ pts / 🔔
+│ ║ 🦊 Arjun LVL 5 ▓▓▓░ ✨1250 🔔║ │   (pt-7 clears the notch)
+│ ╚═════════════════════════════╝ │
+│                                 │
+│ [🎁 Daily]            [⚡ Quests]│
+│ [🔥 Streak]           [🏆 Badges]│ ← side stacks (3 + 3)
+│ [👥 Squad]            [🧭 Explore]
+│                                 │
+│         "Ready for"             │ ← speech bubble
+│              🦊                 │ ← mascot (lottie, animated)
+│           ═════                 │ ← spinning platform
+│         [▶ RESUME]              │ ← gold CTA
+│       Dragon Story · Ch 3       │ ← last-activity meta
+│                                 │
+│     [Create | Play | Learn]     │ ← group switcher
+│                                 │
+│  ┌────┐┌────┐┌────┐             │
+│  │📚  ││📖  ││🎮  │             │ ← portal grid (3 cols for
+│  │Book││Stor││Game│             │   Create / Play, 2 for Learn)
+│  └────┘└────┘└────┘             │
+│  ┌────┐┌────┐┌────┐             │
+│  │🎵  ││🎨  ││🧠  │             │
+│  │Musi││Comi││Quiz│             │
+│  └────┘└────┘└────┘             │
+├─────────────────────────────────┤
+│ [🎮 Hub] [👤] [🏆] [⚡]          │ ← TabBar (4 tabs)
+└─────────────────────────────────┘
+```
+
+### Rules
+
+- **No scroll on the hub tab.** Everything for the active group fits in one viewport at 390×844. Adding new modes means picking the right group (Create / Play / Learn) and accepting the 6-cell ceiling for Create.
+- **Side stacks are persistent.** They render regardless of which group is active so secondary actions are always one tap away.
+- **`SideActionButton` supports `passive: true`** for status badges (e.g. the streak chip). Passive actions render as a `div` with `role="status"`, no tap animation, no keyboard focus.
+- **Tab shortcuts route via `onTabChange`.** Quests and Badges don't navigate to a page — they switch the bottom-nav tab. New shortcuts to other tabs should follow the same callback pattern instead of using `router.push`.
+- **Mode tiles are `PortalCard`** (`components/game-hub/shared/PortalCard.tsx`) — circular icon halo + short label + 1-line tagline. Use this everywhere we surface modes on mobile so the visual language stays consistent.
+- **Resume CTA target is hardcoded** (`/create/story`) until a `useLastActivity` hook lands. See the `TODO(last-activity)` comment in `HubScene.tsx`.
+
+### Components (`components/game-hub/mobile/`)
+
+- **`MobileHub`** — Shell. Owns active-tab state. Renders one of `HubScene` / `ProfileScene` / `RanksScene` / `QuestsScene`.
+- **`HubScene`** — The "hub" tab content. Composes HUD, side stacks, hero stage, group switcher, portal grid, and the `DailyRewardModal`.
+- **`DailyRewardModal`** — Placeholder modal opened by the 🎁 Daily side action. Body will be replaced by the real daily-reward flow without changing the call site.
+- **`TabBar`** — 4-button bottom nav (Hub · Profile · Ranks · Quests).
+- **`ProfileScene` / `RanksScene` / `QuestsScene`** — The other three tabs.
+
+Shared across mobile and (eventually) desktop:
+- **`PortalCard`** (`components/game-hub/shared/PortalCard.tsx`)
+- **`SideActionButton`** + `SideAction` interface (`components/game-hub/shared/SideActionButton.tsx`)
+
+---
+
 ## Illustration System
 
 Kid-friendly illustrations are core to the home and section UI. Generated via the existing image cascade (`lib/ai/imageProvider.ts`: Pixazo Flux Schnell → Replicate SDXL → Pollinations), then committed as static assets so runtime is deterministic.

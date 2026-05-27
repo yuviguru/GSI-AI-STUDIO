@@ -11,11 +11,20 @@
 # scheduled functions live in apps/kid/netlify/functions/; school ones
 # live in apps/school/netlify/functions/. The split keeps a school
 # function failure from blocking the kid deploy and vice versa.
+#
+# `base = "apps/kid"` is required so @netlify/plugin-nextjs runs from
+# inside the kid app and finds exactly one Next.js project. Without it
+# the framework detector inspects the repo root, sees all eight pnpm
+# workspaces (@gsi/app-kid, @gsi/app-school, @gsi/ai, @gsi/dpdp,
+# @gsi/firebase, @gsi/safety, @gsi/types, @gsi/ui), and fails with
+# "Projects detected: …  Configure the project you want to work with".
+# `publish` and `functions` are now relative to that base.
 
 [build]
+  base = "apps/kid"
   command = "pnpm --filter @gsi/app-kid build"
-  publish = "apps/kid/.next"
-  functions = "apps/kid/netlify/functions"
+  publish = ".next"
+  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "20"
