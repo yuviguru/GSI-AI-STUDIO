@@ -4,7 +4,7 @@ import { aiBookGenerateSchema } from '@/lib/validators';
 import { filterInput, filterOutput, filterImagePrompt } from '@gsi/safety';
 import { checkRateLimit, enforceIpRateLimit, trackCreation } from '@gsi/firebase/sessionService';
 import { createGeneratedBook } from '@gsi/firebase/bookService';
-import { generateWithClaude } from '@gsi/ai/claudeClient';
+import { llmRouter } from '@gsi/ai/router';
 import { getImageProvider, type ImageStyle } from '@gsi/ai/imageProvider';
 import { dimsForBookAndLayout } from '@gsi/ai/imageDims';
 import { BOOK_FONTS, getBookTypeCard } from '@/lib/templates/bookTemplates';
@@ -15,32 +15,21 @@ import {
   buildBookGenerateUserMessage,
 } from '@gsi/ai/prompts/bookGeneratePrompt';
 
-/** Parse Claude's JSON response defensively. Strips any accidental
- *  markdown fences and validates the shape minimally. */
-function parseBookDraft(raw: string): {
+/** Shape Claude/Groq must return. Validated defensively after the router
+ *  parses the JSON — provider drift on optional fields shouldn't 500. */
+interface BookDraftResponse {
   title: string;
   coverPrompt: string;
   pages: Array<{ plainText: string; imagePrompt: string }>;
-} {
-  let cleaned = raw.trim();
-  // Strip ```json … ``` fences if Claude wrapped them
-  if (cleaned.startsWith('```')) {
-    cleaned = cleaned.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch {
-    throw new AppException(
-      'AI_GENERATION_FAILED',
-      'AI returned an unparseable draft — try again',
-      502,
-    );
-  }
-  if (!parsed || typeof parsed !== 'object') {
+}
+
+/** Validate the parsed shape. Router already JSON-parsed; we only check
+ *  the structural fields we depend on. Throws AppException on any miss. */
+function validateBookDraft(raw: unknown): BookDraftResponse {
+  if (!raw || typeof raw !== 'object') {
     throw new AppException('AI_GENERATION_FAILED', 'AI returned an unexpected shape', 502);
   }
-  const obj = parsed as Record<string, unknown>;
+  const obj = raw as Record<string, unknown>;
   if (typeof obj.title !== 'string' || typeof obj.coverPrompt !== 'string') {
     throw new AppException('AI_GENERATION_FAILED', 'AI draft missing title/cover', 502);
   }
@@ -98,8 +87,11 @@ export async function POST(request: NextRequest) {
     }
     const defaultFont = BOOK_FONTS[0]!;
 
-    // Call Claude with strict JSON system prompt
-    const rawDraft = await generateWithClaude({
+    // Generate the draft via the LLM router — auto-picks Claude / Groq /
+    // … and falls through to the next provider on auth or transport errors.
+    // This is why story / quiz / etc. survive an Anthropic outage; book-
+    // generate previously bypassed the router and inherited the risk.
+    const parsed = await llmRouter.generateJson<unknown>({
       systemPrompt: BOOK_GENERATE_SYSTEM_PROMPT,
       userMessage: buildBookGenerateUserMessage({
         topic: input.topic,
@@ -111,7 +103,7 @@ export async function POST(request: NextRequest) {
       maxTokens: 4096,
       temperature: 0.85,
     });
-    const draft = parseBookDraft(rawDraft);
+    const draft = validateBookDraft(parsed);
 
     // Apply output safety to text and image prompts
     const safeDraft = {
