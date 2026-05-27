@@ -370,6 +370,72 @@ Tokens are stored in the `botLinkCodes` collection (server-write-only, 10-minute
 
 **Reference**: See `docs/MESSENGER_BOT_ARCHITECTURE.md` for the full spec — adapter interface, router, context, per-module contracts, session model, safety, and the Phase 1/2/3 rollout.
 
+---
+
+## Billing (Tiers + Credits + Payment)
+
+A horizontal concern, like safety and rate limiting — every AI route routes through it. Three layers, each a single-file source of truth:
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  AI API ROUTES  (app/api/ai/*, app/api/books/*, ...)               │
+│  every route calls assertEntitled(authCtx, { feature, capability })│
+└──────────────────────────────┬─────────────────────────────────────┘
+                               ▼
+┌────────────────────────────────────────────────────────────────────┐
+│  lib/billing/guard.ts — assertEntitled()                           │
+│  1. shouldBypass(kidId)? → return early (dev only)                 │
+│  2. capability gate → ENTITLEMENTS[plan][capability] ?             │
+│  3. credit cost lookup → CREDIT_COSTS[feature]                     │
+│  4. atomic debit (Firestore tx: kid.creditBalance + ledger entry)  │
+│  Throws PlanError (403) or InsufficientCreditsError (402)          │
+└──┬───────────────────────────┬───────────────────────┬─────────────┘
+   ▼                           ▼                       ▼
+┌──────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐
+│ plans.ts         │  │ entitlements.ts     │  │ creditCosts.ts      │
+│ Per-plan config: │  │ Capability matrix   │  │ Feature → credits   │
+│   displayName,   │  │ per plan:           │  │   story.generate:5  │
+│   price (INR),   │  │   canExportPdf,     │  │   image.flux:10     │
+│   creditsPerMonth│  │   priorityImageGen, │  │   image.sdxl:25     │
+│ Edit one row to  │  │   maxBookPages,     │  │ Edit one number to  │
+│ change tier cost │  │   ...               │  │ reprice a feature   │
+└──────────────────┘  └─────────────────────┘  └─────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────┐
+│  lib/billing/credits.ts                                            │
+│  Ledger ops: getBalance, debit, grantMonthly, addTopup             │
+│  Firestore: kids/{kidId}.creditBalance (cache)                     │
+│             kids/{kidId}/creditLedger/{entryId} (source of truth)  │
+└────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────┐
+│  lib/billing/bypass.ts                                             │
+│  Reads BILLING_BYPASS=true (whole app)                             │
+│        BILLING_BYPASS_KIDS=uid1,uid2 (selective)                   │
+│  Refuses in NODE_ENV=production unless                             │
+│  ALLOW_BILLING_BYPASS_IN_PROD=true (logged warning)                │
+└────────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────┐
+│  Payment provider: Razorpay (Phase 5)                              │
+│  app/api/billing/razorpay/order  — create order                    │
+│  app/api/billing/razorpay/webhook — HMAC-verified callbacks        │
+│  Idempotent on payment ID via paymentRef on ledger entries         │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+**Why this design**:
+- **Single-edit changes**: move a feature between tiers → edit `entitlements.ts`. Reprice an AI call → edit `creditCosts.ts`. Change credits-per-tier → edit `plans.ts`. Marketing `Pricing.tsx` and server enforcement read the same `PLANS` object — no source-of-truth drift.
+- **Two metrics, separate concerns**: entitlements gate *what you can do*; credits gate *how much*. Mirrors Stripe, Linear, Cursor, Replicate, OpenAI.
+- **One choke point**: every LLM call passes through `assertEntitled`. Easy to audit, easy to add cost telemetry, easy to bypass during dev.
+- **AI Points vs Credits are distinct**: `kid.aiPoints` is XP / gamification (earned by creating, drives badges). `kid.creditBalance` is currency (spent on AI calls, granted by plan, bought via Razorpay). Never confused, never combined.
+
+**Phase 5 rollout**: Phase 1 of BILLING-001 ships the foundation + dev bypass (this PR). Phase 2 wires each AI route through `assertEntitled` (incremental, one route per commit). Phase 3 adds Razorpay integration and parent-facing UI ("Buy credits", "Upgrade plan", transaction history).
+
+**Reference**: `docs/data-model.md#billing-plans--credits`, `docs/api-contracts.md#billing-endpoints-billing-001`, `docs/security.md#billing-bypass-and-payment-safety`.
+
+---
+
 ## Data Flow
 
 ### Creation Flow (Phase 1 — Anonymous)
@@ -663,6 +729,32 @@ Teacher portal, assignments, and school analytics form a distinct module layered
 
 ### fetchWithSession Wrapper
 `lib/fetchWithSession.ts` wraps the Fetch API to auto-inject `X-Session-Id` from localStorage on every client-side API call. All hooks and components use this instead of raw `fetch()`, preventing the common bug of forgetting the session header.
+
+### Kid-scoped data fetching
+
+A multi-kid parent account has one parent identity but **N kid scopes**. Almost every `/api/*` endpoint reads from the kid-scoped session, so its response changes the moment a different kid is picked. The client must invalidate any cached kid data the instant the kid scope changes — otherwise the new kid sees the previous kid's books, creations, points, badges, streaks.
+
+**Classification**:
+
+| Type | Examples | Refetch on kid switch? |
+|---|---|---|
+| **Static** | `lib/templates/bookTemplates.ts`, `lib/badges.ts`, `lib/mascots/roster.ts`, brand assets, design tokens | No — bundled constants, never fetched |
+| **Dynamic / kid-scoped** | Anything under `/api/*` that returns per-kid data (books, creations, performances, points, badges, skills, CEO, homework, …) | **Yes — every kid switch** |
+| **Dynamic / parent-or-public** | `/api/users/kids`, `/api/creations/public`, the public Explore feed | No — same response regardless of which kid is active |
+
+**Mechanism — `kidScopeVersion` + SWR mutate**: `useKidProfile` owns a `bumpKidScope()` function that does two things atomically:
+1. Invalidates the SWR cache for every `/api/*` key NOT on the parent-scoped allowlist, with `revalidate: true`. Active `useSWR` consumers refetch automatically.
+2. Bumps the `kidScopeVersion` counter exposed on the context.
+
+`bumpKidScope()` runs inside `switchKid` **after** the new kid-scoped `gsi-session-id` is committed to localStorage, and inside `clearActiveKid`. The ordering is essential — if we bump before the new session id lands, subscribers refetch with the old session id and store the previous kid's data back into the cache, defeating the whole mechanism.
+
+**Rule for new hooks**:
+- **SWR-based hook** (`useSWR(url, fetcher)`): nothing to do. The central mutate covers it.
+- **`useEffect`-based hook** that fetches `/api/*` on mount: read `useKidProfile().kidScopeVersion` and include it in the effect's dependency array. Hook refires when scope changes.
+
+Hooks already conforming to the rule: `useCreations`, `usePerformances`, `useSkills`, `useSkillArenaProgress`, plus all SWR hooks (`useBookList`, `useBook`, `useCreation`, `useMyCreations`). Hooks that subscribe to `activeKid?.id` directly (`useCeoProfile`, `useCeoBusinesses`, `useCeoBusiness`, `useCeoAgents`, `useAssignmentContext`) work too — `activeKid` changes on switch, just earlier in the timeline. Use `kidScopeVersion` when correctness depends on the new session id being committed.
+
+**Caveat — localStorage caches inside hooks**: `useSkills` and `useSkillArenaProgress` mirror their last-good response into `localStorage` (offline-friendly). The keys are NOT per-kid right now, so a network failure right after a kid switch can briefly surface the previous kid's cached numbers. Acceptable for v1; long-term fix is to namespace those keys with the active kid id.
 
 ### Error Boundary
 `components/layout/ErrorBoundary.tsx` wraps the provider tree in `app/(public)/layout.tsx`. Catches render errors from context providers (AiPointsContext, AuthProvider, etc.) and shows a kid-friendly retry UI instead of crashing the entire app.

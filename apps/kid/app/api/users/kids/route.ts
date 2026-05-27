@@ -3,6 +3,7 @@ import { apiSuccess, handleApiError, AppException } from '@/lib/api-utils';
 import { verifyAuth } from '@/lib/auth-utils';
 import { createKid, listKids } from '@gsi/firebase/kidService';
 import { isPersistableAvatarUrl } from '@/lib/images/avatarUrl';
+import { grantMonthlyCredits, DEFAULT_PLAN } from '@/lib/billing';
 
 /**
  * POST /api/users/kids
@@ -90,6 +91,16 @@ export async function POST(request: NextRequest) {
       grade,
       board,
     });
+
+    // BILLING-001: seed the kid's wallet with the default plan's monthly
+    // grant so first-action UX isn't an immediate 402. Best-effort —
+    // we don't fail the kid-create on a billing infra error; the cron
+    // / on-demand renewal will pick them up on the next request.
+    try {
+      await grantMonthlyCredits({ kidId: kid.id, plan: DEFAULT_PLAN });
+    } catch (err) {
+      console.error('[billing] initial grant failed for new kid', kid.id, err);
+    }
 
     return apiSuccess(
       {

@@ -11,8 +11,8 @@
     {
       "name": "kid",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["dev:kid"],
-      "port": 3000,
+      "runtimeArgs": ["--filter", "@gsi/app-kid", "exec", "next", "dev", "-p", "3010"],
+      "port": 3010,
       "autoPort": true
     }
   ]

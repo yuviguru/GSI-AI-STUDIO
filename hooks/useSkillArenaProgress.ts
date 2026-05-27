@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { SkillArenaProgress } from '@gsi/types';
 import { fetchWithSession } from '@/lib/fetchWithSession';
+import { useKidProfile } from './useKidProfile';
 
 const CACHE_KEY = 'gsi-skill-arena-progress';
 
@@ -21,6 +22,10 @@ const defaultProgress: SkillArenaProgress = {
 };
 
 export function useSkillArenaProgress() {
+  // Refire when the kid scope changes. Same caveat as useSkills: the
+  // localStorage cache below isn't per-kid, so an offline failure right
+  // after switching can briefly surface the previous kid's progress.
+  const { kidScopeVersion } = useKidProfile();
   const [progress, setProgress] = useState<SkillArenaProgress>(defaultProgress);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -59,7 +64,7 @@ export function useSkillArenaProgress() {
 
   useEffect(() => {
     loadProgress();
-  }, [loadProgress]);
+  }, [loadProgress, kidScopeVersion]);
 
   const refreshProgress = useCallback(async () => {
     setIsLoading(true);

@@ -74,7 +74,45 @@ export async function PATCH(request: NextRequest) {
         if (!body.creationType || typeof body.creationType !== 'string') {
           throw new AppException('INVALID_INPUT', 'creationType is required for track_creation', 400);
         }
-        pointsAction = { action: 'track_creation', creationType: body.creationType };
+        // Optional ISO YYYY-MM-DD from the client's local day (kid timezone).
+        // When provided, the server bumps the per-studio daily streak for
+        // known studio types. Reject malformed values to avoid corrupt
+        // streaks AND impossible calendar dates — the regex below only
+        // checks shape, so `2026-13-40` would slip through and then crash
+        // computeStudioStreak with a RangeError on `new Date(...).toISOString()`,
+        // turning bad client input into a 500. We additionally round-trip
+        // the value through Date and require the canonical form to match
+        // the input: that rejects both NaN dates AND silently-normalized
+        // out-of-range values (e.g. some engines coerce 2026-02-30 →
+        // 2026-03-02), so the only inputs we accept are real calendar dates.
+        const rawDate = body.todayDate;
+        let todayDate: string | undefined;
+        if (rawDate !== undefined) {
+          if (typeof rawDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+            throw new AppException(
+              'INVALID_INPUT',
+              'todayDate must be an ISO YYYY-MM-DD string',
+              400,
+            );
+          }
+          const parsed = new Date(`${rawDate}T00:00:00Z`);
+          if (
+            Number.isNaN(parsed.getTime()) ||
+            parsed.toISOString().slice(0, 10) !== rawDate
+          ) {
+            throw new AppException(
+              'INVALID_INPUT',
+              'todayDate must be a real calendar date in ISO YYYY-MM-DD form',
+              400,
+            );
+          }
+          todayDate = rawDate;
+        }
+        pointsAction = {
+          action: 'track_creation',
+          creationType: body.creationType,
+          todayDate,
+        };
         break;
       }
       case 'track_share':

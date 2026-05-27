@@ -6,6 +6,7 @@ import { checkRateLimit, trackCreation } from '@gsi/firebase/sessionService';
 import { getBook } from '@gsi/firebase/bookService';
 import { getImageProvider, type ImageStyle } from '@gsi/ai/imageProvider';
 import { dimsForBookAndLayout } from '@gsi/ai/imageDims';
+import { enforceBilling } from '@/lib/billing';
 
 /** Fallback dims for the explicit `aspect` enum — used when no bookId/pageId
  *  is provided to derive proper slot dimensions. */
@@ -45,6 +46,7 @@ export async function POST(request: NextRequest) {
 
     filterImagePrompt(input.prompt);
     await checkRateLimit(sessionId);
+    await enforceBilling(request, { feature: 'image.flux' });
 
     // Prefer slot-aware dims when bookId+pageId are provided so a half-height
     // image slot generates a wide image that fills cleanly without crop. Fall

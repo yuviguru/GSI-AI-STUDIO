@@ -7,6 +7,7 @@ import { getBook } from '@gsi/firebase/bookService';
 import { getImageProvider, type ImageStyle } from '@gsi/ai/imageProvider';
 import { dimsForBookAndLayout } from '@gsi/ai/imageDims';
 import type { BookCharacter } from '@gsi/types';
+import { enforceBilling } from '@/lib/billing';
 
 const STYLE_HINT_MAP: Record<string, ImageStyle> = {
   watercolor: 'watercolor',
@@ -58,6 +59,10 @@ export async function POST(request: NextRequest) {
 
     filterImagePrompt(fullPrompt);
     await checkRateLimit(sessionId);
+    // Flat `image.flux` for now — switch to `image.sdxl` when the provider
+    // router becomes plan-aware (charging SDXL while Flux runs would
+    // mislead kids).
+    await enforceBilling(request, { feature: 'image.flux' });
 
     // Per-page slot aspect when pageId is provided; book aspect (cover) otherwise
     const pageLayout = input.pageId

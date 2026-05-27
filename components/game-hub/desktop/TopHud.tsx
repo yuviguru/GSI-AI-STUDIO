@@ -3,6 +3,7 @@
 import { Settings } from 'lucide-react';
 import { useAiPoints } from '@/contexts/AiPointsContext';
 import { AuthChip } from '@/components/navigation/AuthChip';
+import { CreditsBadge } from '@/components/billing/CreditsBadge';
 
 interface TopHudProps {
   onlineCount?: number;
@@ -49,9 +50,16 @@ export function TopHud({ onlineCount = 12, streakDays = 7 }: TopHudProps) {
           </div>
         </div>
 
-        {/* Right: points + auth state + settings */}
+        {/* Right: credits + points + auth state + settings */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400/20 to-orange-400/20 px-2.5 py-1 ring-1 ring-amber-300/40">
+          {/* AI Coins (currency) — hidden for anonymous flows */}
+          <CreditsBadge />
+
+          {/* AI Points (XP — lifetime, never spent) */}
+          <div
+            className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400/20 to-orange-400/20 px-2.5 py-1 ring-1 ring-amber-300/40"
+            title="AI Points — your lifetime creator score"
+          >
             <span className="text-xs">✨</span>
             <span className="font-mono text-xs font-bold text-amber-700">
               {isLoaded ? totalPoints.toLocaleString() : '—'}

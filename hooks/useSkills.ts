@@ -4,10 +4,18 @@ import { useState, useEffect, useCallback } from 'react';
 import type { BeatTheAiSkills, BeatTheAiSkillsResponse } from '@gsi/types';
 import { getDefaultSkills } from '@/lib/beat-the-ai/skillEngine';
 import { fetchWithSession } from '@/lib/fetchWithSession';
+import { useKidProfile } from './useKidProfile';
 
 const CACHE_KEY = 'gsi-btai-skills';
 
 export function useSkills() {
+  // Refire when the kid scope changes — without this, switching profiles
+  // would keep the previous kid's BtAI XP/levels on screen.
+  // Note: the localStorage `gsi-btai-skills` cache below is NOT keyed by
+  // kid, so a network failure right after a switch can briefly surface the
+  // previous kid's cached numbers. Acceptable for now; long-term fix would
+  // be to namespace the cache key with the active kid id.
+  const { kidScopeVersion } = useKidProfile();
   const [skills, setSkills] = useState<BeatTheAiSkills>(getDefaultSkills());
   const [overallLevel, setOverallLevel] = useState(1);
   const [totalXp, setTotalXp] = useState(0);
@@ -56,7 +64,7 @@ export function useSkills() {
 
   useEffect(() => {
     loadSkills();
-  }, [loadSkills]);
+  }, [loadSkills, kidScopeVersion]);
 
   const refreshSkills = useCallback(async () => {
     setIsLoading(true);

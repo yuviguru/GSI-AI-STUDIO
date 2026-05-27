@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Settings } from 'lucide-react';
 import { useAiPoints } from '@/contexts/AiPointsContext';
 import { MuteToggle } from '@/components/layout/MuteToggle';
+import { CreditsBadge } from '@/components/billing/CreditsBadge';
 import { AuthChip } from './AuthChip';
 import { cn } from '@/lib/utils';
 
@@ -37,10 +38,16 @@ export function GameNavBar() {
           </div>
         </Link>
 
-        {/* Right: points + auth + mute + settings */}
+        {/* Right: credits + points + auth + mute + settings */}
         <div className="flex items-center gap-2">
-          {/* AI Points pill */}
-          <div className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400/20 to-orange-400/20 px-2.5 py-1 ring-1 ring-amber-300/40">
+          {/* AI Coins (currency) — hidden for anonymous flows */}
+          <CreditsBadge />
+
+          {/* AI Points pill (XP — earned, never spent) */}
+          <div
+            className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400/20 to-orange-400/20 px-2.5 py-1 ring-1 ring-amber-300/40"
+            title="AI Points — your lifetime creator score"
+          >
             <span className="text-xs">✨</span>
             <span className="font-mono text-xs font-bold text-amber-700">
               {isLoaded ? totalPoints.toLocaleString() : '—'}

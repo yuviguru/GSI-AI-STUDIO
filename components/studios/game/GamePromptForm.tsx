@@ -8,6 +8,7 @@ import { getTemplatesByType, type Template } from '@/lib/templates';
 import { SurpriseButton } from '@/components/shared/SurpriseButton';
 import { GameSampleCards } from '@/components/studios/game/GameSampleCards';
 import type { GameInput } from '@/lib/validators';
+import { CreditCostBadge } from '@/components/billing/CreditCostBadge';
 
 interface GamePromptFormProps {
   onSubmit: (input: GameInput & { templateId?: string; remixedFromId?: string }) => void;
@@ -245,6 +246,7 @@ export function GamePromptForm({
           <div className="flex items-center gap-3">
             {error && <span className="text-xs text-red-500">{error}</span>}
             <span className="text-xs text-gray-400">{premise.length}/500</span>
+            <CreditCostBadge feature="game.generate" compact />
 
             {/* Create button */}
             <motion.button

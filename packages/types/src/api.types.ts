@@ -9,6 +9,13 @@ export interface ApiResponse<T> {
 export interface ApiError {
   code: string;
   message: string;
+  /**
+   * Optional structured payload — present on billing-related errors
+   * (402 INSUFFICIENT_CREDITS, 403 FORBIDDEN_BY_PLAN) and any other
+   * route that wants to ship machine-readable details alongside the
+   * human message. Shape documented in `docs/api-contracts.md`.
+   */
+  details?: Record<string, unknown>;
 }
 
 export interface PaginatedResponse<T> {
@@ -65,6 +72,10 @@ export interface PointsResponse {
   conceptsLearned: string[];
   creationsByType: Record<string, number>;
   shareCount: number;
+  /** Per-studio daily activity streaks. Keyed by studio creationType
+   *  (`book`, `story`, `music`, `quiz`, `comic`, `game`). Drives per-studio
+   *  streak displays + `studio_streak` badges. */
+  perStudioStreaks?: Record<string, { count: number; lastDay: string }>;
 }
 
 /** Share types */

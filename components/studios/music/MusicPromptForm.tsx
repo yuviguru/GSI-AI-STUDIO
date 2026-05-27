@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles, Settings2, Smile, CloudRain, Zap, Moon, Flame, Music2, Guitar, Piano, Drum } from 'lucide-react';
+import { CreditCostBadge } from '@/components/billing/CreditCostBadge';
 import { cn } from '@/lib/utils';
 import { getTemplatesByType, type Template } from '@/lib/templates';
 import { SurpriseButton } from '@/components/shared/SurpriseButton';
@@ -323,6 +324,7 @@ export function MusicPromptForm({
           <div className="flex items-center gap-3">
             {error && <span className="text-xs text-red-500">{error}</span>}
             <span className="text-xs text-gray-400">{theme.length}/300</span>
+            <CreditCostBadge feature="music.compose" compact />
 
             {/* Create button */}
             <motion.button
