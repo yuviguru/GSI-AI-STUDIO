@@ -1229,6 +1229,15 @@ export interface ShopBookItem {
  * Browse books listed for sale (BOOK-004 Phase 1). Public — no auth.
  * Returns published, public-readable, sales-enabled books ordered by
  * `sales.listedAt desc`.
+ *
+ * Resilience: this hits a composite index defined in firestore.indexes.json
+ * (status + isPublic + sales.enabled + sales.listedAt). If that index isn't
+ * deployed yet (a known launch step), Firestore throws FAILED_PRECONDITION.
+ * Rather than 500 the whole shop page, we swallow that and return an empty
+ * shelf — the UI already handles the empty state with a friendly "be the
+ * first author" prompt. Same resilience pattern as getStudioLaunchStates /
+ * getCommunityStats. Always logs a warning so the missing index doesn't
+ * silently linger.
  */
 export async function listShopBooks(filters: ListShopBooksFilters = {}): Promise<{
   items: ShopBookItem[];
@@ -1251,7 +1260,18 @@ export async function listShopBooks(filters: ListShopBooksFilters = {}): Promise
     }
   }
 
-  const snap = await query.get();
+  let snap: FirebaseFirestore.QuerySnapshot;
+  try {
+    snap = await query.get();
+  } catch (err) {
+    // FAILED_PRECONDITION (code 9) = missing composite index. Any other
+    // error is also caught — the shop is a nice-to-have surface, not
+    // critical, and we'd rather show an empty shelf than 500. The warn
+    // line carries the underlying error so ops sees the missing-index
+    // link + can run `firebase deploy --only firestore:indexes`.
+    console.warn('[listShopBooks] query failed, serving empty shelf:', err);
+    return { items: [], nextCursor: null, hasMore: false };
+  }
   const docs = snap.docs.slice(0, limit);
   const items: ShopBookItem[] = docs.map((d) => {
     const b = docToBook(d);
