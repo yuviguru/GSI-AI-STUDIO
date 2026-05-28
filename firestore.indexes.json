@@ -157,13 +157,6 @@
       "collectionGroup": "aiUsage",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "timestamp", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "aiUsage",
-      "queryScope": "COLLECTION",
-      "fields": [
         { "fieldPath": "providerName", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
@@ -627,6 +620,33 @@
         { "fieldPath": "isPublic", "order": "ASCENDING" },
         { "fieldPath": "sales.enabled", "order": "ASCENDING" },
         { "fieldPath": "sales.listedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "comment": "Preserved from live (not removed by deploy). Backs queries that look up active bot link codes by session.",
+      "collectionGroup": "botLinkCodes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "gsiSessionId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "comment": "Preserved from live. Lists a kid's CEO businesses chronologically.",
+      "collectionGroup": "ceoBusiness",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "kidId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "comment": "Preserved from live. Collection-group query across schools to list a teacher's classes.",
+      "collectionGroup": "classes",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "teacherUid", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
       ]
     }
   ],
