@@ -47,7 +47,9 @@ export function PortalCard({ mode, onClick }: PortalCardProps) {
         <span aria-hidden>{mode.emoji}</span>
         {isStudio ? (
           <span className="absolute -right-1 -top-1">
-            <StudioLaunchPill studioId={mode.key} size="xs" />
+            {/* showLive makes the LIVE pill explicit on Book — the user wants
+                "marked live" to be visible, not implicit by absence. */}
+            <StudioLaunchPill studioId={mode.key} size="xs" showLive />
           </span>
         ) : mode.badge ? (
           <span

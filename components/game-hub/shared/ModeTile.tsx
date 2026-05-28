@@ -3,9 +3,20 @@
 import { useRouter } from 'next/navigation';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowUpRight } from 'lucide-react';
+import { STUDIO_IDS, type StudioId } from '@gsi/types';
 import { playSound } from '@/lib/sounds';
+import { StudioLaunchPill } from '@/components/studios/shared/StudioLaunchPill';
 import type { GameMode } from './GameModes';
 import type { TileShape } from './bento';
+
+/** True if the mode is one of the six creation studios driven by the
+ *  config/studios launch-state document (LAUNCH-001). Play / Learn group
+ *  modes (Kid CEO, MindX, Beat the AI, AI Lab, Explore) fall through to
+ *  the legacy hardcoded `mode.badge` so their existing LIVE/NEW labels
+ *  keep working. */
+function isStudioMode(key: string): key is StudioId {
+  return (STUDIO_IDS as readonly string[]).includes(key);
+}
 
 interface ModeTileProps {
   mode: GameMode;
@@ -64,8 +75,16 @@ export function ModeTile({
     'aria-label': mode.label,
   };
 
-  /** Common badge — positioned absolutely so any layout can use it. */
-  const badgeEl = mode.badge ? (
+  /** Common badge — positioned absolutely so any layout can use it.
+   *  For creation studios, render the launch-state pill (LAUNCH-001). For
+   *  everything else, fall back to the hardcoded mode.badge so Beat the AI
+   *  and friends keep their existing LIVE / NEW marker. */
+  const isStudio = isStudioMode(mode.key);
+  const badgeEl = isStudio ? (
+    <span className="absolute right-2 top-2 z-20">
+      <StudioLaunchPill studioId={mode.key} size={compact ? 'xs' : 'sm'} showLive />
+    </span>
+  ) : mode.badge ? (
     <span
       className={`absolute right-2 top-2 z-20 rounded-full ${mode.badgeBg ?? 'bg-brand-primary'} font-bold uppercase tracking-wider text-white shadow-md whitespace-nowrap ${compact ? 'px-1.5 py-0.5 text-[7px]' : 'px-2 py-0.5 text-[9px]'}`}
     >
@@ -245,7 +264,7 @@ export function ModeTile({
     );
   }
 
-  // ── NO IMAGE → icon fallback (unchanged) ─────────────────────────────────
+  // ── NO IMAGE → icon fallback ─────────────────────────────────────────────
   return (
     <motion.button
       {...buttonProps}
@@ -258,13 +277,17 @@ export function ModeTile({
         >
           <Icon className={`${mode.solidIcon ? 'text-white' : mode.textColor} ${compact ? 'h-3.5 w-3.5' : 'h-5 w-5'}`} />
         </div>
-        {mode.badge && (
+        {/* Same precedence as the image-present branch: launch-state pill
+            for creation studios, legacy mode.badge for everything else. */}
+        {isStudio ? (
+          <StudioLaunchPill studioId={mode.key} size={compact ? 'xs' : 'sm'} showLive />
+        ) : mode.badge ? (
           <span
             className={`rounded-full ${mode.badgeBg ?? 'bg-brand-primary'} font-bold uppercase tracking-wider text-white shadow-sm whitespace-nowrap ${compact ? 'px-1 py-0 text-[7px]' : 'px-1.5 py-0.5 text-[8px]'}`}
           >
             {mode.badge}
           </span>
-        )}
+        ) : null}
       </div>
       <div className="relative z-10 mt-2">{titleEl}</div>
     </motion.button>
