@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Settings } from 'lucide-react';
+import { BookOpen, Settings } from 'lucide-react';
 import { useAiPoints } from '@/contexts/AiPointsContext';
 import { useKidProfile } from '@/hooks/useKidProfile';
 import { useCommunityStats } from '@/hooks/useCommunityStats';
@@ -39,6 +39,7 @@ export function GameNavBar() {
       ? activeKid?.streak?.current ?? 0
       : perStudioStreaks[scope]?.count ?? 0;
   const label = scopeLabel(scope);
+  const onBookshop = pathname?.startsWith('/shop/books') ?? false;
 
   return (
     <header
@@ -115,6 +116,27 @@ export function GameNavBar() {
           <AuthChip />
 
           <MuteToggle />
+
+          {/* Bookshop entry — primary destination on every inner page.
+              Responsive per user direction: label visible at ≥sm, icon-only
+              on small phones to save space. Highlights with amber ring when
+              the kid is on /shop/books for active-route feedback. */}
+          <Link
+            href="/shop/books"
+            className={cn(
+              'flex items-center gap-1.5 rounded-full px-2 py-1 transition-colors',
+              onBookshop
+                ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-300'
+                : 'text-brand-text-secondary hover:bg-amber-50 hover:text-amber-700',
+            )}
+            title="Bookshop — books written by kids"
+            aria-label="Bookshop"
+          >
+            <BookOpen className="h-4 w-4" />
+            <span className="hidden text-[11px] font-semibold sm:inline">
+              Bookshop
+            </span>
+          </Link>
 
           <Link
             href="/settings"

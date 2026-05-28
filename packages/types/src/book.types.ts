@@ -310,5 +310,9 @@ export interface BookListItem {
   /** Effort badge for the kid's library/gallery card (BOOK-003).
    *  null on drafts and on books published before BOOK-003. */
   effortBadge: EffortBadge | null;
+  /** Sales config (BOOK-004 Phase 1). null when the author hasn't set up
+   *  sales yet. Exposed in the list shape so surfaces like PlayerCard can
+   *  count "X books in shop" without fetching each book individually. */
+  sales: BookSales | null;
   updatedAt: Date;
 }

@@ -315,6 +315,7 @@ function toListItem(book: Book): BookListItem {
     status: book.status,
     coverThumbnail: book.coverThumbnail,
     effortBadge: book.effortBadge,
+    sales: book.sales,
     updatedAt: book.updatedAt,
   };
 }
