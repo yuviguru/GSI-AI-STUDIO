@@ -33,6 +33,18 @@ function isStudioMode(key: string): key is StudioId {
 
 export function PortalCard({ mode, onClick }: PortalCardProps) {
   const isStudio = isStudioMode(mode.key);
+  // Inline badge — same as ModeTile (no absolute corner). Placement is 'after'
+  // on PortalCard because the title is centered: a single-row centered
+  // [title][badge] hugs the cluster's centerline cleanly.
+  const inlineBadgeEl = isStudio ? (
+    <StudioLaunchPill studioId={mode.key} size="xs" showLive />
+  ) : mode.badge ? (
+    <span
+      className={`shrink-0 rounded-full ${mode.badgeBg ?? 'bg-brand-primary'} px-1 py-0 text-[7px] font-extrabold uppercase tracking-wider text-white`}
+    >
+      {mode.badge}
+    </span>
+  ) : null;
   return (
     <motion.button
       whileTap={{ scale: 0.95 }}
@@ -45,22 +57,10 @@ export function PortalCard({ mode, onClick }: PortalCardProps) {
     >
       <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/80 text-xl shadow-md ring-[3px] ring-white">
         <span aria-hidden>{mode.emoji}</span>
-        {isStudio ? (
-          <span className="absolute -right-1 -top-1">
-            {/* showLive makes the LIVE pill explicit on Book — the user wants
-                "marked live" to be visible, not implicit by absence. */}
-            <StudioLaunchPill studioId={mode.key} size="xs" showLive />
-          </span>
-        ) : mode.badge ? (
-          <span
-            className={`absolute -right-1 -top-1 rounded-full ${mode.badgeBg ?? 'bg-brand-primary'} border-2 border-white px-1 py-0 text-[7px] font-extrabold uppercase tracking-wider text-white`}
-          >
-            {mode.badge}
-          </span>
-        ) : null}
       </div>
-      <div className={`font-display text-[11px] font-extrabold leading-tight ${mode.textColor}`}>
-        {mode.shortLabel}
+      <div className={`flex flex-wrap items-center justify-center gap-1 font-display text-[11px] font-extrabold leading-tight ${mode.textColor}`}>
+        <span>{mode.shortLabel}</span>
+        {inlineBadgeEl}
       </div>
       <div className={`text-[9px] font-medium leading-tight line-clamp-2 ${mode.taglineColor}`}>
         {mode.tagline}

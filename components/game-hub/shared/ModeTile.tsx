@@ -75,18 +75,18 @@ export function ModeTile({
     'aria-label': mode.label,
   };
 
-  /** Common badge — positioned absolutely so any layout can use it.
-   *  For creation studios, render the launch-state pill (LAUNCH-001). For
-   *  everything else, fall back to the hardcoded mode.badge so Beat the AI
-   *  and friends keep their existing LIVE / NEW marker. */
+  /** Inline launch-state badge — sits next to the title, NOT in an absolute
+   *  corner. Placement (before/after the title) is chosen per-shape so the
+   *  badge always lands on the "open" side of the card opposite the image.
+   *  Creation studios use the LAUNCH-001 StudioLaunchPill; everything else
+   *  falls back to the hardcoded mode.badge for Beat the AI / Kid CEO /
+   *  MindX / AI Lab / Explore. */
   const isStudio = isStudioMode(mode.key);
-  const badgeEl = isStudio ? (
-    <span className="absolute right-2 top-2 z-20">
-      <StudioLaunchPill studioId={mode.key} size={compact ? 'xs' : 'sm'} showLive />
-    </span>
+  const inlineBadgeEl = isStudio ? (
+    <StudioLaunchPill studioId={mode.key} size={compact ? 'xs' : 'sm'} showLive />
   ) : mode.badge ? (
     <span
-      className={`absolute right-2 top-2 z-20 rounded-full ${mode.badgeBg ?? 'bg-brand-primary'} font-bold uppercase tracking-wider text-white shadow-md whitespace-nowrap ${compact ? 'px-1.5 py-0.5 text-[7px]' : 'px-2 py-0.5 text-[9px]'}`}
+      className={`shrink-0 rounded-full ${mode.badgeBg ?? 'bg-brand-primary'} font-bold uppercase tracking-wider text-white shadow-sm whitespace-nowrap ${compact ? 'px-1.5 py-0.5 text-[7px]' : 'px-2 py-0.5 text-[9px]'}`}
     >
       {mode.badge}
     </span>
@@ -110,14 +110,29 @@ export function ModeTile({
   // Desktop subtitle = longer description when available; mobile keeps only the label.
   const subtitle = mode.description ?? mode.tagline;
 
-  const titleEl = (
+  /** Render the title + tagline with the inline badge in the chosen position.
+   *  - 'after' (default): badge sits to the right of the title — used when
+   *    the title block is left-aligned (image on right, or no image).
+   *  - 'before': badge sits to the left of the title — used when the title
+   *    block is right-aligned (image on left, e.g. Comic Studio). The flex
+   *    row gets `justify-end` so the [badge][title] pair hugs the right edge.
+   */
+  const renderTitle = (badgePlacement: 'before' | 'after' = 'after') => (
     <>
       <div
-        className={`font-display font-bold leading-tight ${mode.textColor} ${
-          compact ? 'text-[11px]' : shape === 'tall' ? 'text-lg' : 'text-base'
+        className={`flex flex-wrap items-center gap-1.5 ${
+          badgePlacement === 'before' ? 'justify-end' : ''
         }`}
       >
-        {compact ? mode.shortLabel : mode.label}
+        {badgePlacement === 'before' && inlineBadgeEl}
+        <div
+          className={`font-display font-bold leading-tight ${mode.textColor} ${
+            compact ? 'text-[11px]' : shape === 'tall' ? 'text-lg' : 'text-base'
+          }`}
+        >
+          {compact ? mode.shortLabel : mode.label}
+        </div>
+        {badgePlacement === 'after' && inlineBadgeEl}
       </div>
       {!compact && (
         <div
@@ -165,9 +180,9 @@ export function ModeTile({
     // 1. TALL  → object on top, text at bottom (vertical stack)
     //   Image is 75% width, auto height, right-aligned (per visual tuning).
     if (shape === 'tall') {
+      // Title block sits bottom-left under a top-right image → badge AFTER title.
       return (
         <motion.button {...buttonProps} className={`${baseClasses} flex-col`}>
-          {badgeEl}
           {ctaEl}
           <div className={`flex min-h-0 flex-1 justify-end ${compact ? 'p-2' : 'p-3'}`}>
             {mode.image && (
@@ -181,7 +196,7 @@ export function ModeTile({
               />
             )}
           </div>
-          <div className={`${compact ? 'px-2 pb-2' : 'px-3 pb-3'}`}>{titleEl}</div>
+          <div className={`${compact ? 'px-2 pb-2' : 'px-3 pb-3'}`}>{renderTitle('after')}</div>
         </motion.button>
       );
     }
@@ -193,23 +208,24 @@ export function ModeTile({
     //   Mobile keeps the compact flex-row aspect-square / object-contain.
     if (shape === 'wide') {
       if (compact) {
+        // Compact wide: title in left column, image on right → badge AFTER title.
         return (
           <motion.button {...buttonProps} className={`${baseClasses} flex-row items-stretch`}>
-            {badgeEl}
-            <div className="flex min-w-0 flex-1 flex-col justify-end p-2">{titleEl}</div>
+            <div className="flex min-w-0 flex-1 flex-col justify-end p-2">{renderTitle('after')}</div>
             <div className="relative aspect-square shrink-0 p-1">{imgEl}</div>
           </motion.button>
         );
       }
       const isLeft = mode.imagePosition === 'left';
+      // Wide desktop: title is `self-end text-right` when image is on left →
+      // badge BEFORE title so the [badge][title] pair sits on the open right edge.
       return (
         <motion.button {...buttonProps} className={`${baseClasses} flex-col`}>
-          {badgeEl}
           {ctaEl}
           <div
             className={`relative z-10 max-w-[48%] shrink-0 p-3 ${isLeft ? 'self-end text-right' : ''}`}
           >
-            {titleEl}
+            {renderTitle(isLeft ? 'before' : 'after')}
           </div>
           {mode.image && (
             /* eslint-disable-next-line @next/next/no-img-element */
@@ -236,17 +252,18 @@ export function ModeTile({
     // 3. SINGLE → reference layout: copy occupies a narrower top column on
     //   one side; the illustration anchors to the opposite bottom corner.
     //   Side is driven by mode.imagePosition (defaults to 'right').
+    //   Badge placement mirrors the text alignment: image-left → badge
+    //   BEFORE title, image-right → badge AFTER title.
     const isLeft = mode.imagePosition === 'left';
     return (
       <motion.button {...buttonProps} className={`${baseClasses} flex-col`}>
-        {badgeEl}
         {ctaEl}
         <div
           className={`relative z-10 shrink-0 ${
             compact ? 'p-2' : `max-w-[58%] p-3 ${isLeft ? 'self-end text-right' : ''}`
           }`}
         >
-          {titleEl}
+          {renderTitle(isLeft ? 'before' : 'after')}
         </div>
         {mode.image && (
           /* eslint-disable-next-line @next/next/no-img-element */
@@ -265,31 +282,23 @@ export function ModeTile({
   }
 
   // ── NO IMAGE → icon fallback ─────────────────────────────────────────────
+  //   Title is left-aligned (default) below the icon row → badge AFTER title.
+  //   Badge no longer sits in the icon row's right corner — it now lives
+  //   inline with the title for visual consistency with image variants.
   return (
     <motion.button
       {...buttonProps}
       className={`${baseClasses} flex-col justify-between ${compact ? 'p-2' : 'p-3'}`}
     >
       {ctaEl}
-      <div className="relative z-10 flex items-start justify-between">
+      <div className="relative z-10 flex items-start">
         <div
           className={`flex items-center justify-center rounded-xl shadow-md ring-1 ${mode.iconRing} ${mode.iconBg} ${compact ? 'h-7 w-7' : 'h-10 w-10'}`}
         >
           <Icon className={`${mode.solidIcon ? 'text-white' : mode.textColor} ${compact ? 'h-3.5 w-3.5' : 'h-5 w-5'}`} />
         </div>
-        {/* Same precedence as the image-present branch: launch-state pill
-            for creation studios, legacy mode.badge for everything else. */}
-        {isStudio ? (
-          <StudioLaunchPill studioId={mode.key} size={compact ? 'xs' : 'sm'} showLive />
-        ) : mode.badge ? (
-          <span
-            className={`rounded-full ${mode.badgeBg ?? 'bg-brand-primary'} font-bold uppercase tracking-wider text-white shadow-sm whitespace-nowrap ${compact ? 'px-1 py-0 text-[7px]' : 'px-1.5 py-0.5 text-[8px]'}`}
-          >
-            {mode.badge}
-          </span>
-        ) : null}
       </div>
-      <div className="relative z-10 mt-2">{titleEl}</div>
+      <div className="relative z-10 mt-2">{renderTitle('after')}</div>
     </motion.button>
   );
 }
