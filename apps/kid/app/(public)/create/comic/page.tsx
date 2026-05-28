@@ -1,7 +1,6 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { ComicStudioClient } from './ComicStudioClient';
-import { CommunityStatsBanner } from '@/components/community/CommunityStatsBanner';
 
 export const metadata: Metadata = {
   title: 'Comic Studio — GSI AI Studio',
@@ -11,15 +10,8 @@ export const metadata: Metadata = {
 
 export default function ComicStudioPage() {
   return (
-    <>
-      <div className="pointer-events-none fixed left-1/2 top-3 z-30 -translate-x-1/2">
-        <div className="pointer-events-auto">
-          <CommunityStatsBanner scope="comic" />
-        </div>
-      </div>
-      <Suspense>
-        <ComicStudioClient />
-      </Suspense>
-    </>
+    <Suspense>
+      <ComicStudioClient />
+    </Suspense>
   );
 }

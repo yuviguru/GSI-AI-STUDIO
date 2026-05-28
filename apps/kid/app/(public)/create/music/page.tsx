@@ -1,7 +1,6 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { MusicStudioClient } from './MusicStudioClient';
-import { CommunityStatsBanner } from '@/components/community/CommunityStatsBanner';
 
 export const metadata: Metadata = {
   title: 'Music Lab — GSI AI Studio',
@@ -10,15 +9,8 @@ export const metadata: Metadata = {
 
 export default function MusicLabPage() {
   return (
-    <>
-      <div className="pointer-events-none fixed left-1/2 top-3 z-30 -translate-x-1/2">
-        <div className="pointer-events-auto">
-          <CommunityStatsBanner scope="music" />
-        </div>
-      </div>
-      <Suspense>
-        <MusicStudioClient />
-      </Suspense>
-    </>
+    <Suspense>
+      <MusicStudioClient />
+    </Suspense>
   );
 }

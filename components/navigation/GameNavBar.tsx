@@ -1,24 +1,44 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Settings } from 'lucide-react';
 import { useAiPoints } from '@/contexts/AiPointsContext';
+import { useKidProfile } from '@/hooks/useKidProfile';
+import { useCommunityStats } from '@/hooks/useCommunityStats';
 import { MuteToggle } from '@/components/layout/MuteToggle';
 import { CreditsBadge } from '@/components/billing/CreditsBadge';
+import { scopeFromPath, scopeLabel } from '@/lib/social/scopeFromPath';
 import { AuthChip } from './AuthChip';
 import { cn } from '@/lib/utils';
 
 /**
  * Game-styled app navigation bar for inner pages (studios, creations, etc.).
- * Mirrors the TopHud's visual language (game-glass, compact pills) but without
- * the hub-specific center pills (online count, streak).
+ * Mirrors the TopHud's visual language (game-glass, compact pills) and now
+ * shows the same scope-aware online + streak pills:
+ *   - /create/book → "12 in Books" + "7 days in Books"
+ *   - /shop/books  → "12 in Books"
+ *   - default      → "12 online" + "7 days"
  *
- * Layout: [Brand] ─── spacer ─── [Points • Auth • Mute • Settings]
+ * Layout: [Brand] [scoped pills] ─── spacer ─── [Points • Auth • Mute • Settings]
  *
  * Back-to-home actions live on individual pages (via BackLink), not here.
  */
 export function GameNavBar() {
-  const { totalPoints, isLoaded } = useAiPoints();
+  const { totalPoints, isLoaded, perStudioStreaks } = useAiPoints();
+  const { activeKid } = useKidProfile();
+  const pathname = usePathname();
+  const scope = scopeFromPath(pathname);
+  const stats = useCommunityStats(scope);
+  const onlineCount = stats?.onlineNow ?? null;
+  // Scope-aware streak: home/unknown = kid's top-level streak.current
+  // (mirrors TopHud); studio-scoped = the per-studio daily activity streak
+  // maintained by sessionService when track_creation runs.
+  const streakDays =
+    scope === 'global'
+      ? activeKid?.streak?.current ?? 0
+      : perStudioStreaks[scope]?.count ?? 0;
+  const label = scopeLabel(scope);
 
   return (
     <header
@@ -37,6 +57,44 @@ export function GameNavBar() {
             GSI <span className="text-brand-primary">Studio</span>
           </div>
         </Link>
+
+        {/* Scope-aware status pills — mirrors TopHud's design language.
+            Hidden on the narrowest screens (sm:flex) so they don't crowd
+            the brand + right cluster on a phone. Online pill shows "—"
+            while SWR settles; streak shows 0 for first-time kids. */}
+        <div className="hidden items-center gap-2 sm:flex">
+          <div
+            className="flex items-center gap-1.5 rounded-full bg-brand-secondary/10 px-2 py-0.5"
+            title={
+              scope === 'global'
+                ? 'Creators online on GSI right now'
+                : `Creators in the ${label} studio right now`
+            }
+          >
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-secondary opacity-75"></span>
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-secondary"></span>
+            </span>
+            <span className="text-[11px] font-semibold text-brand-secondary">
+              {onlineCount === null ? '—' : onlineCount.toLocaleString('en-IN')}
+              {scope === 'global' ? ' online' : ` in ${label}`}
+            </span>
+          </div>
+          <div
+            className="flex items-center gap-1.5 rounded-full bg-brand-accent/10 px-2 py-0.5"
+            title={
+              scope === 'global'
+                ? 'Your overall creation streak'
+                : `Your ${label} streak`
+            }
+          >
+            <span className="text-xs">🔥</span>
+            <span className="font-mono text-[11px] font-bold text-brand-accent">
+              {streakDays} {streakDays === 1 ? 'day' : 'days'}
+              {scope === 'global' ? '' : ` in ${label}`}
+            </span>
+          </div>
+        </div>
 
         {/* Right: credits + points + auth + mute + settings */}
         <div className="flex items-center gap-2">
