@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { BookStudioClient } from '@/components/studios/book/BookStudioClient';
+import { CommunityStatsBanner } from '@/components/community/CommunityStatsBanner';
 
 export const metadata: Metadata = {
   title: 'Book Studio — GSI AI Studio',
@@ -10,8 +11,18 @@ export const metadata: Metadata = {
 
 export default function BookStudioPage() {
   return (
-    <Suspense>
-      <BookStudioClient />
-    </Suspense>
+    <>
+      {/* COMMUNITY-001 — book-scoped community banner above the studio
+          frame. Floats over the studio's gradient header thanks to its
+          own backdrop. */}
+      <div className="pointer-events-none fixed left-1/2 top-3 z-30 -translate-x-1/2">
+        <div className="pointer-events-auto">
+          <CommunityStatsBanner scope="book" />
+        </div>
+      </div>
+      <Suspense>
+        <BookStudioClient />
+      </Suspense>
+    </>
   );
 }

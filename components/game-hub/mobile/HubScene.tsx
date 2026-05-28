@@ -17,6 +17,7 @@ import { XpBar } from '../shared/XpBar';
 import { getModesByGroup, type ModeGroup } from '../shared/GameModes';
 import { playSound } from '@/lib/sounds';
 import { CreditsBadge } from '@/components/billing/CreditsBadge';
+import { CommunityStatsPill } from '@/components/community/CommunityStatsPill';
 import type { MobileTab } from './TabBar';
 import { DailyRewardModal } from './DailyRewardModal';
 
@@ -186,6 +187,13 @@ export function HubScene({ onTabChange }: HubSceneProps = {}) {
               gating (returns null for guests, so the HUD just shows
               without the bell when there's nothing to notify about). */}
           <NotificationBell />
+        </div>
+
+        {/* COMMUNITY-001 — small "creators online" pill below the HUD.
+            Just the pill on mobile (no cumulative headline) so we don't
+            crowd the limited vertical space. */}
+        <div className="mt-2 flex justify-center">
+          <CommunityStatsPill scope="global" size="xs" />
         </div>
       </div>
 

@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Heart, ShoppingBag, Sparkles } from 'lucide-react';
 import { EffortBadge } from '@/components/studios/book/EffortBadge';
+import { CommunityStatsBanner } from '@/components/community/CommunityStatsBanner';
 import type { EffortBadge as EffortBadgeData } from '@gsi/types';
 
 interface ShopBookItem {
@@ -60,6 +61,11 @@ export function ShopBooksClient() {
             </span>{' '}
             — helping kids who don&apos;t have books.
           </p>
+          {/* COMMUNITY-001 — real "books written so far" + ambient
+              "creators online" pill, scoped to the book community. */}
+          <div className="mt-3 flex justify-center">
+            <CommunityStatsBanner scope="book" />
+          </div>
         </header>
 
         <div className="mb-5 rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/50 px-4 py-3 text-center text-xs text-amber-800">
