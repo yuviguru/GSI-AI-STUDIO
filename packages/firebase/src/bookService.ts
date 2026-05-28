@@ -955,7 +955,9 @@ export async function deletePage(
     const removedPageNumber = targetData.pageNumber as number;
 
     const allSnap = await tx.get(pagesCol.orderBy('pageNumber', 'asc'));
+    const bookSnap = await tx.get(bookRef);
     const now = Timestamp.now();
+    const nowDate = now.toDate();
 
     tx.delete(pagesCol.doc(pageId));
 
@@ -968,8 +970,33 @@ export async function deletePage(
       }
     }
 
+    // BOOK-003 — re-aggregate the denormalized authorship summary so a
+    // deleted AI-generated page doesn't leave the badge math overstating
+    // AI contribution. Pre-fix, deletePage only adjusted pageCount and
+    // the next publish would award the wrong badge. publishBook now
+    // also recomputes defensively, but maintaining the summary here
+    // keeps consumers (live badge predictor, etc.) accurate between
+    // page operations and publish. Codex review comment 3313051439.
+    const remainingPages = allSnap.docs
+      .filter((d) => d.id !== pageId)
+      .map((d) => ({ authorship: revivePageAuthorship(d.data().authorship) }));
+    const priorInitialSource = (() => {
+      const a = bookSnap.exists ? bookSnap.data()?.authorship : null;
+      if (a && typeof a === 'object' && typeof (a as Record<string, unknown>).initialSource === 'string') {
+        const src = (a as Record<string, unknown>).initialSource;
+        if (src === 'ai_generated' || src === 'wizard_seeded') return src;
+      }
+      return 'wizard_blank' as const;
+    })();
+    const freshAuthorship = aggregateBookAuthorship({
+      pages: remainingPages,
+      initialSource: priorInitialSource,
+      now: nowDate,
+    });
+
     tx.update(bookRef, {
       pageCount: FieldValue.increment(-1),
+      authorship: bookAuthorshipToStored(freshAuthorship),
       updatedAt: now,
     });
   });
@@ -1089,18 +1116,27 @@ export async function publishBook(
   const now = Timestamp.now();
   const nowDate = now.toDate();
 
-  // BOOK-003 — compute and stamp the effort badge. If authorship is missing
-  // (legacy pre-BOOK-002 books) we synthesize a neutral default that lands
-  // in pure_imagination (the kid wrote everything pre-AI).
-  const authorship = book.authorship ?? {
-    initialSource: 'wizard_blank' as const,
-    aiCharTotal: 0,
-    kidCharTotal: 0,
-    aiImagePageCount: 0,
-    kidImagePageCount: 0,
-    updatedAt: nowDate,
-  };
-  const effortBadge = computeEffortBadge(authorship, nowDate);
+  // BOOK-003 — Re-aggregate authorship from current pages BEFORE computing
+  // the badge. We don't trust the denormalized `book.authorship` here
+  // because `deletePage` (pre-fix) didn't maintain that summary, so a
+  // kid who deleted an AI-generated page could publish with a stale
+  // total that overstated AI contribution. Codex review comment 3313051439.
+  //
+  // This is one Firestore range read on a sub-50-page subcollection —
+  // cheap compared to PDF generation and worth it for badge correctness.
+  const pagesSnap = await ref
+    .collection(PAGES_SUBCOLLECTION)
+    .orderBy('pageNumber', 'asc')
+    .get();
+  const freshAuthorship = aggregateBookAuthorship({
+    pages: pagesSnap.docs.map((d) => ({
+      authorship: revivePageAuthorship(d.data().authorship),
+    })),
+    initialSource: book.authorship?.initialSource ?? 'wizard_blank',
+    now: nowDate,
+  });
+
+  const effortBadge = computeEffortBadge(freshAuthorship, nowDate);
   const effortBadgeStored = {
     key: effortBadge.key,
     aiPercentage: effortBadge.aiPercentage,
@@ -1113,6 +1149,10 @@ export async function publishBook(
     isPublic: options.isPublic ?? false,
     publishedAt: now,
     shareUrl,
+    // Persist the recomputed summary alongside the badge so the
+    // denormalized field stops lying (downstream readers like
+    // BOOK-009's live badge predictor depend on it being correct).
+    authorship: bookAuthorshipToStored(freshAuthorship),
     effortBadge: effortBadgeStored,
     updatedAt: now,
   });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Download, Share2, Truck, X } from 'lucide-react';
 import type { Book } from '@gsi/types';
@@ -23,7 +23,15 @@ export function PublishModal({ book, onPublish, onExportPdf, onClose }: PublishM
   const [copied, setCopied] = useState(false);
   // BOOK-004 — keep a local mirror of the book so SalesConfigForm can
   // optimistically update sales fields after save without a full reload.
+  // Sync from props whenever the parent refreshes (e.g. immediately after
+  // publish, the parent re-fetches and passes a `status: 'published'`
+  // book — without this useEffect, SalesConfigForm would keep seeing the
+  // original `status: 'draft'` and refuse to enable sales until the kid
+  // closed and reopened the modal). Codex review comment 3313051431.
   const [bookState, setBookState] = useState<Book>(book);
+  useEffect(() => {
+    setBookState(book);
+  }, [book]);
 
   const isPublished = book.status === 'published';
   const hasCover = !!book.cover.title;

@@ -76,16 +76,27 @@ export async function POST(request: NextRequest) {
     await enforceIpRateLimit(ipFromRequest(request));
     await checkRateLimit(sessionId);
 
-    // Charge LLM cost up front so a high-volume abuser can't blow budget
-    // before bailing on the image render.
-    await enforceBilling(request, { feature: 'book.aiGenerate' });
-
     // Resolve the bucket + default font for the requested book type.
     const typeCard = getBookTypeCard(input.type);
     if (!typeCard) {
       throw new AppException('INVALID_INPUT', `Unknown book type: ${input.type}`, 400);
     }
     const defaultFont = BOOK_FONTS[0]!;
+
+    // BOOK-002 billing — preflight the FULL budget upfront so partial
+    // success can't leave the kid out of pocket without a book.
+    // Original P1 bug (Codex review): we billed images AFTER they rendered,
+    // so a kid with enough for LLM + 1 image but not 2 spent 15 credits
+    // and got no book back. Fixed by debiting everything first; if the
+    // wallet can't cover the whole job we fail before any provider call.
+    //
+    // Image failures after this point don't refund — the provider still
+    // charged us per attempt and the kid can regenerate failed pages
+    // later via /api/ai/page-image without re-paying for the LLM draft.
+    await enforceBilling(request, { feature: 'book.aiGenerate' });
+    for (let i = 0; i < input.pageCount; i++) {
+      await enforceBilling(request, { feature: 'image.flux' });
+    }
 
     // Generate the draft via the LLM router — auto-picks Claude / Groq /
     // … and falls through to the next provider on auth or transport errors.
@@ -115,9 +126,10 @@ export async function POST(request: NextRequest) {
       })),
     };
 
-    // Per-page image generation in parallel. We bill per successful image
-    // so failed/timed-out pages don't drain credits — kid can regenerate
-    // them later via the existing /api/ai/page-image flow.
+    // Per-page image generation in parallel. Already billed upfront per
+    // the preflight above — kid can regenerate failed pages later via
+    // /api/ai/page-image (which has its own debit) without re-paying for
+    // the LLM draft.
     const { imageFunction } = getImageProvider();
     const style: ImageStyle = 'cartoon';
     const dims = dimsForBookAndLayout(input.size); // book-size aware; layout-agnostic for the bulk pass
@@ -141,13 +153,6 @@ export async function POST(request: NextRequest) {
       if (url) successfulImages++;
       return { ...p, imageUrl: url };
     });
-
-    // Bill per successful image (skipped pages don't count)
-    if (successfulImages > 0) {
-      for (let i = 0; i < successfulImages; i++) {
-        await enforceBilling(request, { feature: 'image.flux' });
-      }
-    }
 
     // Persist atomically
     const book = await createGeneratedBook(
