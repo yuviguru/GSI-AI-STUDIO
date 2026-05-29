@@ -801,6 +801,13 @@ export interface CreateGeneratedBookInput {
       /** Resolved image URL — null if the cascade failed for this page. */
       imageUrl: string | null;
     }>;
+    /** Optional "book bible" hero, persisted as a BookCharacter so it shows
+     *  in the cast editor and anchors later image regeneration. */
+    character?: {
+      name: string;
+      lookDescription: string;
+      anchorPrompt: string;
+    } | null;
   };
 }
 
@@ -881,7 +888,22 @@ export async function createGeneratedBook(
     typography: setup.typography,
     cover,
     backCover: null,
-    characters: [], // AI books skip locked-cast in v1
+    // BOOK-002 — persist the AI "book bible" hero (if the draft carried one)
+    // as a single locked-cast member. Reuses the existing BookCharacter
+    // schema, so the editor's CastEditor and any later image regeneration
+    // share the same character definition the pages were drawn against.
+    characters: draft.character
+      ? [
+          charToStored({
+            id: nanoid(10),
+            name: draft.character.name,
+            lookDescription: draft.character.lookDescription,
+            anchorImageUrl: null,
+            anchorPrompt: draft.character.anchorPrompt,
+            createdAt: new Date(),
+          }),
+        ]
+      : [],
     plot: null,
     pageCount: draft.pages.length,
     pageLimit: setup.pageLimit,

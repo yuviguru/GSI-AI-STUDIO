@@ -13,14 +13,49 @@ import { ipFromRequest } from '@/lib/api/requestUtils';
 import {
   BOOK_GENERATE_SYSTEM_PROMPT,
   buildBookGenerateUserMessage,
+  buildPageImagePrompt,
+  buildCoverImagePrompt,
+  characterLookDescription,
+  type BookCharacterGuide,
 } from '@gsi/ai/prompts/bookGeneratePrompt';
 
 /** Shape Claude/Groq must return. Validated defensively after the router
- *  parses the JSON — provider drift on optional fields shouldn't 500. */
+ *  parses the JSON — provider drift on optional fields shouldn't 500. The
+ *  characterGuide is the "book bible": a single locked look injected into
+ *  every page + cover image prompt so the hero renders consistently. */
 interface BookDraftResponse {
   title: string;
   coverPrompt: string;
-  pages: Array<{ plainText: string; imagePrompt: string }>;
+  /** Null if the model omitted it — generation still works, just without
+   *  the character-consistency anchor. */
+  characterGuide: BookCharacterGuide | null;
+  pages: Array<{ plainText: string; imagePrompt: string; emotion: string }>;
+}
+
+/** Coerce a string-ish field to a trimmed string (defensive against the
+ *  model emitting numbers/nulls for fields like character age). */
+function asStr(v: unknown): string {
+  if (typeof v === 'string') return v.trim();
+  if (typeof v === 'number') return String(v);
+  return '';
+}
+
+/** Parse the characterGuide if present and usable. Requires at least a name
+ *  + some visual detail; otherwise returns null so we fall back gracefully. */
+function parseCharacterGuide(raw: unknown): BookCharacterGuide | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const guide: BookCharacterGuide = {
+    name: asStr(r.name),
+    age: asStr(r.age),
+    appearance: asStr(r.appearance),
+    clothing: asStr(r.clothing),
+    accessory: asStr(r.accessory),
+    personality: asStr(r.personality),
+    colorTheme: asStr(r.colorTheme),
+  };
+  if (!guide.name || (!guide.appearance && !guide.clothing)) return null;
+  return guide;
 }
 
 /** Validate the parsed shape. Router already JSON-parsed; we only check
@@ -41,12 +76,18 @@ function validateBookDraft(raw: unknown): BookDraftResponse {
     .map((p) => ({
       plainText: typeof p.plainText === 'string' ? p.plainText : '',
       imagePrompt: typeof p.imagePrompt === 'string' ? p.imagePrompt : '',
+      emotion: asStr(p.emotion),
     }))
     .filter((p) => p.plainText.length > 0);
   if (pages.length === 0) {
     throw new AppException('AI_GENERATION_FAILED', 'AI draft pages were all empty', 502);
   }
-  return { title: obj.title, coverPrompt: obj.coverPrompt, pages };
+  return {
+    title: obj.title,
+    coverPrompt: obj.coverPrompt,
+    characterGuide: parseCharacterGuide(obj.characterGuide),
+    pages,
+  };
 }
 
 /**
@@ -109,6 +150,7 @@ export async function POST(request: NextRequest) {
         age: input.age,
         style: input.style,
         pageCount: input.pageCount,
+        size: input.size,
         titleHint: input.title,
       }),
       maxTokens: 4096,
@@ -116,13 +158,39 @@ export async function POST(request: NextRequest) {
     });
     const draft = validateBookDraft(parsed);
 
-    // Apply output safety to text and image prompts
+    // Safety-filter the character bible's freeform fields before it feeds
+    // into any image prompt. Returns null if the model gave us no guide.
+    const safeGuide: BookCharacterGuide | null = draft.characterGuide
+      ? {
+          name: filterOutput(draft.characterGuide.name),
+          age: draft.characterGuide.age,
+          appearance: filterImagePrompt(draft.characterGuide.appearance),
+          clothing: filterImagePrompt(draft.characterGuide.clothing),
+          accessory: filterImagePrompt(draft.characterGuide.accessory),
+          personality: filterOutput(draft.characterGuide.personality),
+          colorTheme: filterImagePrompt(draft.characterGuide.colorTheme),
+        }
+      : null;
+
+    // Apply output safety to text + scene prompts, then compose the FINAL
+    // image prompts: scene + locked character anchor + age art style +
+    // quality suffix. The composed prompt is what we both render now AND
+    // persist, so later per-page/cover regeneration stays consistent.
     const safeDraft = {
       title: filterOutput(draft.title),
-      coverPrompt: filterImagePrompt(draft.coverPrompt),
+      coverPrompt: buildCoverImagePrompt({
+        coverPrompt: filterImagePrompt(draft.coverPrompt),
+        guide: safeGuide,
+        age: input.age,
+      }),
       pages: draft.pages.map((p) => ({
         plainText: filterOutput(p.plainText),
-        imagePrompt: filterImagePrompt(p.imagePrompt),
+        imagePrompt: buildPageImagePrompt({
+          scenePrompt: filterImagePrompt(p.imagePrompt),
+          emotion: p.emotion || undefined,
+          guide: safeGuide,
+          age: input.age,
+        }),
       })),
     };
 
@@ -176,6 +244,15 @@ export async function POST(request: NextRequest) {
           title: safeDraft.title,
           coverPrompt: safeDraft.coverPrompt,
           pages: pagesWithImages,
+          // Persist the book bible as a cast member so it survives into the
+          // editor (CastEditor) and anchors any later image regeneration.
+          character: safeGuide
+            ? {
+                name: safeGuide.name,
+                lookDescription: characterLookDescription(safeGuide),
+                anchorPrompt: safeGuide.appearance,
+              }
+            : null,
         },
       },
       { sessionId },
