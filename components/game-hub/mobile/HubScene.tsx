@@ -231,10 +231,11 @@ export function HubScene({ onTabChange }: HubSceneProps = {}) {
             >
               <MascotAvatar id={mascotId} size="2xl" animate />
             </motion.div>
-            <div className="absolute bottom-2 left-1/2 h-3 w-32 -translate-x-1/2">
-              <div className="absolute inset-0 animate-platform-spin platform-ring" />
-              <div className="absolute inset-1 rounded-full bg-gradient-to-b from-white/80 to-brand-soft" />
-            </div>
+            {/* Static soft pedestal under the mascot. Replaces the old
+                spinning conic-ring disc (`platform-ring` + `animate-platform-spin`),
+                which read as odd on mobile — a calm blurred ellipse grounds
+                the mascot without any motion. */}
+            <div className="pointer-events-none absolute bottom-2 left-1/2 h-2.5 w-28 -translate-x-1/2 rounded-[50%] bg-brand-primary/15 blur-[6px]" />
           </div>
 
           <motion.button
