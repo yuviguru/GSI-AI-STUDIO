@@ -17,7 +17,9 @@ import {
   buildCoverImagePrompt,
   characterLookDescription,
   type BookCharacterGuide,
+  type BookSceneType,
 } from '@gsi/ai/prompts/bookGeneratePrompt';
+import { sceneTypeToLayout } from '@/lib/books/sceneLayout';
 
 /** Shape Claude/Groq must return. Validated defensively after the router
  *  parses the JSON — provider drift on optional fields shouldn't 500. The
@@ -29,7 +31,29 @@ interface BookDraftResponse {
   /** Null if the model omitted it — generation still works, just without
    *  the character-consistency anchor. */
   characterGuide: BookCharacterGuide | null;
-  pages: Array<{ plainText: string; imagePrompt: string; emotion: string }>;
+  pages: Array<{
+    plainText: string;
+    imagePrompt: string;
+    emotion: string;
+    /** Composition the AI framed the page as — drives the page layout. */
+    sceneType?: BookSceneType;
+  }>;
+}
+
+/** The scene types the layout mapper understands. Anything else → undefined
+ *  (falls back to the alternating framed default). */
+const SCENE_TYPES: ReadonlySet<string> = new Set([
+  'wide_establishing',
+  'character_closeup',
+  'action',
+  'discovery',
+  'emotional_reaction',
+  'environmental_wonder',
+  'dramatic_reveal',
+]);
+
+function asSceneType(v: unknown): BookSceneType | undefined {
+  return typeof v === 'string' && SCENE_TYPES.has(v) ? (v as BookSceneType) : undefined;
 }
 
 /** Coerce a string-ish field to a trimmed string (defensive against the
@@ -77,6 +101,7 @@ function validateBookDraft(raw: unknown): BookDraftResponse {
       plainText: typeof p.plainText === 'string' ? p.plainText : '',
       imagePrompt: typeof p.imagePrompt === 'string' ? p.imagePrompt : '',
       emotion: asStr(p.emotion),
+      sceneType: asSceneType(p.sceneType),
     }))
     .filter((p) => p.plainText.length > 0);
   if (pages.length === 0) {
@@ -183,7 +208,7 @@ export async function POST(request: NextRequest) {
         guide: safeGuide,
         age: input.age,
       }),
-      pages: draft.pages.map((p) => ({
+      pages: draft.pages.map((p, i) => ({
         plainText: filterOutput(p.plainText),
         imagePrompt: buildPageImagePrompt({
           scenePrompt: filterImagePrompt(p.imagePrompt),
@@ -191,6 +216,10 @@ export async function POST(request: NextRequest) {
           guide: safeGuide,
           age: input.age,
         }),
+        // Hybrid-by-scene-type: the AI's scene framing → a concrete layout,
+        // varied by trim size and alternated so consecutive framed pages
+        // differ. createGeneratedBook validates this against the bucket.
+        layout: sceneTypeToLayout(p.sceneType, input.size, i),
       })),
     };
 

@@ -1,0 +1,103 @@
+import { describe, it, expect } from 'vitest';
+import {
+  parseHex,
+  hexToRgbTuple,
+  derivePalette,
+  resolveComposition,
+  splitDropCap,
+} from './pageComposition';
+import { sceneTypeToLayout } from './sceneLayout';
+
+describe('parseHex', () => {
+  it('parses 6-digit hex with and without #', () => {
+    expect(parseHex('#ff8800')).toEqual({ r: 255, g: 136, b: 0 });
+    expect(parseHex('ff8800')).toEqual({ r: 255, g: 136, b: 0 });
+  });
+  it('expands 3-digit shorthand', () => {
+    expect(parseHex('#f80')).toEqual({ r: 255, g: 136, b: 0 });
+  });
+  it('returns null on garbage', () => {
+    expect(parseHex('nope')).toBeNull();
+    expect(parseHex(null)).toBeNull();
+  });
+});
+
+describe('hexToRgbTuple', () => {
+  it('falls back to white on bad input', () => {
+    expect(hexToRgbTuple(undefined)).toEqual([255, 255, 255]);
+  });
+});
+
+describe('derivePalette', () => {
+  it('returns a full set of valid hex colors', () => {
+    const p = derivePalette('#5B5FFF');
+    for (const key of ['pageBg', 'matBg', 'border', 'accent', 'text'] as const) {
+      expect(p[key]).toMatch(/^#[0-9a-f]{6}$/i);
+    }
+  });
+  it('keeps a colourful (non-white) page background', () => {
+    expect(derivePalette('#e23a3a').pageBg.toLowerCase()).not.toBe('#ffffff');
+  });
+  it('is deterministic for the same input', () => {
+    expect(derivePalette('#123456')).toEqual(derivePalette('#123456'));
+  });
+  it('falls back to the brand colour when themeColor is null', () => {
+    expect(derivePalette(null)).toEqual(derivePalette('#5B5FFF'));
+  });
+});
+
+describe('resolveComposition', () => {
+  it('maps full-bleed layouts to cinematic with no drop-cap', () => {
+    const c = resolveComposition('image_full_bleed', 'square');
+    expect(c.mode).toBe('full_bleed');
+    expect(c.dropCap).toBe(false);
+  });
+  it('maps image_top / text_bottom to framed_image_top with a drop-cap', () => {
+    const c = resolveComposition('image_top_text_bottom', 'square');
+    expect(c.mode).toBe('framed_image_top');
+    expect(c.dropCap).toBe(true);
+  });
+  it('maps text_top_image_bottom to framed_image_bottom', () => {
+    expect(resolveComposition('text_top_image_bottom', 'tall').mode).toBe('framed_image_bottom');
+  });
+  it('centres text for entry_centered', () => {
+    const c = resolveComposition('entry_centered', 'pocket');
+    expect(c.mode).toBe('text_feature');
+    expect(c.centerText).toBe(true);
+  });
+  it('gives landscape a larger image ratio than pocket', () => {
+    expect(resolveComposition('image_top_text_bottom', 'landscape').imageHeightRatio).toBeGreaterThan(
+      resolveComposition('image_top_text_bottom', 'pocket').imageHeightRatio,
+    );
+  });
+});
+
+describe('splitDropCap', () => {
+  it('pulls the first letter off', () => {
+    expect(splitDropCap('Milo ran fast')).toEqual({ cap: 'M', rest: 'ilo ran fast' });
+  });
+  it('skips a leading quote to land on a real letter', () => {
+    const { cap } = splitDropCap('"Hello," she said');
+    expect(cap).toBe('H');
+  });
+  it('returns null cap when there is no leading letter', () => {
+    expect(splitDropCap('...').cap).toBeNull();
+  });
+});
+
+describe('sceneTypeToLayout', () => {
+  it('makes cinematic scenes full-bleed on roomy trims', () => {
+    expect(sceneTypeToLayout('wide_establishing', 'square', 0)).toBe('image_full_bleed');
+    expect(sceneTypeToLayout('dramatic_reveal', 'landscape', 1)).toBe('image_full_bleed');
+  });
+  it('avoids full-bleed on the tiny pocket trim (keeps text legible)', () => {
+    expect(sceneTypeToLayout('action', 'pocket', 0)).not.toBe('image_full_bleed');
+  });
+  it('alternates framed layouts for quieter scenes so neighbours differ', () => {
+    expect(sceneTypeToLayout('discovery', 'square', 0)).toBe('image_top_text_bottom');
+    expect(sceneTypeToLayout('discovery', 'square', 1)).toBe('text_top_image_bottom');
+  });
+  it('falls back to an alternating framed layout when scene is missing', () => {
+    expect(sceneTypeToLayout(undefined, 'square', 0)).toBe('image_top_text_bottom');
+  });
+});

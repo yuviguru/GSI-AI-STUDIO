@@ -1,10 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X } from 'lucide-react';
 import type { Book, BookPage } from '@gsi/types';
 import { BOOK_SIZES } from '@/lib/templates/bookTemplates';
+import {
+  derivePalette,
+  resolveComposition,
+  splitDropCap,
+  type PagePalette,
+} from '@/lib/books/pageComposition';
 import { playSound } from '@/lib/sounds';
 
 interface FlipbookPreviewProps {
@@ -309,6 +315,7 @@ export function FlipbookPreview({ book, pages, onClose, readOnly = false }: Flip
                   left={current.left}
                   right={current.right}
                   twoPageMode={twoPageMode}
+                  book={book}
                 />
               )}
 
@@ -399,28 +406,29 @@ interface PagesSpreadViewProps {
   left: BookPage | null;
   right: BookPage | null;
   twoPageMode: boolean;
+  book: Book;
 }
 
-function PagesSpreadView({ left, right, twoPageMode }: PagesSpreadViewProps) {
+function PagesSpreadView({ left, right, twoPageMode, book }: PagesSpreadViewProps) {
   if (!twoPageMode) {
     // Single-page mode: just render whichever side has the page (right side
     // in our buildSpreads logic).
     const page = right ?? left;
     return (
-      <div className="h-full w-full bg-white">
-        {page ? <PageView page={page} /> : <BlankSide />}
+      <div className="h-full w-full">
+        {page ? <PageView page={page} book={book} /> : <BlankSide />}
       </div>
     );
   }
 
   // Two-page mode: side-by-side pages with a subtle spine separator.
   return (
-    <div className="grid h-full w-full grid-cols-2 bg-white">
-      <div className="relative border-r border-gray-200">
-        {left ? <PageView page={left} /> : <BlankSide />}
+    <div className="grid h-full w-full grid-cols-2">
+      <div className="relative border-r border-black/5">
+        {left ? <PageView page={left} book={book} /> : <BlankSide />}
       </div>
       <div className="relative">
-        {right ? <PageView page={right} /> : <BlankSide />}
+        {right ? <PageView page={right} book={book} /> : <BlankSide />}
       </div>
     </div>
   );
@@ -519,66 +527,156 @@ function EndView({ title }: { title: string }) {
   );
 }
 
-function PageView({ page }: { page: BookPage }) {
-  const isFullBleed = page.layout === 'image_full_bleed' || page.layout === 'gallery';
-  const isImageTop = page.layout === 'image_top_text_bottom' || page.layout === 'concept_letter';
-  const isTextOnly = page.layout === 'text_only' || page.layout === 'entry_centered';
-  const isCentered = page.layout === 'entry_centered';
+/** A small accent-coloured page-number pill, bottom-centre. */
+function PageNumberPill({ n, palette }: { n: number; palette: PagePalette }) {
+  return (
+    <div className="pointer-events-none absolute bottom-1.5 left-1/2 -translate-x-1/2">
+      <span
+        className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-white shadow"
+        style={{ backgroundColor: palette.accent }}
+      >
+        {n}
+      </span>
+    </div>
+  );
+}
 
-  if (isFullBleed && page.imageUrl) {
+/** Body text with an optional decorative drop-cap on the first letter. */
+function DropCapText({
+  text,
+  enabled,
+  accent,
+  font,
+}: {
+  text: string;
+  enabled: boolean;
+  accent: string;
+  font?: string | null;
+}) {
+  if (!enabled) return <>{text}</>;
+  const { cap, rest } = splitDropCap(text);
+  if (!cap) return <>{text}</>;
+  return (
+    <>
+      <span
+        className="float-left mr-1.5 font-display font-bold"
+        style={{ color: accent, fontFamily: font ?? undefined, fontSize: '2.7em', lineHeight: 0.78 }}
+      >
+        {cap}
+      </span>
+      {rest}
+    </>
+  );
+}
+
+/**
+ * Render a single page using the shared palette + composition system, so the
+ * editor preview, public viewer, and PDF all agree. Full-bleed pages go
+ * cinematic with a floating caption card; framed pages get a themed mat +
+ * border around the art and a drop-cap on the text; text pages get a tinted
+ * background and centred treatment for poems.
+ */
+function PageView({ page, book }: { page: BookPage; book: Book }) {
+  const palette = derivePalette(book.themeColor ?? book.cover.backgroundColor);
+  const comp = resolveComposition(page.layout, book.size);
+  const padding = `${(comp.paddingRatio * 100).toFixed(2)}%`;
+
+  // ── Full-bleed cinematic ──
+  if (comp.mode === 'full_bleed' && page.imageUrl) {
     return (
-      <div className="relative h-full w-full">
+      <div className="relative h-full w-full" style={{ backgroundColor: palette.pageBg }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={page.imageUrl} alt="" className="h-full w-full object-cover" />
         {page.plainText && (
-          <div className="absolute inset-x-0 bottom-0 bg-black/60 p-3 text-center text-sm text-white">
-            {page.plainText}
+          <div className="absolute inset-x-0 bottom-0 flex justify-center p-3">
+            <div
+              className="max-w-[92%] rounded-2xl px-4 py-2 text-center text-sm leading-snug shadow-lg backdrop-blur-sm"
+              style={{ backgroundColor: palette.captionBg, color: palette.captionText }}
+            >
+              {page.plainText}
+            </div>
           </div>
         )}
+        <PageNumberPill n={page.pageNumber} palette={palette} />
       </div>
     );
   }
 
-  return (
+  const textStyle: CSSProperties = {
+    fontSize: page.style?.fontSize ? `${page.style.fontSize}px` : undefined,
+    textAlign: page.style?.alignment ?? (comp.centerText ? 'center' : undefined),
+    color: page.style?.textColor ?? palette.text,
+  };
+  const surface: CSSProperties = {
+    fontFamily: page.style?.font ?? undefined,
+    backgroundColor: page.style?.backgroundColor ?? palette.pageBg,
+    padding,
+  };
+
+  // ── Text-feature (text_only / poem-centred) ──
+  if (comp.mode === 'text_feature') {
+    return (
+      <div
+        className="relative flex h-full w-full flex-col justify-center"
+        style={{ ...surface, alignItems: comp.centerText ? 'center' : 'stretch' }}
+      >
+        <div
+          className={`max-h-full overflow-hidden whitespace-pre-wrap text-sm leading-relaxed ${
+            comp.centerText ? 'text-center' : ''
+          }`}
+          style={textStyle}
+        >
+          {page.plainText ? (
+            <DropCapText
+              text={page.plainText}
+              enabled={comp.dropCap && !comp.centerText}
+              accent={palette.accent}
+              font={book.cover.font}
+            />
+          ) : (
+            <span className="text-gray-400">(empty)</span>
+          )}
+        </div>
+        <PageNumberPill n={page.pageNumber} palette={palette} />
+      </div>
+    );
+  }
+
+  // ── Framed art + text (image top or bottom) ──
+  const framedImage = page.imageUrl ? (
     <div
-      className={`flex h-full w-full flex-col p-4 ${isCentered ? 'items-center justify-center' : ''}`}
+      className="w-full shrink-0 overflow-hidden rounded-2xl shadow-md"
       style={{
-        fontFamily: page.style?.font ?? undefined,
-        color: page.style?.textColor ?? undefined,
-        backgroundColor: page.style?.backgroundColor ?? undefined,
+        height: `${(comp.imageHeightRatio * 100).toFixed(2)}%`,
+        backgroundColor: palette.matBg,
+        border: `4px solid ${palette.border}`,
       }}
     >
-      {page.imageUrl && isImageTop && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={page.imageUrl}
-          alt=""
-          className="mb-3 h-1/2 w-full rounded-xl object-cover"
-        />
-      )}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={page.imageUrl} alt="" className="h-full w-full object-cover" />
+    </div>
+  ) : null;
 
+  return (
+    <div className="relative flex h-full w-full flex-col gap-2.5" style={surface}>
+      {comp.mode === 'framed_image_top' && framedImage}
       <div
-        className={`flex-1 whitespace-pre-wrap text-sm leading-relaxed ${
-          isCentered ? 'text-center' : ''
-        }`}
-        style={{
-          fontSize: page.style?.fontSize ? `${page.style.fontSize}px` : undefined,
-          textAlign: page.style?.alignment ?? (isCentered ? 'center' : undefined),
-        }}
+        className="min-h-0 flex-1 overflow-hidden whitespace-pre-wrap text-sm leading-relaxed"
+        style={textStyle}
       >
-        {page.plainText || <span className="text-gray-400">(empty)</span>}
+        {page.plainText ? (
+          <DropCapText
+            text={page.plainText}
+            enabled={comp.dropCap}
+            accent={palette.accent}
+            font={book.cover.font}
+          />
+        ) : (
+          <span className="text-gray-400">(empty)</span>
+        )}
       </div>
-
-      {page.imageUrl && !isImageTop && !isTextOnly && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={page.imageUrl}
-          alt=""
-          className="mt-3 h-1/2 w-full rounded-xl object-cover"
-        />
-      )}
-
-      <div className="mt-1 text-center text-[10px] text-gray-400">{page.pageNumber}</div>
+      {comp.mode === 'framed_image_bottom' && framedImage}
+      <PageNumberPill n={page.pageNumber} palette={palette} />
     </div>
   );
 }

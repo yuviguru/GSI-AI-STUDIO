@@ -800,6 +800,9 @@ export interface CreateGeneratedBookInput {
       imagePrompt: string;
       /** Resolved image URL — null if the cascade failed for this page. */
       imageUrl: string | null;
+      /** Per-page layout (hybrid-by-scene-type). Validated against the
+       *  book's bucket; falls back to the bucket default if not allowed. */
+      layout?: PageLayout;
     }>;
     /** Optional "book bible" hero, persisted as a BookCharacter so it shows
      *  in the cast editor and anchors later image regeneration. */
@@ -931,6 +934,21 @@ export async function createGeneratedBook(
       : setup.format === 'text' ? 'text_only'
         : 'image_top_text_bottom';
 
+  // Hybrid-by-scene-type: honour the per-page layout the route mapped from
+  // the AI's scene framing, but only if it's allowed for this bucket —
+  // otherwise fall back to the bucket-safe default. A text-only page with no
+  // image also can't be full-bleed, so guard that too.
+  const layoutForPage = (p: CreateGeneratedBookInput['draft']['pages'][number]): PageLayout => {
+    const wanted = p.layout;
+    if (!wanted || !isLayoutAllowedForBucket(wanted, setup.bucket)) return defaultLayout;
+    if ((wanted === 'image_full_bleed' || wanted === 'gallery') && !p.imageUrl) {
+      return isLayoutAllowedForBucket('image_top_text_bottom', setup.bucket)
+        ? 'image_top_text_bottom'
+        : defaultLayout;
+    }
+    return wanted;
+  };
+
   // Batch write: 1 book + N pages.
   const batch = adminDb.batch();
   batch.set(bookRef, stripUndefined(bookDoc));
@@ -939,7 +957,7 @@ export async function createGeneratedBook(
     const pageDoc = {
       id: pageRef.id,
       pageNumber: i + 1,
-      layout: defaultLayout,
+      layout: layoutForPage(p),
       richText: null, // will be set when kid first opens editor (server can derive richText from plainText if needed)
       plainText: p.plainText,
       imageUrl: p.imageUrl,
