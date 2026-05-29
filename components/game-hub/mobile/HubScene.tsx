@@ -24,9 +24,9 @@ const XP_PER_LEVEL = 100;
 
 /** Right rail: progress, achievement, discovery. */
 const RIGHT_ACTIONS: SideAction[] = [
-  { key: 'quests',  icon: Zap,     label: 'Quests',  pip: 3,    g1: 'from-violet-200',  g2: 'to-violet-600' },
-  { key: 'badges',  icon: Trophy,  label: 'Badges',             g1: 'from-yellow-200',  g2: 'to-yellow-500' },
-  { key: 'explore', icon: Compass, label: 'Explore',            g1: 'from-emerald-200', g2: 'to-emerald-500', href: '/explore' },
+  { key: 'quests',  icon: Zap,     label: 'Quests',  pip: 3,    g1: 'from-violet-500',  g2: 'to-violet-700' },
+  { key: 'badges',  icon: Trophy,  label: 'Badges',             g1: 'from-amber-400',   g2: 'to-yellow-600' },
+  { key: 'explore', icon: Compass, label: 'Explore',            g1: 'from-emerald-400', g2: 'to-emerald-600', href: '/explore' },
 ];
 
 /** Grid column count per group — 3 for Create / Play, 2 for Learn so a
@@ -84,10 +84,10 @@ export function HubScene({ onTabChange }: HubSceneProps = {}) {
   /** Left rail: claim, status, social. Built per-render so the Streak
    *  label reflects the current count instead of being a hardcoded literal. */
   const leftActions: SideAction[] = [
-    { key: 'daily',  icon: Gift,  label: 'Daily',                pip: '!', g1: 'from-amber-200', g2: 'to-amber-500' },
-    { key: 'streak', icon: Flame, label: `Streak ${streakCount}`,           g1: 'from-rose-200',  g2: 'to-rose-500', passive: true },
+    { key: 'daily',  icon: Gift,  label: 'Daily',                pip: '!', g1: 'from-amber-400', g2: 'to-orange-500' },
+    { key: 'streak', icon: Flame, label: `Streak ${streakCount}`,           g1: 'from-rose-400',  g2: 'to-rose-600', passive: true },
     // TODO(squad): wire this once we have a /squad or /friends route.
-    { key: 'squad',  icon: Users, label: 'Squad',                          g1: 'from-blue-200',  g2: 'to-blue-500' },
+    { key: 'squad',  icon: Users, label: 'Squad',                          g1: 'from-sky-400',   g2: 'to-blue-600' },
   ];
 
   const handleResume = () => {
@@ -206,11 +206,13 @@ export function HubScene({ onTabChange }: HubSceneProps = {}) {
         </div>
 
         {/* Centre stage — speech bubble + mascot + platform + Resume CTA.
-            `mt-8` drops the whole cluster into the otherwise-empty band
-            below the HUD so the Resume CTA sits lower and the dead space
-            under it is used. `mx-auto` + `items-center` keep the mascot,
-            platform, and CTA on a single shared centre axis. */}
-        <div className="relative mx-auto mt-8 flex w-full shrink-0 flex-col items-center justify-end pt-2">
+            `flex-1` + `justify-center` makes the cluster fill and centre
+            itself in the whole band between the HUD and the mode grid, so
+            the mascot sits lower and the Resume CTA drops into what was
+            dead space instead of clinging to the top. `mx-auto` +
+            `items-center` keep the mascot, platform, and CTA on a single
+            shared centre axis. */}
+        <div className="relative mx-auto flex w-full flex-1 flex-col items-center justify-center pt-2">
           <div className="relative mx-auto h-[195px] w-[200px]">
             <div className="pointer-events-none absolute left-1/2 top-1/2 h-[170px] w-[170px] -translate-x-1/2 -translate-y-1/2 animate-pulse-glow rounded-full bg-brand-primary/25 blur-2xl" />
             <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2 whitespace-nowrap rounded-2xl rounded-bl-sm bg-white/95 px-3 py-1 text-[11px] font-semibold text-brand-text shadow-md ring-1 ring-brand-primary/15">
@@ -248,7 +250,7 @@ export function HubScene({ onTabChange }: HubSceneProps = {}) {
         </div>
 
         {/* ─── Mode grid ─ all modes for the active group, no scroll ───── */}
-        <div className="relative mt-auto flex min-h-0 shrink-0 flex-col px-3 pb-4 pt-3">
+        <div className="relative flex min-h-0 shrink-0 flex-col px-3 pb-4 pt-3">
           <div className="mb-2 flex shrink-0 items-center justify-center">
             <ModeGroupTabs active={group} onChange={setGroup} variant="mobile" />
           </div>
