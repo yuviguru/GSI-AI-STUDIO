@@ -57,7 +57,7 @@ export function PortalCard({ mode, onClick }: PortalCardProps) {
       whileHover={{ y: -3 }}
       transition={{ type: 'spring', stiffness: 340, damping: 16 }}
       onClick={onClick}
-      className="game-mode-tile group relative flex h-[104px] flex-col items-center rounded-2xl pt-3 text-center shadow-tile ring-1 ring-white/70"
+      className="game-mode-tile group relative flex h-[104px] flex-col items-center rounded-lg pt-3 text-center shadow-tile ring-1 ring-white/70"
       style={{ background: mode.bg }}
       aria-label={mode.label}
     >
@@ -67,7 +67,7 @@ export function PortalCard({ mode, onClick }: PortalCardProps) {
       </div>
       {/* Name banner — icon + name read as one container, with the label
           anchored to the bottom on a soft strip (badminton-style). */}
-      <div className="mt-auto w-full rounded-b-2xl bg-white/55 px-1 pb-1.5 pt-1 backdrop-blur-sm">
+      <div className="mt-auto w-full rounded-b-lg bg-white/55 px-1 pb-1.5 pt-1 backdrop-blur-sm">
         <div className={`font-display text-[11px] font-extrabold leading-tight ${mode.textColor}`}>
           {mode.shortLabel}
         </div>

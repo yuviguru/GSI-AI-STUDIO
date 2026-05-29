@@ -215,13 +215,19 @@ export function HubScene({ onTabChange }: HubSceneProps = {}) {
         <div className="relative mx-auto flex w-full flex-1 flex-col items-center justify-center pt-2">
           <div className="relative mx-auto h-[195px] w-[200px]">
             <div className="pointer-events-none absolute left-1/2 top-1/2 h-[170px] w-[170px] -translate-x-1/2 -translate-y-1/2 animate-pulse-glow rounded-full bg-brand-primary/25 blur-2xl" />
-            <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2 whitespace-nowrap rounded-2xl rounded-bl-sm bg-white/95 px-3 py-1 text-[11px] font-semibold text-brand-text shadow-md ring-1 ring-brand-primary/15">
+            <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg rounded-bl-sm bg-white/95 px-3 py-1 text-[11px] font-semibold text-brand-text shadow-md ring-1 ring-brand-primary/15">
               Ready for adventure?
             </div>
+            {/* Full-width flex wrapper centres the mascot. We deliberately
+                avoid `left-1/2 -translate-x-1/2`: with no explicit width an
+                absolutely-positioned box gets shrink-to-fit-clamped to the
+                space right of the 50% mark, so the 2xl mascot overflowed to
+                the right and landed off-centre. `inset-x-0` + `justify-center`
+                sidesteps that entirely. */}
             <motion.div
               animate={{ y: [0, -6, 0] }}
               transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute left-1/2 top-8 -translate-x-1/2 drop-shadow-2xl"
+              className="absolute inset-x-0 top-8 flex justify-center drop-shadow-2xl"
             >
               <MascotAvatar id={mascotId} size="2xl" animate />
             </motion.div>

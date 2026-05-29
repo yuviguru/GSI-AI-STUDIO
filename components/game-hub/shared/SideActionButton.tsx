@@ -46,7 +46,7 @@ export function SideActionButton({ action, onClick }: SideActionButtonProps) {
   // side buttons). `overflow-visible` lets the notification pip poke out of
   // the top-right corner without being clipped.
   const sharedClasses =
-    'pointer-events-auto relative flex w-[56px] flex-col overflow-visible rounded-2xl bg-white shadow-md ring-1 ring-black/5';
+    'pointer-events-auto relative flex w-[56px] flex-col overflow-visible rounded-lg bg-white shadow-md ring-1 ring-black/5';
 
   // Passive indicators (e.g. the streak counter) render as a div so they
   // don't show a tap animation and don't appear in the keyboard tab order.
@@ -78,11 +78,11 @@ function PassiveContent({ action }: { action: SideAction }) {
   return (
     <>
       <div
-        className={`flex items-center justify-center rounded-t-2xl bg-gradient-to-br ${action.g1} ${action.g2} pb-2 pt-2.5`}
+        className={`flex items-center justify-center rounded-t-lg bg-gradient-to-br ${action.g1} ${action.g2} pb-2 pt-2.5`}
       >
         <Icon aria-hidden className="h-5 w-5 text-white drop-shadow-sm" strokeWidth={2.4} />
       </div>
-      <span className="rounded-b-2xl px-0.5 py-1 text-center text-[8px] font-extrabold uppercase tracking-wide text-slate-600">
+      <span className="rounded-b-lg px-0.5 py-1 text-center text-[8px] font-extrabold uppercase tracking-wide text-slate-600">
         {action.label}
       </span>
       {action.pip && (
