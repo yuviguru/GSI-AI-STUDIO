@@ -26,10 +26,10 @@ components/game-hub/mobile/
 ### Hub scene layout — "Game Lobby"
 HubScene is split into five vertical bands, top to bottom:
 1. **HUD** — avatar / name / LVL / XP bar / points / bell. Padded `pt-7` so the iOS notch doesn't crop it.
-2. **Side action stacks** — absolutely positioned at the left and right edges. Left: 🎁 Daily, 🔥 Streak (passive), 👥 Squad. Right: ⚡ Quests, 🏆 Badges, 🧭 Explore.
-3. **Hero stage** — speech bubble, animated mascot on a glowing platform, big gold RESUME pill, last-activity meta.
+2. **Side action stacks** — absolutely positioned at the left and right edges. Left: Daily (`Gift`), Streak (`Flame`, passive), Squad (`Users`). Right: Quests (`Zap`), Badges (`Trophy`), Explore (`Compass`). Each button is a single "game button" shell (`SideActionButton`): a coloured gradient icon panel on top + an integrated white name banner underneath (Smash-Badminton style), with the notification pip poking out of the top-right via `overflow-visible`. Glyphs are **Lucide icons** (`SideAction.icon: LucideIcon`) rendered white on the panel gradient.
+3. **Hero stage** — speech bubble, animated mascot on a glowing platform, big gold RESUME pill (`Play` + `ArrowRight` Lucide icons), last-activity meta. The centre stage is `flex-1` + `justify-center`, so the whole cluster centres vertically in the band between the HUD and the mode grid (mascot sits lower; the Resume CTA fills what used to be dead space). `mx-auto` + `items-center` keep mascot, platform, and CTA on one shared centre axis.
 4. **Group switcher** — Create / Play / Learn segmented pill.
-5. **Portal grid** — every mode in the active group as a `PortalCard`. 3 cols for Create / Play, 2 cols for Learn. No horizontal scroll — every card fits on one viewport.
+5. **Portal grid** — every mode in the active group as a `PortalCard`. 3 cols for Create / Play, 2 cols for Learn. No horizontal scroll — every card fits on one viewport. Each tile reads as one container: the mode's **Lucide `icon`** (from `GameModes.ts`, tinted with the per-mode `iconColor`, falling back to `textColor`) in a white circle up top, and the name + tagline anchored to a soft bottom **name banner**. The launch-state badge (LIVE/BETA/COMING SOON via `StudioLaunchPill`, or `mode.badge` for non-studios) is a **ribbon pill straddling the card's top edge** (Smash-Badminton "Open" treatment) — the card is *not* `overflow-hidden` so the ribbon can poke above the edge. The Create / Play / Learn switcher (`ModeGroupTabs`) likewise renders Lucide icons (`Pencil` / `Gamepad2` / `GraduationCap`).
 
 ### Side-stack action dispatch
 Each tap routes through HubScene's `handleAction(action)`:

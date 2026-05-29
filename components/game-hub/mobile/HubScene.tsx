@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Play, Sparkles, Gift, Flame, Users, Zap, Trophy, Compass } from 'lucide-react';
 import { MascotAvatar } from '@/components/mascot/MascotAvatar';
 import { NotificationBell } from '@/components/shared/NotificationBell';
 import { useAiPoints } from '@/contexts/AiPointsContext';
@@ -24,9 +24,9 @@ const XP_PER_LEVEL = 100;
 
 /** Right rail: progress, achievement, discovery. */
 const RIGHT_ACTIONS: SideAction[] = [
-  { key: 'quests',  emoji: '⚡', label: 'Quests',  pip: 3,    g1: 'from-violet-200',  g2: 'to-violet-600' },
-  { key: 'badges',  emoji: '🏆', label: 'Badges',             g1: 'from-yellow-200',  g2: 'to-yellow-500' },
-  { key: 'explore', emoji: '🧭', label: 'Explore',            g1: 'from-emerald-200', g2: 'to-emerald-500', href: '/explore' },
+  { key: 'quests',  icon: Zap,     label: 'Quests',  pip: 3,    g1: 'from-violet-500',  g2: 'to-violet-700' },
+  { key: 'badges',  icon: Trophy,  label: 'Badges',             g1: 'from-amber-400',   g2: 'to-yellow-600' },
+  { key: 'explore', icon: Compass, label: 'Explore',            g1: 'from-emerald-400', g2: 'to-emerald-600', href: '/explore' },
 ];
 
 /** Grid column count per group — 3 for Create / Play, 2 for Learn so a
@@ -84,10 +84,10 @@ export function HubScene({ onTabChange }: HubSceneProps = {}) {
   /** Left rail: claim, status, social. Built per-render so the Streak
    *  label reflects the current count instead of being a hardcoded literal. */
   const leftActions: SideAction[] = [
-    { key: 'daily',  emoji: '🎁', label: 'Daily',                pip: '!', g1: 'from-amber-200', g2: 'to-amber-500' },
-    { key: 'streak', emoji: '🔥', label: `Streak ${streakCount}`,           g1: 'from-rose-200',  g2: 'to-rose-500', passive: true },
+    { key: 'daily',  icon: Gift,  label: 'Daily',                pip: '!', g1: 'from-amber-400', g2: 'to-orange-500' },
+    { key: 'streak', icon: Flame, label: `Streak ${streakCount}`,           g1: 'from-rose-400',  g2: 'to-rose-600', passive: true },
     // TODO(squad): wire this once we have a /squad or /friends route.
-    { key: 'squad',  emoji: '👥', label: 'Squad',                          g1: 'from-blue-200',  g2: 'to-blue-500' },
+    { key: 'squad',  icon: Users, label: 'Squad',                          g1: 'from-sky-400',   g2: 'to-blue-600' },
   ];
 
   const handleResume = () => {
@@ -177,7 +177,7 @@ export function HubScene({ onTabChange }: HubSceneProps = {}) {
             className="flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-amber-400/20 to-orange-400/20 px-2 py-0.5 ring-1 ring-amber-300/40"
             title="AI Points — your lifetime creator score"
           >
-            <span className="text-[10px]">✨</span>
+            <Sparkles aria-hidden className="h-3 w-3 text-amber-500" strokeWidth={2.4} />
             <span className="font-mono text-[10px] font-bold text-amber-700">
               {isLoaded ? totalPoints.toLocaleString() : '—'}
             </span>
@@ -205,32 +205,45 @@ export function HubScene({ onTabChange }: HubSceneProps = {}) {
           ))}
         </div>
 
-        {/* Centre stage — speech bubble + mascot + platform + Resume CTA */}
-        <div className="relative flex shrink-0 flex-col items-center justify-end pt-2">
-          <div className="relative h-[195px] w-[200px]">
+        {/* Centre stage — speech bubble + mascot + platform + Resume CTA.
+            `flex-1` + `justify-center` makes the cluster fill and centre
+            itself in the whole band between the HUD and the mode grid, so
+            the mascot sits lower and the Resume CTA drops into what was
+            dead space instead of clinging to the top. `mx-auto` +
+            `items-center` keep the mascot, platform, and CTA on a single
+            shared centre axis. */}
+        <div className="relative mx-auto flex w-full flex-1 flex-col items-center justify-center pt-2">
+          <div className="relative mx-auto h-[195px] w-[200px]">
             <div className="pointer-events-none absolute left-1/2 top-1/2 h-[170px] w-[170px] -translate-x-1/2 -translate-y-1/2 animate-pulse-glow rounded-full bg-brand-primary/25 blur-2xl" />
-            <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2 whitespace-nowrap rounded-2xl rounded-bl-sm bg-white/95 px-3 py-1 text-[11px] font-semibold text-brand-text shadow-md ring-1 ring-brand-primary/15">
+            <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg rounded-bl-sm bg-white/95 px-3 py-1 text-[11px] font-semibold text-brand-text shadow-md ring-1 ring-brand-primary/15">
               Ready for adventure?
             </div>
+            {/* Full-width flex wrapper centres the mascot. We deliberately
+                avoid `left-1/2 -translate-x-1/2`: with no explicit width an
+                absolutely-positioned box gets shrink-to-fit-clamped to the
+                space right of the 50% mark, so the 2xl mascot overflowed to
+                the right and landed off-centre. `inset-x-0` + `justify-center`
+                sidesteps that entirely. */}
             <motion.div
               animate={{ y: [0, -6, 0] }}
               transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute left-1/2 top-8 -translate-x-1/2 drop-shadow-2xl"
+              className="absolute inset-x-0 top-8 flex justify-center drop-shadow-2xl"
             >
               <MascotAvatar id={mascotId} size="2xl" animate />
             </motion.div>
-            <div className="absolute bottom-2 left-1/2 h-3 w-32 -translate-x-1/2">
-              <div className="absolute inset-0 animate-platform-spin platform-ring" />
-              <div className="absolute inset-1 rounded-full bg-gradient-to-b from-white/80 to-brand-soft" />
-            </div>
+            {/* Static soft pedestal under the mascot. Replaces the old
+                spinning conic-ring disc (`platform-ring` + `animate-platform-spin`),
+                which read as odd on mobile — a calm blurred ellipse grounds
+                the mascot without any motion. */}
+            <div className="pointer-events-none absolute bottom-2 left-1/2 h-2.5 w-28 -translate-x-1/2 rounded-[50%] bg-brand-primary/15 blur-[6px]" />
           </div>
 
           <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={handleResume}
-            className="btn-bevel-gold relative -mt-1 inline-flex items-center gap-2 rounded-full px-7 py-2.5 shadow-lg"
+            className="btn-bevel-gold relative mt-1 inline-flex items-center gap-2 rounded-full px-7 py-2.5 shadow-lg"
           >
-            <span className="text-base">▶</span>
+            <Play className="h-4 w-4 fill-white text-white" />
             <span className="font-display text-sm font-extrabold uppercase tracking-wider text-white">
               Resume
             </span>
@@ -244,7 +257,7 @@ export function HubScene({ onTabChange }: HubSceneProps = {}) {
         </div>
 
         {/* ─── Mode grid ─ all modes for the active group, no scroll ───── */}
-        <div className="relative mt-auto flex min-h-0 shrink-0 flex-col px-3 pb-4 pt-3">
+        <div className="relative flex min-h-0 shrink-0 flex-col px-3 pb-4 pt-3">
           <div className="mb-2 flex shrink-0 items-center justify-center">
             <ModeGroupTabs active={group} onChange={setGroup} variant="mobile" />
           </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import type { LucideIcon } from 'lucide-react';
 
 /**
  * A single floating action button used in the mobile hub's side stacks
@@ -14,8 +15,8 @@ import { motion } from 'framer-motion';
 export interface SideAction {
   /** Stable React key. */
   key: string;
-  /** Single emoji used as the icon glyph. */
-  emoji: string;
+  /** Lucide icon component used as the glyph. */
+  icon: LucideIcon;
   /** Short uppercase label displayed under the icon. */
   label: string;
   /** Optional notification pip — a number ("3"), the "!" sentinel, etc. */
@@ -40,8 +41,12 @@ interface SideActionButtonProps {
 }
 
 export function SideActionButton({ action, onClick }: SideActionButtonProps) {
+  // "Game button" shell — one cohesive container that stacks a coloured
+  // icon panel over an integrated name banner (mirrors the Smash-Badminton
+  // side buttons). `overflow-visible` lets the notification pip poke out of
+  // the top-right corner without being clipped.
   const sharedClasses =
-    'pointer-events-auto relative flex w-[52px] flex-col items-center gap-0.5 rounded-2xl bg-white/85 p-1.5 shadow-md ring-1 ring-white/70 backdrop-blur-md';
+    'pointer-events-auto relative flex w-[56px] flex-col overflow-visible rounded-lg bg-white shadow-md ring-1 ring-black/5';
 
   // Passive indicators (e.g. the streak counter) render as a div so they
   // don't show a tap animation and don't appear in the keyboard tab order.
@@ -65,20 +70,23 @@ export function SideActionButton({ action, onClick }: SideActionButtonProps) {
   );
 }
 
-/** Visual content shared between the interactive and passive variants. */
+/** Visual content shared between the interactive and passive variants:
+ *  a coloured icon panel on top, a name banner underneath, both inside the
+ *  one rounded shell. */
 function PassiveContent({ action }: { action: SideAction }) {
+  const Icon = action.icon;
   return (
     <>
       <div
-        className={`flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br ${action.g1} ${action.g2} text-base shadow-sm`}
+        className={`flex items-center justify-center rounded-t-lg bg-gradient-to-br ${action.g1} ${action.g2} pb-2 pt-2.5`}
       >
-        <span aria-hidden>{action.emoji}</span>
+        <Icon aria-hidden className="h-5 w-5 text-white drop-shadow-sm" strokeWidth={2.4} />
       </div>
-      <span className="text-[8px] font-bold uppercase tracking-wide text-slate-600">
+      <span className="rounded-b-lg px-0.5 py-1 text-center text-[8px] font-extrabold uppercase tracking-wide text-slate-600">
         {action.label}
       </span>
       {action.pip && (
-        <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full border-2 border-white bg-rose-500 px-1 text-[8px] font-extrabold text-white">
+        <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full border-2 border-white bg-rose-500 px-1 text-[8px] font-extrabold text-white shadow-sm">
           {action.pip}
         </span>
       )}
