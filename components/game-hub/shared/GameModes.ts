@@ -10,6 +10,7 @@ import {
   Crown,
   GraduationCap,
   Compass,
+  Pencil,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -47,6 +48,11 @@ export interface GameMode {
   textColor: string;
   /** Tagline color */
   taglineColor: string;
+  /** Tailwind text-color class for the Lucide icon glyph on the mobile
+   *  PortalCard (e.g. `text-violet-500`). Lets each tile carry a vivid,
+   *  on-brand icon tint instead of a flat monochrome. Falls back to
+   *  `textColor` when absent. */
+  iconColor?: string;
   /** Special icon style: solid colored bg (for Beat AI, MindX, Kid CEO, Learn, Explore) */
   solidIcon?: boolean;
   badge?: 'NEW' | 'LIVE';
@@ -66,6 +72,7 @@ export const GAME_MODES: GameMode[] = [
     group: 'create',
     icon: BookMarked,
     emoji: '📚',
+    iconColor: 'text-indigo-500',
     image: '/images/modes/book.png',
     glowColor: 'rgba(99, 102, 241, 0.45)',
     href: '/create/book',
@@ -88,6 +95,7 @@ export const GAME_MODES: GameMode[] = [
     group: 'create',
     icon: BookOpen,
     emoji: '📖',
+    iconColor: 'text-violet-500',
     image: '/images/modes/story.png',
     imageFullWidth: true,
     glowColor: 'rgba(139, 92, 246, 0.45)',
@@ -107,6 +115,7 @@ export const GAME_MODES: GameMode[] = [
     group: 'create',
     icon: Gamepad2,
     emoji: '🎮',
+    iconColor: 'text-emerald-500',
     image: '/images/modes/game.png',
     glowColor: 'rgba(16, 185, 129, 0.45)',
     href: '/create/game',
@@ -125,6 +134,7 @@ export const GAME_MODES: GameMode[] = [
     group: 'create',
     icon: Music,
     emoji: '🎵',
+    iconColor: 'text-orange-500',
     image: '/images/modes/music.png',
     glowColor: 'rgba(249, 115, 22, 0.45)',
     href: '/create/music',
@@ -143,6 +153,7 @@ export const GAME_MODES: GameMode[] = [
     group: 'create',
     icon: Palette,
     emoji: '🎨',
+    iconColor: 'text-amber-500',
     image: '/images/modes/comic.png',
     imagePosition: 'left',
     imageFullWidth: true,
@@ -163,6 +174,7 @@ export const GAME_MODES: GameMode[] = [
     group: 'create',
     icon: HelpCircle,
     emoji: '🧠',
+    iconColor: 'text-cyan-500',
     image: '/images/modes/quiz.png',
     glowColor: 'rgba(6, 182, 212, 0.45)',
     href: '/create/quiz',
@@ -186,6 +198,7 @@ export const GAME_MODES: GameMode[] = [
     group: 'play',
     icon: Crown,
     emoji: '👑',
+    iconColor: 'text-purple-500',
     image: '/images/modes/ceo.png',
     // Story-style full-bleed treatment so the illustration reads as a
     // hero band rather than a corner-anchored object.
@@ -208,6 +221,7 @@ export const GAME_MODES: GameMode[] = [
     group: 'play',
     icon: Brain,
     emoji: '🧩',
+    iconColor: 'text-teal-500',
     // mindX.png already exists in /public/images/modes — wire it up so this
     // tile renders with the shared corner-anchored illustration treatment.
     image: '/images/modes/mindX.png',
@@ -229,6 +243,7 @@ export const GAME_MODES: GameMode[] = [
     group: 'play',
     icon: Swords,
     emoji: '⚔️',
+    iconColor: 'text-rose-500',
     image: '/images/modes/beat-ai.png',
     glowColor: 'rgba(244, 63, 94, 0.5)',
     href: '/beat-the-ai',
@@ -252,6 +267,7 @@ export const GAME_MODES: GameMode[] = [
     group: 'learn',
     icon: GraduationCap,
     emoji: '🔬',
+    iconColor: 'text-indigo-500',
     glowColor: 'rgba(99, 102, 241, 0.45)',
     href: '/learn',
     bg: 'linear-gradient(160deg, #EEF2FF 0%, #C7D2FE 100%)',
@@ -270,6 +286,7 @@ export const GAME_MODES: GameMode[] = [
     group: 'learn',
     icon: Compass,
     emoji: '🧭',
+    iconColor: 'text-sky-500',
     glowColor: 'rgba(56, 189, 248, 0.45)',
     href: '/explore',
     bg: 'linear-gradient(160deg, #EFF6FF 0%, #BFDBFE 100%)',
@@ -281,11 +298,13 @@ export const GAME_MODES: GameMode[] = [
   },
 ];
 
-/** Ordered tab metadata for the Create / Play / Learn switcher. */
-export const MODE_GROUP_TABS: { key: ModeGroup; label: string; emoji: string }[] = [
-  { key: 'create', label: 'Create', emoji: '✏️' },
-  { key: 'play', label: 'Play', emoji: '🎮' },
-  { key: 'learn', label: 'Learn', emoji: '🎓' },
+/** Ordered tab metadata for the Create / Play / Learn switcher. The
+ *  `icon` is a Lucide glyph (rendered by `ModeGroupTabs`); `emoji` is kept
+ *  as an accessible fallback / legacy field. */
+export const MODE_GROUP_TABS: { key: ModeGroup; label: string; emoji: string; icon: LucideIcon }[] = [
+  { key: 'create', label: 'Create', emoji: '✏️', icon: Pencil },
+  { key: 'play', label: 'Play', emoji: '🎮', icon: Gamepad2 },
+  { key: 'learn', label: 'Learn', emoji: '🎓', icon: GraduationCap },
 ];
 
 export function getModesByGroup(group: ModeGroup): GameMode[] {

@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import type { LucideIcon } from 'lucide-react';
 
 /**
  * A single floating action button used in the mobile hub's side stacks
@@ -14,8 +15,8 @@ import { motion } from 'framer-motion';
 export interface SideAction {
   /** Stable React key. */
   key: string;
-  /** Single emoji used as the icon glyph. */
-  emoji: string;
+  /** Lucide icon component used as the glyph. */
+  icon: LucideIcon;
   /** Short uppercase label displayed under the icon. */
   label: string;
   /** Optional notification pip — a number ("3"), the "!" sentinel, etc. */
@@ -67,12 +68,13 @@ export function SideActionButton({ action, onClick }: SideActionButtonProps) {
 
 /** Visual content shared between the interactive and passive variants. */
 function PassiveContent({ action }: { action: SideAction }) {
+  const Icon = action.icon;
   return (
     <>
       <div
-        className={`flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br ${action.g1} ${action.g2} text-base shadow-sm`}
+        className={`flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br ${action.g1} ${action.g2} shadow-sm`}
       >
-        <span aria-hidden>{action.emoji}</span>
+        <Icon aria-hidden className="h-4 w-4 text-white" strokeWidth={2.4} />
       </div>
       <span className="text-[8px] font-bold uppercase tracking-wide text-slate-600">
         {action.label}

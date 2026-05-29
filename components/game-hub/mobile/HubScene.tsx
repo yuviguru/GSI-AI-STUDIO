@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Play, Sparkles, Gift, Flame, Users, Zap, Trophy, Compass } from 'lucide-react';
 import { MascotAvatar } from '@/components/mascot/MascotAvatar';
 import { NotificationBell } from '@/components/shared/NotificationBell';
 import { useAiPoints } from '@/contexts/AiPointsContext';
@@ -24,9 +24,9 @@ const XP_PER_LEVEL = 100;
 
 /** Right rail: progress, achievement, discovery. */
 const RIGHT_ACTIONS: SideAction[] = [
-  { key: 'quests',  emoji: '⚡', label: 'Quests',  pip: 3,    g1: 'from-violet-200',  g2: 'to-violet-600' },
-  { key: 'badges',  emoji: '🏆', label: 'Badges',             g1: 'from-yellow-200',  g2: 'to-yellow-500' },
-  { key: 'explore', emoji: '🧭', label: 'Explore',            g1: 'from-emerald-200', g2: 'to-emerald-500', href: '/explore' },
+  { key: 'quests',  icon: Zap,     label: 'Quests',  pip: 3,    g1: 'from-violet-200',  g2: 'to-violet-600' },
+  { key: 'badges',  icon: Trophy,  label: 'Badges',             g1: 'from-yellow-200',  g2: 'to-yellow-500' },
+  { key: 'explore', icon: Compass, label: 'Explore',            g1: 'from-emerald-200', g2: 'to-emerald-500', href: '/explore' },
 ];
 
 /** Grid column count per group — 3 for Create / Play, 2 for Learn so a
@@ -84,10 +84,10 @@ export function HubScene({ onTabChange }: HubSceneProps = {}) {
   /** Left rail: claim, status, social. Built per-render so the Streak
    *  label reflects the current count instead of being a hardcoded literal. */
   const leftActions: SideAction[] = [
-    { key: 'daily',  emoji: '🎁', label: 'Daily',                pip: '!', g1: 'from-amber-200', g2: 'to-amber-500' },
-    { key: 'streak', emoji: '🔥', label: `Streak ${streakCount}`,           g1: 'from-rose-200',  g2: 'to-rose-500', passive: true },
+    { key: 'daily',  icon: Gift,  label: 'Daily',                pip: '!', g1: 'from-amber-200', g2: 'to-amber-500' },
+    { key: 'streak', icon: Flame, label: `Streak ${streakCount}`,           g1: 'from-rose-200',  g2: 'to-rose-500', passive: true },
     // TODO(squad): wire this once we have a /squad or /friends route.
-    { key: 'squad',  emoji: '👥', label: 'Squad',                          g1: 'from-blue-200',  g2: 'to-blue-500' },
+    { key: 'squad',  icon: Users, label: 'Squad',                          g1: 'from-blue-200',  g2: 'to-blue-500' },
   ];
 
   const handleResume = () => {
@@ -177,7 +177,7 @@ export function HubScene({ onTabChange }: HubSceneProps = {}) {
             className="flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-amber-400/20 to-orange-400/20 px-2 py-0.5 ring-1 ring-amber-300/40"
             title="AI Points — your lifetime creator score"
           >
-            <span className="text-[10px]">✨</span>
+            <Sparkles aria-hidden className="h-3 w-3 text-amber-500" strokeWidth={2.4} />
             <span className="font-mono text-[10px] font-bold text-amber-700">
               {isLoaded ? totalPoints.toLocaleString() : '—'}
             </span>
@@ -205,9 +205,13 @@ export function HubScene({ onTabChange }: HubSceneProps = {}) {
           ))}
         </div>
 
-        {/* Centre stage — speech bubble + mascot + platform + Resume CTA */}
-        <div className="relative flex shrink-0 flex-col items-center justify-end pt-2">
-          <div className="relative h-[195px] w-[200px]">
+        {/* Centre stage — speech bubble + mascot + platform + Resume CTA.
+            `mt-8` drops the whole cluster into the otherwise-empty band
+            below the HUD so the Resume CTA sits lower and the dead space
+            under it is used. `mx-auto` + `items-center` keep the mascot,
+            platform, and CTA on a single shared centre axis. */}
+        <div className="relative mx-auto mt-8 flex w-full shrink-0 flex-col items-center justify-end pt-2">
+          <div className="relative mx-auto h-[195px] w-[200px]">
             <div className="pointer-events-none absolute left-1/2 top-1/2 h-[170px] w-[170px] -translate-x-1/2 -translate-y-1/2 animate-pulse-glow rounded-full bg-brand-primary/25 blur-2xl" />
             <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2 whitespace-nowrap rounded-2xl rounded-bl-sm bg-white/95 px-3 py-1 text-[11px] font-semibold text-brand-text shadow-md ring-1 ring-brand-primary/15">
               Ready for adventure?
@@ -228,9 +232,9 @@ export function HubScene({ onTabChange }: HubSceneProps = {}) {
           <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={handleResume}
-            className="btn-bevel-gold relative -mt-1 inline-flex items-center gap-2 rounded-full px-7 py-2.5 shadow-lg"
+            className="btn-bevel-gold relative mt-1 inline-flex items-center gap-2 rounded-full px-7 py-2.5 shadow-lg"
           >
-            <span className="text-base">▶</span>
+            <Play className="h-4 w-4 fill-white text-white" />
             <span className="font-display text-sm font-extrabold uppercase tracking-wider text-white">
               Resume
             </span>

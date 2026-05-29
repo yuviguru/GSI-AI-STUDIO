@@ -26,10 +26,10 @@ components/game-hub/mobile/
 ### Hub scene layout — "Game Lobby"
 HubScene is split into five vertical bands, top to bottom:
 1. **HUD** — avatar / name / LVL / XP bar / points / bell. Padded `pt-7` so the iOS notch doesn't crop it.
-2. **Side action stacks** — absolutely positioned at the left and right edges. Left: 🎁 Daily, 🔥 Streak (passive), 👥 Squad. Right: ⚡ Quests, 🏆 Badges, 🧭 Explore.
-3. **Hero stage** — speech bubble, animated mascot on a glowing platform, big gold RESUME pill, last-activity meta.
+2. **Side action stacks** — absolutely positioned at the left and right edges. Left: Daily (`Gift`), Streak (`Flame`, passive), Squad (`Users`). Right: Quests (`Zap`), Badges (`Trophy`), Explore (`Compass`). Glyphs are **Lucide icons**, not emoji — `SideAction.icon` is a `LucideIcon` rendered white on the chip's gradient.
+3. **Hero stage** — speech bubble, animated mascot on a glowing platform (centred on a shared axis via `items-center` + `mx-auto`), big gold RESUME pill (`Play` + `ArrowRight` Lucide icons). The cluster is dropped down with `mt-8` so the Resume CTA sits lower and the band beneath it isn't left empty. Last-activity meta sits under the CTA.
 4. **Group switcher** — Create / Play / Learn segmented pill.
-5. **Portal grid** — every mode in the active group as a `PortalCard`. 3 cols for Create / Play, 2 cols for Learn. No horizontal scroll — every card fits on one viewport.
+5. **Portal grid** — every mode in the active group as a `PortalCard`. 3 cols for Create / Play, 2 cols for Learn. No horizontal scroll — every card fits on one viewport. Each tile's glyph is the mode's **Lucide `icon`** (from `GameModes.ts`), tinted with the per-mode `iconColor` (falls back to `textColor`) — not the legacy `emoji` field. The Create / Play / Learn switcher (`ModeGroupTabs`) likewise renders Lucide icons (`Pencil` / `Gamepad2` / `GraduationCap`).
 
 ### Side-stack action dispatch
 Each tap routes through HubScene's `handleAction(action)`:

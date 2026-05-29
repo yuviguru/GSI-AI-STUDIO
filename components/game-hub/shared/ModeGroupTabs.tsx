@@ -30,6 +30,7 @@ export function ModeGroupTabs({ active, onChange, variant = 'desktop' }: ModeGro
     >
       {MODE_GROUP_TABS.map((tab) => {
         const isActive = tab.key === active;
+        const Icon = tab.icon;
         return (
           <button
             key={tab.key}
@@ -53,8 +54,12 @@ export function ModeGroupTabs({ active, onChange, variant = 'desktop' }: ModeGro
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               />
             )}
-            <span className="relative z-10 flex items-center gap-1">
-              <span aria-hidden>{tab.emoji}</span>
+            <span className="relative z-10 flex items-center gap-1.5">
+              <Icon
+                aria-hidden
+                className={cn(compact ? 'h-3.5 w-3.5' : 'h-4 w-4')}
+                strokeWidth={isActive ? 2.6 : 2}
+              />
               {tab.label}
             </span>
           </button>

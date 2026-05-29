@@ -33,6 +33,7 @@ function isStudioMode(key: string): key is StudioId {
 
 export function PortalCard({ mode, onClick }: PortalCardProps) {
   const isStudio = isStudioMode(mode.key);
+  const Icon = mode.icon;
   // Inline badge — same as ModeTile (no absolute corner). Placement is 'after'
   // on PortalCard because the title is centered: a single-row centered
   // [title][badge] hugs the cluster's centerline cleanly.
@@ -55,8 +56,8 @@ export function PortalCard({ mode, onClick }: PortalCardProps) {
       style={{ background: mode.bg }}
       aria-label={mode.label}
     >
-      <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/80 text-xl shadow-md ring-[3px] ring-white">
-        <span aria-hidden>{mode.emoji}</span>
+      <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/80 shadow-md ring-[3px] ring-white">
+        <Icon aria-hidden className={`h-6 w-6 ${mode.iconColor ?? mode.textColor}`} strokeWidth={2.2} />
       </div>
       <div className={`flex flex-wrap items-center justify-center gap-1 font-display text-[11px] font-extrabold leading-tight ${mode.textColor}`}>
         <span>{mode.shortLabel}</span>
