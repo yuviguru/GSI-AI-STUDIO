@@ -2,9 +2,26 @@
 
 import Link from 'next/link';
 import { MoreHorizontal } from 'lucide-react';
+import { StudioLaunchPill } from '@/components/studios/shared/StudioLaunchPill';
+import type { StudioId } from '@gsi/types';
 
-const FEATURED_STUDIOS = [
+interface FeaturedStudio {
+  /** Studio id for the launch-state pill. Optional — non-studio entries
+   *  (e.g. Beat the AI) leave this unset and skip the pill. */
+  studioId?: StudioId;
+  href: string;
+  emoji: string;
+  title: string;
+  tagline: string;
+  bg: string;
+  floatText: string;
+  badge: string;
+  rating: string;
+}
+
+const FEATURED_STUDIOS: FeaturedStudio[] = [
   {
+    studioId: 'story',
     href: '/create/story',
     emoji: '📖',
     title: 'Story Studio',
@@ -15,6 +32,7 @@ const FEATURED_STUDIOS = [
     rating: '4.9',
   },
   {
+    studioId: 'music',
     href: '/create/music',
     emoji: '🎵',
     title: 'Music Lab',
@@ -25,6 +43,7 @@ const FEATURED_STUDIOS = [
     rating: '4.8',
   },
   {
+    studioId: 'comic',
     href: '/create/comic',
     emoji: '🎨',
     title: 'Comic Studio',
@@ -35,6 +54,7 @@ const FEATURED_STUDIOS = [
     rating: '4.9',
   },
   {
+    studioId: 'game',
     href: '/create/game',
     emoji: '🕹️',
     title: 'Game Studio',
@@ -45,6 +65,7 @@ const FEATURED_STUDIOS = [
     rating: '4.7',
   },
   {
+    studioId: 'quiz',
     href: '/create/quiz',
     emoji: '🎮',
     title: 'Quiz Maker',
@@ -55,6 +76,8 @@ const FEATURED_STUDIOS = [
     rating: '4.8',
   },
   {
+    // Beat the AI is not a creation studio — keep it in the rotation but
+    // skip the launch-state pill so it doesn't get mis-flagged as BETA.
     href: '/beat-the-ai',
     emoji: '🤖',
     title: 'Beat the AI',
@@ -74,9 +97,16 @@ export function FeaturedStudioCard() {
     <Link href={studio.href} className="group block">
       <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-card transition-shadow hover:shadow-card-hover">
 
-        {/* Card header row */}
+        {/* Card header row — launch-state pill (LAUNCH-001) sits next to
+            the title so the "this is LIVE" or "this is BETA" affordance is
+            the first thing the marketing-card reader sees. Beat the AI
+            (no studioId) skips the pill. `showLive` is on here because
+            this is a marketing surface where a positive LIVE pill helps. */}
         <div className="flex items-center justify-between px-4 pt-4">
-          <h3 className="font-display text-base font-bold text-gray-900">{studio.title}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-display text-base font-bold text-gray-900">{studio.title}</h3>
+            {studio.studioId && <StudioLaunchPill studioId={studio.studioId} size="sm" showLive />}
+          </div>
           <button
             onClick={(e) => e.preventDefault()}
             className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100"

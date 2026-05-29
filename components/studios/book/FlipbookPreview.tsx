@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X } from 'lucide-react';
 import type { Book, BookPage } from '@gsi/types';
 import { BOOK_SIZES } from '@/lib/templates/bookTemplates';
+import { playSound } from '@/lib/sounds';
 
 interface FlipbookPreviewProps {
   book: Book;
@@ -60,9 +61,18 @@ function buildSpreads(book: Book, pages: BookPage[], twoPageMode: boolean): Spre
   return spreads;
 }
 
+/** Swipe distance (px) above which a touch drag counts as a page flip. */
+const SWIPE_THRESHOLD = 60;
+
 export function FlipbookPreview({ book, pages, onClose, readOnly = false }: FlipbookPreviewProps) {
   const [index, setIndex] = useState(0);
   const [twoPageMode, setTwoPageMode] = useState(false);
+  /** Direction of last flip — feeds into the page-turn animation so the
+   *  outgoing/incoming pages rotate from the correct edge (right edge when
+   *  going forward, left edge when going back). */
+  const [flipDirection, setFlipDirection] = useState<'forward' | 'backward'>('forward');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Detect viewport once on mount + listen for resize. SSR-safe by starting
   // in single-page mode and switching after mount.
@@ -87,8 +97,104 @@ export function FlipbookPreview({ book, pages, onClose, readOnly = false }: Flip
     }
   }, [spreads.length, index]);
 
-  const next = () => setIndex((i) => Math.min(i + 1, spreads.length - 1));
-  const prev = () => setIndex((i) => Math.max(i - 1, 0));
+  const next = useCallback(() => {
+    setIndex((i) => {
+      if (i >= spreads.length - 1) return i;
+      setFlipDirection('forward');
+      playSound('pageFlip');
+      return i + 1;
+    });
+  }, [spreads.length]);
+
+  const prev = useCallback(() => {
+    setIndex((i) => {
+      if (i <= 0) return i;
+      setFlipDirection('backward');
+      playSound('pageFlip');
+      return i - 1;
+    });
+  }, []);
+
+  const goFirst = useCallback(() => {
+    setFlipDirection('backward');
+    setIndex(0);
+    playSound('pageFlip');
+  }, []);
+
+  const goLast = useCallback(() => {
+    setFlipDirection('forward');
+    setIndex(spreads.length - 1);
+    playSound('pageFlip');
+  }, [spreads.length]);
+
+  /** BOOK-005 — keyboard nav. Active whenever the viewer is mounted; Esc
+   *  exits fullscreen (or closes the viewer for non-readOnly mounts). */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLElement) {
+        const tag = e.target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
+      }
+      switch (e.key) {
+        case 'ArrowRight':
+        case 'PageDown':
+          e.preventDefault();
+          next();
+          break;
+        case 'ArrowLeft':
+        case 'PageUp':
+          e.preventDefault();
+          prev();
+          break;
+        case 'Home':
+          e.preventDefault();
+          goFirst();
+          break;
+        case 'End':
+          e.preventDefault();
+          goLast();
+          break;
+        case 'Escape':
+          if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
+          } else if (!readOnly && onClose) {
+            onClose();
+          }
+          break;
+        default:
+          break;
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [next, prev, goFirst, goLast, onClose, readOnly]);
+
+  /** Track fullscreen state so the toggle button stays in sync. */
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+      return;
+    }
+    const el = containerRef.current;
+    if (el && el.requestFullscreen) {
+      el.requestFullscreen().catch(() => {});
+    }
+  }, []);
+
+  /** Framer drag → page-flip when past threshold. Resets via dragSnapToOrigin. */
+  const handleDragEnd = useCallback(
+    (_e: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+      if (info.offset.x < -SWIPE_THRESHOLD) next();
+      else if (info.offset.x > SWIPE_THRESHOLD) prev();
+    },
+    [next, prev],
+  );
 
   const isCover = current?.kind === 'cover';
   const isCoverSpread = current?.kind === 'cover-spread';
@@ -103,43 +209,86 @@ export function FlipbookPreview({ book, pages, onClose, readOnly = false }: Flip
   const containerAspect = isWideSpread ? bookAspect * 2 : bookAspect;
   const containerMaxWidthClass = isWideSpread ? 'max-w-3xl' : 'max-w-md';
 
+  // Page-flip motion variants — direction-aware. Forward: outgoing rotates
+  // off the right edge; incoming swings in from the right. Backward inverts.
+  // perspective + 3D transform-origin makes the flip read as a page turn,
+  // not a slide. Not realistic paper curl — that's a separate follow-up.
+  const flipVariants = {
+    enter: (dir: 'forward' | 'backward') => ({
+      rotateY: dir === 'forward' ? 70 : -70,
+      x: dir === 'forward' ? 30 : -30,
+      opacity: 0,
+    }),
+    center: { rotateY: 0, x: 0, opacity: 1 },
+    exit: (dir: 'forward' | 'backward') => ({
+      rotateY: dir === 'forward' ? -70 : 70,
+      x: dir === 'forward' ? -30 : 30,
+      opacity: 0,
+    }),
+  };
+
   return (
     <div
-      className={`flex flex-col items-center justify-center ${
-        readOnly ? '' : 'fixed inset-0 z-50 bg-gray-900/80 p-4 backdrop-blur-sm'
-      }`}
+      ref={containerRef}
+      className={`relative flex flex-col items-center justify-center ${
+        readOnly ? 'py-2' : 'fixed inset-0 z-50 bg-gray-900/80 p-4 backdrop-blur-sm'
+      } ${isFullscreen ? 'bg-gradient-to-br from-stone-900 via-zinc-900 to-stone-900 py-6' : ''}`}
       role="dialog"
       aria-label="Book preview"
+      style={{ perspective: 1600 }}
     >
       {!readOnly && onClose && (
         <button
           onClick={onClose}
           type="button"
-          className="absolute right-4 top-4 rounded-full bg-white p-2 text-gray-700 shadow-lg hover:bg-gray-50"
+          className="absolute right-4 top-4 z-10 rounded-full bg-white p-2 text-gray-700 shadow-lg hover:bg-gray-50"
           aria-label="Close preview"
         >
           <X className="h-5 w-5" />
         </button>
       )}
 
+      {/* BOOK-005 — fullscreen toggle. Sits opposite the close button so
+          they don't fight for the same corner. */}
+      <button
+        onClick={toggleFullscreen}
+        type="button"
+        className={`absolute z-10 rounded-full bg-white/90 p-2 text-gray-700 shadow-lg hover:bg-white ${
+          readOnly ? 'right-3 top-3' : 'left-4 top-4'
+        }`}
+        aria-label={isFullscreen ? 'Exit fullscreen' : 'Open fullscreen'}
+        title="F · fullscreen"
+      >
+        {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+      </button>
+
       <div
         className={`relative mx-auto w-full ${containerMaxWidthClass}`}
         style={{ aspectRatio: `${containerAspect}` }}
       >
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" custom={flipDirection}>
           {current && (
             <motion.div
               key={`${index}-${twoPageMode}`}
-              initial={{ opacity: 0, rotateY: -8 }}
-              animate={{ opacity: 1, rotateY: 0 }}
-              exit={{ opacity: 0, rotateY: 8 }}
-              transition={{ duration: 0.25 }}
-              className={`absolute inset-0 overflow-hidden rounded-2xl shadow-elevated ${
+              custom={flipDirection}
+              variants={flipVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.55, ease: [0.4, 0, 0.2, 1] }}
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.18}
+              dragSnapToOrigin
+              onDragEnd={handleDragEnd}
+              className={`absolute inset-0 cursor-grab overflow-hidden rounded-2xl shadow-elevated active:cursor-grabbing ${
                 isPages && twoPageMode ? '' : 'bg-white'
               }`}
               style={{
                 backgroundColor:
                   isCover || isBack ? book.cover.backgroundColor : undefined,
+                transformStyle: 'preserve-3d',
+                transformOrigin: flipDirection === 'forward' ? 'left center' : 'right center',
               }}
             >
               {isCover && <CoverView book={book} />}
@@ -177,11 +326,16 @@ export function FlipbookPreview({ book, pages, onClose, readOnly = false }: Flip
           onClick={prev}
           disabled={index === 0}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-card transition-opacity disabled:opacity-30"
-          aria-label="Previous page"
+          aria-label="Previous page (←)"
+          title="← previous"
         >
           <ChevronLeft className="h-5 w-5 text-gray-700" />
         </button>
-        <div className="text-sm text-white drop-shadow">
+        <div
+          className={`min-w-[3.5rem] text-center font-mono text-sm drop-shadow ${
+            readOnly && !isFullscreen ? 'text-gray-700' : 'text-white'
+          }`}
+        >
           {index + 1} / {spreads.length}
         </div>
         <button
@@ -189,17 +343,20 @@ export function FlipbookPreview({ book, pages, onClose, readOnly = false }: Flip
           onClick={next}
           disabled={index === spreads.length - 1}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-card transition-opacity disabled:opacity-30"
-          aria-label="Next page"
+          aria-label="Next page (→)"
+          title="→ next"
         >
           <ChevronRight className="h-5 w-5 text-gray-700" />
         </button>
       </div>
 
-      {!readOnly && (
-        <div className="mt-2 text-[11px] text-white/60">
-          {twoPageMode ? 'Two-page spread' : 'Single page'} · resize window for the other view
-        </div>
-      )}
+      <div
+        className={`mt-2 text-[11px] ${
+          readOnly && !isFullscreen ? 'text-gray-500' : 'text-white/60'
+        }`}
+      >
+        {twoPageMode ? 'Two-page spread' : 'Single page'} · swipe or ← → to flip
+      </div>
     </div>
   );
 }

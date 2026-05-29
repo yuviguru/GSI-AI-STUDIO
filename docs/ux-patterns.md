@@ -20,6 +20,26 @@
 
 ## Core UX Patterns
 
+### Studio Launch State Pill (LAUNCH-001)
+
+Every surface that renders a studio card or studio name (mobile hub PortalCard, dashboard StudioSelectorPanel, StudioCardsColumn, PopularStudiosRow, FeaturedStudioCard) shows a launch-state pill driven by `config/studios` (see `docs/data-model.md#configstudios-launch-001`).
+
+**Three states**:
+
+| State | Visual | Text | When |
+|---|---|---|---|
+| `live` | _no pill_ | — | The studio is the baseline / production experience. Hiding the pill avoids visual noise on the surfaces a kid uses most. |
+| `beta` | amber pill | `BETA` | The studio is reachable and functional but still being polished. Sets parent expectations honestly. |
+| `coming-soon` | gray pill | `COMING SOON` | Marketing tease only — used for placeholder cards (e.g. the royalty redemption page in BOOK-006). The card itself stays disabled. |
+
+**Opt-in "LIVE" variant**: pass `showLive` to the pill on surfaces with marketing intent (e.g. `FeaturedStudioCard`) where the positive affordance helps. Default surfaces hide the LIVE pill.
+
+**Component**: `components/studios/shared/StudioLaunchPill.tsx`. Three size variants (`xs` / `sm` / `md`) mirroring the surrounding card's text scale. Renders `null` when the resolved state warrants no pill so callers don't have to branch.
+
+**Data flow**: `hooks/useStudioLaunchState.ts` (SWR) → reads `/api/config/studios` → falls back to `lib/config/studioLaunchStateDefaults.ts` instantly so the pill paints on first frame (no flicker).
+
+**Rule of thumb**: never hand-roll a "NEW" / "BETA" label on a studio card. Always use this pill so the source of truth stays singular.
+
 ### Creation Studio Layout
 
 All five studios (Story, Music, Quiz, Game, Comic) follow the same 3-step pattern:

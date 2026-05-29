@@ -156,6 +156,34 @@ export interface TipTapDocument {
   content?: unknown[];
 }
 
+/** How a piece of a book came into existence — drives the effort badge
+ *  computation in BOOK-003. Per-page on `BookPage.authorship`, denormalized
+ *  on `Book.authorship` for fast publish-time read. */
+export type AuthorshipSource = 'ai_generated' | 'kid_written' | 'mixed';
+export type ImageAuthorshipSource = 'ai_generated' | 'kid_added' | 'none';
+
+/** Per-page authorship breakdown.
+ *
+ *  For AI-generated pages: `originalAiText` is frozen at creation. On every
+ *  page save the server runs LCS(originalAiText, currentPlainText) to derive
+ *  `aiCharCount` (surviving AI characters). `kidCharCount = max(0,
+ *  currentLength - aiCharCount)`. This is the honest model: if the kid
+ *  rewrites everything, AI drops to ~0 and the kid earns the full badge.
+ *
+ *  For kid-written pages: `originalAiText` is empty, `aiCharCount` stays
+ *  0, and `kidCharCount` is just the current plainText length. */
+export interface PageAuthorship {
+  source: AuthorshipSource;
+  /** Frozen at creation for AI-generated pages. Empty for kid_written. */
+  originalAiText: string;
+  /** Recomputed via LCS on every save. */
+  aiCharCount: number;
+  /** Current text length minus surviving AI chars, clamped >= 0. */
+  kidCharCount: number;
+  imageSource: ImageAuthorshipSource;
+  lastEditedAt: Date;
+}
+
 /** A single page in the `books/{bookId}/pages` subcollection */
 export interface BookPage {
   id: string;
@@ -169,8 +197,59 @@ export interface BookPage {
   voiceTranscriptRaw: string | null;
   grammarSuggestions: GrammarSuggestion[];
   style: PageStyleOverride | null;
+  /** Provenance breakdown — drives the effort badge (BOOK-003).
+   *  Optional for backwards-compat with pre-BOOK-002 pages; readers should
+   *  treat missing values as 100% kid-written. */
+  authorship: PageAuthorship | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/** How a book started life — never changes after creation. */
+export type BookInitialSource = 'ai_generated' | 'wizard_blank' | 'wizard_seeded';
+
+/** Effort-badge keys (BOOK-003). One of these is awarded at publish. */
+export type EffortBadgeKey =
+  | 'pure_imagination'
+  | 'co_author'
+  | 'ai_sidekick'
+  | 'ai_generated';
+
+/** Denormalized authorship summary on the book doc. Recomputed by the server
+ *  on every page write. Single read drives the effort badge at publish time. */
+export interface BookAuthorship {
+  initialSource: BookInitialSource;
+  aiCharTotal: number;
+  kidCharTotal: number;
+  aiImagePageCount: number;
+  kidImagePageCount: number;
+  updatedAt: Date;
+}
+
+/** The effort badge awarded at publish (BOOK-003). null until publish. */
+export interface EffortBadge {
+  key: EffortBadgeKey;
+  /** 0-100, rounded to 1 decimal. */
+  aiPercentage: number;
+  awardedAt: Date;
+  /** Frozen snapshot for the "How was this earned?" tooltip. */
+  breakdown: {
+    aiCharTotal: number;
+    kidCharTotal: number;
+    aiImagePageCount: number;
+    kidImagePageCount: number;
+  };
+}
+
+/** Sales config (BOOK-004 Phase 1). Until Phase 2 ships, no actual purchases
+ *  happen — `enabled=true` just lists the book on the shop with "Coming Soon"
+ *  on the Buy button. */
+export interface BookSales {
+  enabled: boolean;
+  /** INR. Bounded 10-999. Required when enabled. */
+  priceInr: number | null;
+  /** First time enabled flipped to true. Stable thereafter. */
+  listedAt: Date | null;
 }
 
 /** Top-level book document */
@@ -207,6 +286,13 @@ export interface Book {
   pdfUrl: string | null;
   printOrderEligible: boolean;
   shareUrl: string | null;
+  /** Authorship summary (BOOK-002). Optional for pre-BOOK-002 books; treat
+   *  missing as wizard_blank with zero AI characters. */
+  authorship: BookAuthorship | null;
+  /** Effort badge (BOOK-003). null until the book is published. */
+  effortBadge: EffortBadge | null;
+  /** Sales config (BOOK-004 Phase 1). null until author opts in. */
+  sales: BookSales | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -221,5 +307,12 @@ export interface BookListItem {
   pageLimit: number;
   status: BookStatus;
   coverThumbnail: string | null;
+  /** Effort badge for the kid's library/gallery card (BOOK-003).
+   *  null on drafts and on books published before BOOK-003. */
+  effortBadge: EffortBadge | null;
+  /** Sales config (BOOK-004 Phase 1). null when the author hasn't set up
+   *  sales yet. Exposed in the list shape so surfaces like PlayerCard can
+   *  count "X books in shop" without fetching each book individually. */
+  sales: BookSales | null;
   updatedAt: Date;
 }

@@ -11,17 +11,23 @@ import {
 import { nanoid } from 'nanoid';
 import type {
   Book,
+  BookAuthorship,
   BookBackCover,
   BookCharacter,
   BookCover,
+  BookInitialSource,
   BookListItem,
   BookPage,
   BookPlot,
+  BookSales,
   BookStatus,
+  EffortBadge,
+  PageAuthorship,
   PageLayout,
   TipTapDocument,
 } from '@gsi/types';
 import type {
+  AiBookGenerateInput,
   BookCreateInput,
   BookPatchInput,
   CharacterCreateInput,
@@ -30,7 +36,13 @@ import type {
   PageCreateInput,
   PagePatchInput,
   PageReorderInput,
+  SalesConfigPatchInput,
 } from '@/lib/validators';
+import {
+  aggregateBookAuthorship,
+  recomputePageAuthorship,
+} from './bookAuthorship';
+import { computeEffortBadge } from '@/lib/books/effortBadge';
 
 const BOOKS_COLLECTION = 'books';
 const PAGES_SUBCOLLECTION = 'pages';
@@ -140,6 +152,92 @@ function reviveCharacters(raw: unknown): BookCharacter[] {
     });
 }
 
+/** Revive a stored authorship blob into a strongly-typed PageAuthorship. */
+function revivePageAuthorship(raw: unknown): PageAuthorship | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const lastEditedRaw = r.lastEditedAt;
+  let lastEditedAt: Date;
+  if (lastEditedRaw instanceof Timestamp) lastEditedAt = lastEditedRaw.toDate();
+  else if (lastEditedRaw instanceof Date) lastEditedAt = lastEditedRaw;
+  else lastEditedAt = new Date();
+  const source = (r.source === 'ai_generated' || r.source === 'kid_written' || r.source === 'mixed')
+    ? r.source
+    : 'kid_written';
+  const imageSource = (r.imageSource === 'ai_generated' || r.imageSource === 'kid_added' || r.imageSource === 'none')
+    ? r.imageSource
+    : 'none';
+  return {
+    source,
+    originalAiText: typeof r.originalAiText === 'string' ? r.originalAiText : '',
+    aiCharCount: typeof r.aiCharCount === 'number' ? r.aiCharCount : 0,
+    kidCharCount: typeof r.kidCharCount === 'number' ? r.kidCharCount : 0,
+    imageSource,
+    lastEditedAt,
+  };
+}
+
+function reviveBookAuthorship(raw: unknown): BookAuthorship | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const initialSource = (r.initialSource === 'ai_generated' || r.initialSource === 'wizard_seeded')
+    ? r.initialSource
+    : 'wizard_blank';
+  const updatedAtRaw = r.updatedAt;
+  let updatedAt: Date;
+  if (updatedAtRaw instanceof Timestamp) updatedAt = updatedAtRaw.toDate();
+  else if (updatedAtRaw instanceof Date) updatedAt = updatedAtRaw;
+  else updatedAt = new Date();
+  return {
+    initialSource,
+    aiCharTotal: typeof r.aiCharTotal === 'number' ? r.aiCharTotal : 0,
+    kidCharTotal: typeof r.kidCharTotal === 'number' ? r.kidCharTotal : 0,
+    aiImagePageCount: typeof r.aiImagePageCount === 'number' ? r.aiImagePageCount : 0,
+    kidImagePageCount: typeof r.kidImagePageCount === 'number' ? r.kidImagePageCount : 0,
+    updatedAt,
+  };
+}
+
+function reviveEffortBadge(raw: unknown): EffortBadge | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const validKeys = ['pure_imagination', 'co_author', 'ai_sidekick', 'ai_generated'] as const;
+  if (typeof r.key !== 'string' || !validKeys.includes(r.key as typeof validKeys[number])) return null;
+  const awardedRaw = r.awardedAt;
+  let awardedAt: Date;
+  if (awardedRaw instanceof Timestamp) awardedAt = awardedRaw.toDate();
+  else if (awardedRaw instanceof Date) awardedAt = awardedRaw;
+  else awardedAt = new Date();
+  const breakdown = (r.breakdown && typeof r.breakdown === 'object')
+    ? r.breakdown as Record<string, unknown>
+    : {};
+  return {
+    key: r.key as EffortBadge['key'],
+    aiPercentage: typeof r.aiPercentage === 'number' ? r.aiPercentage : 0,
+    awardedAt,
+    breakdown: {
+      aiCharTotal: typeof breakdown.aiCharTotal === 'number' ? breakdown.aiCharTotal : 0,
+      kidCharTotal: typeof breakdown.kidCharTotal === 'number' ? breakdown.kidCharTotal : 0,
+      aiImagePageCount: typeof breakdown.aiImagePageCount === 'number' ? breakdown.aiImagePageCount : 0,
+      kidImagePageCount: typeof breakdown.kidImagePageCount === 'number' ? breakdown.kidImagePageCount : 0,
+    },
+  };
+}
+
+function reviveSales(raw: unknown): BookSales | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const listedRaw = r.listedAt;
+  let listedAt: Date | null = null;
+  if (listedRaw instanceof Timestamp) listedAt = listedRaw.toDate();
+  else if (listedRaw instanceof Date) listedAt = listedRaw;
+  return {
+    enabled: r.enabled === true,
+    priceInr: typeof r.priceInr === 'number' ? r.priceInr : null,
+    listedAt,
+  };
+}
+
 /** Convert a Firestore document snapshot into a Book object. */
 function docToBook(doc: FirebaseFirestore.DocumentSnapshot): Book {
   const data = doc.data();
@@ -173,6 +271,9 @@ function docToBook(doc: FirebaseFirestore.DocumentSnapshot): Book {
     pdfUrl: data.pdfUrl ?? null,
     printOrderEligible: data.printOrderEligible ?? false,
     shareUrl: data.shareUrl ?? null,
+    authorship: reviveBookAuthorship(data.authorship),
+    effortBadge: reviveEffortBadge(data.effortBadge),
+    sales: reviveSales(data.sales),
     createdAt: data.createdAt.toDate(),
     updatedAt: data.updatedAt.toDate(),
   };
@@ -196,6 +297,7 @@ function docToPage(doc: FirebaseFirestore.DocumentSnapshot): BookPage {
     voiceTranscriptRaw: data.voiceTranscriptRaw ?? null,
     grammarSuggestions: data.grammarSuggestions ?? [],
     style: data.style ?? null,
+    authorship: revivePageAuthorship(data.authorship),
     createdAt: data.createdAt.toDate(),
     updatedAt: data.updatedAt.toDate(),
   };
@@ -212,7 +314,60 @@ function toListItem(book: Book): BookListItem {
     pageLimit: book.pageLimit,
     status: book.status,
     coverThumbnail: book.coverThumbnail,
+    effortBadge: book.effortBadge,
+    sales: book.sales,
     updatedAt: book.updatedAt,
+  };
+}
+
+/** Default empty authorship for a brand-new kid-written page. */
+function defaultKidAuthorship(now: Date): PageAuthorship {
+  return {
+    source: 'kid_written',
+    originalAiText: '',
+    aiCharCount: 0,
+    kidCharCount: 0,
+    imageSource: 'none',
+    lastEditedAt: now,
+  };
+}
+
+/** Default empty book-level authorship for a wizard-blank book. */
+function defaultBookAuthorship(
+  initialSource: BookInitialSource,
+  now: Date,
+): BookAuthorship {
+  return {
+    initialSource,
+    aiCharTotal: 0,
+    kidCharTotal: 0,
+    aiImagePageCount: 0,
+    kidImagePageCount: 0,
+    updatedAt: now,
+  };
+}
+
+/** Convert page authorship to a Firestore-storable shape (Date → Timestamp). */
+function authorshipToStored(a: PageAuthorship): Record<string, unknown> {
+  return {
+    source: a.source,
+    originalAiText: a.originalAiText,
+    aiCharCount: a.aiCharCount,
+    kidCharCount: a.kidCharCount,
+    imageSource: a.imageSource,
+    lastEditedAt: Timestamp.fromDate(a.lastEditedAt),
+  };
+}
+
+/** Convert book authorship to a Firestore-storable shape. */
+function bookAuthorshipToStored(a: BookAuthorship): Record<string, unknown> {
+  return {
+    initialSource: a.initialSource,
+    aiCharTotal: a.aiCharTotal,
+    kidCharTotal: a.kidCharTotal,
+    aiImagePageCount: a.aiImagePageCount,
+    kidImagePageCount: a.kidImagePageCount,
+    updatedAt: Timestamp.fromDate(a.updatedAt),
   };
 }
 
@@ -312,6 +467,19 @@ export async function createBook(
     pdfUrl: null,
     printOrderEligible: false,
     shareUrl: null,
+    // BOOK-002 authorship — wizard-seeded if plot/characters/title were
+    // supplied, otherwise wizard_blank. AI-generated path uses
+    // `createGeneratedBook` which sets initialSource: 'ai_generated'.
+    authorship: bookAuthorshipToStored(
+      defaultBookAuthorship(
+        input.plot || (input.characters && input.characters.length > 0)
+          ? 'wizard_seeded'
+          : 'wizard_blank',
+        now.toDate(),
+      ),
+    ),
+    effortBadge: null,
+    sales: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -493,6 +661,8 @@ export async function appendPage(
       voiceTranscriptRaw: null,
       grammarSuggestions: [],
       style: null,
+      // BOOK-002 — pages added via the manual editor default to kid-written.
+      authorship: authorshipToStored(defaultKidAuthorship(now.toDate())),
       createdAt: now,
       updatedAt: now,
     };
@@ -554,9 +724,11 @@ export async function updatePage(
     throw new AppException('NOT_FOUND', 'Page not found', 404);
   }
 
+  const now = Timestamp.now();
+  const existingPage = docToPage(pageSnap);
   const updates: Record<string, unknown> = {
     ...patch,
-    updatedAt: Timestamp.now(),
+    updatedAt: now,
   };
 
   // Auto-derive plainText if richText is being patched but plainText isn't
@@ -564,11 +736,206 @@ export async function updatePage(
     updates.plainText = plainTextFromTipTap(patch.richText);
   }
 
+  // BOOK-002 — when text changes, recompute the page's authorship via LCS
+  // and the book's denormalized authorship summary. Image source updates
+  // are explicit (caller passes imageUrl change and we infer kid_added).
+  const newPlainText = typeof updates.plainText === 'string'
+    ? updates.plainText
+    : existingPage.plainText;
+  const imageDidChange = patch.imageUrl !== undefined;
+  let newImageSource = existingPage.authorship?.imageSource ?? 'none';
+  if (imageDidChange) {
+    // Heuristic: any direct PATCH to imageUrl from the editor is treated as
+    // a kid-curated change (kid added it, swapped it, or cleared it).
+    // AI-generated images are set via the bulk createGeneratedBook write
+    // and never PATCH'd directly. Clearing → 'none'.
+    newImageSource = patch.imageUrl ? 'kid_added' : 'none';
+  }
+
+  const newAuthorship = recomputePageAuthorship({
+    existing: existingPage.authorship,
+    newPlainText,
+    now: now.toDate(),
+    imageSource: newImageSource,
+  });
+  updates.authorship = authorshipToStored(newAuthorship);
+
   await pageRef.update(stripUndefined(updates));
-  await bookRef.update({ updatedAt: Timestamp.now() });
+
+  // Recompute the book-level authorship summary from all pages.
+  // For N typical book sizes (5-40 pages) this is one Firestore range read
+  // — cheaper than maintaining per-field increments and risking drift.
+  const allPagesSnap = await bookRef
+    .collection(PAGES_SUBCOLLECTION)
+    .orderBy('pageNumber', 'asc')
+    .get();
+  const pagesWithAuthorship = allPagesSnap.docs.map((d) => ({
+    authorship: revivePageAuthorship(d.data().authorship),
+  }));
+  const bookAuthorshipSummary = aggregateBookAuthorship({
+    pages: pagesWithAuthorship,
+    initialSource: book.authorship?.initialSource ?? 'wizard_blank',
+    now: now.toDate(),
+  });
+  await bookRef.update({
+    authorship: bookAuthorshipToStored(bookAuthorshipSummary),
+    updatedAt: now,
+  });
 
   const finalSnap = await pageRef.get();
   return docToPage(finalSnap);
+}
+
+// ── AI generation (BOOK-002) ────────────────────────────────────
+
+export interface CreateGeneratedBookInput {
+  /** Wizard-style fields needed to set up the book shell. */
+  setup: Omit<BookCreateInput, 'characters' | 'plot'>;
+  /** The AI's draft. */
+  draft: {
+    title: string;
+    coverPrompt: string;
+    pages: Array<{
+      plainText: string;
+      imagePrompt: string;
+      /** Resolved image URL — null if the cascade failed for this page. */
+      imageUrl: string | null;
+    }>;
+  };
+}
+
+/**
+ * Atomically create a Book + N pages from an AI draft (BOOK-002).
+ *
+ * Every page is stamped with `authorship.source = 'ai_generated'` and the
+ * book carries `authorship.initialSource = 'ai_generated'`. Per-page LCS
+ * recompute on subsequent edits decays the AI share honestly toward the
+ * kid's badge bucket (BOOK-003).
+ */
+export async function createGeneratedBook(
+  input: CreateGeneratedBookInput,
+  scope: OwnerScope,
+  tier: 'free' | 'paid' = 'free',
+): Promise<Book> {
+  const { setup, draft } = input;
+  validateCreateInput({ ...setup, title: draft.title } as BookCreateInput);
+  enforceTierLimit(setup.pageLimit, tier);
+  if (draft.pages.length === 0) {
+    throw new AppException('INVALID_INPUT', 'Generated draft has no pages', 400);
+  }
+  if (draft.pages.length > setup.pageLimit) {
+    throw new AppException(
+      'INVALID_INPUT',
+      `Draft has ${draft.pages.length} pages but limit is ${setup.pageLimit}`,
+      400,
+    );
+  }
+
+  const dimensions = BOOK_SIZES[setup.size];
+  const bookRef = adminDb.collection(BOOKS_COLLECTION).doc();
+  const bookId = bookRef.id;
+  const now = Timestamp.now();
+  const nowDate = now.toDate();
+
+  // Derive an initial book-level authorship summary up front (we know each
+  // page's aiCharCount because we just generated it).
+  const pageAuthorships: PageAuthorship[] = draft.pages.map((p) => ({
+    source: 'ai_generated' as const,
+    originalAiText: p.plainText,
+    aiCharCount: p.plainText.length,
+    kidCharCount: 0,
+    imageSource: p.imageUrl ? ('ai_generated' as const) : ('none' as const),
+    lastEditedAt: nowDate,
+  }));
+  const bookAuthorship = aggregateBookAuthorship({
+    pages: pageAuthorships.map((a) => ({ authorship: a })),
+    initialSource: 'ai_generated' as const,
+    now: nowDate,
+  });
+
+  const cover: BookCover = {
+    title: draft.title,
+    subtitle: '',
+    authorName: setup.author,
+    backgroundColor: setup.themeColor ?? '#5B5FFF',
+    imageUrl: null, // cover image left for the kid to generate via existing tool
+    imagePrompt: draft.coverPrompt,
+    font: setup.typography.titleFont,
+  };
+
+  const bookDoc = {
+    id: bookId,
+    title: draft.title,
+    author: setup.author,
+    status: 'draft' as BookStatus,
+    type: setup.type,
+    bucket: setup.bucket,
+    format: setup.format,
+    size: setup.size,
+    dimensions: {
+      widthMm: dimensions.widthMm,
+      heightMm: dimensions.heightMm,
+      widthPx: dimensions.widthPx,
+      heightPx: dimensions.heightPx,
+    },
+    typography: setup.typography,
+    cover,
+    backCover: null,
+    characters: [], // AI books skip locked-cast in v1
+    plot: null,
+    pageCount: draft.pages.length,
+    pageLimit: setup.pageLimit,
+    themeColor: setup.themeColor ?? null,
+    sessionId: scope.sessionId,
+    userId: scope.userId ?? null,
+    kidId: scope.kidId ?? null,
+    coverThumbnail: null,
+    isPublic: false,
+    publishedAt: null,
+    pdfUrl: null,
+    printOrderEligible: false,
+    shareUrl: null,
+    authorship: bookAuthorshipToStored(bookAuthorship),
+    effortBadge: null,
+    sales: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  // Pick a default layout per page based on whether we have an image.
+  // text_image format: image_top_text_bottom; text-only: text_only; etc.
+  const defaultLayout: PageLayout =
+    setup.format === 'image' ? 'image_full_bleed'
+      : setup.format === 'text' ? 'text_only'
+        : 'image_top_text_bottom';
+
+  // Batch write: 1 book + N pages.
+  const batch = adminDb.batch();
+  batch.set(bookRef, stripUndefined(bookDoc));
+  draft.pages.forEach((p, i) => {
+    const pageRef = bookRef.collection(PAGES_SUBCOLLECTION).doc();
+    const pageDoc = {
+      id: pageRef.id,
+      pageNumber: i + 1,
+      layout: defaultLayout,
+      richText: null, // will be set when kid first opens editor (server can derive richText from plainText if needed)
+      plainText: p.plainText,
+      imageUrl: p.imageUrl,
+      imagePrompt: p.imagePrompt,
+      imageStyle: null,
+      voiceTranscriptRaw: null,
+      grammarSuggestions: [],
+      style: null,
+      authorship: authorshipToStored(pageAuthorships[i]!),
+      createdAt: now,
+      updatedAt: now,
+    };
+    batch.set(pageRef, stripUndefined(pageDoc));
+  });
+  await batch.commit();
+
+  const finalSnap = await bookRef.get();
+  return docToBook(finalSnap);
 }
 
 /** Delete a page and renumber remaining pages within a transaction. */
@@ -589,7 +956,9 @@ export async function deletePage(
     const removedPageNumber = targetData.pageNumber as number;
 
     const allSnap = await tx.get(pagesCol.orderBy('pageNumber', 'asc'));
+    const bookSnap = await tx.get(bookRef);
     const now = Timestamp.now();
+    const nowDate = now.toDate();
 
     tx.delete(pagesCol.doc(pageId));
 
@@ -602,8 +971,33 @@ export async function deletePage(
       }
     }
 
+    // BOOK-003 — re-aggregate the denormalized authorship summary so a
+    // deleted AI-generated page doesn't leave the badge math overstating
+    // AI contribution. Pre-fix, deletePage only adjusted pageCount and
+    // the next publish would award the wrong badge. publishBook now
+    // also recomputes defensively, but maintaining the summary here
+    // keeps consumers (live badge predictor, etc.) accurate between
+    // page operations and publish. Codex review comment 3313051439.
+    const remainingPages = allSnap.docs
+      .filter((d) => d.id !== pageId)
+      .map((d) => ({ authorship: revivePageAuthorship(d.data().authorship) }));
+    const priorInitialSource = (() => {
+      const a = bookSnap.exists ? bookSnap.data()?.authorship : null;
+      if (a && typeof a === 'object' && typeof (a as Record<string, unknown>).initialSource === 'string') {
+        const src = (a as Record<string, unknown>).initialSource;
+        if (src === 'ai_generated' || src === 'wizard_seeded') return src;
+      }
+      return 'wizard_blank' as const;
+    })();
+    const freshAuthorship = aggregateBookAuthorship({
+      pages: remainingPages,
+      initialSource: priorInitialSource,
+      now: nowDate,
+    });
+
     tx.update(bookRef, {
       pageCount: FieldValue.increment(-1),
+      authorship: bookAuthorshipToStored(freshAuthorship),
       updatedAt: now,
     });
   });
@@ -702,7 +1096,8 @@ function mintShareSlug(): string {
 
 /**
  * Move book to `published`. Validates pageCount >= 1, mints shareUrl, sets
- * publishedAt. PDF generation is the caller's responsibility (separate step).
+ * publishedAt, and awards the effort badge (BOOK-003) from the denormalized
+ * authorship summary. PDF generation is the caller's responsibility.
  */
 export async function publishBook(
   bookId: string,
@@ -720,17 +1115,180 @@ export async function publishBook(
 
   const shareUrl = book.shareUrl ?? `/view/book/${mintShareSlug()}`;
   const now = Timestamp.now();
+  const nowDate = now.toDate();
+
+  // BOOK-003 — Re-aggregate authorship from current pages BEFORE computing
+  // the badge. We don't trust the denormalized `book.authorship` here
+  // because `deletePage` (pre-fix) didn't maintain that summary, so a
+  // kid who deleted an AI-generated page could publish with a stale
+  // total that overstated AI contribution. Codex review comment 3313051439.
+  //
+  // This is one Firestore range read on a sub-50-page subcollection —
+  // cheap compared to PDF generation and worth it for badge correctness.
+  const pagesSnap = await ref
+    .collection(PAGES_SUBCOLLECTION)
+    .orderBy('pageNumber', 'asc')
+    .get();
+  const freshAuthorship = aggregateBookAuthorship({
+    pages: pagesSnap.docs.map((d) => ({
+      authorship: revivePageAuthorship(d.data().authorship),
+    })),
+    initialSource: book.authorship?.initialSource ?? 'wizard_blank',
+    now: nowDate,
+  });
+
+  const effortBadge = computeEffortBadge(freshAuthorship, nowDate);
+  const effortBadgeStored = {
+    key: effortBadge.key,
+    aiPercentage: effortBadge.aiPercentage,
+    awardedAt: Timestamp.fromDate(effortBadge.awardedAt),
+    breakdown: { ...effortBadge.breakdown },
+  };
 
   await ref.update({
     status: 'published' as BookStatus,
     isPublic: options.isPublic ?? false,
     publishedAt: now,
     shareUrl,
+    // Persist the recomputed summary alongside the badge so the
+    // denormalized field stops lying (downstream readers like
+    // BOOK-009's live badge predictor depend on it being correct).
+    authorship: bookAuthorshipToStored(freshAuthorship),
+    effortBadge: effortBadgeStored,
     updatedAt: now,
   });
 
   const snapshot = await ref.get();
   return docToBook(snapshot);
+}
+
+// ── Sales config (BOOK-004 Phase 1) ─────────────────────────────
+
+/**
+ * Update a book's sales config. Author-only. Book must be published
+ * before sales can be enabled.
+ *
+ * Phase 1 — this only sets `book.sales`. No purchases happen until
+ * BOOK-004 Phase 2 ships the Razorpay flow.
+ */
+export async function updateSalesConfig(
+  bookId: string,
+  input: SalesConfigPatchInput,
+  scope: OwnerScope,
+): Promise<Book> {
+  const { ref, book } = await loadOwnedBook(bookId, scope);
+  if (input.enabled && book.status !== 'published') {
+    throw new AppException(
+      'INVALID_STATE',
+      'Publish the book before enabling sales',
+      400,
+    );
+  }
+  if (input.enabled && (input.priceInr ?? null) === null) {
+    throw new AppException('INVALID_INPUT', 'priceInr required when enabling sales', 400);
+  }
+
+  const now = Timestamp.now();
+  const prior = book.sales;
+  const sales = {
+    enabled: input.enabled,
+    priceInr: input.enabled ? input.priceInr ?? null : prior?.priceInr ?? null,
+    listedAt: prior?.listedAt
+      ? Timestamp.fromDate(prior.listedAt)
+      : input.enabled
+        ? now
+        : null,
+  };
+
+  await ref.update({
+    sales,
+    updatedAt: now,
+  });
+
+  const snap = await ref.get();
+  return docToBook(snap);
+}
+
+export interface ListShopBooksFilters {
+  limit?: number;
+  cursor?: string;
+}
+
+export interface ShopBookItem {
+  id: string;
+  title: string;
+  author: string;
+  coverThumbnail: string | null;
+  priceInr: number;
+  effortBadge: Book['effortBadge'];
+  listedAt: Date;
+  shareUrl: string | null;
+}
+
+/**
+ * Browse books listed for sale (BOOK-004 Phase 1). Public — no auth.
+ * Returns published, public-readable, sales-enabled books ordered by
+ * `sales.listedAt desc`.
+ *
+ * Resilience: this hits a composite index defined in firestore.indexes.json
+ * (status + isPublic + sales.enabled + sales.listedAt). If that index isn't
+ * deployed yet (a known launch step), Firestore throws FAILED_PRECONDITION.
+ * Rather than 500 the whole shop page, we swallow that and return an empty
+ * shelf — the UI already handles the empty state with a friendly "be the
+ * first author" prompt. Same resilience pattern as getStudioLaunchStates /
+ * getCommunityStats. Always logs a warning so the missing index doesn't
+ * silently linger.
+ */
+export async function listShopBooks(filters: ListShopBooksFilters = {}): Promise<{
+  items: ShopBookItem[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}> {
+  const limit = Math.min(filters.limit ?? DEFAULT_LIST_LIMIT, MAX_LIST_LIMIT);
+  let query = adminDb
+    .collection(BOOKS_COLLECTION)
+    .where('status', '==', 'published')
+    .where('isPublic', '==', true)
+    .where('sales.enabled', '==', true)
+    .orderBy('sales.listedAt', 'desc')
+    .limit(limit + 1);
+
+  if (filters.cursor) {
+    const cursorDate = new Date(filters.cursor);
+    if (!Number.isNaN(cursorDate.getTime())) {
+      query = query.startAfter(Timestamp.fromDate(cursorDate));
+    }
+  }
+
+  let snap: FirebaseFirestore.QuerySnapshot;
+  try {
+    snap = await query.get();
+  } catch (err) {
+    // FAILED_PRECONDITION (code 9) = missing composite index. Any other
+    // error is also caught — the shop is a nice-to-have surface, not
+    // critical, and we'd rather show an empty shelf than 500. The warn
+    // line carries the underlying error so ops sees the missing-index
+    // link + can run `firebase deploy --only firestore:indexes`.
+    console.warn('[listShopBooks] query failed, serving empty shelf:', err);
+    return { items: [], nextCursor: null, hasMore: false };
+  }
+  const docs = snap.docs.slice(0, limit);
+  const items: ShopBookItem[] = docs.map((d) => {
+    const b = docToBook(d);
+    return {
+      id: b.id,
+      title: b.title,
+      author: b.author,
+      coverThumbnail: b.coverThumbnail,
+      priceInr: b.sales?.priceInr ?? 0,
+      effortBadge: b.effortBadge,
+      listedAt: b.sales?.listedAt ?? b.updatedAt,
+      shareUrl: b.shareUrl,
+    };
+  });
+  const hasMore = snap.docs.length > limit;
+  const nextCursor = hasMore ? items[items.length - 1]?.listedAt.toISOString() ?? null : null;
+  return { items, nextCursor, hasMore };
 }
 
 // ── Characters ──────────────────────────────────────────────────

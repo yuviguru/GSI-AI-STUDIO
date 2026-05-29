@@ -246,6 +246,37 @@ service cloud.firestore {
       }
     }
 
+    // ─── Platform Configuration (LAUNCH-001+) ──────────────────
+    // Singleton docs that hold runtime-tunable platform settings:
+    //   - config/studios — LIVE/BETA/COMING_SOON launch state per studio
+    //
+    // Public read because the values are display config (same risk profile
+    // as creditCosts — they tell the UI what to render). Writes are
+    // server-only via Admin SDK or by an admin in the Firebase console.
+    match /config/{configId} {
+      allow read: if true;
+      allow write: if false; // Server-side only via Admin SDK
+    }
+
+    // ─── Sales / Royalties / KIT (BOOK-004 Phase 1) ────────────
+    // bookSales/{saleId} — purchase records (Phase 2 will populate)
+    match /bookSales/{saleId} {
+      allow read, write: if false; // Server-side only via Admin SDK
+    }
+
+    // kids/{kidId}/royaltyLedger/{entryId} — append-only royalty ledger
+    match /kids/{kidId}/royaltyLedger/{entryId} {
+      allow read, write: if false; // Server-side only
+    }
+
+    // kitFund/global — singleton lifetime KIT contributions tracker.
+    // Public read so the shop page + /royalties page show the running
+    // total. Server-only write.
+    match /kitFund/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Default: deny all
     match /{document=**} {
       allow read, write: if false;

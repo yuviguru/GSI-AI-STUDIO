@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Download, Share2, Truck, X } from 'lucide-react';
 import type { Book } from '@gsi/types';
+import { computeEffortBadge, getEffortBadgeMeta } from '@/lib/books/effortBadge';
+import { SalesConfigForm } from './SalesConfigForm';
 
 interface PublishModalProps {
   book: Book;
@@ -19,11 +21,33 @@ export function PublishModal({ book, onPublish, onExportPdf, onClose }: PublishM
   const [shareUrl, setShareUrl] = useState<string | null>(book.shareUrl);
   const [makePublic, setMakePublic] = useState(false);
   const [copied, setCopied] = useState(false);
+  // BOOK-004 — keep a local mirror of the book so SalesConfigForm can
+  // optimistically update sales fields after save without a full reload.
+  // Sync from props whenever the parent refreshes (e.g. immediately after
+  // publish, the parent re-fetches and passes a `status: 'published'`
+  // book — without this useEffect, SalesConfigForm would keep seeing the
+  // original `status: 'draft'` and refuse to enable sales until the kid
+  // closed and reopened the modal). Codex review comment 3313051431.
+  const [bookState, setBookState] = useState<Book>(book);
+  useEffect(() => {
+    setBookState(book);
+  }, [book]);
 
   const isPublished = book.status === 'published';
   const hasCover = !!book.cover.title;
   const hasPages = book.pageCount >= 1;
   const canPublish = hasCover && hasPages;
+
+  // BOOK-003 — predict the effort badge the kid will earn if they publish
+  // right now. Computed live from the current authorship summary so the
+  // kid can decide to rewrite a few more pages first to bump the badge.
+  // For already-published books, show the persisted badge.
+  const predictedBadge = useMemo(() => {
+    if (isPublished && book.effortBadge) return book.effortBadge;
+    if (!book.authorship) return null;
+    return computeEffortBadge(book.authorship, new Date());
+  }, [isPublished, book.effortBadge, book.authorship]);
+  const predictedMeta = predictedBadge ? getEffortBadgeMeta(predictedBadge.key) : null;
 
   const handlePublish = async () => {
     setPublishing(true);
@@ -116,6 +140,57 @@ export function PublishModal({ book, onPublish, onExportPdf, onClose }: PublishM
           </ul>
         )}
 
+        {/* BOOK-003 — effort badge preview (or persisted badge if already published). */}
+        {predictedBadge && predictedMeta && (
+          <div
+            className={`mt-4 rounded-2xl border-2 p-3 ${predictedMeta.borderClass} ${predictedMeta.bgClass}`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                  {isPublished ? 'Earned badge' : "You'll earn this badge"}
+                </div>
+                <div className="mt-0.5 inline-flex items-center gap-2">
+                  <span className="text-2xl">{predictedMeta.emoji}</span>
+                  <span className={`font-display text-base font-extrabold ${predictedMeta.textClass}`}>
+                    {predictedMeta.displayName}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-[11px] text-gray-600">{predictedMeta.tagline}</p>
+              </div>
+              <div className="text-right font-mono">
+                <div className="text-2xl font-extrabold leading-none text-gray-900">
+                  {predictedBadge.aiPercentage}%
+                </div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-500">AI</div>
+              </div>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-gray-600">
+              <div className="rounded-lg bg-white/70 px-2 py-1.5">
+                Words:{' '}
+                <strong className="text-gray-900">{predictedBadge.breakdown.aiCharTotal}</strong>{' '}
+                AI ·{' '}
+                <strong className="text-gray-900">{predictedBadge.breakdown.kidCharTotal}</strong>{' '}
+                you
+              </div>
+              <div className="rounded-lg bg-white/70 px-2 py-1.5">
+                Images:{' '}
+                <strong className="text-gray-900">{predictedBadge.breakdown.aiImagePageCount}</strong>{' '}
+                AI ·{' '}
+                <strong className="text-gray-900">{predictedBadge.breakdown.kidImagePageCount}</strong>{' '}
+                you
+              </div>
+            </div>
+            {!isPublished &&
+              (predictedBadge.key === 'ai_generated' || predictedBadge.key === 'ai_sidekick') && (
+                <p className="mt-2 rounded-lg bg-white/80 px-3 py-2 text-[11px] text-gray-700">
+                  💡 Want a higher badge? Cancel, edit a few more pages in your own words,
+                  then come back here.
+                </p>
+              )}
+          </div>
+        )}
+
         {!isPublished && (
           <label className="mt-4 flex items-start gap-2 rounded-xl bg-gray-50 p-3 text-sm">
             <input
@@ -177,6 +252,14 @@ export function PublishModal({ book, onPublish, onExportPdf, onClose }: PublishM
             Order printed copy — coming soon
           </button>
         </div>
+
+        {/* BOOK-004 Phase 1 — sales setup. Author can configure sales now
+            so the book lists on the shop the moment Phase 2 (purchase flow)
+            ships. The Buy button stays disabled until then. */}
+        <SalesConfigForm
+          book={bookState}
+          onSaved={(updated) => setBookState(updated)}
+        />
       </motion.div>
     </div>
   );

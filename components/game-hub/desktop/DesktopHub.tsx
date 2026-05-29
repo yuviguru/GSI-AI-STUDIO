@@ -12,6 +12,9 @@ import { QuestsCard } from './QuestsCard';
 /**
  * Desktop game hub: full-viewport 3-column gaming UI.
  * Fits a 1080p screen without scrolling. Falls back gracefully on smaller laptops.
+ *
+ * COMMUNITY-001 surfaces (online + streak) live inside <TopHud /> rather than
+ * as separate elements — they reuse the existing center pills.
  */
 export function DesktopHub() {
   return (

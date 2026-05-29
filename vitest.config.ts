@@ -16,6 +16,11 @@ export default defineConfig({
       'e2e/**',
       'apps/*/node_modules/**',
       'packages/*/node_modules/**',
+      // Parallel agent worktrees are scratch copies of the repo; their
+      // spec files are stale snapshots that would otherwise fail with
+      // outdated mocks. Real source-of-truth tests live at the repo root
+      // (apps/, lib/, hooks/, components/, packages/).
+      '.claude/**',
     ],
     coverage: {
       provider: 'v8',

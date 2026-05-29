@@ -339,6 +339,39 @@ const plotSchema = z.object({
   ending: z.string().max(300).optional().default(''),
 });
 
+/** Sales config patch (BOOK-004 Phase 1). When enabled=true, priceInr
+ *  is required and must be in INR 10-999. Price is integer paisa-free
+ *  rupees for v1 — no fractions. */
+export const salesConfigPatchSchema = z
+  .object({
+    enabled: z.boolean(),
+    priceInr: z.number().int().min(10).max(999).nullable().optional(),
+  })
+  .refine(
+    (data) => !data.enabled || (typeof data.priceInr === 'number' && data.priceInr >= 10),
+    { message: 'priceInr is required when enabled is true', path: ['priceInr'] },
+  );
+export type SalesConfigPatchInput = z.infer<typeof salesConfigPatchSchema>;
+
+/** Input for `POST /api/ai/book-generate` (BOOK-002).
+ *  Single-form full-book draft — topic + age + style + page count.
+ *  Server invokes Claude once for text + dispatches image generation
+ *  per page in parallel, then atomically writes Book + Pages. */
+export const aiBookGenerateSchema = z.object({
+  topic: z.string().min(5).max(500),
+  age: z.number().int().min(6).max(17),
+  style: z.enum(['funny', 'brave', 'silly', 'scary', 'sweet', 'mysterious']),
+  type: bookTypeSchema,
+  format: bookFormatSchema,
+  size: bookSizeSchema,
+  pageCount: z.number().int().min(3).max(10),
+  /** Optional kid-provided title; otherwise AI invents one. */
+  title: z.string().min(1).max(100).optional(),
+  /** Optional author display name (defaults to "Anonymous Author"). */
+  author: z.string().min(1).max(60).optional(),
+});
+export type AiBookGenerateInput = z.infer<typeof aiBookGenerateSchema>;
+
 /** A pre-baked character coming from the wizard — anchor image already
  *  generated client-side and ready to persist on book creation. */
 const initialCharacterSchema = z.object({

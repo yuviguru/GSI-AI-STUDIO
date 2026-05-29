@@ -103,6 +103,42 @@ Error responses:
 
 ---
 
+## Platform Configuration Endpoints
+
+### GET /api/config/studios
+
+Returns the resolved studio launch-state map (in-code defaults merged with any
+Firestore override from `config/studios`). Drives the LIVE / BETA / COMING_SOON
+pill on studio cards across the app.
+
+Public read — no auth required. Cached `public, max-age=60, stale-while-revalidate=300` so a busy hub doesn't re-hit on every mount; a Firebase-console flag flip propagates within ~60s.
+
+**Request:** no body, no headers required.
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "studios": {
+      "book":  { "launchState": "live",  "label": "Book Studio" },
+      "story": { "launchState": "beta",  "label": "Story Studio" },
+      "music": { "launchState": "beta",  "label": "Music Lab" },
+      "quiz":  { "launchState": "beta",  "label": "Quiz Maker" },
+      "comic": { "launchState": "beta",  "label": "Comic Studio" },
+      "game":  { "launchState": "beta",  "label": "Game Studio" }
+    }
+  },
+  "error": null
+}
+```
+
+`launchState` is one of `'live' | 'beta' | 'coming-soon'`. Consumers should treat unknown studio ids and unknown launchState values as `'beta'` to be safe.
+
+If the Firestore doc is missing or unreachable, the endpoint still returns the in-code defaults (book=live, others=beta) — never errors. This keeps the hub renderable even during a Firestore outage.
+
+---
+
 ## AI Generation Endpoints
 
 ### POST /api/ai/story

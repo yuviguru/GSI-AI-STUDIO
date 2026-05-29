@@ -2,21 +2,29 @@
 
 import { Settings } from 'lucide-react';
 import { useAiPoints } from '@/contexts/AiPointsContext';
+import { useKidProfile } from '@/hooks/useKidProfile';
+import { useCommunityStats } from '@/hooks/useCommunityStats';
 import { AuthChip } from '@/components/navigation/AuthChip';
 import { CreditsBadge } from '@/components/billing/CreditsBadge';
 
-interface TopHudProps {
-  onlineCount?: number;
-  streakDays?: number;
-}
-
 /**
  * Game Hub desktop header — brand, live-status pills, points, auth chip.
- * Auth/profile presentation is delegated to the shared AuthChip so it
- * stays consistent with GameNavBar on inner pages.
+ *
+ * The two center pills (online + streak) are now data-backed via
+ * COMMUNITY-001 + the existing kid streak. Hub-home is always global
+ * scope, so they read /api/community/stats?scope=global and the kid's
+ * top-level streak.current. Inner-page scoped variants live in
+ * GameNavBar.
+ *
+ * Auth/profile presentation is delegated to AuthChip so it stays
+ * consistent with GameNavBar.
  */
-export function TopHud({ onlineCount = 12, streakDays = 7 }: TopHudProps) {
+export function TopHud() {
   const { totalPoints, isLoaded } = useAiPoints();
+  const { activeKid } = useKidProfile();
+  const stats = useCommunityStats('global');
+  const onlineCount = stats?.onlineNow ?? null;
+  const streakDays = activeKid?.streak?.current ?? 0;
 
   return (
     <header className="game-glass relative z-20 shrink-0 border-b border-white/40">
@@ -31,21 +39,29 @@ export function TopHud({ onlineCount = 12, streakDays = 7 }: TopHudProps) {
           </div>
         </div>
 
-        {/* Center status pills */}
+        {/* Center status pills — live data. Online pill shows "—" while
+            SWR settles so the layout doesn't jump on initial paint. Streak
+            shows 0 days for first-time players (still scannable). */}
         <div className="hidden items-center gap-3 lg:flex">
-          <div className="flex items-center gap-1.5 rounded-full bg-brand-secondary/10 px-2.5 py-1">
+          <div
+            className="flex items-center gap-1.5 rounded-full bg-brand-secondary/10 px-2.5 py-1"
+            title="Creators online on GSI right now"
+          >
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-secondary opacity-75"></span>
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-secondary"></span>
             </span>
             <span className="text-[11px] font-semibold text-brand-secondary">
-              {onlineCount} online
+              {onlineCount === null ? '—' : onlineCount.toLocaleString('en-IN')} online
             </span>
           </div>
-          <div className="flex items-center gap-1.5 rounded-full bg-brand-accent/10 px-2.5 py-1">
+          <div
+            className="flex items-center gap-1.5 rounded-full bg-brand-accent/10 px-2.5 py-1"
+            title="Your creation streak (days in a row)"
+          >
             <span className="text-xs">🔥</span>
             <span className="font-mono text-[11px] font-bold text-brand-accent">
-              {streakDays} days
+              {streakDays} {streakDays === 1 ? 'day' : 'days'}
             </span>
           </div>
         </div>

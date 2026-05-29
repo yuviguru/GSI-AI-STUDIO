@@ -2,14 +2,25 @@
 
 import Link from 'next/link';
 import { LayoutGrid, BookOpen, BookMarked, Music, Gamepad2, Palette, HelpCircle } from 'lucide-react';
+import { StudioLaunchPill } from '@/components/studios/shared/StudioLaunchPill';
+import type { StudioId } from '@gsi/types';
 
-const CATEGORIES = [
-  { label: 'Books',   icon: BookMarked, bg: 'bg-indigo-100', text: 'text-indigo-700', href: '/create/book',  isNew: true },
-  { label: 'Stories', icon: BookOpen, bg: 'bg-violet-100', text: 'text-violet-700', href: '/create/story' },
-  { label: 'Music',   icon: Music,    bg: 'bg-orange-100', text: 'text-orange-700', href: '/create/music' },
-  { label: 'Games',   icon: Gamepad2, bg: 'bg-cyan-100',   text: 'text-cyan-700',   href: '/create/game'  },
-  { label: 'Comics',  icon: Palette,  bg: 'bg-amber-100',  text: 'text-amber-700',  href: '/create/comic' },
-  { label: 'Quiz',    icon: HelpCircle, bg: 'bg-emerald-100', text: 'text-emerald-700', href: '/create/quiz' },
+interface Category {
+  studioId: StudioId;
+  label: string;
+  icon: typeof BookMarked;
+  bg: string;
+  text: string;
+  href: string;
+}
+
+const CATEGORIES: Category[] = [
+  { studioId: 'book',  label: 'Books',   icon: BookMarked, bg: 'bg-indigo-100',  text: 'text-indigo-700',  href: '/create/book'  },
+  { studioId: 'story', label: 'Stories', icon: BookOpen,   bg: 'bg-violet-100',  text: 'text-violet-700',  href: '/create/story' },
+  { studioId: 'music', label: 'Music',   icon: Music,      bg: 'bg-orange-100',  text: 'text-orange-700',  href: '/create/music' },
+  { studioId: 'game',  label: 'Games',   icon: Gamepad2,   bg: 'bg-cyan-100',    text: 'text-cyan-700',    href: '/create/game'  },
+  { studioId: 'comic', label: 'Comics',  icon: Palette,    bg: 'bg-amber-100',   text: 'text-amber-700',   href: '/create/comic' },
+  { studioId: 'quiz',  label: 'Quiz',    icon: HelpCircle, bg: 'bg-emerald-100', text: 'text-emerald-700', href: '/create/quiz'  },
 ];
 
 export function StudioSelectorPanel() {
@@ -26,22 +37,20 @@ export function StudioSelectorPanel() {
         </div>
       </div>
 
-      {/* Category pills — 8px radius, 24px gap */}
+      {/* Category pills — 8px radius, 24px gap. Launch-state pill (LIVE /
+          BETA / COMING SOON) is rendered via <StudioLaunchPill> from
+          LAUNCH-001 — replaces the legacy hardcoded `isNew` flag. */}
       <div className="mt-4 flex flex-wrap gap-6">
         {CATEGORIES.map((c) => {
           const Icon = c.icon;
           return (
-            <Link key={c.label} href={c.href}>
+            <Link key={c.studioId} href={c.href}>
               <button
                 className={`relative flex shrink-0 items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors ${c.bg} ${c.text} hover:opacity-80`}
               >
                 <Icon className="h-3.5 w-3.5" />
                 {c.label}
-                {c.isNew && (
-                  <span className="ml-1 rounded-full bg-indigo-600 px-1.5 py-0.5 text-[8px] font-bold uppercase text-white">
-                    New
-                  </span>
-                )}
+                <StudioLaunchPill studioId={c.studioId} size="xs" className="ml-1" />
               </button>
             </Link>
           );

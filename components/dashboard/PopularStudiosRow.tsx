@@ -2,9 +2,21 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { StudioLaunchPill } from '@/components/studios/shared/StudioLaunchPill';
+import type { StudioId } from '@gsi/types';
 
-const STUDIOS = [
+interface PopularStudio {
+  studioId: StudioId;
+  href: string;
+  emoji: string;
+  title: string;
+  bg: string;
+  rating: string;
+}
+
+const STUDIOS: PopularStudio[] = [
   {
+    studioId: 'story',
     href: '/create/story',
     emoji: '📖',
     title: 'Language Modeling',
@@ -12,6 +24,7 @@ const STUDIOS = [
     rating: '4.8',
   },
   {
+    studioId: 'quiz',
     href: '/create/quiz',
     emoji: '💡',
     title: 'Computer Science',
@@ -19,6 +32,7 @@ const STUDIOS = [
     rating: '4.8',
   },
   {
+    studioId: 'music',
     href: '/create/music',
     emoji: '🎵',
     title: 'AI Fundamentals',
@@ -39,15 +53,20 @@ export function PopularStudiosRow() {
 
       <div className="mt-3 grid grid-cols-3 gap-2.5">
         {STUDIOS.map((s) => (
-          <Link key={s.href} href={s.href} className="group block">
+          <Link key={s.studioId} href={s.href} className="group block">
             <motion.div
               className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-card"
               whileHover={{ y: -4, boxShadow: '0 8px 24px -4px rgba(0,0,0,0.12)' }}
               transition={{ type: 'spring', stiffness: 400, damping: 25 }}
             >
-              {/* Illustration */}
-              <div className={`flex h-28 items-center justify-center bg-gradient-to-br ${s.bg}`}>
+              {/* Illustration — launch-state pill (LAUNCH-001) at top-right
+                  so kids and parents see the BETA flag without obscuring
+                  the emoji. */}
+              <div className={`relative flex h-28 items-center justify-center bg-gradient-to-br ${s.bg}`}>
                 <span className="text-5xl">{s.emoji}</span>
+                <span className="absolute right-2 top-2">
+                  <StudioLaunchPill studioId={s.studioId} size="xs" />
+                </span>
               </div>
 
               <div className="px-2.5 pb-3 pt-2">

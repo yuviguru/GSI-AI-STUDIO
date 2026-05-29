@@ -1367,6 +1367,41 @@ Cached per-school aggregate metrics, refreshed daily by a scheduled Netlify func
 | weeklyTrend | array\<map\> | yes | `[{week: 'YYYY-Www', creations, students}]` — last 8 weeks |
 | updatedAt | timestamp | yes | Last refresh timestamp |
 
+## Platform Configuration
+
+Top-level `config` collection — a small set of singleton documents that hold
+runtime-tunable platform settings. Designed so ops can flip values from the
+Firebase console without a code deploy; in-code defaults provide a safe
+fallback if a doc is missing.
+
+### config/studios (LAUNCH-001)
+
+Single document at `config/studios`. Drives the LIVE / BETA / COMING_SOON pill
+shown on studio cards across the app (mobile hub portal cards, dashboard studio
+selector, dashboard featured cards, etc.).
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| studios | map<StudioId, StudioConfig> | yes | Per-studio launch state |
+| updatedAt | timestamp | yes | Last edit timestamp (auditing) |
+| updatedBy | string | no | Email of admin who last edited (auditing) |
+
+**StudioConfig**:
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| launchState | string | yes | One of `'live' \| 'beta' \| 'coming-soon'` |
+| label | string | no | Display label override; defaults to in-code constant |
+| updatedAt | timestamp | no | Per-studio last-edit timestamp |
+
+**StudioId** (enum, locked at LAUNCH-001 ship): `'book' \| 'story' \| 'music' \| 'quiz' \| 'comic' \| 'game'`. Play-group modes (Kid CEO, MindX, Beat the AI) and Learn-group modes (AI Lab, Explore) are not part of this config; they keep their own per-mode `badge` field in `components/game-hub/shared/GameModes.ts`.
+
+**Default state at LAUNCH-001 ship**: `book` = `'live'`, all others = `'beta'`. Defined in both `lib/config/studioLaunchState.ts` (server) and `lib/config/studioLaunchStateDefaults.ts` (client-safe, no firebase-admin import). The two files must stay in sync — same dual-file pattern as `creditCosts.ts` / `creditCostsDefaults.ts`.
+
+**No composite index needed** — single-document lookup via `.doc('studios').get()`.
+
+**Cache contract**: `GET /api/config/studios` serves with `Cache-Control: public, max-age=60, stale-while-revalidate=300`. A console flag flip propagates within ~60s of the next page load.
+
 ## Security Rules (Firestore)
 
 ```
@@ -1375,6 +1410,7 @@ Phase 1:
 - sessions: read/write=via server only
 - Kid CEO (ceoBusiness, ceoEvents, ceoProfiles): server-write only; ceoProfiles public read when isPublic==true
 - Bot (botSessions, botLinkCodes, homeworkSessions): server-write only
+- config/{configId}: read=public, write=server only (LAUNCH-001 — display config, same risk profile as creditCosts)
 
 Phase 2+:
 - users/{userId}: read/write=owner only (request.auth.uid == userId)

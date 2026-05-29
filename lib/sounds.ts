@@ -11,7 +11,8 @@ export type SoundName =
   | 'celebrate'
   | 'hubOpen'
   | 'modeSelect'
-  | 'levelUp';
+  | 'levelUp'
+  | 'pageFlip';
 
 const MUTE_KEY = 'gsi-sound-muted';
 
@@ -258,6 +259,35 @@ function playLevelUp(ac: AudioContext) {
   });
 }
 
+/** BOOK-005 — soft paper-rustle for the book viewer page flip. Short noise
+ *  burst with a fast attack and decay so it feels like a single page turn,
+ *  not a riffling stack. Volume sits well below the celebration sounds. */
+function playPageFlip(ac: AudioContext) {
+  const now = ac.currentTime;
+  const dur = 0.18;
+  // Generate a 0.18s buffer of white noise
+  const buf = ac.createBuffer(1, Math.floor(ac.sampleRate * dur), ac.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) {
+    // Decay envelope baked into the noise so we don't need a second gain ramp
+    const t = i / data.length;
+    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 2);
+  }
+  const src = ac.createBufferSource();
+  src.buffer = buf;
+  // Highpass to make it sound like paper, not static
+  const filter = ac.createBiquadFilter();
+  filter.type = 'highpass';
+  filter.frequency.value = 1200;
+  const gain = ac.createGain();
+  gain.gain.value = 0.18;
+  src.connect(filter);
+  filter.connect(gain);
+  gain.connect(ac.destination);
+  src.start(now);
+  src.stop(now + dur);
+}
+
 const SOUND_MAP: Record<SoundName, (ac: AudioContext) => void> = {
   pointsEarned: playPointsEarned,
   badgeUnlocked: playBadgeUnlocked,
@@ -267,6 +297,7 @@ const SOUND_MAP: Record<SoundName, (ac: AudioContext) => void> = {
   hubOpen: playHubOpen,
   modeSelect: playModeSelect,
   levelUp: playLevelUp,
+  pageFlip: playPageFlip,
 };
 
 export function playSound(name: SoundName): void {
