@@ -21,6 +21,28 @@ import {
 } from '@gsi/ai/prompts/bookGeneratePrompt';
 import { sceneTypeToLayout } from '@/lib/books/sceneLayout';
 
+/** Claim Netlify's max synchronous function budget (26s on paid plans).
+ *  The image phase below is independently capped so we return within this
+ *  window even when an image provider is slow or unhealthy. */
+export const maxDuration = 26;
+
+/** Hard ceiling on the per-page image phase. Whatever hasn't rendered by
+ *  this point is persisted as null and regenerated later in the editor via
+ *  /api/ai/page-image — far better than letting one slow/paywalled provider
+ *  (e.g. Pollinations 402/502 retries) drag the whole request past the
+ *  function timeout and return an HTML 502 the client can't parse. */
+const IMAGE_PHASE_BUDGET_MS = 18_000;
+
+/** Resolve to the image URL, or null if it errors OR misses the budget.
+ *  The underlying request may keep running after we resolve — that's fine,
+ *  we just stop waiting on it so the function returns in time. */
+function imageWithBudget(p: Promise<string>, ms: number): Promise<string | null> {
+  return Promise.race([
+    p.then((url) => (typeof url === 'string' ? url : null)).catch(() => null),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
+  ]);
+}
+
 /** Shape Claude/Groq must return. Validated defensively after the router
  *  parses the JSON — provider drift on optional fields shouldn't 500. The
  *  characterGuide is the "book bible": a single locked look injected into
@@ -223,30 +245,32 @@ export async function POST(request: NextRequest) {
       })),
     };
 
-    // Per-page image generation in parallel. Already billed upfront per
-    // the preflight above — kid can regenerate failed pages later via
-    // /api/ai/page-image (which has its own debit) without re-paying for
-    // the LLM draft.
+    // Per-page image generation in parallel, capped by IMAGE_PHASE_BUDGET_MS.
+    // Already billed upfront per the preflight above — any page that errors
+    // OR misses the budget is persisted with imageUrl:null and the kid
+    // regenerates it in the editor via /api/ai/page-image (which has its own
+    // debit) without re-paying for the LLM draft. Bounding the phase is what
+    // keeps the function inside the Netlify timeout when a provider stalls.
     const { imageFunction } = getImageProvider();
     const style: ImageStyle = 'cartoon';
     const dims = dimsForBookAndLayout(input.size); // book-size aware; layout-agnostic for the bulk pass
-    const imageResults = await Promise.allSettled(
+    const imageUrls = await Promise.all(
       safeDraft.pages.map((p) =>
-        imageFunction({
-          prompt: p.imagePrompt,
-          style,
-          width: dims.width,
-          height: dims.height,
-        }),
+        imageWithBudget(
+          imageFunction({
+            prompt: p.imagePrompt,
+            style,
+            width: dims.width,
+            height: dims.height,
+          }),
+          IMAGE_PHASE_BUDGET_MS,
+        ),
       ),
     );
 
     let successfulImages = 0;
     const pagesWithImages = safeDraft.pages.map((p, i) => {
-      const result = imageResults[i];
-      const url = result && result.status === 'fulfilled' && typeof result.value === 'string'
-        ? result.value
-        : null;
+      const url = imageUrls[i] ?? null;
       if (url) successfulImages++;
       return { ...p, imageUrl: url };
     });

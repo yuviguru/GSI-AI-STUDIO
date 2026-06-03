@@ -309,7 +309,8 @@ app/(public)/ceo/
 - **Rich-text editor**: TipTap (ProseMirror-based, headless) with toolbar for B/I/U, H1/H2, bullet/numbered lists, alignment, font + size + color overrides
 - **Voice input**: existing `hooks/useVoiceInput.ts` (Web Speech API, `lang=en-IN`)
 - **Grammar AI**: **Groq** via `lib/ai/groqClient.ts` (`llama-3.3-70b-versatile`) with a strict system prompt — flag mistakes only, never rewrite for style, preserve the kid's voice
-- **Image gen**: existing `lib/ai/imageProvider.ts` cascade (Pixazo → Replicate → Pollinations)
+- **Image gen**: `lib/ai/imageProvider.ts` → delegates to the shared `imageRouter` (Pixazo → Replicate → Pollinations, health-aware fallthrough — same router as the LLM path), then Pexels/Unsplash stock → SVG in `hybrid` mode. A missing Pixazo key cascades to the next provider instead of jumping straight to Pollinations. Provider order is overridable via `IMAGE_PROVIDERS` env. **Ops note:** if no AI provider key is configured the chain falls to Pollinations, which is now paywalled (HTTP 402) — set `PIXAZO_API_KEY` (and/or `REPLICATE_API_TOKEN`) per environment, including preview deploys.
+- **Long-image safety**: `POST /api/ai/book-generate` caps its per-page image phase (`IMAGE_PHASE_BUDGET_MS`) and sets `maxDuration = 26` so a slow/unhealthy provider can't drag the request past the Netlify function timeout (which returns an unparseable HTML 502). Pages that miss the budget persist `imageUrl: null` and are regenerated in the editor via `/api/ai/page-image`.
 - **PDF export**: extends `lib/export/pdfGenerator.ts`; renders TipTap JSON + images at the book's locked dimensions
 
 **Storage**: separate `books` collection + `pages` subcollection (NOT the `creations` collection). Reason: books have multi-document structure, locked layout fields, and a different lifecycle (`draft` → `complete` → `published`). See `data-model.md#books`.

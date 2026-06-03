@@ -49,6 +49,20 @@ export function useBookGenerate() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(input),
       });
+
+      // A gateway timeout (504) or any other non-JSON response (e.g. an
+      // edge/proxy HTML error page) would otherwise blow up on res.json()
+      // with a cryptic "Unexpected token '<'" — never show that to a kid.
+      const contentType = res.headers.get('content-type') ?? '';
+      if (!contentType.includes('application/json')) {
+        if (res.status === 504 || res.status === 502 || res.status === 408) {
+          throw new Error(
+            'Your book is taking longer than usual to create. Try again, or pick fewer pages.',
+          );
+        }
+        throw new Error('Could not reach the book workshop. Please try again in a moment.');
+      }
+
       const json = await res.json();
       if (!json.success) {
         if (handleBillingApiError(res.status, json, showBillingNotification)) return null;
