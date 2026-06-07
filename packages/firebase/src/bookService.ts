@@ -15,6 +15,10 @@ import type {
   BookBackCover,
   BookCharacter,
   BookCover,
+  BookGeneration,
+  BookGenerationStatus,
+  BookGenerationStep,
+  BookGenerationSummary,
   BookInitialSource,
   BookListItem,
   BookPage,
@@ -262,6 +266,7 @@ function docToBook(doc: FirebaseFirestore.DocumentSnapshot): Book {
     pageCount: data.pageCount ?? 0,
     pageLimit: data.pageLimit,
     themeColor: data.themeColor ?? null,
+    imageSeed: data.imageSeed ?? null,
     sessionId: data.sessionId,
     userId: data.userId ?? null,
     kidId: data.kidId ?? null,
@@ -274,6 +279,7 @@ function docToBook(doc: FirebaseFirestore.DocumentSnapshot): Book {
     authorship: reviveBookAuthorship(data.authorship),
     effortBadge: reviveEffortBadge(data.effortBadge),
     sales: reviveSales(data.sales),
+    generation: reviveGeneration(data.generation),
     createdAt: data.createdAt.toDate(),
     updatedAt: data.updatedAt.toDate(),
   };
@@ -316,7 +322,38 @@ function toListItem(book: Book): BookListItem {
     coverThumbnail: book.coverThumbnail,
     effortBadge: book.effortBadge,
     sales: book.sales,
+    generation: book.generation
+      ? {
+          status: book.generation.status,
+          step: book.generation.step,
+          pagesTotal: book.generation.pagesTotal,
+          pagesRendered: book.generation.pagesRendered,
+        }
+      : null,
     updatedAt: book.updatedAt,
+  };
+}
+
+/** Revive the `generation` sub-doc (BOOK-008). Returns null for non-AI books. */
+function reviveGeneration(data: unknown): BookGeneration | null {
+  if (!data || typeof data !== 'object') return null;
+  const g = data as Record<string, unknown>;
+  if (typeof g.status !== 'string') return null;
+  const toDate = (v: unknown): Date | null =>
+    v && typeof v === 'object' && typeof (v as { toDate?: unknown }).toDate === 'function'
+      ? (v as { toDate: () => Date }).toDate()
+      : null;
+  return {
+    status: g.status as BookGenerationStatus,
+    step: (typeof g.step === 'string' ? g.step : 'queued') as BookGenerationStep,
+    pagesTotal: typeof g.pagesTotal === 'number' ? g.pagesTotal : 0,
+    pagesRendered: typeof g.pagesRendered === 'number' ? g.pagesRendered : 0,
+    coverRendered: !!g.coverRendered,
+    anchorRendered: !!g.anchorRendered,
+    attempts: typeof g.attempts === 'number' ? g.attempts : 0,
+    error: typeof g.error === 'string' ? g.error : null,
+    startedAt: toDate(g.startedAt) ?? new Date(0),
+    finishedAt: toDate(g.finishedAt),
   };
 }
 
@@ -795,6 +832,12 @@ export interface CreateGeneratedBookInput {
   draft: {
     title: string;
     coverPrompt: string;
+    /** Resolved cover image URL — null if cover generation failed or wasn't
+     *  attempted. The AI flow now drafts the cover too (BOOK-002). */
+    coverImageUrl?: string | null;
+    /** Image seed shared by the cover + every page image, persisted on the
+     *  book so later per-page regeneration can stay on-model. */
+    imageSeed?: number | null;
     pages: Array<{
       plainText: string;
       imagePrompt: string;
@@ -810,6 +853,9 @@ export interface CreateGeneratedBookInput {
       name: string;
       lookDescription: string;
       anchorPrompt: string;
+      /** Clean hero portrait the pages were reference-edited against (BOOK
+       *  consistency). Becomes the cast member's anchor image. */
+      anchorImageUrl?: string | null;
     } | null;
   };
 }
@@ -868,7 +914,7 @@ export async function createGeneratedBook(
     subtitle: '',
     authorName: setup.author,
     backgroundColor: setup.themeColor ?? '#5B5FFF',
-    imageUrl: null, // cover image left for the kid to generate via existing tool
+    imageUrl: draft.coverImageUrl ?? null, // AI flow drafts the cover too (BOOK-002)
     imagePrompt: draft.coverPrompt,
     font: setup.typography.titleFont,
   };
@@ -901,7 +947,7 @@ export async function createGeneratedBook(
             id: nanoid(10),
             name: draft.character.name,
             lookDescription: draft.character.lookDescription,
-            anchorImageUrl: null,
+            anchorImageUrl: draft.character.anchorImageUrl ?? null,
             anchorPrompt: draft.character.anchorPrompt,
             createdAt: new Date(),
           }),
@@ -911,6 +957,7 @@ export async function createGeneratedBook(
     pageCount: draft.pages.length,
     pageLimit: setup.pageLimit,
     themeColor: setup.themeColor ?? null,
+    imageSeed: draft.imageSeed ?? null,
     sessionId: scope.sessionId,
     userId: scope.userId ?? null,
     kidId: scope.kidId ?? null,
@@ -976,6 +1023,314 @@ export async function createGeneratedBook(
 
   const finalSnap = await bookRef.get();
   return docToBook(finalSnap);
+}
+
+// ── BOOK-008 async generation: shell + incremental fill ──────────────
+//
+// The home tile must appear the instant the kid clicks Generate, so the route
+// writes a `pending` shell (createPendingGeneratedBook) and the background job
+// (lib/books/generateBookJob) fills the draft + streams images in, flipping
+// `generation.status` to complete/partial/failed. Books stay server-write-only
+// (Admin SDK); clients read progress through GET /api/books.
+
+function baseGenerationDoc(pagesTotal: number, now: Timestamp): Record<string, unknown> {
+  return {
+    status: 'pending',
+    step: 'queued',
+    pagesTotal,
+    pagesRendered: 0,
+    coverRendered: false,
+    anchorRendered: false,
+    attempts: 0,
+    error: null,
+    startedAt: now,
+    finishedAt: null,
+  };
+}
+
+/** Create an EMPTY book shell so the progress tile renders immediately. The
+ *  background job fills it via writeGeneratedBookContent + setPageImage. */
+export async function createPendingGeneratedBook(
+  setup: Omit<BookCreateInput, 'characters' | 'plot'>,
+  pagesTotal: number,
+  scope: OwnerScope,
+): Promise<{ id: string }> {
+  validateCreateInput({ ...setup } as BookCreateInput);
+  const dimensions = BOOK_SIZES[setup.size];
+  const bookRef = adminDb.collection(BOOKS_COLLECTION).doc();
+  const now = Timestamp.now();
+  const cover: BookCover = {
+    title: setup.title,
+    subtitle: '',
+    authorName: setup.author,
+    backgroundColor: setup.themeColor ?? '#5B5FFF',
+    imageUrl: null,
+    imagePrompt: null,
+    font: setup.typography.titleFont,
+  };
+  const bookDoc = {
+    id: bookRef.id,
+    title: setup.title,
+    author: setup.author,
+    status: 'draft' as BookStatus,
+    type: setup.type,
+    bucket: setup.bucket,
+    format: setup.format,
+    size: setup.size,
+    dimensions: {
+      widthMm: dimensions.widthMm,
+      heightMm: dimensions.heightMm,
+      widthPx: dimensions.widthPx,
+      heightPx: dimensions.heightPx,
+    },
+    typography: setup.typography,
+    cover,
+    backCover: null,
+    characters: [],
+    plot: null,
+    pageCount: 0,
+    pageLimit: setup.pageLimit,
+    themeColor: setup.themeColor ?? null,
+    imageSeed: null,
+    sessionId: scope.sessionId,
+    userId: scope.userId ?? null,
+    kidId: scope.kidId ?? null,
+    coverThumbnail: null,
+    isPublic: false,
+    publishedAt: null,
+    pdfUrl: null,
+    printOrderEligible: false,
+    shareUrl: null,
+    authorship: null,
+    effortBadge: null,
+    sales: null,
+    generation: baseGenerationDoc(pagesTotal, now),
+    createdAt: now,
+    updatedAt: now,
+  };
+  await bookRef.set(stripUndefined(bookDoc));
+  return { id: bookRef.id };
+}
+
+/** The AI draft (text + prompts) used to fill a pending shell. */
+export interface GeneratedBookContent {
+  title: string;
+  coverPrompt: string;
+  imageSeed: number;
+  character: {
+    name: string;
+    lookDescription: string;
+    anchorPrompt: string;
+    anchorImageUrl?: string | null;
+  } | null;
+  pages: Array<{ plainText: string; imagePrompt: string; layout?: PageLayout }>;
+}
+
+/** Fill the pending shell with the AI draft: N pages (text + prompts, images
+ *  still null), cover prompt, locked character, pinned seed. Flips generation →
+ *  step:'anchor', status:'generating'. Returns ordered page ids so the job can
+ *  attach images via setPageImage. */
+export async function writeGeneratedBookContent(
+  bookId: string,
+  setup: Omit<BookCreateInput, 'characters' | 'plot'>,
+  draft: GeneratedBookContent,
+  scope: OwnerScope,
+): Promise<{ pageIds: string[] }> {
+  const bookRef = adminDb.collection(BOOKS_COLLECTION).doc(bookId);
+  const snap = await bookRef.get();
+  if (!snap.exists) throw new AppException('NOT_FOUND', 'Book not found', 404);
+  if (snap.data()?.sessionId !== scope.sessionId) {
+    throw new AppException('FORBIDDEN', 'Not your book', 403);
+  }
+  const now = Timestamp.now();
+  const nowDate = now.toDate();
+
+  const pageAuthorships: PageAuthorship[] = draft.pages.map((p) => ({
+    source: 'ai_generated' as const,
+    originalAiText: p.plainText,
+    aiCharCount: p.plainText.length,
+    kidCharCount: 0,
+    imageSource: 'none' as const, // images attach later via setPageImage
+    lastEditedAt: nowDate,
+  }));
+  const bookAuthorship = aggregateBookAuthorship({
+    pages: pageAuthorships.map((a) => ({ authorship: a })),
+    initialSource: 'ai_generated' as const,
+    now: nowDate,
+  });
+
+  const defaultLayout: PageLayout =
+    setup.format === 'image' ? 'image_full_bleed'
+      : setup.format === 'text' ? 'text_only'
+        : 'image_top_text_bottom';
+  const layoutForPage = (wanted: PageLayout | undefined): PageLayout =>
+    wanted && isLayoutAllowedForBucket(wanted, setup.bucket) ? wanted : defaultLayout;
+
+  const batch = adminDb.batch();
+  const pageIds: string[] = [];
+  draft.pages.forEach((p, i) => {
+    const pageRef = bookRef.collection(PAGES_SUBCOLLECTION).doc();
+    pageIds.push(pageRef.id);
+    batch.set(
+      pageRef,
+      stripUndefined({
+        id: pageRef.id,
+        pageNumber: i + 1,
+        layout: layoutForPage(p.layout),
+        richText: null,
+        plainText: p.plainText,
+        imageUrl: null,
+        imagePrompt: p.imagePrompt,
+        imageStyle: null,
+        voiceTranscriptRaw: null,
+        grammarSuggestions: [],
+        style: null,
+        authorship: authorshipToStored(pageAuthorships[i]!),
+        createdAt: now,
+        updatedAt: now,
+      }),
+    );
+  });
+
+  const characters = draft.character
+    ? [
+        charToStored({
+          id: nanoid(10),
+          name: draft.character.name,
+          lookDescription: draft.character.lookDescription,
+          anchorImageUrl: draft.character.anchorImageUrl ?? null,
+          anchorPrompt: draft.character.anchorPrompt,
+          createdAt: new Date(),
+        }),
+      ]
+    : [];
+
+  batch.set(
+    bookRef,
+    stripUndefined({
+      title: draft.title,
+      cover: { title: draft.title, imagePrompt: draft.coverPrompt },
+      characters,
+      imageSeed: draft.imageSeed,
+      pageCount: draft.pages.length,
+      authorship: bookAuthorshipToStored(bookAuthorship),
+      generation: { status: 'generating', step: 'anchor' },
+      updatedAt: now,
+    }),
+    { merge: true },
+  );
+
+  await batch.commit();
+  return { pageIds };
+}
+
+type GenerationPatch = Partial<{
+  status: BookGenerationStatus;
+  step: BookGenerationStep;
+  pagesRendered: number;
+  coverRendered: boolean;
+  anchorRendered: boolean;
+  attempts: number;
+  error: string | null;
+}>;
+
+/** Patch the generation sub-doc from the background job. */
+export async function updateBookGeneration(bookId: string, patch: GenerationPatch): Promise<void> {
+  await adminDb
+    .collection(BOOKS_COLLECTION)
+    .doc(bookId)
+    .set({ generation: stripUndefined(patch), updatedAt: Timestamp.now() }, { merge: true });
+}
+
+/** Attach a rendered image to a page (background job). */
+export async function setPageImage(bookId: string, pageId: string, imageUrl: string): Promise<void> {
+  await adminDb
+    .collection(BOOKS_COLLECTION)
+    .doc(bookId)
+    .collection(PAGES_SUBCOLLECTION)
+    .doc(pageId)
+    .set(
+      {
+        imageUrl,
+        imageStyle: 'cartoon',
+        authorship: { imageSource: 'ai_generated' },
+        updatedAt: Timestamp.now(),
+      },
+      { merge: true },
+    );
+}
+
+/** Attach the rendered cover image (background job). */
+export async function setBookCoverImage(bookId: string, imageUrl: string): Promise<void> {
+  await adminDb
+    .collection(BOOKS_COLLECTION)
+    .doc(bookId)
+    .set(
+      {
+        cover: { imageUrl },
+        coverThumbnail: null,
+        generation: { coverRendered: true },
+        updatedAt: Timestamp.now(),
+      },
+      { merge: true },
+    );
+}
+
+/** Persist the hero anchor portrait onto the first cast member (background job). */
+export async function setBookAnchorImage(bookId: string, anchorImageUrl: string): Promise<void> {
+  const bookRef = adminDb.collection(BOOKS_COLLECTION).doc(bookId);
+  const snap = await bookRef.get();
+  const chars = (snap.data()?.characters as Array<Record<string, unknown>> | undefined) ?? [];
+  if (chars.length > 0 && chars[0]) chars[0].anchorImageUrl = anchorImageUrl;
+  await bookRef.set(
+    { characters: chars, generation: { anchorRendered: true }, updatedAt: Timestamp.now() },
+    { merge: true },
+  );
+}
+
+/** Close out a generation run: derive complete/partial/failed from what actually
+ *  rendered and stamp finishedAt. Returns the final status. */
+export async function finalizeBookGeneration(
+  bookId: string,
+  outcome: { failed?: boolean; error?: string | null } = {},
+): Promise<BookGenerationStatus> {
+  const bookRef = adminDb.collection(BOOKS_COLLECTION).doc(bookId);
+  const now = Timestamp.now();
+
+  if (outcome.failed) {
+    await bookRef.set(
+      {
+        generation: {
+          status: 'failed',
+          step: 'done',
+          error: outcome.error ?? 'Generation failed',
+          finishedAt: now,
+        },
+        updatedAt: now,
+      },
+      { merge: true },
+    );
+    return 'failed';
+  }
+
+  const [bookSnap, pagesSnap] = await Promise.all([
+    bookRef.get(),
+    bookRef.collection(PAGES_SUBCOLLECTION).get(),
+  ]);
+  const total = pagesSnap.size;
+  const rendered = pagesSnap.docs.filter((d) => !!d.data().imageUrl).length;
+  const coverRendered = !!bookSnap.data()?.cover?.imageUrl;
+  const status: BookGenerationStatus =
+    total > 0 && rendered === total && coverRendered ? 'complete' : 'partial';
+
+  await bookRef.set(
+    {
+      generation: { status, step: 'done', pagesRendered: rendered, error: null, finishedAt: now },
+      updatedAt: now,
+    },
+    { merge: true },
+  );
+  return status;
 }
 
 /** Delete a page and renumber remaining pages within a transaction. */

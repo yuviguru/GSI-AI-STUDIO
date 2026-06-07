@@ -252,6 +252,40 @@ export interface BookSales {
   listedAt: Date | null;
 }
 
+/** Lifecycle of the async AI generation pipeline (BOOK-008). Distinct from
+ *  `BookStatus` (which is the editorial lifecycle). `null` on non-AI / legacy
+ *  books and on books created by the manual wizard. */
+export type BookGenerationStatus = 'pending' | 'generating' | 'partial' | 'complete' | 'failed';
+export type BookGenerationStep = 'queued' | 'drafting' | 'anchor' | 'images' | 'done';
+
+/** Live progress of background book generation. The home tile reads this to
+ *  show "Thinking up your story…" → "Drawing 2/5…", and to gate entry (the
+ *  book isn't openable until `status` leaves `pending`/`generating`). */
+export interface BookGeneration {
+  status: BookGenerationStatus;
+  step: BookGenerationStep;
+  /** Expected page count for the in-progress bar. */
+  pagesTotal: number;
+  /** Pages whose image has rendered (success). */
+  pagesRendered: number;
+  coverRendered: boolean;
+  anchorRendered: boolean;
+  /** How many times the whole job has been (re)attempted. */
+  attempts: number;
+  /** Last error message when `status === 'failed'`. */
+  error: string | null;
+  startedAt: Date;
+  finishedAt: Date | null;
+}
+
+/** Slim generation summary carried on list items for the progress tile. */
+export interface BookGenerationSummary {
+  status: BookGenerationStatus;
+  step: BookGenerationStep;
+  pagesTotal: number;
+  pagesRendered: number;
+}
+
 /** Top-level book document */
 export interface Book {
   id: string;
@@ -277,6 +311,11 @@ export interface Book {
   pageCount: number;
   pageLimit: number;
   themeColor: string | null;
+  /** Image seed pinned across the cover + every AI-generated page so the hero
+   *  and palette stay consistent (BOOK-002). Persisted so later per-page
+   *  regeneration can reuse it. Optional/null for pre-BOOK-002 books and books
+   *  whose images were all kid-added. */
+  imageSeed?: number | null;
   sessionId: string;
   userId: string | null;
   kidId: string | null;
@@ -293,6 +332,8 @@ export interface Book {
   effortBadge: EffortBadge | null;
   /** Sales config (BOOK-004 Phase 1). null until author opts in. */
   sales: BookSales | null;
+  /** Async generation progress (BOOK-008). null for manual-wizard / legacy books. */
+  generation: BookGeneration | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -306,6 +347,9 @@ export interface BookListItem {
   pageCount: number;
   pageLimit: number;
   status: BookStatus;
+  /** Async generation summary for in-progress tiles (BOOK-008); null when not
+   *  AI-generating. Drives the progress bar + "not openable yet" gating. */
+  generation: BookGenerationSummary | null;
   coverThumbnail: string | null;
   /** Effort badge for the kid's library/gallery card (BOOK-003).
    *  null on drafts and on books published before BOOK-003. */
