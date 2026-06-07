@@ -7,6 +7,7 @@ import { LayoutBackLink } from '@/components/navigation/LayoutBackLink';
 import { SessionInit } from '@/components/layout/SessionInit';
 import { AiPointsProvider } from '@/contexts/AiPointsContext';
 import { CelebrationModal } from '@/components/learning/CelebrationModal';
+import { BookReadyWatcher } from '@/components/studios/book/BookReadyWatcher';
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { KidProfileProvider, useKidProfile } from '@/hooks/useKidProfile';
@@ -145,6 +146,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                 <PublicLayoutInner>{children}</PublicLayoutInner>
               </AppGate>
               <BillingNotificationModal />
+              <BookReadyWatcher />
             </BillingNotificationProvider>
           </AiPointsProvider>
         </KidProfileProvider>

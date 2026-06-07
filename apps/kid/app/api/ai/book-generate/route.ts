@@ -84,7 +84,12 @@ export async function POST(request: NextRequest) {
     // so the kid isn't charged for a book that never started.
     let bookId: string;
     try {
-      const shell = await createPendingGeneratedBook(setup, input.pageCount, { sessionId, kidId });
+      const shell = await createPendingGeneratedBook(
+        setup,
+        input.pageCount,
+        { sessionId, kidId },
+        input as Record<string, unknown>, // stored for retry
+      );
       bookId = shell.id;
       await enqueueBookGenerationJob({
         bookId,

@@ -1054,6 +1054,10 @@ export async function createPendingGeneratedBook(
   setup: Omit<BookCreateInput, 'characters' | 'plot'>,
   pagesTotal: number,
   scope: OwnerScope,
+  /** The raw validated generate input — stored so a failed book can be retried
+   *  without the kid re-entering anything. Opaque map (no package→app type dep);
+   *  the retry route re-validates it. */
+  generationInput?: Record<string, unknown>,
 ): Promise<{ id: string }> {
   validateCreateInput({ ...setup } as BookCreateInput);
   const dimensions = BOOK_SIZES[setup.size];
@@ -1105,11 +1109,65 @@ export async function createPendingGeneratedBook(
     effortBadge: null,
     sales: null,
     generation: baseGenerationDoc(pagesTotal, now),
+    generationInput: generationInput ?? null,
     createdAt: now,
     updatedAt: now,
   };
   await bookRef.set(stripUndefined(bookDoc));
   return { id: bookRef.id };
+}
+
+/** Read a book's stored generate input + current generation status (for retry).
+ *  Owner-checked. */
+export async function getBookGenerationInput(
+  bookId: string,
+  scope: OwnerScope,
+): Promise<{ input: Record<string, unknown> | null; status: BookGenerationStatus | null }> {
+  const snap = await adminDb.collection(BOOKS_COLLECTION).doc(bookId).get();
+  if (!snap.exists) throw new AppException('NOT_FOUND', 'Book not found', 404);
+  const data = snap.data()!;
+  if (data.sessionId !== scope.sessionId) throw new AppException('FORBIDDEN', 'Not your book', 403);
+  return {
+    input: (data.generationInput as Record<string, unknown> | undefined) ?? null,
+    status: (data.generation?.status as BookGenerationStatus | undefined) ?? null,
+  };
+}
+
+/** Reset a failed book back to `pending` and clear its pages so the job can
+ *  re-run cleanly (manual retry). Owner-checked. */
+export async function resetBookForRetry(bookId: string, scope: OwnerScope): Promise<void> {
+  const bookRef = adminDb.collection(BOOKS_COLLECTION).doc(bookId);
+  const snap = await bookRef.get();
+  if (!snap.exists) throw new AppException('NOT_FOUND', 'Book not found', 404);
+  const data = snap.data()!;
+  if (data.sessionId !== scope.sessionId) throw new AppException('FORBIDDEN', 'Not your book', 403);
+
+  // Delete existing pages — the job re-writes them from a fresh draft.
+  const pagesSnap = await bookRef.collection(PAGES_SUBCOLLECTION).get();
+  const batch = adminDb.batch();
+  pagesSnap.docs.forEach((d) => batch.delete(d.ref));
+  const prevAttempts = (data.generation?.attempts as number | undefined) ?? 0;
+  batch.set(
+    bookRef,
+    {
+      pageCount: 0,
+      characters: [],
+      cover: { imageUrl: null },
+      generation: {
+        status: 'pending',
+        step: 'queued',
+        pagesRendered: 0,
+        coverRendered: false,
+        anchorRendered: false,
+        attempts: prevAttempts + 1,
+        error: null,
+        finishedAt: null,
+      },
+      updatedAt: Timestamp.now(),
+    },
+    { merge: true },
+  );
+  await batch.commit();
 }
 
 /** The AI draft (text + prompts) used to fill a pending shell. */

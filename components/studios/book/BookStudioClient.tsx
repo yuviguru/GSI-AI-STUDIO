@@ -9,10 +9,13 @@ import {
   BookOpen,
   Lock,
   Plus,
+  RotateCw,
   Sparkles,
   Zap,
 } from 'lucide-react';
+import { useSWRConfig } from 'swr';
 import { useBookList } from '@/hooks/useBookList';
+import { fetchWithSession } from '@/lib/fetchWithSession';
 import { MascotAvatar } from '@/components/mascot/MascotAvatar';
 import { useResolvedIdentity } from '@/hooks/useResolvedIdentity';
 import { NewBookWizard } from './NewBookWizard';
@@ -514,6 +517,8 @@ function LibraryRail({
  *  indicator. Kept here (not in the shared file) because the page-count
  *  formatting and status icon mapping is library-specific. */
 function BookRailTile({ book }: { book: BookListItem }) {
+  const { mutate } = useSWRConfig();
+  const [retrying, setRetrying] = useState(false);
   const typeCard = getBookTypeCard(book.type);
   const accent = typeCard?.suggestedThemeColor ?? '#5B5FFF';
 
@@ -584,6 +589,37 @@ function BookRailTile({ book }: { book: BookListItem }) {
         title={book.title}
         subtitle={label}
         ariaLabel={`${book.title} — generating`}
+      />
+    );
+  }
+
+  // BOOK-008 — a FAILED book (no usable draft) shows a Retry tile that re-runs
+  // the stored input. Partial books fall through to the normal openable tile.
+  if (gen?.status === 'failed') {
+    const retry = async () => {
+      if (retrying) return;
+      setRetrying(true);
+      try {
+        await fetchWithSession(`/api/ai/book-generate/${book.id}/retry`, { method: 'POST' });
+        await mutate('/api/books');
+      } catch {
+        /* stays in failed state — the kid can tap again */
+      } finally {
+        setRetrying(false);
+      }
+    };
+    return (
+      <BookTile
+        thumbnail={
+          <div className="flex h-full w-full items-center justify-center">
+            <RotateCw className={`h-8 w-8 text-amber-600 ${retrying ? 'animate-spin' : ''}`} />
+          </div>
+        }
+        thumbnailBackground="linear-gradient(135deg, #fca5a526, #fca5a510), #fca5a51f"
+        title={book.title}
+        subtitle={retrying ? 'Trying again…' : "Couldn't finish — tap to retry"}
+        onClick={retry}
+        ariaLabel={`Retry ${book.title}`}
       />
     );
   }
