@@ -54,7 +54,7 @@ export function BookStudioClient() {
   // already committed to a specific book type (i.e. they want to write it).
   const [chooserOpen, setChooserOpen] = useState(false);
   const [chooserSeed, setChooserSeed] = useState<BookType | null>(null);
-  const { items, isLoading, error } = useBookList();
+  const { items, isLoading, error, refresh } = useBookList();
 
   // Library "Start new book" entry — show the BOOK-002 chooser first.
   // Template-gallery picks skip the chooser (they're a clear "manual" intent).
@@ -90,7 +90,17 @@ export function BookStudioClient() {
     () => items.filter((b) => b.status === 'published'),
     [items],
   );
-  const latestDraft = useMemo(() => pickLatest(drafts), [drafts]);
+  // The hero "Continue …" ignores books that are still generating — they aren't
+  // openable yet (BOOK-008), so it resumes the latest *ready* draft instead.
+  const latestDraft = useMemo(
+    () =>
+      pickLatest(
+        drafts.filter(
+          (b) => !(b.generation?.status === 'pending' || b.generation?.status === 'generating'),
+        ),
+      ),
+    [drafts],
+  );
 
   // Wizard branch keeps a normal-scroll layout — the wizard is its own flow.
   if (view === 'wizard') {
@@ -123,7 +133,12 @@ export function BookStudioClient() {
       <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-amber-50 via-white to-orange-50 px-4 py-4">
         <DecorativeSparkles />
         <div className="relative mx-auto max-w-2xl pt-4">
-          <AiGenerateBookForm onClose={() => setView('library')} />
+          <AiGenerateBookForm
+            onClose={() => {
+              setView('library');
+              refresh(); // surface the new pending book's progress tile
+            }}
+          />
         </div>
       </div>
     );
@@ -528,6 +543,50 @@ function BookRailTile({ book }: { book: BookListItem }) {
         <Lock className="h-3 w-3 text-gray-500" />
       </div>
     ) : null;
+
+  // BOOK-008 — a book still generating renders a NON-clickable progress tile
+  // (no href/onClick → BookTile's plain-div mode), gating entry until it's done.
+  const gen = book.generation;
+  if (gen && (gen.status === 'pending' || gen.status === 'generating')) {
+    const pct =
+      gen.step === 'images' && gen.pagesTotal > 0
+        ? Math.max(8, Math.round((gen.pagesRendered / gen.pagesTotal) * 100))
+        : gen.step === 'anchor'
+          ? 35
+          : gen.step === 'drafting'
+            ? 18
+            : 6;
+    const label =
+      gen.status === 'pending' || gen.step === 'queued'
+        ? 'Getting ready…'
+        : gen.step === 'drafting'
+          ? 'Thinking up your story…'
+          : gen.step === 'anchor'
+            ? 'Designing your hero…'
+            : gen.step === 'images'
+              ? `Drawing ${gen.pagesRendered}/${gen.pagesTotal}…`
+              : 'Almost done…';
+    return (
+      <BookTile
+        thumbnail={
+          <div className="relative flex h-full w-full items-center justify-center">
+            <span className="animate-pulse text-5xl drop-shadow-sm">{typeCard?.emoji ?? '📖'}</span>
+            <Sparkles className="absolute right-2 top-2 h-4 w-4 animate-pulse text-amber-500" />
+            <div className="absolute bottom-2 left-2 right-2 h-1.5 overflow-hidden rounded-full bg-white/60">
+              <div
+                className="h-full rounded-full bg-amber-500 transition-all duration-500"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </div>
+        }
+        thumbnailBackground={`linear-gradient(135deg, ${accent}26, ${accent}10), ${accent}1f`}
+        title={book.title}
+        subtitle={label}
+        ariaLabel={`${book.title} — generating`}
+      />
+    );
+  }
 
   return (
     <BookTile

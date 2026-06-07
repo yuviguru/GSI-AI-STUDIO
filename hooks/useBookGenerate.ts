@@ -16,6 +16,9 @@ export interface BookGenerateInput {
   format: BookFormat;
   size: BookSize;
   pageCount: number;
+  /** Image model tier — 'standard' (Qwen, character-consistent, low credits) or
+   *  'premium' (Nano Banana / gpt-image, top quality, high credits). */
+  quality?: 'standard' | 'premium';
   title?: string;
   author?: string;
 }

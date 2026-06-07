@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import { Mascot } from '@/components/mascot/Mascot';
 import { useBookGenerate } from '@/hooks/useBookGenerate';
 import { useAiPoints } from '@/contexts/AiPointsContext';
 import { FREE_TIER_PAGE_LIMIT } from '@/lib/templates/bookTemplates';
+import { getCostClient } from '@/lib/billing/creditCostsDefaults';
 import type { BookFormat, BookSize, BookType } from '@gsi/types';
 
 type Style = 'funny' | 'brave' | 'silly' | 'scary' | 'sweet' | 'mysterious';
@@ -41,7 +41,6 @@ interface AiGenerateBookFormProps {
  * for v1 — the simplest combo. Future iterations can let the kid pick.
  */
 export function AiGenerateBookForm({ onClose }: AiGenerateBookFormProps) {
-  const router = useRouter();
   const { generate, loading, error } = useBookGenerate();
   const { trackCreation } = useAiPoints();
 
@@ -49,6 +48,14 @@ export function AiGenerateBookForm({ onClose }: AiGenerateBookFormProps) {
   const [age, setAge] = useState<number>(8);
   const [style, setStyle] = useState<Style>('funny');
   const [pageCount, setPageCount] = useState<number>(Math.min(5, FREE_TIER_PAGE_LIMIT));
+  const [quality, setQuality] = useState<'standard' | 'premium'>('standard');
+
+  // Rough credit estimate per quality tier: LLM draft + 1 anchor portrait +
+  // (pages + cover) reference edits at the tier's per-image cost.
+  const estimateCredits = (q: 'standard' | 'premium') =>
+    getCostClient('book.aiGenerate') +
+    getCostClient('image.flux') +
+    (pageCount + 1) * getCostClient(q === 'premium' ? 'image.nanoBanana' : 'image.qwenEdit');
 
   // Fixed defaults — v1 simplifies the surface. A future story can expose these.
   const type: BookType = 'storybook';
@@ -67,10 +74,13 @@ export function AiGenerateBookForm({ onClose }: AiGenerateBookFormProps) {
       format,
       size,
       pageCount,
+      quality,
     });
     if (result) {
       await trackCreation('book');
-      router.push(result.redirectUrl);
+      // Async generation (BOOK-007): the book is now a `pending` shell. Return to
+      // the library, where its progress tile streams in — don't open it yet.
+      onClose();
     }
   };
 
@@ -199,6 +209,41 @@ export function AiGenerateBookForm({ onClose }: AiGenerateBookFormProps) {
           <p className="mt-1 text-[11px] text-gray-500">
             Free plan: up to {FREE_TIER_PAGE_LIMIT} pages.
           </p>
+        </div>
+
+        {/* Picture quality — character-consistency tier */}
+        <div>
+          <label className="mb-1.5 block text-sm font-bold text-gray-900">
+            Picture quality
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              { value: 'standard', emoji: '✨', label: 'Standard', desc: 'Consistent characters' },
+              { value: 'premium', emoji: '💎', label: 'Premium', desc: 'Best, most consistent art' },
+            ] as const).map((q) => (
+              <button
+                key={q.value}
+                type="button"
+                disabled={loading}
+                onClick={() => setQuality(q.value)}
+                className={`flex flex-col items-start rounded-xl px-3 py-2 text-left transition-colors ${
+                  quality === q.value
+                    ? 'bg-amber-500 text-white shadow-sm'
+                    : 'bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-amber-50'
+                } disabled:opacity-60`}
+              >
+                <span className="flex items-center gap-1.5 text-sm font-bold">
+                  <span>{q.emoji}</span>
+                  {q.label}
+                </span>
+                <span
+                  className={`text-[11px] ${quality === q.value ? 'text-white/90' : 'text-gray-500'}`}
+                >
+                  {q.desc} · ~{estimateCredits(q.value)} credits
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {error && (

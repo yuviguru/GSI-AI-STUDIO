@@ -365,6 +365,10 @@ export const aiBookGenerateSchema = z.object({
   format: bookFormatSchema,
   size: bookSizeSchema,
   pageCount: z.number().int().min(3).max(10),
+  /** Image model tier for character consistency. 'standard' = Qwen-Image-Edit
+   *  (reference-conditioned, low credits); 'premium' = Nano Banana / gpt-image
+   *  (top quality, high credits). Defaults to standard. */
+  quality: z.enum(['standard', 'premium']).default('standard'),
   /** Optional kid-provided title; otherwise AI invents one. */
   title: z.string().min(1).max(100).optional(),
   /** Optional author display name (defaults to "Anonymous Author"). */
