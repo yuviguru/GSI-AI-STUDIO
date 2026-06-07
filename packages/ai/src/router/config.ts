@@ -15,9 +15,12 @@ import type { LlmProvider, ImageProvider, AudioProvider } from '@gsi/ai/ports';
 import { makeAnthropicProvider } from '@gsi/ai/adapters/llm/anthropic';
 import { makeOpenAiCompatibleProvider } from '@gsi/ai/adapters/llm/openaiCompatible';
 import { makePixazoProvider } from '@gsi/ai/adapters/image/pixazo';
+import { makePixazoQwenProvider } from '@gsi/ai/adapters/image/pixazoQwen';
 import { makeReplicateProvider } from '@gsi/ai/adapters/image/replicate';
 import { makePollinationsProvider } from '@gsi/ai/adapters/image/pollinations';
 import { makeComfyUiProvider } from '@gsi/ai/adapters/image/comfyui';
+import { makeNanoBananaProvider } from '@gsi/ai/adapters/image/nanoBanana';
+import { makeGptImageProvider } from '@gsi/ai/adapters/image/gptImage';
 import { makeGeminiAudioProvider } from '@gsi/ai/adapters/audio/gemini';
 
 // ── LLM provider catalog ────────────────────────────────────────────
@@ -170,6 +173,17 @@ const IMAGE_CATALOG: ImageCatalogEntry[] = [
     },
   },
   {
+    // Reference-conditioned EDIT model (identity-preserving). Same Pixazo key.
+    // Selected only for reference requests — never the txt2img cascade.
+    name: 'pixazo-qwen-edit',
+    defaultPriority: 2,
+    build: () => {
+      const apiKey = process.env.PIXAZO_API_KEY;
+      if (!apiKey || apiKey.includes('REPLACE')) return null;
+      return makePixazoQwenProvider({ priority: 2 });
+    },
+  },
+  {
     name: 'replicate',
     defaultPriority: 3,
     build: () => {
@@ -182,6 +196,24 @@ const IMAGE_CATALOG: ImageCatalogEntry[] = [
     name: 'pollinations',
     defaultPriority: 4,
     build: () => makePollinationsProvider({ priority: 4 }),
+  },
+  {
+    // PREMIUM reference-capable (identity-preserving across pages). Last-resort
+    // in the txt2img cascade; primary for the Premium book quality tier. Gated.
+    name: 'nano-banana',
+    defaultPriority: 5,
+    build: () => {
+      if (!process.env.GEMINI_API_KEY) return null;
+      return makeNanoBananaProvider({ priority: 5 });
+    },
+  },
+  {
+    name: 'gpt-image',
+    defaultPriority: 6,
+    build: () => {
+      if (!process.env.OPENAI_API_KEY) return null;
+      return makeGptImageProvider({ priority: 6 });
+    },
   },
 ];
 

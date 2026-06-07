@@ -30,6 +30,7 @@
 
 import { imageRouter } from './router';
 import { searchImage, tryStockImage } from './imageSearchClient';
+import type { CostTier } from './ports';
 
 export type ImageStyle = 'watercolor' | 'cartoon' | 'pixel-art' | 'comic';
 
@@ -42,6 +43,9 @@ export interface ImageOptions {
    *  keeps the diffusion output visually coherent (same character faces,
    *  same palette) page-to-page. Omit for variety. */
   seed?: number;
+  /** Reference image URL for identity-preserving edit models (Qwen / gpt-image
+   *  / Nano Banana). Routed only to reference-capable providers. */
+  referenceImageUrl?: string;
 }
 
 export type ImageFunction = (opts: ImageOptions) => Promise<string>;
@@ -69,8 +73,40 @@ async function generateViaRouter(opts: ImageOptions): Promise<string> {
     width: opts.width,
     height: opts.height,
     seed: opts.seed,
+    referenceImageUrl: opts.referenceImageUrl,
   });
   return result.url;
+}
+
+/**
+ * Identity-preserving edit: render `prompt` while keeping the character in
+ * `referenceImageUrl` on-model. Routes ONLY to reference-capable providers
+ * (Qwen-Image-Edit / gpt-image / Nano Banana) — `preferProviders` honours the
+ * kid's chosen quality tier. Throws if no reference provider succeeds (callers
+ * fall back to plain text→image with the character anchor described in text).
+ */
+export async function editImageWithReference(opts: {
+  prompt: string;
+  referenceImageUrl: string;
+  width: number;
+  height: number;
+  style?: ImageStyle;
+  preferProviders?: string[];
+  maxCostTier?: CostTier;
+}): Promise<{ url: string; providerName: string }> {
+  const result = await imageRouter.generate({
+    prompt: opts.prompt,
+    style: opts.style,
+    width: opts.width,
+    height: opts.height,
+    referenceImageUrl: opts.referenceImageUrl,
+    routing: {
+      requireReference: true,
+      preferProviders: opts.preferProviders,
+      maxCostTier: opts.maxCostTier,
+    },
+  });
+  return { url: result.url, providerName: result.providerName };
 }
 
 function buildHybridFunction(): ImageFunction {
