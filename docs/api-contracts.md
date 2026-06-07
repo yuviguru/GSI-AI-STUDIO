@@ -426,40 +426,28 @@ Generate a multi-panel illustrated comic strip with dialogue bubbles.
 
 Book Studio uses a different lifecycle than one-shot AI generation: persistent multi-session state with a `books` collection + `pages` subcollection. See `data-model.md#books` for schemas. Grammar AI is **Groq** (not Claude) — uses existing `lib/ai/groqClient.ts`.
 
-### POST /api/ai/book-generate (BOOK-002)
+### POST /api/ai/book-generate (BOOK-002 / async BOOK-008)
 
-Drafts a complete book in one call. The model first defines a character "book bible" (`characterGuide`). The server then generates ONE clean hero **anchor portrait** (Flux text-to-image) and **reference-edits that anchor onto the cover + every page** so the character stays identical across the book — text anchor + seed alone weren't enough. If the model omits a usable guide, a name-only fallback anchor is synthesized and the serving provider is logged.
+Kicks off **async** generation. The model defines a character "book bible", then a background job renders ONE hero **anchor portrait** and **reference-edits it onto the cover + every page** so the character stays identical. **The route returns instantly** — it bills, writes a `pending` book shell (so the home tile appears immediately), and enqueues the job (`lib/books/generateBookJob`; the Netlify `book-generate-background` function in prod, inline in dev — past the 26s sync limit). Progress streams into the book's `generation.*` field; the home tile polls `GET /api/books` and the book opens only once it's done.
 
-**Request:** `topic`, `age`, `style`, `type`, `format`, `size`, `pageCount`, optional `title`/`author`, and **`quality`** (image-model tier for consistency):
-- `quality: "standard"` (default) — **Qwen-Image-Edit** via Pixazo (same key as Flux Schnell). Reference-conditioned, character-consistent, low credits.
-- `quality: "premium"` — **Nano Banana** (Gemini Flash Image) → **gpt-image** fallback. Top quality, high credits. Gracefully falls back to Qwen / text-to-image when no premium key is configured.
+**Request:** `topic`, `age`, `style`, `type`, `format`, `size`, `pageCount`, optional `title`/`author`, and **`quality`**:
+- `quality: "standard"` (default) — **Qwen-Image-Edit** via Pixazo (same key). Character-consistent, low credits.
+- `quality: "premium"` — **Nano Banana** (Gemini) → **gpt-image** fallback. Top quality, high credits; degrades to Qwen / text-to-image when no premium key is set.
 
-**Cost:** `book.aiGenerate` (flat LLM) + `image.flux` (one anchor portrait) + **(N + 1) × `image.<model>`** — N pages + cover, each a reference edit at the chosen tier (`image.qwenEdit` Standard / `image.nanoBanana` Premium). Debited upfront. Examples (5-page): Standard `10 + 5 + 6×8 = 63`; Premium `10 + 5 + 6×30 = 195`.
+**Cost:** `book.aiGenerate` + `image.flux` (anchor) + **(N + 1) × `image.<model>`** (pages + cover; `image.qwenEdit` Standard / `image.nanoBanana` Premium). Debited upfront; **refunded** by the job if the draft never lands.
 
 **Response (200):**
 ```json
-{
-  "success": true,
-  "data": {
-    "bookId": "...",
-    "redirectUrl": "/create/book/...",
-    "pagesGenerated": 5,
-    "pagesWithImages": 5,
-    "coverGenerated": true,
-    "anchorGenerated": true,
-    "quality": "standard"
-  }
-}
+{ "success": true, "data": { "bookId": "...", "redirectUrl": "/create/book", "status": "generating", "quality": "standard" } }
 ```
 
-**Errors:**
-- `400 INVALID_INPUT` — bad `topic` / `age` / `style` / `type` / `format` / `size` / `pageCount` / `quality`
-- `401 UNAUTHORIZED` — missing `X-Session-Id`
-- `402 / 403` — insufficient credits / plan gate (billing preflight)
-- `429 RATE_LIMITED` — per-session or per-IP cap
-- `502 AI_GENERATION_FAILED` — model returned an unusable draft
+**Errors:** `400 INVALID_INPUT` (bad fields) · `401 UNAUTHORIZED` (missing `X-Session-Id`) · `402 / 403` insufficient credits / plan gate · `429 RATE_LIMITED`.
 
-The whole image phase shares ONE wall-clock budget (anchor + cover + pages) so the function stays inside `maxDuration`. Any image that errors or misses the budget persists as `null` and regenerates in the editor — without re-paying for the LLM draft.
+The job retries each image (≤3) and persists what renders; `finalizeBookGeneration` marks the book **`complete`** / **`partial`** (some images pending → regenerate per-page in the editor) / **`failed`**. A client-side watcher shows an in-app "your book is ready" toast when it finishes.
+
+### POST /api/ai/book-generate/[id]/retry (BOOK-008)
+
+Re-run a **failed** book using its stored input (the kid re-enters nothing). Re-bills (the failed run refunded the original debit), resets the book to `pending`, and re-enqueues the job. **Response:** `{ bookId, status: "generating" }`. **Errors:** `400` if the book isn't in a `failed` state; `401`; `403` not owner; `404` not found.
 
 ---
 

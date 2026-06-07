@@ -360,6 +360,8 @@ Books authored by kids in **Book Studio**. Distinct from `creations` because boo
 | pageLimit | number | yes | Tier cap: `5` (free) or `8` / `16` / `24` / `32` / `40` (paid kit choice) |
 | themeColor | string | no | Accent color picked from kid-safe palette |
 | imageSeed | number | no | Image seed pinned across the cover + every AI-generated page so the hero/palette stay consistent (BOOK-002). Reused by later per-page regeneration. Absent on pre-BOOK-002 books and books with no AI images. |
+| generation | map | no | Async generation progress (BOOK-008): `{status: pending\|generating\|partial\|complete\|failed, step, pagesTotal, pagesRendered, coverRendered, anchorRendered, attempts, error, startedAt, finishedAt}`. null for manual-wizard / legacy books. The home tile reads this to show progress + gate entry. |
+| generationInput | map | no | Raw validated generate input (topic/age/style/quality/…), stored so a **failed** book can be retried without the kid re-entering anything. Server-internal; not exposed by `docToBook`. |
 | sessionId | string | yes (P1) | Anonymous session ID |
 | userId | string | no (P2) | Parent user ID |
 | kidId | string | no (P2) | Kid profile ID |
