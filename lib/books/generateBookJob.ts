@@ -31,6 +31,7 @@ import {
   finalizeBookGeneration,
 } from '@gsi/firebase/bookService';
 import { refundCredits } from '@/lib/billing/credits';
+import { uploadBuffer } from '@/lib/storage/assetService';
 import { BOOK_FONTS, getBookTypeCard } from '@/lib/templates/bookTemplates';
 import { sceneTypeToLayout } from '@/lib/books/sceneLayout';
 import type { AiBookGenerateInput } from '@/lib/validators';
@@ -145,6 +146,44 @@ async function withRetry<T>(fn: () => Promise<T>, attempts: number, label: strin
     }
   }
   return null;
+}
+
+const DATA_IMG_RE = /^data:(image\/(?:png|jpe?g|webp));base64,([\s\S]+)$/i;
+
+/**
+ * Premium reference providers (Nano-Banana / gpt-image) return base64 `data:`
+ * URIs, not hosted URLs. Persist those to storage so the page/cover docs hold a
+ * small URL instead of a >1MB blob that would blow Firestore's 1MB doc limit.
+ * Hosted URLs (flux / pixazo / pollinations) and non-raster data (SVG
+ * placeholder) pass through untouched.
+ */
+async function toHostedImageUrl(
+  url: string,
+  scope: { sessionId: string; kidId: string | null },
+): Promise<string> {
+  const m = DATA_IMG_RE.exec(url);
+  if (!m) return url;
+  try {
+    const mime = m[1]!.toLowerCase();
+    const mimeType = mime === 'image/jpg' ? 'image/jpeg' : mime;
+    const buffer = Buffer.from(m[2]!, 'base64');
+    const asset = await uploadBuffer({
+      buffer,
+      kind: 'image',
+      mimeType,
+      sourceType: 'ai_generated',
+      ownerKidId: scope.kidId ?? undefined,
+      ownerSessionId: scope.sessionId,
+      visibility: 'public',
+    });
+    return asset.publicUrl;
+  } catch (err) {
+    console.warn(
+      '[generateBookJob] data-URI upload failed — leaving inline:',
+      err instanceof Error ? err.message : err,
+    );
+    return url;
+  }
 }
 
 /**
@@ -266,11 +305,15 @@ export async function generateBookJob(job: BookGenerationJob): Promise<void> {
       guide: safeGuide,
       age: input.age,
     });
-    const anchorImageUrl = await withRetry(
+    const anchorRaw = await withRetry(
       () => imageFunction({ prompt: anchorPrompt, style, width: dims.width, height: dims.height, seed }),
       3,
       'anchor',
     );
+    // The anchor is the reference fetched by the edit models, so it must be a
+    // hosted URL they can GET (a data: URI can't be fetched). hybrid txt2img
+    // normally returns a hosted URL already; this is a safety net.
+    const anchorImageUrl = anchorRaw ? await toHostedImageUrl(anchorRaw, scope) : null;
     if (anchorImageUrl) await setBookAnchorImage(bookId, anchorImageUrl);
 
     // 4) Reference-edit the cover + each page; stream results in as they land.
@@ -280,11 +323,12 @@ export async function generateBookJob(job: BookGenerationJob): Promise<void> {
     const maxCostTier: 'cheap' | 'premium' = isPremium ? 'premium' : 'cheap';
 
     const renderScene = async (scenePrompt: string): Promise<string | null> => {
+      let raw: string | null = null;
       if (anchorImageUrl) {
         const ref = anchorImageUrl;
-        const edited = await withRetry(
+        raw = await withRetry(
           async () => {
-            const { url } = await editImageWithReference({
+            const { url, providerName } = await editImageWithReference({
               prompt: scenePrompt,
               referenceImageUrl: ref,
               width: dims.width,
@@ -293,18 +337,22 @@ export async function generateBookJob(job: BookGenerationJob): Promise<void> {
               preferProviders,
               maxCostTier,
             });
+            console.log(`[generateBookJob] reference-edit served by ${providerName}`);
             return url;
           },
           3,
           'reference-edit',
         );
-        if (edited) return edited;
       }
-      return withRetry(
-        () => imageFunction({ prompt: scenePrompt, style, width: dims.width, height: dims.height, seed }),
-        2,
-        'txt2img',
-      );
+      if (!raw) {
+        raw = await withRetry(
+          () => imageFunction({ prompt: scenePrompt, style, width: dims.width, height: dims.height, seed }),
+          2,
+          'txt2img',
+        );
+      }
+      // Host base64 results (premium providers) before they hit Firestore.
+      return raw ? toHostedImageUrl(raw, scope) : null;
     };
 
     let pagesRendered = 0;
