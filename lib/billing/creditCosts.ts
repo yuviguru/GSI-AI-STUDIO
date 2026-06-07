@@ -24,8 +24,11 @@ const DEFAULTS: Record<string, number> = {
 
   // Image generation
   'image.fast': 2, // Pollinations / Flux Schnell — free-plan tier
-  'image.flux': 5, // Pixazo Flux Schnell — default
+  'image.flux': 5, // Pixazo Flux Schnell — default (also the consistency anchor portrait)
   'image.sdxl': 25, // Replicate SDXL — Pro-priority
+  'image.qwenEdit': 8, // Pixazo Qwen-Image-Edit — reference-conditioned, character-consistent (Standard)
+  'image.gptImage': 30, // OpenAI gpt-image — premium reference editing
+  'image.nanoBanana': 30, // Google Gemini Flash Image (Nano Banana) — premium reference editing
 
   // Other studios
   'quiz.generate': 3,
