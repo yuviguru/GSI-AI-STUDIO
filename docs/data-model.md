@@ -354,11 +354,12 @@ Books authored by kids in **Book Studio**. Distinct from `creations` because boo
 | size | string | yes | **LOCKED at creation.** `square` (8"×8") \| `tall` (8.5"×11") \| `pocket` (5.5"×8.5") \| `landscape` (11"×8.5") |
 | dimensions | map | yes | `{widthMm, heightMm, widthPx, heightPx}` derived from `size` at creation. Frozen. |
 | typography | map | yes | `{titleFont, bodyFont, baseFontSize}`. Initial pick at creation; per-page overrides allowed via `pages.style`. |
-| cover | map | yes | `{title, subtitle, authorName, backgroundColor, imageUrl, imagePrompt, font}` — front cover composition |
+| cover | map | yes | `{title, subtitle, authorName, backgroundColor, imageUrl, imagePrompt, font}` — front cover composition. AI-generated books populate `imageUrl` + `imagePrompt` at draft time (BOOK-002); wizard books leave `imageUrl` null until the kid makes a cover. |
 | backCover | map | no | `{text, imageUrl}` — optional back-cover blurb |
 | pageCount | number | yes | Denormalized count of pages in subcollection (default 0) |
 | pageLimit | number | yes | Tier cap: `5` (free) or `8` / `16` / `24` / `32` / `40` (paid kit choice) |
 | themeColor | string | no | Accent color picked from kid-safe palette |
+| imageSeed | number | no | Image seed pinned across the cover + every AI-generated page so the hero/palette stay consistent (BOOK-002). Reused by later per-page regeneration. Absent on pre-BOOK-002 books and books with no AI images. |
 | sessionId | string | yes (P1) | Anonymous session ID |
 | userId | string | no (P2) | Parent user ID |
 | kidId | string | no (P2) | Kid profile ID |
