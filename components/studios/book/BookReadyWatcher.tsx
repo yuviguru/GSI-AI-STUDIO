@@ -3,34 +3,47 @@
 /**
  * BOOK-008 — global "your book is ready" watcher.
  *
- * Mounted in the (public) layout so a kid who wandered off the Book Studio
- * still gets alerted when a background generation finishes. Polls `/api/books`
- * ONLY while something is generating (shares SWR's cache with useBookList, so no
- * extra requests), detects the generating → complete/partial/failed transition,
- * and shows a dismissible toast that links straight into the finished book.
+ * Mounted in the (public) layout so a kid who wandered off the Book Studio — or
+ * reloaded the tab — still gets alerted when a background generation finishes.
+ *
+ * It owns a self-contained poll loop (NOT SWR): while the `generatingSignal`
+ * localStorage set is non-empty (or a live `/api/books` scan still shows an
+ * in-flight book) it re-fetches every 2.5s, detects the generating → terminal
+ * transition per book id, shows a dismissible toast that links into the finished
+ * book, and clears the id from the signal. When nothing is generating it stops
+ * polling entirely and only wakes on the same-tab CustomEvent / cross-tab
+ * `storage` event that `markBookGenerating` fires. This avoids the SWR
+ * shared-key / conditional-refreshInterval race where the watcher would go idle
+ * and miss the completion update.
  */
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import useSWR from 'swr';
 import { AnimatePresence, motion } from 'framer-motion';
 import { BookOpen, X } from 'lucide-react';
 import { fetchWithSession } from '@/lib/fetchWithSession';
 import { playSound } from '@/lib/sounds';
+import {
+  GENERATING_EVENT,
+  GENERATING_KEY,
+  getGeneratingBookIds,
+  unmarkBookGenerating,
+} from '@/lib/books/generatingSignal';
 import type { BookListItem, BookGenerationStatus } from '@gsi/types';
 
-interface BooksResponse {
-  items: BookListItem[];
-}
+const POLL_MS = 2500;
 
-const fetcher = async (url: string): Promise<BooksResponse> => {
-  const res = await fetchWithSession(url);
+const isInFlight = (s?: BookGenerationStatus | null): boolean =>
+  s === 'pending' || s === 'generating';
+const isTerminal = (s?: BookGenerationStatus | null): s is 'complete' | 'partial' | 'failed' =>
+  s === 'complete' || s === 'partial' || s === 'failed';
+
+async function fetchBooks(): Promise<BookListItem[]> {
+  const res = await fetchWithSession('/api/books');
   const json = await res.json();
-  if (!json.success) throw new Error(json.error?.message ?? 'Failed to load books');
-  return json.data;
-};
-
-const isInFlight = (s?: BookGenerationStatus | null) => s === 'pending' || s === 'generating';
+  if (!json?.success) return [];
+  return (json.data?.items ?? []) as BookListItem[];
+}
 
 interface ReadyToast {
   id: string;
@@ -39,37 +52,88 @@ interface ReadyToast {
 }
 
 export function BookReadyWatcher() {
+  // Last-seen generation status per book id — lets us fire exactly once on the
+  // in-flight → terminal edge, and avoids alerting for books that were already
+  // done before this watcher mounted.
   const prev = useRef<Map<string, BookGenerationStatus>>(new Map());
-  const seeded = useRef(false);
   const [toast, setToast] = useState<ReadyToast | null>(null);
 
-  const { data } = useSWR<BooksResponse>('/api/books', fetcher, {
-    refreshInterval: (latest) =>
-      latest?.items?.some((b) => isInFlight(b.generation?.status)) ? 2500 : 0,
-  });
-
   useEffect(() => {
-    const items = data?.items ?? [];
-    // First load just records current statuses — don't alert for books that
-    // were already done before this page mounted.
-    if (!seeded.current) {
-      for (const b of items) if (b.generation?.status) prev.current.set(b.id, b.generation.status);
-      seeded.current = true;
-      return;
-    }
-    for (const b of items) {
-      const before = prev.current.get(b.id);
-      const now = b.generation?.status;
-      if (
-        isInFlight(before) &&
-        (now === 'complete' || now === 'partial' || now === 'failed')
-      ) {
-        setToast({ id: b.id, title: b.title, status: now });
-        if (now !== 'failed') playSound('creationComplete');
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const poll = async (): Promise<void> => {
+      if (!active) return;
+      timer = null;
+
+      let items: BookListItem[] = [];
+      try {
+        items = await fetchBooks();
+      } catch {
+        // Network blip — keep the loop alive if work is still tracked.
+        if (active && getGeneratingBookIds().length > 0) timer = setTimeout(poll, POLL_MS);
+        return;
       }
-      if (now) prev.current.set(b.id, now);
-    }
-  }, [data]);
+
+      const tracked = new Set(getGeneratingBookIds());
+      const present = new Set(items.map((b) => b.id));
+
+      for (const b of items) {
+        const now = b.generation?.status ?? null;
+        const before = prev.current.get(b.id);
+        // Alert only for books we were actually watching: either explicitly
+        // tracked (started/retried in this browser) or observed in-flight.
+        const watched = tracked.has(b.id) || isInFlight(before);
+        if (watched && isTerminal(now)) {
+          setToast({ id: b.id, title: b.title, status: now });
+          if (now !== 'failed') playSound('creationComplete');
+          unmarkBookGenerating(b.id);
+        }
+        if (now) prev.current.set(b.id, now);
+      }
+
+      // A tracked id that no longer exists (deleted) must be dropped so the loop
+      // can terminate.
+      for (const id of tracked) if (!present.has(id)) unmarkBookGenerating(id);
+
+      const keepPolling =
+        getGeneratingBookIds().length > 0 ||
+        items.some((b) => isInFlight(b.generation?.status));
+      if (active && keepPolling) timer = setTimeout(poll, POLL_MS);
+    };
+
+    // Kick the loop only if it isn't already scheduled/running.
+    const kick = (): void => {
+      if (active && timer === null) timer = setTimeout(poll, 0);
+    };
+
+    // Seed `prev` once so we never false-alert for books that were already
+    // terminal at mount, then start polling iff something is in flight (covers a
+    // reload mid-generation, where the signal persists in localStorage).
+    void (async () => {
+      try {
+        const items = await fetchBooks();
+        for (const b of items) if (b.generation?.status) prev.current.set(b.id, b.generation.status);
+      } catch {
+        /* ignore seed failure */
+      }
+      if (getGeneratingBookIds().length > 0) kick();
+    })();
+
+    const onSignal = (): void => kick();
+    const onStorage = (e: StorageEvent): void => {
+      if (e.key === GENERATING_KEY) kick();
+    };
+    window.addEventListener(GENERATING_EVENT, onSignal);
+    window.addEventListener('storage', onStorage);
+
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+      window.removeEventListener(GENERATING_EVENT, onSignal);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
 
   // Auto-dismiss after 9s.
   useEffect(() => {
@@ -80,7 +144,7 @@ export function BookReadyWatcher() {
 
   const message =
     toast?.status === 'failed'
-      ? "had some trouble — tap to retry"
+      ? 'had some trouble — tap to retry'
       : toast?.status === 'partial'
         ? 'is ready (a few pictures need a redraw)'
         : 'is ready! 🎉';

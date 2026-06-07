@@ -6,6 +6,7 @@ import {
   handleBillingApiError,
   useBillingNotifications,
 } from '@/contexts/BillingNotificationContext';
+import { markBookGenerating } from '@/lib/books/generatingSignal';
 import type { BookFormat, BookSize, BookType } from '@gsi/types';
 
 export interface BookGenerateInput {
@@ -71,7 +72,11 @@ export function useBookGenerate() {
         if (handleBillingApiError(res.status, json, showBillingNotification)) return null;
         throw new Error(json.error?.message ?? 'Could not generate your book');
       }
-      return json.data as BookGenerateResult;
+      const result = json.data as BookGenerateResult;
+      // Flag the in-flight generation so BookReadyWatcher alerts the kid when it
+      // finishes — even if they navigate away or reload the tab (BOOK-008).
+      markBookGenerating(result.bookId);
+      return result;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not generate your book');
       return null;

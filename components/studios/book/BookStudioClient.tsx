@@ -16,6 +16,7 @@ import {
 import { useSWRConfig } from 'swr';
 import { useBookList } from '@/hooks/useBookList';
 import { fetchWithSession } from '@/lib/fetchWithSession';
+import { markBookGenerating } from '@/lib/books/generatingSignal';
 import { MascotAvatar } from '@/components/mascot/MascotAvatar';
 import { useResolvedIdentity } from '@/hooks/useResolvedIdentity';
 import { NewBookWizard } from './NewBookWizard';
@@ -601,6 +602,8 @@ function BookRailTile({ book }: { book: BookListItem }) {
       setRetrying(true);
       try {
         await fetchWithSession(`/api/ai/book-generate/${book.id}/retry`, { method: 'POST' });
+        // Re-arm the ready-watcher for the retried book (BOOK-008).
+        markBookGenerating(book.id);
         await mutate('/api/books');
       } catch {
         /* stays in failed state — the kid can tap again */
