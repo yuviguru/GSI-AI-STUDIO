@@ -58,6 +58,13 @@ function extractQwenImage(data: unknown): string {
   );
 }
 
+/** Qwen-Image-Edit (Alibaba Model Studio behind Pixazo) throttles hard — concurrent
+ *  or bursty edits return 429 `Throttling.RateQuota`. We absorb that here with a
+ *  bounded exponential backoff so a transient rate-limit doesn't bubble up and
+ *  poison the provider's health (which would drop the whole book to txt2img). */
+const RATE_LIMIT_RETRIES = 4;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export async function editWithPixazoQwen({
   referenceImageUrl,
   prompt,
@@ -66,33 +73,42 @@ export async function editWithPixazoQwen({
   const apiKey = process.env.PIXAZO_API_KEY;
   if (!apiKey) throw new Error('PIXAZO_API_KEY not set');
   const endpoint = process.env.PIXAZO_QWEN_ENDPOINT || DEFAULT_ENDPOINT;
-
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache',
-      'Ocp-Apim-Subscription-Key': apiKey,
+  const body = JSON.stringify({
+    model: 'qwen-image-edit',
+    input: {
+      messages: [{ role: 'user', content: [{ image: referenceImageUrl }, { text: prompt }] }],
     },
-    body: JSON.stringify({
-      model: 'qwen-image-edit',
-      input: {
-        messages: [
-          {
-            role: 'user',
-            content: [{ image: referenceImageUrl }, { text: prompt }],
-          },
-        ],
-      },
-      parameters: { negative_prompt: negativePrompt, watermark: false },
-    }),
-    signal: AbortSignal.timeout(TIMEOUT_MS),
+    parameters: { negative_prompt: negativePrompt, watermark: false },
   });
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`Pixazo Qwen ${res.status} ${res.statusText}: ${body.slice(0, 200)}`);
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
+        'Ocp-Apim-Subscription-Key': apiKey,
+      },
+      body,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+
+    if (res.status === 429 && attempt < RATE_LIMIT_RETRIES) {
+      const retryAfter = Number(res.headers.get('retry-after'));
+      const waitMs = retryAfter > 0 ? retryAfter * 1000 : Math.min(2000 * 2 ** attempt, 16_000);
+      await res.body?.cancel().catch(() => {});
+      await sleep(waitMs);
+      continue;
+    }
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '');
+      const e = new Error(
+        `Pixazo Qwen ${res.status} ${res.statusText}: ${errBody.slice(0, 200)}`,
+      ) as Error & { status?: number };
+      e.status = res.status;
+      throw e;
+    }
+    return extractQwenImage((await res.json()) as unknown);
   }
-  const data = (await res.json()) as unknown;
-  return extractQwenImage(data);
 }

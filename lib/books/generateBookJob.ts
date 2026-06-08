@@ -355,20 +355,22 @@ export async function generateBookJob(job: BookGenerationJob): Promise<void> {
       return raw ? toHostedImageUrl(raw, scope) : null;
     };
 
+    // Render SEQUENTIALLY — the reference-edit model (Qwen) rate-limits hard, so
+    // firing all 6 scenes at once trips a 429 and drops the book to txt2img. Cover
+    // first, then each page with a brief gap to stay under the per-second quota.
+    const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
     let pagesRendered = 0;
-    const coverWork = renderScene(coverPrompt).then(async (url) => {
-      if (url) await setBookCoverImage(bookId, url);
-    });
-    const pageWork = pages.map((p, i) =>
-      renderScene(p.imagePrompt).then(async (url) => {
-        if (url) {
-          await setPageImage(bookId, pageIds[i]!, url);
-          pagesRendered += 1;
-          await updateBookGeneration(bookId, { pagesRendered });
-        }
-      }),
-    );
-    await Promise.all([coverWork, ...pageWork]);
+    const coverUrl = await renderScene(coverPrompt);
+    if (coverUrl) await setBookCoverImage(bookId, coverUrl);
+    for (let i = 0; i < pages.length; i++) {
+      await pause(800);
+      const url = await renderScene(pages[i]!.imagePrompt);
+      if (url) {
+        await setPageImage(bookId, pageIds[i]!, url);
+        pagesRendered += 1;
+        await updateBookGeneration(bookId, { pagesRendered });
+      }
+    }
 
     // 5) Finalize → complete (everything rendered) or partial (some null).
     await finalizeBookGeneration(bookId);
