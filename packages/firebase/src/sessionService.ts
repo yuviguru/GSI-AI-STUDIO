@@ -727,6 +727,19 @@ export async function assertSessionEligibleForClaim(
   sessionId: string,
   tx?: FirebaseFirestore.Transaction,
 ): Promise<void> {
+  // A kid-scoped session id (`kid-<kidId>-<dayKey>`) belongs to a logged-in kid
+  // — it is never anonymous guest work, so it must never be migrated. Reject by
+  // FORMAT up front: the daily session doc may not exist yet at claim time, so
+  // the `type === 'kid'` doc check below isn't enough on its own. This is what
+  // stops the sign-in migration prompt from nagging a signed-in user about
+  // their own session.
+  if (sessionId.startsWith('kid-')) {
+    throw new AppException(
+      'SESSION_INELIGIBLE',
+      'Kid-scoped sessions cannot be migrated',
+      409,
+    );
+  }
   const ref = adminDb.collection(SESSIONS_COLLECTION).doc(sessionId);
   const snap = tx ? await tx.get(ref) : await ref.get();
   if (!snap.exists) return; // No doc → nothing to claim, but not an error either

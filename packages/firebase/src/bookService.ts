@@ -65,11 +65,49 @@ function stripUndefined<T>(obj: T): T {
   return cleaned as T;
 }
 
-/** Owner scope — P1 uses sessionId; P2 will add userId/kidId. */
+/** Owner scope. Books are owned DURABLY by the kid (or, for true anonymous
+ *  sessions, by the session that created them). `kidId` may be absent in the
+ *  scope passed by routes — it's recovered from the session id when needed. */
 export interface OwnerScope {
   sessionId: string;
   userId?: string | null;
   kidId?: string | null;
+}
+
+/**
+ * Durable owner key for a scope. A kid's session id encodes the kid
+ * (`kid-<kidId>-<dayKey>`), so we can recover the owning kid even when a route
+ * only put the session id in scope. Returns null for true anonymous sessions
+ * (a random UUID), which stay session-scoped.
+ *
+ * This is the fix for the "lost books" bug: the kid session id rolls over every
+ * calendar day, so listing/owning by session id hid every book not created
+ * today. Listing/owning by kidId makes a kid's books durable across days and
+ * sign-outs.
+ */
+export function effectiveKidId(scope: OwnerScope): string | null {
+  if (scope.kidId) return scope.kidId;
+  const sid = scope.sessionId ?? '';
+  if (sid.startsWith('kid-')) {
+    // `kid-<kidId>-<YYYY-MM-DD>` — the kidId is a dash-free Firestore doc id.
+    const kid = sid.split('-')[1];
+    return kid && kid.length > 0 ? kid : null;
+  }
+  return null;
+}
+
+/**
+ * True if `scope` owns `book`. Kid ownership is durable (matched on kidId across
+ * every daily session); anonymous/legacy books with no kidId fall back to the
+ * session that created them.
+ */
+export function ownsBook(
+  book: { sessionId?: string; kidId?: string | null },
+  scope: OwnerScope,
+): boolean {
+  const kid = effectiveKidId(scope);
+  if (kid && book.kidId && book.kidId === kid) return true;
+  return !!book.sessionId && book.sessionId === scope.sessionId;
 }
 
 export interface ListBooksFilters {
@@ -537,8 +575,7 @@ async function loadOwnedBook(id: string, scope: OwnerScope): Promise<{
     throw new AppException('NOT_FOUND', 'Book not found', 404);
   }
   const book = docToBook(snapshot);
-  // P1 owner check: sessionId match. P2 will add userId/kidId.
-  if (book.sessionId !== scope.sessionId) {
+  if (!ownsBook(book, scope)) {
     throw new AppException('NOT_FOUND', 'Book not found', 404);
   }
   return { ref, book };
@@ -561,7 +598,34 @@ export async function listBooks(
   filters: ListBooksFilters = {}
 ): Promise<ListBooksResult> {
   const limit = Math.min(filters.limit ?? DEFAULT_LIST_LIMIT, MAX_LIST_LIMIT);
+  const kid = effectiveKidId(scope);
 
+  // ── Durable kid-scoped listing ──────────────────────────────────────────
+  // The kid's session id rolls over every calendar day, so a session-scoped
+  // query hides every book not created today. Books carry `kidId`, so we list
+  // by it. Fetch-all + in-memory sort/paginate keeps this index-free (a single
+  // kidId equality needs no composite index) and a kid's book count is small.
+  if (kid) {
+    const kidSnap = await adminDb
+      .collection(BOOKS_COLLECTION)
+      .where('kidId', '==', kid)
+      .get();
+    let books = kidSnap.docs.map(docToBook);
+    if (filters.status) books = books.filter((b) => b.status === filters.status);
+    books.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+    if (filters.cursor) {
+      const cursorMs = new Date(filters.cursor).getTime();
+      if (!Number.isNaN(cursorMs)) books = books.filter((b) => b.updatedAt.getTime() < cursorMs);
+    }
+    const page = books.slice(0, limit);
+    const items = page.map(toListItem);
+    const hasMore = books.length > limit;
+    const nextCursor =
+      hasMore && items.length > 0 ? items[items.length - 1]!.updatedAt.toISOString() : null;
+    return { items, nextCursor, hasMore };
+  }
+
+  // ── Anonymous / legacy session-scoped path (uses the existing index) ─────
   let query = adminDb
     .collection(BOOKS_COLLECTION)
     .where('sessionId', '==', scope.sessionId)
@@ -657,7 +721,7 @@ export async function appendPage(
     throw new AppException('NOT_FOUND', 'Book not found', 404);
   }
   const preBook = docToBook(preSnap);
-  if (preBook.sessionId !== scope.sessionId) {
+  if (!ownsBook(preBook, scope)) {
     throw new AppException('NOT_FOUND', 'Book not found', 404);
   }
   if (!isLayoutAllowedForBucket(input.layout, preBook.bucket)) {
@@ -1126,7 +1190,7 @@ export async function getBookGenerationInput(
   const snap = await adminDb.collection(BOOKS_COLLECTION).doc(bookId).get();
   if (!snap.exists) throw new AppException('NOT_FOUND', 'Book not found', 404);
   const data = snap.data()!;
-  if (data.sessionId !== scope.sessionId) throw new AppException('FORBIDDEN', 'Not your book', 403);
+  if (!ownsBook(data, scope)) throw new AppException('FORBIDDEN', 'Not your book', 403);
   return {
     input: (data.generationInput as Record<string, unknown> | undefined) ?? null,
     status: (data.generation?.status as BookGenerationStatus | undefined) ?? null,
@@ -1140,7 +1204,7 @@ export async function resetBookForRetry(bookId: string, scope: OwnerScope): Prom
   const snap = await bookRef.get();
   if (!snap.exists) throw new AppException('NOT_FOUND', 'Book not found', 404);
   const data = snap.data()!;
-  if (data.sessionId !== scope.sessionId) throw new AppException('FORBIDDEN', 'Not your book', 403);
+  if (!ownsBook(data, scope)) throw new AppException('FORBIDDEN', 'Not your book', 403);
 
   // Delete existing pages — the job re-writes them from a fresh draft.
   const pagesSnap = await bookRef.collection(PAGES_SUBCOLLECTION).get();
@@ -1197,7 +1261,7 @@ export async function writeGeneratedBookContent(
   const bookRef = adminDb.collection(BOOKS_COLLECTION).doc(bookId);
   const snap = await bookRef.get();
   if (!snap.exists) throw new AppException('NOT_FOUND', 'Book not found', 404);
-  if (snap.data()?.sessionId !== scope.sessionId) {
+  if (!ownsBook(snap.data() ?? {}, scope)) {
     throw new AppException('FORBIDDEN', 'Not your book', 403);
   }
   const now = Timestamp.now();
