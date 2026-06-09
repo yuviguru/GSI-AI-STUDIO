@@ -1,5 +1,6 @@
 import type { QuizContent } from '@gsi/types';
 import type { Book, BookPage } from '@gsi/types';
+import { derivePalette, resolveComposition, hexToRgbTuple } from '@/lib/books/pageComposition';
 
 /** Minimal story shape needed for PDF generation */
 interface PdfStory {
@@ -396,71 +397,115 @@ export async function generateBookPdf(book: Book, pages: BookPage[]): Promise<Bl
   );
 
   // ── Body pages ──
+  // Shared colour system so the printed book matches the on-screen flipbook
+  // (FlipbookPreview uses the same derivePalette + resolveComposition).
+  const palette = derivePalette(book.themeColor ?? book.cover.backgroundColor);
+  const [pbR, pbG, pbB] = hexToRgbTuple(palette.pageBg);
+  const [matR, matG, matB] = hexToRgbTuple(palette.matBg);
+  const [brR, brG, brB] = hexToRgbTuple(palette.border);
+  const [acR, acG, acB] = hexToRgbTuple(palette.accent);
+  const [txR, txG, txB] = hexToRgbTuple(palette.text);
+
+  /** Accent page-number pill, bottom-centre. */
+  const drawPageNumber = (n: number) => {
+    const pillW = 11;
+    const pillH = 6;
+    doc.setFillColor(acR, acG, acB);
+    doc.roundedRect(widthMm / 2 - pillW / 2, heightMm - pillH - 2, pillW, pillH, 2, 2, 'F');
+    doc.setTextColor('#FFFFFF');
+    doc.setFontSize(9);
+    doc.text(`${n}`, widthMm / 2, heightMm - 3.5, { align: 'center' });
+  };
+
+  /** Themed mat + border around a framed illustration, image inset within. */
+  const drawFramedImage = (dataUrl: string, y: number, h: number) => {
+    doc.setFillColor(matR, matG, matB);
+    doc.setDrawColor(brR, brG, brB);
+    doc.setLineWidth(1);
+    doc.roundedRect(pageMargin, y, contentWidth, h, 3, 3, 'FD');
+    doc.addImage(dataUrl, 'JPEG', pageMargin + 1.5, y + 1.5, contentWidth - 3, h - 3);
+  };
+
   const sortedPages = [...pages].sort((a, b) => a.pageNumber - b.pageNumber);
 
   for (const page of sortedPages) {
     doc.addPage([widthMm, heightMm], orientation);
 
-    // White background for body pages
-    doc.setFillColor(255, 255, 255);
+    const comp = resolveComposition(page.layout, book.size);
+
+    // Themed (not plain white) page background.
+    doc.setFillColor(pbR, pbG, pbB);
     doc.rect(0, 0, widthMm, heightMm, 'F');
 
-    const isFullBleed = page.layout === 'image_full_bleed' || page.layout === 'gallery';
-    const isImageTop =
-      page.layout === 'image_top_text_bottom' || page.layout === 'concept_letter';
-    const isTextOnly = page.layout === 'text_only' || page.layout === 'entry_centered';
-    const isCentered = page.layout === 'entry_centered';
+    const imageDataUrl =
+      page.imageUrl && comp.mode !== 'text_feature'
+        ? await loadImageAsDataUrl(page.imageUrl)
+        : null;
 
-    let imageDataUrl: string | null = null;
-    if (page.imageUrl && !isTextOnly) {
-      imageDataUrl = await loadImageAsDataUrl(page.imageUrl);
-    }
-
-    if (isFullBleed && imageDataUrl) {
+    // ── Full-bleed cinematic ──
+    if (comp.mode === 'full_bleed' && imageDataUrl) {
       doc.addImage(imageDataUrl, 'JPEG', 0, 0, widthMm, heightMm);
-      // Optional caption overlay at bottom
       if (page.plainText) {
-        doc.setFillColor(0, 0, 0);
-        doc.rect(0, heightMm - 18, widthMm, 18, 'F');
-        doc.setTextColor('#FFFFFF');
+        // Floating dark caption card near the bottom. It grows to fit ALL the
+        // wrapped lines so no story text is dropped: the on-screen flipbook
+        // renders the full caption, and the PDF must match it (previously this
+        // sliced to the first 2 lines and silently lost the rest).
+        const cardW = contentWidth;
         doc.setFontSize(11);
-        const captionLines = wrapText(doc, page.plainText, contentWidth);
-        doc.text(captionLines.slice(0, 2).join(' '), widthMm / 2, heightMm - 9, {
-          align: 'center',
-        });
+        const captionLines = wrapText(doc, page.plainText, cardW - 8);
+        const lineH = 11 * 0.5; // mm per line, matches the framed-text convention
+        const padY = 3;
+        const cardH = captionLines.length * lineH + padY * 2;
+        const cardY = heightMm - cardH - 6;
+        doc.setFillColor(18, 15, 38);
+        doc.roundedRect((widthMm - cardW) / 2, cardY, cardW, cardH, 3, 3, 'F');
+        doc.setTextColor('#FFFFFF');
+        let ty = cardY + padY + lineH * 0.72;
+        for (const line of captionLines) {
+          doc.text(line, widthMm / 2, ty, { align: 'center' });
+          ty += lineH;
+        }
       }
+      drawPageNumber(page.pageNumber);
       continue;
     }
 
+    const imgHeight = contentHeight * comp.imageHeightRatio;
     let yPos = pageMargin;
 
-    // Image (if any, half page)
-    if (imageDataUrl && !isTextOnly) {
-      const imgHeight = contentHeight * 0.5;
-      if (isImageTop) {
-        doc.addImage(imageDataUrl, 'JPEG', pageMargin, yPos, contentWidth, imgHeight);
-        yPos += imgHeight + 6;
-      }
+    // Framed image on top.
+    if (comp.mode === 'framed_image_top' && imageDataUrl) {
+      drawFramedImage(imageDataUrl, yPos, imgHeight);
+      yPos += imgHeight + 6;
     }
 
-    // Text
+    // Text.
     const fontSize = page.style?.fontSize ?? 13;
     doc.setFontSize(fontSize);
-    const [tR, tG, tB] = hexToRgb(page.style?.textColor ?? '#1F2937');
-    doc.setTextColor(tR, tG, tB);
+    if (page.style?.textColor) {
+      const [sR, sG, sB] = hexToRgb(page.style.textColor);
+      doc.setTextColor(sR, sG, sB);
+    } else {
+      doc.setTextColor(txR, txG, txB);
+    }
 
-    const textAlign = page.style?.alignment ?? (isCentered ? 'center' : 'left');
+    const textAlign = page.style?.alignment ?? (comp.centerText ? 'center' : 'left');
     const lineHeight = fontSize * 0.5;
 
     const textLines = wrapText(doc, page.plainText || ' ', contentWidth);
-    if (isCentered && isTextOnly) {
-      // Vertical center the text block
+    // Reserve room for a bottom-framed image so text never collides with it.
+    const textBottomLimit =
+      comp.mode === 'framed_image_bottom'
+        ? heightMm - pageMargin - imgHeight - 6
+        : heightMm - pageMargin - 8;
+
+    if (comp.mode === 'text_feature' && comp.centerText) {
       const blockHeight = textLines.length * lineHeight;
-      yPos = (heightMm - blockHeight) / 2;
+      yPos = Math.max(pageMargin, (heightMm - blockHeight) / 2);
     }
 
     for (const line of textLines) {
-      if (yPos + lineHeight > heightMm - pageMargin) break;
+      if (yPos + lineHeight > textBottomLimit) break;
       const x =
         textAlign === 'center'
           ? widthMm / 2
@@ -471,19 +516,13 @@ export async function generateBookPdf(book: Book, pages: BookPage[]): Promise<Bl
       yPos += lineHeight;
     }
 
-    // Image at bottom if not yet drawn
-    if (imageDataUrl && !isImageTop && !isTextOnly) {
-      const imgHeight = contentHeight * 0.45;
+    // Framed image on bottom.
+    if (comp.mode === 'framed_image_bottom' && imageDataUrl) {
       const imgY = heightMm - pageMargin - imgHeight;
-      if (imgY > yPos + 4) {
-        doc.addImage(imageDataUrl, 'JPEG', pageMargin, imgY, contentWidth, imgHeight);
-      }
+      drawFramedImage(imageDataUrl, imgY, imgHeight);
     }
 
-    // Page number footer
-    doc.setFontSize(9);
-    doc.setTextColor(BRAND_GRAY);
-    doc.text(`${page.pageNumber}`, widthMm / 2, heightMm - 4, { align: 'center' });
+    drawPageNumber(page.pageNumber);
   }
 
   // ── Back cover (optional) ──

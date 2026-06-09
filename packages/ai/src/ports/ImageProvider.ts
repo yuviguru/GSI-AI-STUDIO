@@ -20,6 +20,11 @@ export interface ImageGenerateOptions {
   /** Pinning a seed across pages of a story keeps characters/palette consistent. */
   seed?: number;
   negativePrompt?: string;
+  /** Reference image URL for identity-preserving EDIT models (Qwen-Image-Edit,
+   *  gpt-image, Nano Banana). When set, a reference-capable provider edits this
+   *  image into the new `prompt` scene — the mechanism behind cross-page
+   *  character consistency. Ignored by plain text-to-image providers. */
+  referenceImageUrl?: string;
 }
 
 export interface ImageGenerateResult {
@@ -34,6 +39,12 @@ export interface ImageGenerateResult {
 
 export interface ImageProvider extends ProviderMeta {
   readonly costPerImage: number;
+  /** Can do plain text→image. Defaults to true when omitted (all legacy
+   *  providers). Reference-only edit models (e.g. Qwen-Image-Edit) set false. */
+  readonly supportsText2Img?: boolean;
+  /** Accepts a `referenceImageUrl` and preserves that subject's identity in the
+   *  output (edit / reference-conditioned models). Defaults to false. */
+  readonly supportsReference?: boolean;
 
   generate(opts: ImageGenerateOptions): Promise<ImageGenerateResult>;
   healthCheck(): Promise<HealthStatus>;

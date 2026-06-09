@@ -126,9 +126,20 @@ export class LlmRouter {
 
   /** Convenience: generate + parse JSON. */
   async generateJson<T>(opts: RouterGenerateOptions): Promise<T> {
+    return (await this.generateJsonWithMeta<T>(opts)).data;
+  }
+
+  /**
+   * Like `generateJson`, but also returns which provider served the response.
+   * Callers that need to log/attribute the model — e.g. to see which provider
+   * dropped an optional field from the JSON — use this variant.
+   */
+  async generateJsonWithMeta<T>(
+    opts: RouterGenerateOptions,
+  ): Promise<{ data: T; providerName: string }> {
     const result = await this.generate({ ...opts, responseFormat: 'json' });
     try {
-      return JSON.parse(result.text) as T;
+      return { data: JSON.parse(result.text) as T, providerName: result.providerName };
     } catch (err) {
       throw new Error(
         `LLM (${result.providerName}) returned invalid JSON: ${

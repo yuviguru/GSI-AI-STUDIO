@@ -263,10 +263,23 @@ export async function claimSession(
       claimedSessionDataPayload.onboarding = mergedOnboarding;
     }
 
+    // Only stash claimedSessionData — the signal that fires the sign-in
+    // migration prompt — when there's something REAL to migrate. A just-minted
+    // / empty anonymous session (0 points, 0 creations, no onboarding) must not
+    // nag a signed-in user to "keep or discard guest work" they never made. We
+    // still record the sessionId as claimed so we don't re-evaluate it.
+    const hasMeaningfulData =
+      (claimedSessionDataPayload.aiPoints as number) > 0 ||
+      (claimedSessionDataPayload.badges as string[]).length > 0 ||
+      (claimedSessionDataPayload.conceptsLearned as string[]).length > 0 ||
+      Object.keys(claimedSessionDataPayload.creationsByType as Record<string, number>).length > 0 ||
+      (claimedSessionDataPayload.shareCount as number) > 0 ||
+      Boolean(mergedOnboarding);
+
     tx.update(userRef, {
-      claimedSessionData: claimedSessionDataPayload,
       claimedSessionIds: FieldValue.arrayUnion(sessionId),
       updatedAt: Timestamp.now(),
+      ...(hasMeaningfulData ? { claimedSessionData: claimedSessionDataPayload } : {}),
     });
 
     if (sessionSnap.exists) {

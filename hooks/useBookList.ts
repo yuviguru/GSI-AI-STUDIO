@@ -26,7 +26,16 @@ const listFetcher = async (url: string): Promise<BookListResponse> => {
  */
 export function useBookList(filters?: { status?: BookStatus }) {
   const url = '/api/books' + (filters?.status ? `?status=${filters.status}` : '');
-  const { data, error, isLoading, mutate } = useSWR<BookListResponse>(url, listFetcher);
+  const { data, error, isLoading, mutate } = useSWR<BookListResponse>(url, listFetcher, {
+    // Poll while any book is still generating so the progress tile updates live
+    // (BOOK-008). Stops once everything is complete / partial / failed.
+    refreshInterval: (latest) =>
+      latest?.items?.some(
+        (b) => b.generation?.status === 'pending' || b.generation?.status === 'generating',
+      )
+        ? 2500
+        : 0,
+  });
 
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);

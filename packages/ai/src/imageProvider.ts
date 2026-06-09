@@ -1,29 +1,36 @@
 /**
  * Unified Image Provider — single entry point for all image sourcing.
  *
- * Reads `IMAGE_MODE` env var to decide strategy:
+ * The actual provider selection + cross-provider fallback now lives in the
+ * shared `imageRouter` (packages/ai/src/router), the SAME router the LLM path
+ * uses. This module is a thin policy layer on top that decides, per
+ * `IMAGE_MODE`, whether to allow non-AI fallbacks (stock photos / SVG):
  *
  *   IMAGE_MODE=hybrid (recommended prod default)
- *     Try AI-generate → Pexels stock (last resort) → SVG placeholder.
- *     AI-generated illustrations look consistent with the kid's story/comic
- *     aesthetic; stock photos are the safety net when AI providers all fail.
+ *     imageRouter (Pixazo → Replicate → Pollinations, health-aware) →
+ *     Pexels/Unsplash stock (last resort) → SVG placeholder. The router gives
+ *     us proper provider fallthrough; stock+SVG guarantee we ALWAYS return.
  *
  *   IMAGE_MODE=search
  *     Pexels → Unsplash → SVG (no AI cost, stock photos only).
  *
  *   IMAGE_MODE=generate
- *     ComfyUI (local) → Pixazo (free Flux Schnell) → Replicate (paid SDXL)
- *     → Pollinations (free) — picks the best configured provider.
+ *     imageRouter only (Pixazo → Replicate → Pollinations). No stock/SVG net.
  *
- * All three modes return the same interface: (opts) => Promise<string>
- * so the story/comic routes don't need to know which mode is active.
+ * Historically this module did its own single-provider pick
+ * (`getAiGenerator`) which, when the Pixazo key was missing, jumped straight
+ * to the lowest-quality provider (Pollinations) with no fallthrough — the
+ * cause of the book-generate timeout incident. Routing through `imageRouter`
+ * fixes that: a missing Pixazo key now cascades to Replicate, then
+ * Pollinations, with health tracking so a dead provider is skipped.
+ *
+ * All modes return the same interface: (opts) => Promise<string>
+ * so the story/comic/book routes don't need to know which mode is active.
  */
 
-import { generateImage } from './replicateClient';
-import { generateImageFree } from './pollinationsClient';
-import { generateImageLocal } from './comfyuiClient';
-import { generateWithPixazo, isPixazoConfigured } from './pixazoClient';
+import { imageRouter } from './router';
 import { searchImage, tryStockImage } from './imageSearchClient';
+import type { CostTier } from './ports';
 
 export type ImageStyle = 'watercolor' | 'cartoon' | 'pixel-art' | 'comic';
 
@@ -36,19 +43,12 @@ export interface ImageOptions {
    *  keeps the diffusion output visually coherent (same character faces,
    *  same palette) page-to-page. Omit for variety. */
   seed?: number;
+  /** Reference image URL for identity-preserving edit models (Qwen / gpt-image
+   *  / Nano Banana). Routed only to reference-capable providers. */
+  referenceImageUrl?: string;
 }
 
 export type ImageFunction = (opts: ImageOptions) => Promise<string>;
-
-// ─── Provider detection helpers ──────────────────────────────
-
-function shouldUseComfyUI(): boolean {
-  return !!process.env.COMFYUI_URL;
-}
-
-function shouldUseReplicate(): boolean {
-  return !!process.env.REPLICATE_API_TOKEN && !process.env.REPLICATE_API_TOKEN?.includes('your-token');
-}
 
 type ImageMode = 'hybrid' | 'search' | 'generate';
 
@@ -60,31 +60,70 @@ function getImageMode(): ImageMode {
 
 // ─── Generators ──────────────────────────────────────────────
 
-function getAiGenerator(): { fn: ImageFunction; name: string } {
-  // Priority: local ComfyUI (fastest in dev) → Pixazo (free hosted Flux Schnell)
-  //   → Replicate SDXL (paid fallback) → Pollinations (free but lower quality).
-  if (shouldUseComfyUI()) return { fn: generateImageLocal, name: 'flux-schnell-local' };
-  if (isPixazoConfigured()) return { fn: generateWithPixazo, name: 'pixazo-flux-schnell' };
-  if (shouldUseReplicate()) return { fn: generateImage, name: 'sdxl' };
-  return { fn: generateImageFree, name: 'pollinations' };
+/**
+ * Router-backed AI generator. Tries every configured provider in priority
+ * order (Pixazo → Replicate → Pollinations) with health-aware fallthrough,
+ * exactly like the LLM path. Returns the image URL or throws if every
+ * provider failed.
+ */
+async function generateViaRouter(opts: ImageOptions): Promise<string> {
+  const result = await imageRouter.generate({
+    prompt: opts.prompt,
+    style: opts.style,
+    width: opts.width,
+    height: opts.height,
+    seed: opts.seed,
+    referenceImageUrl: opts.referenceImageUrl,
+  });
+  return result.url;
+}
+
+/**
+ * Identity-preserving edit: render `prompt` while keeping the character in
+ * `referenceImageUrl` on-model. Routes ONLY to reference-capable providers
+ * (Qwen-Image-Edit / gpt-image / Nano Banana) — `preferProviders` honours the
+ * kid's chosen quality tier. Throws if no reference provider succeeds (callers
+ * fall back to plain text→image with the character anchor described in text).
+ */
+export async function editImageWithReference(opts: {
+  prompt: string;
+  referenceImageUrl: string;
+  width: number;
+  height: number;
+  style?: ImageStyle;
+  preferProviders?: string[];
+  maxCostTier?: CostTier;
+}): Promise<{ url: string; providerName: string }> {
+  const result = await imageRouter.generate({
+    prompt: opts.prompt,
+    style: opts.style,
+    width: opts.width,
+    height: opts.height,
+    referenceImageUrl: opts.referenceImageUrl,
+    routing: {
+      requireReference: true,
+      preferProviders: opts.preferProviders,
+      maxCostTier: opts.maxCostTier,
+    },
+  });
+  return { url: result.url, providerName: result.providerName };
 }
 
 function buildHybridFunction(): ImageFunction {
-  const ai = getAiGenerator();
   return async (opts) => {
     try {
-      const aiUrl = await ai.fn(opts);
+      const aiUrl = await generateViaRouter(opts);
       if (aiUrl) return aiUrl;
     } catch (err) {
       console.warn(
-        `[ImageProvider/hybrid] AI ${ai.name} failed — trying stock:`,
+        '[ImageProvider/hybrid] router AI providers failed — trying stock:',
         err instanceof Error ? err.message : err,
       );
     }
 
     const stock = await tryStockImage(opts);
     if (stock) {
-      console.log(`[ImageProvider/hybrid] AI failed — served from Pexels/Unsplash stock`);
+      console.log('[ImageProvider/hybrid] AI failed — served from Pexels/Unsplash stock');
       return stock;
     }
 
@@ -113,14 +152,15 @@ export function getImageProvider(): { imageFunction: ImageFunction; providerName
   }
 
   if (mode === 'generate') {
-    const ai = getAiGenerator();
-    return { imageFunction: ai.fn, providerName: ai.name };
+    return {
+      imageFunction: generateViaRouter,
+      providerName: 'router (pixazo→replicate→pollinations)',
+    };
   }
 
-  // hybrid — AI first, Pexels/Unsplash stock as last resort, SVG fallback
-  const ai = getAiGenerator();
+  // hybrid — router AI first, Pexels/Unsplash stock as last resort, SVG fallback
   return {
     imageFunction: buildHybridFunction(),
-    providerName: `hybrid (${ai.name} → pexels → svg)`,
+    providerName: 'hybrid (router → pexels → svg)',
   };
 }

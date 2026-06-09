@@ -20,6 +20,12 @@ import type { RouterMetricsSink } from './LlmRouter';
 export interface ImagePickHints {
   maxCostTier?: CostTier;
   exclude?: Set<string>;
+  /** Only consider providers that accept a reference image (edit models). When
+   *  false/omitted, only plain text→image providers are considered. */
+  requireReference?: boolean;
+  /** Provider names to try FIRST (in order), ahead of normal priority — used to
+   *  honour the kid's chosen quality tier (e.g. ['pixazo-qwen-edit']). */
+  preferProviders?: string[];
 }
 
 export interface RouterImageGenerateOptions extends ImageGenerateOptions {
@@ -36,14 +42,35 @@ export class ImageRouter {
 
   pick(hints: ImagePickHints = {}): ImageProvider {
     const excluded = hints.exclude ?? new Set();
+    const prefer = hints.preferProviders ?? [];
     const candidates = this.providers
       .filter((p) => !excluded.has(p.name))
       .filter((p) => !hints.maxCostTier || tierAtMost(p.costTier, hints.maxCostTier))
+      // Reference requests → only edit-capable providers; plain requests → only
+      // text→image providers (keeps reference-only models out of the txt2img
+      // cascade, where they'd fail for lack of a reference image).
+      .filter((p) =>
+        hints.requireReference ? p.supportsReference === true : p.supportsText2Img !== false,
+      )
       .filter((p) => this.monitor.status(p.name).healthy)
-      .sort((a, b) => a.priority - b.priority);
+      .sort((a, b) => {
+        // Preferred providers first, in the given order; then by priority.
+        const ai = prefer.indexOf(a.name);
+        const bi = prefer.indexOf(b.name);
+        if (ai !== -1 || bi !== -1) {
+          if (ai === -1) return 1;
+          if (bi === -1) return -1;
+          return ai - bi;
+        }
+        return a.priority - b.priority;
+      });
 
     if (candidates.length === 0) {
-      throw new Error('No healthy image provider available');
+      throw new Error(
+        hints.requireReference
+          ? 'No healthy reference-capable image provider available'
+          : 'No healthy image provider available',
+      );
     }
     return candidates[0]!;
   }
@@ -75,6 +102,9 @@ export class ImageRouter {
         return result;
       } catch (err) {
         lastError = err;
+        console.warn(
+          `[imageRouter] ${provider.name} failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
         this.monitor.markUnhealthyFromError(provider.name, err);
         this.metrics?.recordAttempt({
           providerName: provider.name,

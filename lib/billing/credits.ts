@@ -306,6 +306,41 @@ export async function debitCredits(input: DebitInput): Promise<{ balanceAfter: n
   });
 }
 
+interface RefundInput {
+  kidId: string;
+  amount: number; // positive — credited back to the topup pool
+  feature: string;
+  reason: string;
+}
+
+/**
+ * Refund credits — e.g. a background book generation that produced nothing.
+ * Credits land in the topup pool so they never expire (the kid lost them to a
+ * failure they didn't cause). No-op for amount <= 0.
+ */
+export async function refundCredits(input: RefundInput): Promise<{ balanceAfter: number }> {
+  if (input.amount <= 0) return { balanceAfter: await getBalance(input.kidId) };
+
+  const kidRef = kidDocRef(input.kidId);
+  return adminDb.runTransaction(async (tx) => {
+    const kidDoc = await tx.get(kidRef);
+    const pools = readPools(kidDoc.exists ? (kidDoc.data() as Record<string, unknown>) : {});
+    const next: Pools = {
+      grant: pools.grant,
+      topup: pools.topup + input.amount,
+      total: pools.total + input.amount,
+    };
+    commitLedger(tx, kidRef, next, {
+      type: 'bonus',
+      amount: input.amount,
+      balanceAfter: next.total,
+      feature: input.feature,
+      metadata: { refund: true, reason: input.reason },
+    });
+    return { balanceAfter: next.total };
+  });
+}
+
 interface GrantInput {
   kidId: string;
   plan: UserPlan;

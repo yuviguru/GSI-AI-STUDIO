@@ -240,6 +240,25 @@ Want longer books? [Get more pages]
 
 Never block the kid mid-flow with a hard paywall — the cap is the cap, the upsell is contextual.
 
+#### Page composition & colour system (BOOK-006)
+
+Books must read as **professionally published and colourful**, never "a white page with an image in a box." One shared, render-agnostic module — `lib/books/pageComposition.ts` — is the single source of truth, consumed by **both** the on-screen flipbook (`FlipbookPreview`) and the print PDF (`generateBookPdf`) so the editor preview, public viewer, and downloaded book always match.
+
+**Palette (`derivePalette(themeColor)`)** — turns the book's one `themeColor` into a small readable set: tinted `pageBg` (never white), image `matBg` + `border`, a saturated `accent` (page-number pill, drop-cap), hue-tinted dark `text`, and a `captionBg` scrim. Hue is preserved; saturation/lightness are clamped to legible bands. Applies to **all** books (AI- and wizard-authored).
+
+**Composition (`resolveComposition(layout, size)`)** — maps a page's `layout` + the book's trim `size` to one of four modes, with **size-aware** image proportions + padding:
+
+| Mode | When | Treatment |
+|---|---|---|
+| `full_bleed` | `image_full_bleed`, `gallery` | Art edge-to-edge + floating caption card |
+| `framed_image_top` | `image_top_text_bottom`, `concept_letter`, `recipe_split` | Themed mat + border around art, drop-cap text below |
+| `framed_image_bottom` | `text_top_image_bottom` | Drop-cap text above, framed art below |
+| `text_feature` | `text_only`, `entry_centered` | Tinted page, centred for poems |
+
+`imageHeightRatio` scales by trim (landscape 0.60 → pocket 0.44) so compact formats keep text legible; padding scales off the page's short side.
+
+**Hybrid-by-scene-type (generation)** — the AI tags each page with a `sceneType`; `lib/books/sceneLayout.ts` maps it to a `PageLayout` (cinematic scenes → full-bleed, quieter scenes → alternating framed) so a generated book varies composition page-to-page instead of repeating one layout. `createGeneratedBook` validates each mapped layout against the book's bucket and falls back to the bucket default if disallowed.
+
 ### AI X-Ray Popup
 
 Appears after every creation. Dismissable but incentivized with AI Points.

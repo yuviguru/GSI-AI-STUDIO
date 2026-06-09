@@ -28,6 +28,9 @@ export const CREDIT_COSTS_DEFAULTS: Readonly<Record<string, number>> = {
   'image.fast': 2,
   'image.flux': 5,
   'image.sdxl': 25,
+  'image.qwenEdit': 8, // Qwen-Image-Edit (Standard — character-consistent)
+  'image.gptImage': 30, // gpt-image (Premium)
+  'image.nanoBanana': 30, // Nano Banana (Premium)
 
   // Other studios
   'quiz.generate': 3,

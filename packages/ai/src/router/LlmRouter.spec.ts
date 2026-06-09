@@ -113,4 +113,27 @@ describe('LlmRouter', () => {
       expect.objectContaining({ providerName: 'ok', success: true }),
     );
   });
+
+  it('generateJsonWithMeta parses JSON and returns the serving provider', async () => {
+    const ok = makeProvider({
+      name: 'ok',
+      priority: 1,
+      generateImpl: async () => ({
+        text: '{"hello":"world"}',
+        inputTokens: 1,
+        outputTokens: 1,
+        costUsd: 0,
+        providerName: 'ok',
+        latencyMs: 1,
+      }),
+    });
+    const monitor = new HealthMonitor([ok]);
+    monitor.markHealthy('ok', 1);
+    const router = new LlmRouter([ok], monitor);
+    const { data, providerName } = await router.generateJsonWithMeta<{ hello: string }>({
+      userMessage: 'hi',
+    });
+    expect(data).toEqual({ hello: 'world' });
+    expect(providerName).toBe('ok');
+  });
 });

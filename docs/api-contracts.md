@@ -426,6 +426,31 @@ Generate a multi-panel illustrated comic strip with dialogue bubbles.
 
 Book Studio uses a different lifecycle than one-shot AI generation: persistent multi-session state with a `books` collection + `pages` subcollection. See `data-model.md#books` for schemas. Grammar AI is **Groq** (not Claude) — uses existing `lib/ai/groqClient.ts`.
 
+### POST /api/ai/book-generate (BOOK-002 / async BOOK-008)
+
+Kicks off **async** generation. The model defines a character "book bible", then a background job renders ONE hero **anchor portrait** and **reference-edits it onto the cover + every page** so the character stays identical. **The route returns instantly** — it bills, writes a `pending` book shell (so the home tile appears immediately), and enqueues the job (`lib/books/generateBookJob`; the Netlify `book-generate-background` function in prod, inline in dev — past the 26s sync limit). Progress streams into the book's `generation.*` field; the home tile polls `GET /api/books` and the book opens only once it's done.
+
+**Request:** `topic`, `age`, `style`, `type`, `format`, `size`, `pageCount`, optional `title`/`author`, and **`quality`**:
+- `quality: "standard"` (default) — **Qwen-Image-Edit** via Pixazo (same key). Character-consistent, low credits.
+- `quality: "premium"` — **Nano Banana** (Gemini) → **gpt-image** fallback. Top quality, high credits; degrades to Qwen / text-to-image when no premium key is set.
+
+**Cost:** `book.aiGenerate` + `image.flux` (anchor) + **(N + 1) × `image.<model>`** (pages + cover; `image.qwenEdit` Standard / `image.nanoBanana` Premium). Debited upfront; **refunded** by the job if the draft never lands.
+
+**Response (200):**
+```json
+{ "success": true, "data": { "bookId": "...", "redirectUrl": "/create/book", "status": "generating", "quality": "standard" } }
+```
+
+**Errors:** `400 INVALID_INPUT` (bad fields) · `401 UNAUTHORIZED` (missing `X-Session-Id`) · `402 / 403` insufficient credits / plan gate · `429 RATE_LIMITED`.
+
+The job retries each image (≤3) and persists what renders; `finalizeBookGeneration` marks the book **`complete`** / **`partial`** (some images pending → regenerate per-page in the editor) / **`failed`**. A client-side watcher shows an in-app "your book is ready" toast when it finishes.
+
+### POST /api/ai/book-generate/[id]/retry (BOOK-008)
+
+Re-run a **failed** book using its stored input (the kid re-enters nothing). Re-bills (the failed run refunded the original debit), resets the book to `pending`, and re-enqueues the job. **Response:** `{ bookId, status: "generating" }`. **Errors:** `400` if the book isn't in a `failed` state; `401`; `403` not owner; `404` not found.
+
+---
+
 ### POST /api/books
 
 Create a new book from the wizard. Fields `size`, `format`, `bucket` are **LOCKED at creation** — cannot be changed after.
