@@ -6,6 +6,11 @@ import { checkRateLimit, trackCreation } from '@gsi/firebase/sessionService';
 import { getBook } from '@gsi/firebase/bookService';
 import { getImageProvider, type ImageStyle } from '@gsi/ai/imageProvider';
 import { dimsForBookAndLayout } from '@gsi/ai/imageDims';
+import {
+  resolveComposition,
+  imageCarriesOverlay,
+  OVERLAY_SAFE_ZONE_HINT,
+} from '@/lib/books/pageComposition';
 import type { BookCharacter } from '@gsi/types';
 import { enforceBilling } from '@/lib/billing';
 
@@ -51,10 +56,21 @@ export async function POST(request: NextRequest) {
       .map((id) => book.characters.find((c) => c.id === id))
       .filter((c): c is BookCharacter => c !== undefined);
 
+    // A cover (no pageId) always overlays its title; a full-bleed page overlays
+    // its caption. In those cases ask the model to leave a calm band so the
+    // overlaid text stays legible (the safe-zone composition pro covers use).
+    const pageLayout = input.pageId
+      ? pages.find((p) => p.id === input.pageId)?.layout
+      : undefined;
+    const reserveTextBand = pageLayout
+      ? imageCarriesOverlay(resolveComposition(pageLayout, book.size).mode)
+      : !input.pageId; // cover
+
     const fullPrompt = buildScenePrompt({
       characters: selectedCharacters,
       action: input.action,
       styleHint: input.styleHint,
+      reserveTextBand,
     });
 
     filterImagePrompt(fullPrompt);
@@ -64,10 +80,6 @@ export async function POST(request: NextRequest) {
     // mislead kids).
     await enforceBilling(request, { feature: 'image.flux' });
 
-    // Per-page slot aspect when pageId is provided; book aspect (cover) otherwise
-    const pageLayout = input.pageId
-      ? pages.find((p) => p.id === input.pageId)?.layout
-      : undefined;
     const dims = dimsForBookAndLayout(book.size, pageLayout);
 
     const styleKey = (input.styleHint ?? '').toLowerCase();
@@ -107,11 +119,13 @@ export async function POST(request: NextRequest) {
 }
 
 /** Assemble the full image prompt — character anchors verbatim, then scene
- *  action, then style. */
+ *  action, then style. When `reserveTextBand` is set (covers + full-bleed
+ *  pages), ask the model to keep a calm band for an overlaid title/caption. */
 function buildScenePrompt(args: {
   characters: BookCharacter[];
   action: string;
   styleHint?: string;
+  reserveTextBand?: boolean;
 }): string {
   const style = args.styleHint ?? 'soft watercolor children\'s book illustration';
   const parts: string[] = ['Children\'s book scene illustration.'];
@@ -126,6 +140,8 @@ function buildScenePrompt(args: {
   parts.push(`Scene: ${args.action}.`);
   parts.push(`Style: ${style}.`);
   parts.push('Same characters as their reference portraits — keep faces, hair, and outfits identical. No text in image.');
+
+  if (args.reserveTextBand) parts.push(OVERLAY_SAFE_ZONE_HINT);
 
   return parts.join(' ');
 }

@@ -236,7 +236,7 @@ export const BOOK_TYPE_CARDS: BookTypeCard[] = [
     emoji: '🎨',
     bucket: 'visual',
     defaultFormat: 'image',
-    defaultLayouts: ['image_full_bleed', 'gallery'],
+    defaultLayouts: ['image_full_bleed', 'image_top_text_bottom'],
     suggestedThemeColor: '#8A5CFF',
     description: 'Your art collection — drawings or AI illustrations.',
     samplePrompts: ['My doodles this week', 'Things I imagined'],
@@ -265,7 +265,7 @@ export const BUCKET_LAYOUTS: Record<BookBucket, PageLayout[]> = {
   entry_list: ['text_top_image_bottom', 'image_top_text_bottom', 'recipe_split'],
   collection: ['entry_centered', 'text_only'],
   concept: ['concept_letter', 'image_top_text_bottom'],
-  visual: ['image_full_bleed', 'gallery'],
+  visual: ['image_full_bleed', 'image_top_text_bottom'],
 };
 
 interface BookSizeMeta extends BookDimensions {

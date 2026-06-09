@@ -219,6 +219,21 @@ export function resolveComposition(layout: PageLayout, size: BookSize): PageComp
   };
 }
 
+/** True when a page's image carries text laid OVER it (so the art needs a calm
+ *  band for legibility). Only full-bleed pages overlay their caption; framed
+ *  and text-feature pages put text on a separate themed area. Covers always
+ *  overlay their title — callers pass that case explicitly. */
+export function imageCarriesOverlay(mode: CompositionMode): boolean {
+  return mode === 'full_bleed';
+}
+
+/** Appended to an image-generation prompt when the image will carry overlaid
+ *  text (covers + full-bleed pages). Asks the model to keep the lower band calm
+ *  and the subjects up top — the safe-zone composition that makes professional
+ *  picture-book covers read cleanly under their title. */
+export const OVERLAY_SAFE_ZONE_HINT =
+  'Composition: keep the lower third simpler and less busy (open sky, ground, water, or soft background) and place the main subjects in the upper two-thirds, leaving clean space for an overlaid title or caption.';
+
 /** Split text into a drop-cap leading character + the remainder, skipping
  *  leading quotes/spaces so the cap lands on a real letter. Returns null cap
  *  when there's nothing sensible to enlarge. */

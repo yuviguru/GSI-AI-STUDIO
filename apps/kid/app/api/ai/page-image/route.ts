@@ -6,6 +6,11 @@ import { checkRateLimit, trackCreation } from '@gsi/firebase/sessionService';
 import { getBook } from '@gsi/firebase/bookService';
 import { getImageProvider, type ImageStyle } from '@gsi/ai/imageProvider';
 import { dimsForBookAndLayout } from '@gsi/ai/imageDims';
+import {
+  resolveComposition,
+  imageCarriesOverlay,
+  OVERLAY_SAFE_ZONE_HINT,
+} from '@/lib/books/pageComposition';
 import { enforceBilling } from '@/lib/billing';
 
 /** Fallback dims for the explicit `aspect` enum — used when no bookId/pageId
@@ -50,29 +55,40 @@ export async function POST(request: NextRequest) {
 
     // Prefer slot-aware dims when bookId+pageId are provided so a half-height
     // image slot generates a wide image that fills cleanly without crop. Fall
-    // back to the explicit `aspect` enum for cover/loose calls.
+    // back to the explicit `aspect` enum for cover/loose calls. Covers and
+    // full-bleed pages overlay text, so reserve a calm band in those cases.
     let dims: { width: number; height: number };
+    let reserveTextBand = false;
     if (input.bookId && input.pageId) {
       const { book, pages } = await getBook(input.bookId, { sessionId });
       const layout = pages.find((p) => p.id === input.pageId)?.layout;
       dims = dimsForBookAndLayout(book.size, layout);
+      reserveTextBand = layout
+        ? imageCarriesOverlay(resolveComposition(layout, book.size).mode)
+        : false;
     } else if (input.bookId && !input.pageId) {
-      // Cover or non-page gen — book aspect, no layout
+      // Cover or non-page gen — book aspect, no layout. Cover overlays its title.
       const { book } = await getBook(input.bookId, { sessionId });
       dims = dimsForBookAndLayout(book.size);
+      reserveTextBand = true;
     } else {
       const aspect = input.aspect ?? 'square';
       dims = ASPECT_DIMENSIONS[aspect] ?? ASPECT_DIMENSIONS.square!;
+      reserveTextBand = aspect === 'cover';
     }
 
     const styleLookup = input.style ? STYLE_FALLBACK_MAP[input.style.toLowerCase()] : undefined;
     const style: ImageStyle = styleLookup ?? 'cartoon';
 
+    const finalPrompt = reserveTextBand
+      ? `${input.prompt}. ${OVERLAY_SAFE_ZONE_HINT}`
+      : input.prompt;
+
     const { imageFunction, providerName } = getImageProvider();
 
     const start = Date.now();
     const imageUrl = await imageFunction({
-      prompt: input.prompt,
+      prompt: finalPrompt,
       style,
       width: dims.width,
       height: dims.height,
