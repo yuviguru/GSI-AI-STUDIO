@@ -264,17 +264,20 @@ export async function claimSession(
     }
 
     // Only stash claimedSessionData — the signal that fires the sign-in
-    // migration prompt — when there's something REAL to migrate. A just-minted
-    // / empty anonymous session (0 points, 0 creations, no onboarding) must not
-    // nag a signed-in user to "keep or discard guest work" they never made. We
-    // still record the sessionId as claimed so we don't re-evaluate it.
+    // migration prompt — when there's something REAL to keep. A just-minted /
+    // empty anonymous session (0 points, 0 creations) must not nag a signed-in
+    // user to "keep or discard guest work" they never made. Onboarding counts
+    // only when it has a NAME: an avatar/mascot-only blip (e.g. from the
+    // login-only flow) can't be shown in the prompt's summary card, so stashing
+    // it just dead-ends a full-account user on a contentless prompt (AUTH-002).
+    // We still record the sessionId as claimed so we don't re-evaluate it.
     const hasMeaningfulData =
       (claimedSessionDataPayload.aiPoints as number) > 0 ||
       (claimedSessionDataPayload.badges as string[]).length > 0 ||
       (claimedSessionDataPayload.conceptsLearned as string[]).length > 0 ||
       Object.keys(claimedSessionDataPayload.creationsByType as Record<string, number>).length > 0 ||
       (claimedSessionDataPayload.shareCount as number) > 0 ||
-      Boolean(mergedOnboarding);
+      Boolean(mergedOnboarding?.name);
 
     tx.update(userRef, {
       claimedSessionIds: FieldValue.arrayUnion(sessionId),
