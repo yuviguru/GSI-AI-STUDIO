@@ -100,4 +100,30 @@ describe('sceneTypeToLayout', () => {
   it('falls back to an alternating framed layout when scene is missing', () => {
     expect(sceneTypeToLayout(undefined, 'square', 0)).toBe('image_top_text_bottom');
   });
+
+  // Regression (PR #73 Codex review): a full-bleed page overlays its text in a
+  // small caption card, so a paragraph of story text must NOT go full-bleed —
+  // otherwise the caption swallows the art and the PDF dropped the overflow.
+  it('keeps a SHORT cinematic caption full-bleed', () => {
+    expect(sceneTypeToLayout('action', 'square', 0, 'Pip soared into the night.')).toBe(
+      'image_full_bleed',
+    );
+  });
+  it('routes a TEXT-HEAVY cinematic page to a framed layout', () => {
+    const paragraph =
+      'Pip the firefly took a deep breath and flew higher than he ever had before, ' +
+      'past the tallest trees, across the windy canyon, all the way to the glowing beacon.';
+    expect(sceneTypeToLayout('action', 'square', 0, paragraph)).toBe('image_top_text_bottom');
+    expect(sceneTypeToLayout('dramatic_reveal', 'landscape', 1, paragraph)).toBe(
+      'text_top_image_bottom',
+    );
+  });
+  it('routes a text-heavy character_closeup to a framed layout', () => {
+    const paragraph =
+      'Ember gazed at the village below, her tiny wings trembling, wondering whether ' +
+      'she was truly brave enough to light the great Sky Beacon all by herself tonight.';
+    expect(sceneTypeToLayout('character_closeup', 'square', 0, paragraph)).toBe(
+      'image_top_text_bottom',
+    );
+  });
 });

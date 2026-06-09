@@ -24,6 +24,15 @@ const CINEMATIC_SCENES: ReadonlySet<BookSceneType> = new Set([
 ]);
 
 /**
+ * A full-bleed page overlays its text in a small caption card, which only reads
+ * well for a SHORT caption (a line or two). A story page with a full paragraph
+ * must get a framed layout with a real text area instead — otherwise the caption
+ * swallows the image on screen and (historically) the PDF dropped the overflow.
+ * Above this many characters, route the page away from full-bleed.
+ */
+const FULL_BLEED_MAX_CAPTION_CHARS = 110;
+
+/**
  * Pick a layout for a page given its scene type and the book trim.
  *
  * - Cinematic scenes → full-bleed, EXCEPT on the small pocket trim where
@@ -37,18 +46,26 @@ export function sceneTypeToLayout(
   scene: BookSceneType | undefined,
   size: BookSize,
   pageIndex: number,
+  /** The page's body text. Text-heavy pages are kept out of full-bleed so the
+   *  caption card never swallows the image / loses text. */
+  text?: string,
 ): PageLayout {
   const framedAlternating: PageLayout =
     pageIndex % 2 === 0 ? 'image_top_text_bottom' : 'text_top_image_bottom';
 
   if (!scene) return framedAlternating;
 
+  // A paragraph of story text needs a real text area, never a caption overlay.
+  const textHeavy = (text?.trim().length ?? 0) > FULL_BLEED_MAX_CAPTION_CHARS;
+
   if (CINEMATIC_SCENES.has(scene)) {
-    return size === 'pocket' ? 'image_top_text_bottom' : 'image_full_bleed';
+    // Pocket trim has no room for a legible overlay, and text-heavy pages need a
+    // real text area — both fall back to the framed (alternating) layout.
+    return size === 'pocket' || textHeavy ? framedAlternating : 'image_full_bleed';
   }
 
   if (scene === 'character_closeup') {
-    return size === 'landscape' || size === 'square'
+    return (size === 'landscape' || size === 'square') && !textHeavy
       ? 'image_full_bleed'
       : 'image_top_text_bottom';
   }

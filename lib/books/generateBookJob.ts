@@ -265,16 +265,21 @@ export async function generateBookJob(job: BookGenerationJob): Promise<void> {
       guide: safeGuide,
       age: input.age,
     });
-    const pages = draft.pages.map((p, i) => ({
-      plainText: filterOutput(p.plainText),
-      imagePrompt: buildPageImagePrompt({
-        scenePrompt: filterImagePrompt(p.imagePrompt),
-        emotion: p.emotion || undefined,
-        guide: safeGuide,
-        age: input.age,
-      }),
-      layout: sceneTypeToLayout(p.sceneType, input.size, i),
-    }));
+    const pages = draft.pages.map((p, i) => {
+      const plainText = filterOutput(p.plainText);
+      return {
+        plainText,
+        imagePrompt: buildPageImagePrompt({
+          scenePrompt: filterImagePrompt(p.imagePrompt),
+          emotion: p.emotion || undefined,
+          guide: safeGuide,
+          age: input.age,
+        }),
+        // Text-heavy pages are kept out of full-bleed so the caption never
+        // swallows the art / loses text in the PDF.
+        layout: sceneTypeToLayout(p.sceneType, input.size, i, plainText),
+      };
+    });
     const title = filterOutput(draft.title);
 
     // 2) Write the draft onto the shell (pages get text + prompts; images null).
