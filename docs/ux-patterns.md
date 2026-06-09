@@ -259,6 +259,10 @@ Books must read as **professionally published and colourful**, never "a white pa
 
 **Hybrid-by-scene-type (generation)** — the AI tags each page with a `sceneType`; `lib/books/sceneLayout.ts` maps it to a `PageLayout` (cinematic scenes → full-bleed, quieter scenes → alternating framed) so a generated book varies composition page-to-page instead of repeating one layout. `createGeneratedBook` validates each mapped layout against the book's bucket and falls back to the bucket default if disallowed.
 
+**Overlay safe-zone (BOOK-007)** — when an image will carry text laid **over** it — a cover (title) or a `full_bleed` page (caption card) — the generators (`/api/ai/scene-image`, `/api/ai/page-image`) append `OVERLAY_SAFE_ZONE_HINT` from `pageComposition.ts`, asking the model to keep the lower band calm and subjects in the upper two-thirds. This is the safe-zone composition that makes professional picture-book covers read cleanly under their title (benchmark: Bribooks). Gated by `imageCarriesOverlay(mode)` so framed/text-feature pages — where text sits on a separate themed area — are unaffected.
+
+**No fake grids** — the `gallery` ("Picture grid") option is **not offered** in the picker (`BUCKET_LAYOUTS`, type-card `defaultLayouts`): a real grid needs multiple images per page and a `BookPage` stores one `imageUrl`. The value stays in the `PageLayout` enum for data compatibility — legacy `gallery` pages render as `full_bleed`.
+
 ### AI X-Ray Popup
 
 Appears after every creation. Dismissable but incentivized with AI Points.
