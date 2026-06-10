@@ -581,21 +581,32 @@ function PageView({ page, book }: { page: BookPage; book: Book }) {
   const comp = resolveComposition(page.layout, book.size);
   const padding = `${(comp.paddingRatio * 100).toFixed(2)}%`;
 
-  // ── Full-bleed cinematic ──
+  // ── Full-bleed cinematic — art edge to edge, text in a gradient safe-zone,
+  //    honouring the page's own colour/size/font so the preview + print match
+  //    what the kid styled in the in-place editor (BOOK-008). ──
   if (comp.mode === 'full_bleed' && page.imageUrl) {
     return (
       <div className="relative h-full w-full" style={{ backgroundColor: palette.pageBg }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={page.imageUrl} alt="" className="h-full w-full object-cover" />
         {page.plainText && (
-          <div className="absolute inset-x-0 bottom-0 flex justify-center p-3">
-            <div
-              className="max-w-[92%] rounded-2xl px-4 py-2 text-center text-sm leading-snug shadow-lg backdrop-blur-sm"
-              style={{ backgroundColor: palette.captionBg, color: palette.captionText }}
-            >
-              {page.plainText}
+          <>
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+            <div className="absolute inset-x-[6%] bottom-[7%]">
+              <p
+                className="whitespace-pre-wrap text-center leading-snug"
+                style={{
+                  fontFamily: page.style?.font ?? book.typography?.bodyFont ?? undefined,
+                  fontSize: page.style?.fontSize ? `${page.style.fontSize}px` : undefined,
+                  color: page.style?.textColor ?? '#ffffff',
+                  fontWeight: 600,
+                  textShadow: '0 2px 10px rgba(0,0,0,0.55)',
+                }}
+              >
+                {page.plainText}
+              </p>
             </div>
-          </div>
+          </>
         )}
         <PageNumberPill n={page.pageNumber} palette={palette} />
       </div>

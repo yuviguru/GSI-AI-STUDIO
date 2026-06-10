@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, Image as ImageIcon, Trash2, Upload } from 'lucide-react';
+import { Eye, Image as ImageIcon, Upload } from 'lucide-react';
 import { useBook } from '@/hooks/useBook';
 import { useBookPages } from '@/hooks/useBookPages';
 import { BUCKET_LAYOUTS } from '@/lib/templates/bookTemplates';
 import type { PagePatchInput } from '@/lib/validators';
-import { PageEditor } from '@/components/studios/book/PageEditor';
-import { PageNavigator } from '@/components/studios/book/PageNavigator';
+import { EditableBook } from '@/components/studios/book/EditableBook';
 import { CoverDesigner } from '@/components/studios/book/CoverDesigner';
 import { FlipbookPreview } from '@/components/studios/book/FlipbookPreview';
 import { PublishModal } from '@/components/studios/book/PublishModal';
@@ -77,8 +76,6 @@ export function BookEditorClient({ bookId }: BookEditorClientProps) {
     );
   }
 
-  const currentPage = pages.find((p) => p.id === currentPageId) ?? null;
-
   const handleAppendPage = async () => {
     const layout = BUCKET_LAYOUTS[book.bucket][0]!;
     const result = await pagesHook.appendPage({ layout });
@@ -146,64 +143,44 @@ export function BookEditorClient({ bookId }: BookEditorClientProps) {
         </div>
       </header>
 
-      <PageNavigator
-        pages={pages}
-        currentPageId={currentPageId}
-        pageLimit={book.pageLimit}
-        onSelectPage={setCurrentPageId}
-        onAppendPage={handleAppendPage}
-        appendDisabled={pagesHook.busy}
-      />
+      <main className="mx-auto max-w-5xl px-3 py-5">
+        <EditableBook
+          book={book}
+          pages={pages}
+          currentPageId={currentPageId}
+          onSelectPage={setCurrentPageId}
+          onSave={async (patch) => {
+            if (!currentPageId) return { ok: false, error: 'No page selected' };
+            const result = await pagesHook.patchPage(
+              currentPageId,
+              patch as unknown as PagePatchInput
+            );
+            // null = the run() helper swallowed the error; surface it so the
+            // editor can show "Couldn't save" instead of silently keeping the
+            // old text/image up.
+            if (result === null) {
+              return { ok: false, error: pagesHook.error ?? undefined };
+            }
+            return { ok: true };
+          }}
+          onAppendPage={handleAppendPage}
+          onDeletePage={handleDeletePage}
+          onBookChange={async () => {
+            await refresh();
+          }}
+          saving={pagesHook.busy}
+        />
 
-      <main className="mx-auto max-w-5xl px-3 py-4">
-        {currentPage ? (
-          <>
-            <PageEditor
-              book={book}
-              page={currentPage}
-              onSave={async (patch) => {
-                const result = await pagesHook.patchPage(
-                  currentPage.id,
-                  patch as unknown as PagePatchInput
-                );
-                // null = the run() helper swallowed the error; surface it back
-                // so the picture panel can show "Couldn't save" instead of
-                // silently keeping the old image up.
-                if (result === null) {
-                  return { ok: false, error: pagesHook.error ?? undefined };
-                }
-                return { ok: true };
-              }}
-              onBookChange={async () => {
-                await refresh();
-              }}
-              saving={pagesHook.busy}
-            />
-
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 pt-4">
-              <button
-                type="button"
-                onClick={handleDeletePage}
-                disabled={pages.length <= 1}
-                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-40"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Delete this page
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteBook}
-                disabled={actionLoading}
-                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 disabled:opacity-40"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Delete whole book
-              </button>
-            </div>
-          </>
-        ) : (
-          <div className="py-16 text-center text-sm text-gray-500">Setting up your book…</div>
-        )}
+        <div className="mt-8 border-t border-gray-200 pt-4 text-center">
+          <button
+            type="button"
+            onClick={handleDeleteBook}
+            disabled={actionLoading}
+            className="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
+          >
+            Delete whole book
+          </button>
+        </div>
       </main>
 
       {coverOpen && <CoverDesigner bookId={bookId} onClose={() => setCoverOpen(false)} />}
