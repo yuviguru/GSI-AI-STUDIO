@@ -5,6 +5,7 @@ import {
   derivePalette,
   resolveComposition,
   splitDropCap,
+  imageCarriesOverlay,
 } from './pageComposition';
 import { sceneTypeToLayout } from './sceneLayout';
 
@@ -69,6 +70,17 @@ describe('resolveComposition', () => {
     expect(resolveComposition('image_top_text_bottom', 'landscape').imageHeightRatio).toBeGreaterThan(
       resolveComposition('image_top_text_bottom', 'pocket').imageHeightRatio,
     );
+  });
+});
+
+describe('imageCarriesOverlay', () => {
+  it('is true only for full-bleed (text sits on the art)', () => {
+    expect(imageCarriesOverlay('full_bleed')).toBe(true);
+  });
+  it('is false for framed + text-feature (text on a separate themed area)', () => {
+    expect(imageCarriesOverlay('framed_image_top')).toBe(false);
+    expect(imageCarriesOverlay('framed_image_bottom')).toBe(false);
+    expect(imageCarriesOverlay('text_feature')).toBe(false);
   });
 });
 

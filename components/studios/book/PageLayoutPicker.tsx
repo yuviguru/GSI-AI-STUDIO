@@ -20,7 +20,7 @@ const LAYOUT_META: Record<PageLayout, LayoutMeta> = {
   text_top_image_bottom: { label: 'Words + Picture', description: 'Words on top, picture on bottom' },
   image_top_text_bottom: { label: 'Picture + Words', description: 'Picture on top, words on bottom' },
   text_only: { label: 'Words only', description: 'Just your writing' },
-  recipe_split: { label: 'Side by side', description: 'Picture on the side, words next to it' },
+  recipe_split: { label: 'Picture + Steps', description: 'Picture on top, steps below' },
   entry_centered: { label: 'Centered', description: 'Words in the middle, like a poem' },
   concept_letter: { label: 'Big letter', description: 'A letter or number takes the page' },
   gallery: { label: 'Picture grid', description: 'Multiple pictures on one page' },
