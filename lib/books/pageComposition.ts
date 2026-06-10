@@ -196,23 +196,21 @@ const PADDING_RATIO_BY_SIZE: Record<BookSize, number> = {
  * Pure — both renderers call this so screen and print agree.
  */
 export function resolveComposition(layout: PageLayout, size: BookSize): PageComposition {
-  const isFullBleed = layout === 'image_full_bleed' || layout === 'gallery';
-  const isImageBottom = layout === 'text_top_image_bottom';
+  // BOOK-008: the kid edits the book in place and every page reads as a
+  // full-bleed spread, so the reader + PDF must match. Image-bearing layouts
+  // all collapse to `full_bleed` (art edge-to-edge, text in the bottom
+  // safe-zone); only text-only pages stay a text feature. The framed modes are
+  // kept in the type for back-compat but are no longer produced.
   const isTextOnly = layout === 'text_only' || layout === 'entry_centered';
   const isCentered = layout === 'entry_centered';
   const conceptLetter = layout === 'concept_letter';
-
-  let mode: CompositionMode;
-  if (isFullBleed) mode = 'full_bleed';
-  else if (isTextOnly) mode = 'text_feature';
-  else if (isImageBottom) mode = 'framed_image_bottom';
-  else mode = 'framed_image_top'; // image_top_text_bottom, concept_letter, recipe_split
+  const mode: CompositionMode = isTextOnly ? 'text_feature' : 'full_bleed';
 
   return {
     mode,
     imageHeightRatio: IMAGE_RATIO_BY_SIZE[size] ?? 0.54,
     paddingRatio: PADDING_RATIO_BY_SIZE[size] ?? 0.06,
-    // Drop-cap any text-bearing page that isn't pure cinematic.
+    // Drop-cap a text page that isn't a centred poem.
     dropCap: mode !== 'full_bleed',
     centerText: isCentered,
     conceptLetter,

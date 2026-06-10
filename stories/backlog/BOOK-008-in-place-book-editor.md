@@ -41,19 +41,22 @@ Replace it with an in-place editor: the rendered spread IS the editor. Benchmark
 - Cast strip + cast sheet, add/delete page, dot nav, Pixie outside
 - Verified: typecheck ✅, lint ✅ (both apps), build ✅ (exit 0)
 
-### [API] Full-spread image dimensions — TODO (#5 from review)
-**Target**: `packages/ai/src/imageDims.ts`, scene/page-image prompts
-- Generate page art at two-page-spread (wide) dims so it fills the spread; keep
-  centre gutter + bottom text band calm (ties to BOOK-007 OVERLAY_SAFE_ZONE_HINT).
+### [FE] Reconcile reader/export to the editor look — DONE (increment 2)
+**Decision: full-bleed everywhere** (user pick). `resolveComposition` now
+collapses image-bearing layouts to `full_bleed` and keeps text-only as
+`text_feature`; `FlipbookPreview` + `generateBookPdf` both render the full-bleed
+overlay and now **honour `page.style`** (colour/size/font), so editor == reader
+== PDF. Framed modes kept in the type for back-compat but no longer produced.
+Verified: typecheck ✅, lint ✅, build ✅, pageComposition.spec 23/23 ✅.
 
-### [FE] Reconcile reader/export to the editor look — TODO (open decision)
-- EditableBook renders full-bleed spreads (approved mockup). The read-only
-  `FlipbookPreview` + `generateBookPdf` still render BOOK-006's varied
-  framed/full-bleed compositions. Decide: (a) make the whole book full-bleed
-  spreads (matches mockup, simplest), or (b) keep varied layouts and make
-  EditableBook render per `resolveComposition` mode (editor matches reader's
-  variety). Whichever wins, all three renderers must agree (editor == reader ==
-  PDF).
+### [API] Full-spread (wide) image dims — PARTIAL (#5 from review)
+**Target**: `packages/ai/src/imageDims.ts`, scene/page-image prompts
+- `imageDims` already generates at the book's full aspect, so full-bleed pages
+  fill the page edge-to-edge (satisfies "image fills the page"). BOOK-007's
+  OVERLAY_SAFE_ZONE_HINT now applies to every image page (all full_bleed).
+- STILL TODO: a *true* single image bridging two facing PRINT pages (left half
+  on page N, right half on N+1) needs a spread-as-unit model — trim + PDF-split
+  + page-count/billing implications. Flagged as its own step.
 
 ## Notes
 - Scratch mockup files (`mockup-book-editor.html`, `mockup/`, `.claude/launch.json`

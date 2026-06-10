@@ -52,13 +52,15 @@ describe('resolveComposition', () => {
     expect(c.mode).toBe('full_bleed');
     expect(c.dropCap).toBe(false);
   });
-  it('maps image_top / text_bottom to framed_image_top with a drop-cap', () => {
-    const c = resolveComposition('image_top_text_bottom', 'square');
-    expect(c.mode).toBe('framed_image_top');
-    expect(c.dropCap).toBe(true);
+  it('collapses image layouts to full_bleed (BOOK-008 full-bleed everywhere)', () => {
+    expect(resolveComposition('image_top_text_bottom', 'square').mode).toBe('full_bleed');
+    expect(resolveComposition('text_top_image_bottom', 'tall').mode).toBe('full_bleed');
+    expect(resolveComposition('recipe_split', 'square').mode).toBe('full_bleed');
+    expect(resolveComposition('concept_letter', 'square').mode).toBe('full_bleed');
   });
-  it('maps text_top_image_bottom to framed_image_bottom', () => {
-    expect(resolveComposition('text_top_image_bottom', 'tall').mode).toBe('framed_image_bottom');
+  it('keeps text-only layouts as a text feature', () => {
+    expect(resolveComposition('text_only', 'tall').mode).toBe('text_feature');
+    expect(resolveComposition('entry_centered', 'pocket').mode).toBe('text_feature');
   });
   it('centres text for entry_centered', () => {
     const c = resolveComposition('entry_centered', 'pocket');

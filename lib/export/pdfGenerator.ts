@@ -446,20 +446,21 @@ export async function generateBookPdf(book: Book, pages: BookPage[]): Promise<Bl
     if (comp.mode === 'full_bleed' && imageDataUrl) {
       doc.addImage(imageDataUrl, 'JPEG', 0, 0, widthMm, heightMm);
       if (page.plainText) {
-        // Floating dark caption card near the bottom. It grows to fit ALL the
-        // wrapped lines so no story text is dropped: the on-screen flipbook
-        // renders the full caption, and the PDF must match it (previously this
-        // sliced to the first 2 lines and silently lost the rest).
+        // Dark caption card in the bottom safe-zone. Grows to fit ALL wrapped
+        // lines (never truncates) and honours the page's own font size + colour
+        // so the print matches the in-place editor (BOOK-008).
         const cardW = contentWidth;
-        doc.setFontSize(11);
+        const fontPt = page.style?.fontSize ?? 11;
+        doc.setFontSize(fontPt);
         const captionLines = wrapText(doc, page.plainText, cardW - 8);
-        const lineH = 11 * 0.5; // mm per line, matches the framed-text convention
+        const lineH = fontPt * 0.5;
         const padY = 3;
         const cardH = captionLines.length * lineH + padY * 2;
         const cardY = heightMm - cardH - 6;
         doc.setFillColor(18, 15, 38);
         doc.roundedRect((widthMm - cardW) / 2, cardY, cardW, cardH, 3, 3, 'F');
-        doc.setTextColor('#FFFFFF');
+        const [cr, cg, cb] = page.style?.textColor ? hexToRgb(page.style.textColor) : [255, 255, 255];
+        doc.setTextColor(cr, cg, cb);
         let ty = cardY + padY + lineH * 0.72;
         for (const line of captionLines) {
           doc.text(line, widthMm / 2, ty, { align: 'center' });
