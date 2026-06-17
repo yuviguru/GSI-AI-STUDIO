@@ -194,6 +194,11 @@ export interface BookPage {
   imageUrl: string | null;
   imagePrompt: string | null;
   imageStyle: string | null;
+  /** Every distinct picture this page has shown (BOOK-009). Maintained
+   *  server-side on each image change so a kid can bring back a previous
+   *  picture after re-drawing or switching to a plain colour — generated
+   *  images are never lost. Optional/[] for pre-BOOK-009 pages. */
+  imageHistory?: string[];
   voiceTranscriptRaw: string | null;
   grammarSuggestions: GrammarSuggestion[];
   style: PageStyleOverride | null;

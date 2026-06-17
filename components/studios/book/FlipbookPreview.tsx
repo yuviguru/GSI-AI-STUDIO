@@ -5,12 +5,17 @@ import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X } from 'lucide-react';
 import type { Book, BookPage } from '@gsi/types';
 import { BOOK_SIZES } from '@/lib/templates/bookTemplates';
+import { useBookFit } from '@/hooks/useBookFit';
 import {
   derivePalette,
   resolveComposition,
   splitDropCap,
+  readableTextOn,
+  autoBodyFontSize,
+  fontScaleForPageWidth,
   type PagePalette,
 } from '@/lib/books/pageComposition';
+import { SITE_DOMAIN } from '@/lib/brand';
 import { playSound } from '@/lib/sounds';
 
 interface FlipbookPreviewProps {
@@ -25,26 +30,33 @@ interface FlipbookPreviewProps {
  *  matches the inner-pages dimensions and feels like a real book lying flat
  *  in front of you. */
 type Spread =
-  | { kind: 'cover' }              // single-page mode: front cover alone
-  | { kind: 'cover-spread' }       // two-page mode: back left + front right
+  | { kind: 'cover' }              // front cover (the closed book)
   | { kind: 'pages'; left: BookPage | null; right: BookPage | null }
-  | { kind: 'back' }                // single-page mode: back cover alone (end of book)
-  | { kind: 'end' };
+  | { kind: 'back' };              // back cover (end of book — carries the GSI footer)
 
 /** Pages spread breakpoint. Below this, render single-page mode (sane on
  *  small phones where two pages would each be ~150px wide). */
 const TWO_PAGE_MIN_WIDTH = 768;
 
+/**
+ * Build the reading sequence: front cover → inner pages → back cover.
+ *
+ * Real-book pagination (BOOK-010): opening the cover reveals a BLANK verso
+ * (the inside of the front cover) on the left and PAGE 1 on the right. So
+ * page 1 is always a recto; the rest pair up 2+3, 4+5, … An even final page
+ * sits alone on the left of its spread (its recto is the inside-back-cover,
+ * left blank). There is no separate "made with GSI" end page — that branding
+ * lives on the back cover.
+ */
 function buildSpreads(book: Book, pages: BookPage[], twoPageMode: boolean): Spread[] {
   const sortedPages = [...pages].sort((a, b) => a.pageNumber - b.pageNumber);
 
-  const spreads: Spread[] = [];
+  const spreads: Spread[] = [{ kind: 'cover' }];
 
   if (twoPageMode) {
-    // Cover spread: back left + front right. Same dimensions as inner spreads.
-    spreads.push({ kind: 'cover-spread' });
-    // Pair pages up: 1+2, 3+4, ... last odd page sits alone on its left.
-    for (let i = 0; i < sortedPages.length; i += 2) {
+    // First inner spread: blank inside-front-cover (left) + page 1 (right).
+    spreads.push({ kind: 'pages', left: null, right: sortedPages[0] ?? null });
+    for (let i = 1; i < sortedPages.length; i += 2) {
       spreads.push({
         kind: 'pages',
         left: sortedPages[i] ?? null,
@@ -52,17 +64,12 @@ function buildSpreads(book: Book, pages: BookPage[], twoPageMode: boolean): Spre
       });
     }
   } else {
-    // Single-page mode: front cover alone first.
-    spreads.push({ kind: 'cover' });
     for (const page of sortedPages) {
       spreads.push({ kind: 'pages', left: null, right: page });
     }
-    // Back cover always shown at end (it always has at least the GSI footer +
-    // creation date, even if the kid hasn't customised it).
-    spreads.push({ kind: 'back' });
   }
 
-  spreads.push({ kind: 'end' });
+  spreads.push({ kind: 'back' });
 
   return spreads;
 }
@@ -203,17 +210,25 @@ export function FlipbookPreview({ book, pages, onClose, readOnly = false }: Flip
   );
 
   const isCover = current?.kind === 'cover';
-  const isCoverSpread = current?.kind === 'cover-spread';
   const isBack = current?.kind === 'back';
-  const isEnd = current?.kind === 'end';
   const isPages = current?.kind === 'pages';
 
-  // Container shape: spreads (cover-spread + pages in 2-page mode) use
-  // book × 2 aspect for the side-by-side layout. Singles (cover, back,
-  // end, single-page-mode pages) use book aspect.
-  const isWideSpread = isCoverSpread || (isPages && twoPageMode);
+  // Container shape: only inner page spreads in 2-page mode are book × 2 wide.
+  // The cover and back cover are always single pages.
+  const isWideSpread = isPages && twoPageMode;
   const containerAspect = isWideSpread ? bookAspect * 2 : bookAspect;
-  const containerMaxWidthClass = isWideSpread ? 'max-w-3xl' : 'max-w-md';
+  // Scale the spread to fit the screen (never real print size). Centred modal,
+  // so we fit against the whole viewport height minus the nav chrome.
+  const previewFit = useBookFit(containerAspect, {
+    reserveBelow: 150,
+    minHeight: 180,
+    fromViewportTop: true,
+  });
+  // Text scales with the rendered PAGE width (half the container in two-page
+  // mode) so small screens read like a shrunken print page. PDF = absolute.
+  const pageFontScale = fontScaleForPageWidth(
+    previewFit.ready ? previewFit.width / (isWideSpread ? 2 : 1) : undefined,
+  );
 
   // Page-flip motion variants — direction-aware. Forward: outgoing rotates
   // off the right edge; incoming swings in from the right. Backward inverts.
@@ -269,10 +284,19 @@ export function FlipbookPreview({ book, pages, onClose, readOnly = false }: Flip
       </button>
 
       <div
-        className={`relative mx-auto w-full ${containerMaxWidthClass}`}
-        style={{ aspectRatio: `${containerAspect}` }}
+        ref={previewFit.containerRef}
+        className="relative mx-auto w-full"
+        style={{ maxWidth: isWideSpread ? '60rem' : '34rem' }}
       >
-        <AnimatePresence mode="wait" custom={flipDirection}>
+        <div
+          className="relative mx-auto"
+          style={
+            previewFit.ready
+              ? { width: previewFit.width, height: previewFit.height }
+              : { width: '100%', aspectRatio: `${containerAspect}` }
+          }
+        >
+          <AnimatePresence mode="wait" custom={flipDirection}>
           {current && (
             <motion.div
               key={`${index}-${twoPageMode}`}
@@ -297,18 +321,7 @@ export function FlipbookPreview({ book, pages, onClose, readOnly = false }: Flip
                 transformOrigin: flipDirection === 'forward' ? 'left center' : 'right center',
               }}
             >
-              {isCover && <CoverView book={book} />}
-
-              {isCoverSpread && (
-                <div className="grid h-full w-full grid-cols-2">
-                  <div className="relative border-r border-gray-200">
-                    <BackCoverDesignView book={book} />
-                  </div>
-                  <div className="relative">
-                    <CoverView book={book} />
-                  </div>
-                </div>
-              )}
+              {isCover && <CoverView book={book} fontScale={pageFontScale} />}
 
               {isPages && (
                 <PagesSpreadView
@@ -316,15 +329,15 @@ export function FlipbookPreview({ book, pages, onClose, readOnly = false }: Flip
                   right={current.right}
                   twoPageMode={twoPageMode}
                   book={book}
+                  fontScale={pageFontScale}
                 />
               )}
 
               {isBack && <BackCoverDesignView book={book} />}
-
-              {isEnd && <EndView title={book.title} />}
             </motion.div>
           )}
-        </AnimatePresence>
+          </AnimatePresence>
+        </div>
       </div>
 
       <div className="mt-4 flex items-center gap-3">
@@ -368,7 +381,7 @@ export function FlipbookPreview({ book, pages, onClose, readOnly = false }: Flip
   );
 }
 
-function CoverView({ book }: { book: Book }) {
+function CoverView({ book, fontScale = 1 }: { book: Book; fontScale?: number }) {
   return (
     <div className="relative h-full w-full">
       {book.cover.imageUrl ? (
@@ -386,15 +399,20 @@ function CoverView({ book }: { book: Book }) {
       )}
       <div className="absolute inset-x-0 bottom-0 flex flex-col items-center p-6 text-center text-white">
         <h1
-          className="font-display text-2xl font-bold leading-tight drop-shadow-md"
-          style={{ fontFamily: book.cover.font }}
+          className="font-display font-bold leading-tight drop-shadow-md"
+          style={{ fontFamily: book.cover.font, fontSize: Math.max(13, Math.round(24 * fontScale)) }}
         >
           {book.cover.title || book.title}
         </h1>
         {book.cover.subtitle && (
-          <p className="mt-1 text-sm opacity-90 drop-shadow">{book.cover.subtitle}</p>
+          <p
+            className="mt-1 opacity-90 drop-shadow"
+            style={{ fontSize: Math.max(9, Math.round(14 * fontScale)) }}
+          >
+            {book.cover.subtitle}
+          </p>
         )}
-        <p className="mt-3 text-sm drop-shadow">
+        <p className="mt-3 drop-shadow" style={{ fontSize: Math.max(9, Math.round(14 * fontScale)) }}>
           By {book.cover.authorName || book.author}
         </p>
       </div>
@@ -407,16 +425,17 @@ interface PagesSpreadViewProps {
   right: BookPage | null;
   twoPageMode: boolean;
   book: Book;
+  fontScale?: number;
 }
 
-function PagesSpreadView({ left, right, twoPageMode, book }: PagesSpreadViewProps) {
+function PagesSpreadView({ left, right, twoPageMode, book, fontScale = 1 }: PagesSpreadViewProps) {
   if (!twoPageMode) {
     // Single-page mode: just render whichever side has the page (right side
     // in our buildSpreads logic).
     const page = right ?? left;
     return (
       <div className="h-full w-full">
-        {page ? <PageView page={page} book={book} /> : <BlankSide />}
+        {page ? <PageView page={page} book={book} fontScale={fontScale} /> : <BlankSide />}
       </div>
     );
   }
@@ -425,10 +444,10 @@ function PagesSpreadView({ left, right, twoPageMode, book }: PagesSpreadViewProp
   return (
     <div className="grid h-full w-full grid-cols-2">
       <div className="relative border-r border-black/5">
-        {left ? <PageView page={left} book={book} /> : <BlankSide />}
+        {left ? <PageView page={left} book={book} fontScale={fontScale} /> : <BlankSide />}
       </div>
       <div className="relative">
-        {right ? <PageView page={right} book={book} /> : <BlankSide />}
+        {right ? <PageView page={right} book={book} fontScale={fontScale} /> : <BlankSide />}
       </div>
     </div>
   );
@@ -455,7 +474,7 @@ function formatDate(value: Date | string | null | undefined): string {
  *  author bio, book blurb. */
 function BackCoverDesignView({ book }: { book: Book }) {
   const back = book.backCover;
-  const authorName = book.author || 'Anonymous Author';
+  const authorName = book.cover.authorName?.trim() || book.author || 'Anonymous Author';
   const photoUrl = back?.authorPhotoUrl ?? null;
   const initials = authorName.charAt(0).toUpperCase();
   const hasAuthorBio = !!back?.authorBio;
@@ -502,27 +521,23 @@ function BackCoverDesignView({ book }: { book: Book }) {
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* GSI branding footer — always present */}
-      <div className="mt-3 border-t-2 border-amber-200 pt-2 text-center">
-        <div className="font-display text-sm font-bold text-brand-purple">
-          ✨ GSI AI Studio
+      {/* Marketing CTA — the book's back cover doubles as GSI's billboard:
+          real logo, the vision pitch, configurable domain. Matches editor + PDF. */}
+      <div className="mt-3 rounded-2xl border border-amber-200 bg-white/60 p-2.5 text-center">
+        <div className="flex items-center justify-center gap-1.5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/gsi-logo.svg" alt="" className="h-5 w-auto" />
+          <span className="font-display text-sm font-bold text-brand-purple">GSI AI Studio</span>
         </div>
-        {dateStr && (
-          <div className="mt-0.5 text-[10px] text-gray-500">Made on {dateStr}</div>
-        )}
-        <div className="mt-0.5 text-[10px] text-gray-400">
-          gsi-ai-studio.netlify.app
+        <div className="mt-1 text-[10px] leading-snug text-gray-600">
+          Where kids become real authors — writing books, making music, games &amp; quizzes, and
+          learning how AI actually works.
         </div>
+        <div className="mt-0.5 text-[10px] font-semibold text-brand-purple">
+          Create yours at {SITE_DOMAIN}
+        </div>
+        {dateStr && <div className="mt-1 text-[10px] text-gray-400">Made on {dateStr}</div>}
       </div>
-    </div>
-  );
-}
-
-function EndView({ title }: { title: string }) {
-  return (
-    <div className="flex h-full w-full flex-col items-center justify-center bg-gray-50 p-6 text-center">
-      <h3 className="text-lg font-semibold text-brand-purple">Made with GSI AI Studio</h3>
-      <p className="mt-2 text-xs text-gray-500">The end — thanks for reading {title}!</p>
     </div>
   );
 }
@@ -576,10 +591,53 @@ function DropCapText({
  * border around the art and a drop-cap on the text; text pages get a tinted
  * background and centred treatment for poems.
  */
-function PageView({ page, book }: { page: BookPage; book: Book }) {
+function PageView({
+  page,
+  book,
+  fontScale = 1,
+}: {
+  page: BookPage;
+  book: Book;
+  fontScale?: number;
+}) {
   const palette = derivePalette(book.themeColor ?? book.cover.backgroundColor);
   const comp = resolveComposition(page.layout, book.size);
   const padding = `${(comp.paddingRatio * 100).toFixed(2)}%`;
+  // Stored sizes are absolute (print-true); the RENDER scales with page width.
+  const scalePx = (px: number) => Math.max(8, Math.round(px * fontScale));
+
+  // ── Blank / text page (no picture) — solid colour + page-filling centred
+  //    text, with a readable default text colour and an auto font size. This
+  //    mirrors the in-place editor exactly so editor == reader == print
+  //    (BOOK-009). Covers plain-colour pages the kid chose AND empty pages. ──
+  if (!page.imageUrl) {
+    const bg = page.style?.backgroundColor ?? palette.pageBg;
+    const color = page.style?.textColor ?? readableTextOn(bg);
+    const size = scalePx(page.style?.fontSize ?? autoBodyFontSize(page.plainText, { hasImage: false }));
+    return (
+      <div
+        className="relative flex h-full w-full items-center justify-center p-[7%] text-center"
+        style={{ backgroundColor: bg }}
+      >
+        {page.plainText ? (
+          <p
+            className="whitespace-pre-wrap leading-snug"
+            style={{
+              fontFamily: page.style?.font ?? book.typography?.bodyFont ?? undefined,
+              fontSize: `${size}px`,
+              color,
+              fontWeight: 600,
+            }}
+          >
+            {page.plainText}
+          </p>
+        ) : (
+          <span className="text-2xl opacity-30">✍️</span>
+        )}
+        <PageNumberPill n={page.pageNumber} palette={palette} />
+      </div>
+    );
+  }
 
   // ── Full-bleed cinematic — art edge to edge, text in a gradient safe-zone,
   //    honouring the page's own colour/size/font so the preview + print match
@@ -597,7 +655,7 @@ function PageView({ page, book }: { page: BookPage; book: Book }) {
                 className="whitespace-pre-wrap text-center leading-snug"
                 style={{
                   fontFamily: page.style?.font ?? book.typography?.bodyFont ?? undefined,
-                  fontSize: page.style?.fontSize ? `${page.style.fontSize}px` : undefined,
+                  fontSize: `${scalePx(page.style?.fontSize ?? autoBodyFontSize(page.plainText, { hasImage: true }))}px`,
                   color: page.style?.textColor ?? '#ffffff',
                   fontWeight: 600,
                   textShadow: '0 2px 10px rgba(0,0,0,0.55)',
@@ -614,7 +672,7 @@ function PageView({ page, book }: { page: BookPage; book: Book }) {
   }
 
   const textStyle: CSSProperties = {
-    fontSize: page.style?.fontSize ? `${page.style.fontSize}px` : undefined,
+    fontSize: page.style?.fontSize ? `${scalePx(page.style.fontSize)}px` : undefined,
     textAlign: page.style?.alignment ?? (comp.centerText ? 'center' : undefined),
     color: page.style?.textColor ?? palette.text,
   };

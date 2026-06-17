@@ -22,7 +22,8 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { name, avatar, mascotId, avatarUrl, age, grade, board } = body;
+    const { name, avatar, mascotId, avatarUrl, age, grade, board, authorName, authorPhotoUrl } =
+      body;
 
     // Validate name if provided
     if (name !== undefined) {
@@ -56,6 +57,29 @@ export async function PATCH(
       }
     }
 
+    // Author identity (BOOK-011) — real name for published books (1-60 chars,
+    // longer than the 30-char play name since real names can be longer).
+    if (authorName !== undefined) {
+      if (
+        typeof authorName !== 'string' ||
+        authorName.trim().length < 1 ||
+        authorName.trim().length > 60
+      ) {
+        throw new AppException('INVALID_INPUT', 'Author name must be 1-60 characters', 400);
+      }
+    }
+    // Author photo — same trusted-host allowlist as avatars (the upload route
+    // returns a Firebase Storage URL, which passes).
+    if (authorPhotoUrl !== undefined && authorPhotoUrl !== null) {
+      if (!isPersistableAvatarUrl(authorPhotoUrl)) {
+        throw new AppException(
+          'INVALID_INPUT',
+          'Author photo URL must come from a trusted host',
+          400,
+        );
+      }
+    }
+
     const updated = await updateKid(auth.userId, kidId, {
       name: name?.trim(),
       avatar,
@@ -64,6 +88,8 @@ export async function PATCH(
       age,
       grade,
       board,
+      authorName: authorName?.trim(),
+      authorPhotoUrl,
     });
 
     return apiSuccess({
@@ -75,6 +101,8 @@ export async function PATCH(
       age: updated.age,
       grade: updated.grade,
       board: updated.board,
+      authorName: updated.authorName,
+      authorPhotoUrl: updated.authorPhotoUrl,
     });
   } catch (error) {
     return handleApiError(error);
@@ -111,6 +139,8 @@ export async function GET(
       // shape so single-kid fetches expose the same identity fields.
       mascotId: kid.mascotId,
       avatarUrl: kid.avatarUrl,
+      authorName: kid.authorName,
+      authorPhotoUrl: kid.authorPhotoUrl,
       age: kid.age,
       grade: kid.grade,
       board: kid.board,

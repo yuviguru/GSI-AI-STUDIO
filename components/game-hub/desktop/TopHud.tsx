@@ -29,13 +29,12 @@ export function TopHud() {
   return (
     <header className="game-glass relative z-20 shrink-0 border-b border-white/40">
       <div className="mx-auto flex max-w-[1520px] items-center justify-between px-6 py-2.5 xl:px-8">
-        {/* Brand */}
+        {/* Brand — real GSI mark (was a 🎮 placeholder). */}
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-primary to-brand-ai shadow-glass">
-            <span className="text-sm">🎮</span>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/gsi-logo.svg" alt="GSI" className="h-8 w-auto" />
           <div className="font-display text-sm font-bold">
-            GSI <span className="text-brand-primary">Studio</span>
+            GSI <span className="text-brand-primary">AI Studio</span>
           </div>
         </div>
 

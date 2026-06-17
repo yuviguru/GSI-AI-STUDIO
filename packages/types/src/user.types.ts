@@ -51,6 +51,16 @@ export interface KidProfile {
   /** AI-generated avatar URL (Firebase Storage) created during onboarding */
   avatarUrl?: string;
 
+  // Author identity (BOOK-011) — separate from the play profile. The play
+  // `name`/`avatarUrl` can be fictional; when the kid wants their published
+  // books to carry their REAL name + photo, it's saved here once and becomes
+  // the default author across all their books (still overridable per book).
+  // Optional + kid-initiated: the back-cover editor nudges, never requires.
+  /** Real author name for published books. */
+  authorName?: string;
+  /** Real author photo (Firebase Storage upload via /author-photo). */
+  authorPhotoUrl?: string;
+
   // DPDPA verification
   verifiedBy: 'parent' | 'teacher' | null;
   verifiedAt?: Date;

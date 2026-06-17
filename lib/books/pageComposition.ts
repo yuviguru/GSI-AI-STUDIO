@@ -232,6 +232,85 @@ export function imageCarriesOverlay(mode: CompositionMode): boolean {
 export const OVERLAY_SAFE_ZONE_HINT =
   'Composition: keep the lower third simpler and less busy (open sky, ground, water, or soft background) and place the main subjects in the upper two-thirds, leaving clean space for an overlaid title or caption.';
 
+// ── Blank pages + text sizing (BOOK-009) ─────────────────────────
+
+/** Swatches offered when a kid turns a page into a plain "paper" background
+ *  (no AI art) so they can write a full text page. White + soft paper tints +
+ *  a couple of bolder colours (incl. a warm "gold" and a night-mode dark).
+ *  Stored on `page.style.backgroundColor`; rendered identically by the editor,
+ *  the flipbook reader, and the PDF. */
+export const BLANK_PAGE_COLORS: readonly string[] = [
+  '#FFFFFF', // white paper
+  '#FFF8E7', // cream
+  '#FDEEF2', // blush
+  '#EAF4FF', // sky
+  '#EAFBF1', // mint
+  '#F3EEFF', // lavender
+  '#FFE9A8', // gold
+  '#222A39', // night (dark)
+];
+
+/** Perceived lightness (0-255) of a hex colour via the sRGB luma weights. */
+function luma(hex: string | null | undefined): number {
+  const { r, g, b } = parseHex(hex) ?? { r: 255, g: 255, b: 255 };
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** Pick a legible text colour (near-black or white) for a given page/background
+ *  colour. Used as the DEFAULT when the kid hasn't explicitly chosen a text
+ *  colour — so a blank dark "gold/night" page gets light text and a white page
+ *  gets dark text, instead of the old always-white default that vanished on
+ *  pale pages. */
+export function readableTextOn(bg: string | null | undefined): string {
+  return luma(bg) > 150 ? '#1F2937' : '#FFFFFF';
+}
+
+/** A sensible DEFAULT body font size (px) for a page, before any kid override.
+ *  Short text on a blank page comes out big and confident (fills the page);
+ *  long text scales down so it still fits. Caption text over a full-bleed
+ *  image stays smaller so it doesn't swamp the art. The kid can always nudge
+ *  it with A−/A+. Kept in sync across editor / reader / PDF. */
+export function autoBodyFontSize(
+  text: string | null | undefined,
+  opts: { hasImage: boolean },
+): number {
+  const len = (text ?? '').trim().length;
+  if (opts.hasImage) {
+    // Caption laid over art — keep it modest.
+    if (len > 220) return 16;
+    if (len > 120) return 18;
+    return 22;
+  }
+  // Blank / text page — lean big so the page reads as a real page, not a label.
+  if (len > 600) return 16;
+  if (len > 420) return 19;
+  if (len > 260) return 22;
+  if (len > 140) return 26;
+  if (len > 50) return 30;
+  return 34;
+}
+
+/** Soft character budget for a page's text. A blank page is a writing page, so
+ *  it gets a much larger budget than a caption over an image. Drives the live
+ *  word/character counter + the textarea limit in the editor. */
+export function maxCharsForPage(opts: { hasImage: boolean }): number {
+  return opts.hasImage ? 320 : 1400;
+}
+
+/** On-screen reference page width (px): the rendered page width at which a
+ *  page's stored font sizes display 1:1. When the book is fitted smaller
+ *  (laptop, phone, split screen) the text scales DOWN proportionally — like
+ *  shrinking a printed page — instead of staying absolute and swamping the
+ *  page. Print/PDF ignores this entirely and always uses the stored sizes. */
+export const REFERENCE_PAGE_WIDTH_PX = 700;
+
+/** Proportional font scale for a rendered page width. 1 when unknown (SSR /
+ *  first paint). Clamped so extreme viewports stay readable. */
+export function fontScaleForPageWidth(widthPx: number | null | undefined): number {
+  if (!widthPx || !Number.isFinite(widthPx) || widthPx <= 0) return 1;
+  return clamp(widthPx / REFERENCE_PAGE_WIDTH_PX, 0.35, 1.5);
+}
+
 /** Split text into a drop-cap leading character + the remainder, skipping
  *  leading quotes/spaces so the cap lands on a real letter. Returns null cap
  *  when there's nothing sensible to enlarge. */

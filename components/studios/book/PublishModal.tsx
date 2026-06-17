@@ -3,18 +3,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Download, Share2, Truck, X } from 'lucide-react';
-import type { Book } from '@gsi/types';
+import type { Book, BookPage } from '@gsi/types';
 import { computeEffortBadge, getEffortBadgeMeta } from '@/lib/books/effortBadge';
+import { validateBookForPublish } from '@/lib/books/bookValidation';
 import { SalesConfigForm } from './SalesConfigForm';
 
 interface PublishModalProps {
   book: Book;
+  pages: BookPage[];
   onPublish: (isPublic: boolean) => Promise<{ shareUrl: string | null; pdfUrl: string | null } | null>;
   onExportPdf: () => Promise<{ pdfUrl: string } | null>;
   onClose: () => void;
 }
 
-export function PublishModal({ book, onPublish, onExportPdf, onClose }: PublishModalProps) {
+export function PublishModal({ book, pages, onPublish, onExportPdf, onClose }: PublishModalProps) {
   const [publishing, setPublishing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(book.pdfUrl);
@@ -36,7 +38,10 @@ export function PublishModal({ book, onPublish, onExportPdf, onClose }: PublishM
   const isPublished = book.status === 'published';
   const hasCover = !!book.cover.title;
   const hasPages = book.pageCount >= 1;
-  const canPublish = hasCover && hasPages;
+  // BOOK-009 — make sure every page is finished enough (no empty pages, etc.)
+  // before publishing, so the published/printed book reads properly.
+  const validation = useMemo(() => validateBookForPublish(book, pages), [book, pages]);
+  const canPublish = hasCover && hasPages && validation.ok;
 
   // BOOK-003 — predict the effort badge the kid will earn if they publish
   // right now. Computed live from the current authorship summary so the
@@ -138,6 +143,30 @@ export function PublishModal({ book, onPublish, onExportPdf, onClose }: PublishM
               </span>
             </li>
           </ul>
+        )}
+
+        {/* BOOK-009 — page-content checks. Blocking issues stop publishing;
+            warnings are surfaced but the kid can publish anyway. */}
+        {!isPublished && validation.blocking.length > 0 && (
+          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3">
+            <div className="text-xs font-bold text-red-700">Fix these before publishing</div>
+            <ul className="mt-1 space-y-0.5 text-xs text-red-700">
+              {validation.blocking.map((iss, i) => (
+                <li key={i}>• {iss.message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {!isPublished && validation.blocking.length === 0 && validation.warnings.length > 0 && (
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <div className="text-xs font-bold text-amber-700">Just checking…</div>
+            <ul className="mt-1 space-y-0.5 text-xs text-amber-700">
+              {validation.warnings.map((iss, i) => (
+                <li key={i}>• {iss.message}</li>
+              ))}
+            </ul>
+            <p className="mt-1 text-[11px] text-amber-600">You can still publish — just making sure!</p>
+          </div>
         )}
 
         {/* BOOK-003 — effort badge preview (or persisted badge if already published). */}

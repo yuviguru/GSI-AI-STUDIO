@@ -6,7 +6,7 @@ import { adminStorage } from '@gsi/firebase/admin';
  * `'avatars/../../admin'`) that would land outside the intended GCS prefix.
  * Add new buckets here, not at the call site.
  */
-export type AvatarPathPrefix = 'avatars/preview' | 'avatars/generated';
+export type AvatarPathPrefix = 'avatars/preview' | 'avatars/generated' | 'avatars/author';
 
 /** Max bytes we'll accept when mirroring a provider URL to our Storage.
  *  Generated avatars are typically 50–200KB; this cap defends against a
