@@ -11,6 +11,10 @@ import {
   imageCarriesOverlay,
   OVERLAY_SAFE_ZONE_HINT,
 } from '@/lib/books/pageComposition';
+import {
+  renderEmotionDirection,
+  sceneMoodFromEmotions,
+} from '@gsi/ai/prompts/emotionDirection';
 import type { BookCharacter } from '@gsi/types';
 import { enforceBilling } from '@/lib/billing';
 
@@ -66,8 +70,13 @@ export async function POST(request: NextRequest) {
       ? imageCarriesOverlay(resolveComposition(pageLayout, book.size).mode)
       : !input.pageId; // cover
 
+    const emotionMap = new Map<string, string>(
+      (input.emotions ?? []).map((e) => [e.characterId, e.emotion]),
+    );
+
     const fullPrompt = buildScenePrompt({
       characters: selectedCharacters,
+      emotions: emotionMap,
       action: input.action,
       styleHint: input.styleHint,
       reserveTextBand,
@@ -123,6 +132,8 @@ export async function POST(request: NextRequest) {
  *  pages), ask the model to keep a calm band for an overlaid title/caption. */
 function buildScenePrompt(args: {
   characters: BookCharacter[];
+  /** characterId → emotion preset key (BOOK-012). */
+  emotions: Map<string, string>;
   action: string;
   styleHint?: string;
   reserveTextBand?: boolean;
@@ -138,8 +149,25 @@ function buildScenePrompt(args: {
   }
 
   parts.push(`Scene: ${args.action}.`);
+
+  // Explicit per-character facial direction — counter-biases the default smile
+  // so a fierce / sad / scared character renders with the right expression.
+  const emoDirs = args.characters
+    .map((c) => renderEmotionDirection(c.name, args.emotions.get(c.id)))
+    .filter(Boolean);
+  if (emoDirs.length > 0) parts.push(`${emoDirs.join('. ')}.`);
+
   parts.push(`Style: ${style}.`);
   parts.push('Same characters as their reference portraits — keep faces, hair, and outfits identical. No text in image.');
+
+  // Mood-aware lighting: a tense/dark scene shouldn't get the default bright
+  // children's palette that fights the emotion.
+  const mood = sceneMoodFromEmotions([...args.emotions.values()]);
+  if (mood === 'dark') {
+    parts.push('Mood: dramatic, moody lighting with deep shadows and a tense atmosphere.');
+  } else if (mood === 'bright') {
+    parts.push('Mood: warm, bright, cheerful lighting.');
+  }
 
   if (args.reserveTextBand) parts.push(OVERLAY_SAFE_ZONE_HINT);
 

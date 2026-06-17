@@ -149,8 +149,8 @@ describe('buildPageImagePrompt', () => {
     expect(prompt).toContain('Milo');
     expect(prompt).toContain('yellow hoodie');
     expect(prompt).toContain('glowing workbench');
-    expect(prompt).toContain('wonder');
-    expect(prompt).toContain(ILLUSTRATION_QUALITY_SUFFIX);
+    expect(prompt).toContain('wonder'); // free-text emotion is echoed
+    expect(prompt).toMatch(/masterpiece/); // mood-aware quality suffix present
     expect(prompt.toLowerCase()).toContain('pixar');
   });
 
@@ -162,7 +162,25 @@ describe('buildPageImagePrompt', () => {
     });
     expect(prompt).toContain('a quiet forest at dawn');
     expect(prompt).not.toContain('Character:');
-    expect(prompt).toContain(ILLUSTRATION_QUALITY_SUFFIX);
+    expect(prompt).toMatch(/professional children's book illustration/);
+  });
+
+  // BOOK-012: a fierce emotion must render an explicit, non-smiling expression
+  // and swap the default "vibrant/cheerful" suffix for a moody one.
+  it('renders a fierce emotion as an explicit scowl + moody (not vibrant) suffix', () => {
+    const prompt = buildPageImagePrompt({
+      scenePrompt: 'standing over the fallen enemy',
+      emotion: 'angry',
+      characterName: 'Arachne',
+      guide: null,
+      age: 10,
+    });
+    const lower = prompt.toLowerCase();
+    expect(lower).toContain('arachne');
+    expect(lower).toContain('scowl');
+    expect(lower).toContain('not smiling');
+    expect(lower).not.toContain('vibrant colors');
+    expect(lower).toMatch(/moody|shadows|tense/);
   });
 });
 

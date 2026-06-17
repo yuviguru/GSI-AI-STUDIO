@@ -19,6 +19,13 @@
  * Strict JSON output so the API route can parse without LLM-format drift.
  */
 
+import {
+  renderEmotionDirection,
+  sceneMoodFromEmotions,
+  moodAwareQualitySuffix,
+  EMOTION_KEY_LIST,
+} from './emotionDirection';
+
 export const BOOK_GENERATE_SYSTEM_PROMPT = `You are an award-winning children's book author AND art director for ages 6-17. You do not write "AI books" — you design books that feel professionally published, the kind a parent buys in a bookstore and a kid asks to read again. Think Pixar, Studio Ghibli, Dr. Seuss, Mo Willems, and Diary of a Wimpy Kid: one unforgettable character, a real emotional journey, and every page composed like a movie shot.
 
 ═══════════════════════════════════
@@ -72,7 +79,7 @@ EMOTIONAL ARC (every page moves it forward)
 Follow one of these shapes across the book:
   Wonder → Curiosity → Challenge → Discovery → Success → Celebration
   Problem → Attempt → Failure → Insight → Solution → Growth
-Tag each page with the dominant emotion it lands on.
+Tag each page's "emotion" with the SINGLE word that best fits, chosen from: ${EMOTION_KEY_LIST}. Pick the one that truly matches the moment — a villain's scheme is "angry", a loss is "sad", a monster reveal is "scared". The downstream art engine turns this tag into the character's exact facial expression, so be honest, not relentlessly cheerful.
 
 ═══════════════════════════════════
 FORMAT AWARENESS
@@ -98,10 +105,10 @@ ILLUSTRATION PROMPTS (per page + cover)
 ═══════════════════════════════════
 The hero's fixed look (appearance, clothing, accessory, colours) is injected AUTOMATICALLY downstream from characterGuide — DO NOT restate it. Instead, each imagePrompt describes the SCENE:
 • What the character is DOING (pose, action)
-• Their EMOTION on their face
+• Their EXACT FACIAL EXPRESSION — this is MANDATORY in every imagePrompt and must match the page's emotion. Name the expression explicitly (e.g. "a furious scowl", "teary downcast eyes", "a delighted grin"). NEVER leave the face unstated — an unstated face renders as a generic smile, which is wrong for tense, sad, or scary pages.
 • The ENVIRONMENT / setting
 • CAMERA ANGLE / framing (matching the sceneType: wide shot, close-up, low dramatic angle, over-the-shoulder, etc.)
-• LIGHTING and MOOD
+• LIGHTING and MOOD (dark/tense for fear, anger, danger; warm/bright for joy)
 Write it as one vivid sentence. The cover prompt depicts the most exciting single moment of the story with the hero prominent.
 
 ═══════════════════════════════════
@@ -326,11 +333,15 @@ export function characterLookDescription(guide: BookCharacterGuide): string {
     .trim();
 }
 
-/** Build the final per-page image prompt sent to the provider:
- *  scene + locked character + emotion + age art style + quality suffix. */
+/** Build the final per-page image prompt sent to the provider: scene + locked
+ *  character + EXPLICIT emotion/expression direction + age art style + a
+ *  mood-aware quality suffix (BOOK-012). The explicit facial direction +
+ *  counter-bias is what stops a fierce/sad scene rendering as a default smile. */
 export function buildPageImagePrompt(opts: {
   scenePrompt: string;
   emotion?: string;
+  /** Who the expression belongs to (defaults to the hero from the guide). */
+  characterName?: string;
   guide: BookCharacterGuide | null;
   age: number;
 }): string {
@@ -338,9 +349,10 @@ export function buildPageImagePrompt(opts: {
   const segs: string[] = [];
   if (anchor) segs.push(`Character: ${anchor}`);
   segs.push(opts.scenePrompt);
-  if (opts.emotion) segs.push(`mood: ${opts.emotion}`);
+  const emoDir = renderEmotionDirection(opts.characterName ?? opts.guide?.name ?? '', opts.emotion);
+  if (emoDir) segs.push(emoDir);
   segs.push(artStyleForAge(opts.age));
-  segs.push(ILLUSTRATION_QUALITY_SUFFIX);
+  segs.push(moodAwareQualitySuffix(sceneMoodFromEmotions([opts.emotion])));
   return segs
     .map((s) => s.trim().replace(/\.$/, ''))
     .filter(Boolean)
