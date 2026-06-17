@@ -56,17 +56,21 @@ export type UserSessionStatus =
 
 /**
  * Whether a claimed anonymous session holds anything the user could actually
- * KEEP — points, badges, creations, or a *named* onboarding persona.
+ * KEEP — points, badges, creations, learned AI concepts, or a *named*
+ * onboarding persona.
  *
  * An avatar/mascot-only blip (no name, no progress) is NOT keepable: the
  * migration prompt's summary card can't display it (it shows points / badges /
- * creations / a name), so prompting for it renders a contentless screen that
- * dead-ends the user — fatally so on a full 4-kid account, where the only exits
- * are "sign out + new number" or "discard" (AUTH-002).
+ * creations / concepts / a name), so prompting for it renders a contentless
+ * screen that dead-ends the user — fatally so on a full 4-kid account, where
+ * the only exits are "sign out + new number" or "discard" (AUTH-002).
  *
- * Mirrors `SessionMigrationPrompt`'s own `hasAnything` and the server
- * claim-writer's `hasMeaningfulData`, so the gate, the prompt, and the stash
- * all agree on what "meaningful" means.
+ * MUST mirror `SessionMigrationPrompt`'s own `hasAnything` and the server
+ * claim-writer's `hasMeaningfulData` so the gate, the prompt, and the stash
+ * all agree on what "meaningful" means. `conceptsLearned` counts on the server
+ * and is merged by `assignPendingClaimedDataToKid`, so it MUST be honoured here
+ * too — otherwise AppGate auto-discards a concept-only session before the merge
+ * and the kid silently loses their learned concepts (Codex review #74).
  */
 export function claimedSummaryIsKeepable(
   summary: ClaimedSessionSummary | undefined,
@@ -76,6 +80,7 @@ export function claimedSummaryIsKeepable(
     summary.aiPoints > 0 ||
     summary.badgeCount > 0 ||
     summary.totalCreationCount > 0 ||
+    summary.conceptCount > 0 ||
     Boolean(summary.onboarding?.name)
   );
 }

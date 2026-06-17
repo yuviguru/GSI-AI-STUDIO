@@ -48,4 +48,11 @@ describe('claimedSummaryIsKeepable', () => {
       claimedSummaryIsKeepable(summary({ totalCreationCount: 2, creationTypes: ['story', 'book'] })),
     ).toBe(true);
   });
+
+  // Codex review #74: concepts count server-side (hasMeaningfulData) and are
+  // merged by assignPendingClaimedDataToKid — a concept-only session must NOT
+  // be auto-discarded as contentless.
+  it('is true when there are learned concepts only', () => {
+    expect(claimedSummaryIsKeepable(summary({ conceptCount: 3 }))).toBe(true);
+  });
 });
