@@ -181,9 +181,9 @@ export const heroVariants = {
     primaryCta: { label: 'Start free trial', href: '/create/story' },
     secondaryCta: { label: 'See how it works', href: '#schools' },
     trustChips: [
-      '100% child-safe outputs',
-      'AI & CT curriculum-aligned',
-      'Free forever tier',
+      'Nothing unsafe ever reaches the screen',
+      'Counts as their school AI homework',
+      'Try it tonight — no card, ever',
     ],
   },
 } satisfies Record<string, HeroCopy>;

@@ -32,37 +32,37 @@ const SHIPPING_TODAY: ShippingFeature[] = [
   {
     icon: LayoutDashboard,
     title: 'Teacher Dashboard',
-    body: 'Class management, per-student progress, assignment creation and grading — one place.',
+    body: "Spot the kid who's drifting before the bell rings. One screen, every student, every subject — no chasing spreadsheets.",
     status: 'live',
   },
   {
     icon: ClipboardList,
     title: 'CBSE-aligned Lesson Plans',
-    body: '24 ready-to-teach lessons mapped to the 2026-27 AI & Computational Thinking syllabus (Class 3–12).',
+    body: 'Teachers walk into the new AI period and start teaching. 24 ready-mapped lessons — zero scrambling, zero "what do I cover today?"',
     status: 'live',
   },
   {
     icon: FileCheck2,
     title: 'Compliance Reports',
-    body: 'Auto-generated curriculum-coverage reports. One click, audit-ready — hand to the inspector.',
+    body: "The inspector arrives, you click once, they leave happy. The midnight-before-audit panic is over.",
     status: 'live',
   },
   {
     icon: Trophy,
     title: 'Inter-school Competitions',
-    body: 'Monthly themed challenges across the GSI school network. Live leaderboard per board + city.',
+    body: "Your school's name on a national leaderboard. Kids who used to skip class beg to make the team.",
     status: 'live',
   },
   {
     icon: FlameKindling,
     title: 'Curriculum Heatmap',
-    body: 'See which AI concepts each class has covered and where coverage is thin — at a glance.',
+    body: 'See the gaps before the inspector does — and patch them before they become a problem in front of the board.',
     status: 'live',
   },
   {
     icon: GraduationCap,
     title: 'Teacher Activity Reports',
-    body: 'Weekly trend charts showing per-teacher engagement and student outcomes.',
+    body: "Know which teachers are sparking kids — and which ones need backup — every Monday morning, without hunting.",
     status: 'live',
   },
 ];
@@ -105,12 +105,12 @@ export function ForSchoolsDetail() {
               For schools
             </p>
             <h2 className="mt-3 font-display text-[32px] font-extrabold leading-tight tracking-tight text-brand-text text-balance sm:text-[44px]">
-              The full AI &amp; CT curriculum — ready for 2026-27.
+              Hit the 2026-27 AI mandate without panicking your staff.
             </h2>
             <p className="mt-4 text-body-lg leading-relaxed text-brand-text-secondary">
-              We ship the studios <em>and</em> the administrative infrastructure
-              every CBSE/ICSE school needs to deliver the new mandate. Here&apos;s
-              what runs in production today — and what&apos;s landing next.
+              The studios your students will love — plus every dashboard,
+              lesson plan and compliance report your principal will need on
+              audit day. Already running in schools across India.
             </p>
           </div>
 
@@ -216,12 +216,12 @@ export function ForSchoolsDetail() {
           <div className="flex flex-col items-start gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-2xl">
               <h3 className="font-display text-xl font-extrabold text-brand-text sm:text-2xl">
-                Running a pilot at your school?
+                Be the school parents brag about — by next term.
               </h3>
               <p className="mt-2 text-caption leading-relaxed text-brand-text-secondary">
-                Most pilots launch in 2 weeks. We handle teacher onboarding,
-                lesson-plan mapping to your existing timetable, and the
-                compliance reports before your first audit. From ₹99 per student
+                You'll be live in 2 weeks. We handle the teacher training, slot
+                the lessons into your existing timetable, and have the audit
+                report ready before the inspector knocks. From ₹99 per student
                 per month · 50-student minimum.
               </p>
             </div>

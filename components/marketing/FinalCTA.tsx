@@ -29,12 +29,12 @@ export function FinalCTA() {
               Ready when your kid is
             </p>
             <h2 className="mt-3 font-display text-[32px] font-extrabold leading-tight tracking-tight text-white text-balance sm:text-[48px] lg:text-[56px]">
-              Their first story is 60 seconds away.
+              From idea to finished story — before the kettle boils.
             </h2>
             <p className="mt-5 text-body-lg leading-relaxed text-white/85">
-              No signup wall. No card. Just an idea and a studio. Share what
-              they make — you&apos;ll see why parents are choosing creating over
-              consuming.
+              Hand them the screen tonight, see what comes back by dinner. No
+              card. No signup wall. Just the proof — on their face and in your
+              WhatsApp.
             </p>
 
             {/* CTAs */}

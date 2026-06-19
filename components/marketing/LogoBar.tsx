@@ -1,17 +1,17 @@
 import { BadgeCheck, School, Globe2, Sparkles } from 'lucide-react';
 
 const AUTHORITIES = [
-  { icon: BadgeCheck, label: 'AI & CT Curriculum-Aligned', sub: 'For every Indian board' },
-  { icon: School, label: 'GSI School Network', sub: '100+ partner schools' },
-  { icon: Globe2, label: 'Made in Chennai', sub: 'Built for Indian kids' },
-  { icon: Sparkles, label: 'DPDPA-ready', sub: 'Safe by design' },
+  { icon: BadgeCheck, label: 'AI & CT Curriculum-Aligned', sub: 'Playtime that counts as homework' },
+  { icon: School, label: 'GSI School Network', sub: 'Already trusted in 100+ Indian schools' },
+  { icon: Globe2, label: 'Made in Chennai', sub: 'Built for Indian kids — not translated' },
+  { icon: Sparkles, label: 'DPDPA-ready', sub: 'Stored in India · never trains AI models' },
 ];
 
 const STATS = [
-  { value: '10', unit: 'AI studios', sub: 'Stories, music, games, and more' },
-  { value: '12', unit: 'badges', sub: 'Earned through creation + learning' },
-  { value: '100%', unit: 'safe outputs', sub: 'Every creation passes our filter' },
-  { value: '₹299', unit: '/month', sub: 'Free forever tier · no card needed' },
+  { value: '10', unit: 'AI studios', sub: 'Always a new way to make something' },
+  { value: '12', unit: 'badges', sub: 'Proof they actually learned something' },
+  { value: '100%', unit: 'safe outputs', sub: 'Hand them the screen without checking' },
+  { value: '₹299', unit: '/month', sub: 'Or stay free forever — no card needed' },
 ];
 
 export function LogoBar() {

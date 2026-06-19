@@ -15,18 +15,18 @@ interface ConceptProps {
 const CONCEPTS: Omit<ConceptProps, 'delay'>[] = [
   {
     icon: BookOpen,
-    title: 'What was used',
-    body: 'Which AI model generated the output — and why. Claude for text, Gemini for music, Replicate SDXL for images.',
+    title: 'AI stops being magic',
+    body: "Your kid sees which tool did what — and why a different one would have been wrong. The end of \"AI just does it.\"",
   },
   {
     icon: Brain,
-    title: 'What it chose',
-    body: 'How the AI interpreted the prompt, what trade-offs it made, and where it decided between options.',
+    title: 'They learn to direct it',
+    body: "Where the AI guessed, what it picked, what it missed. The exact skill kids will need to lead with AI — not be replaced by it.",
   },
   {
     icon: Lightbulb,
-    title: 'What you learned',
-    body: 'Each X-Ray maps to a CBSE AI &amp; CT curriculum concept — prompt engineering, training data, bias, text-to-image.',
+    title: 'Playtime counts as homework',
+    body: 'Every X-Ray quietly closes a CBSE concept off the syllabus — so the hours they were going to spend creating anyway, count.',
   },
 ];
 
@@ -56,13 +56,14 @@ export function AiXRayShowcase() {
               </p>
             </div>
             <h2 className="mt-4 font-display text-[32px] font-extrabold leading-tight tracking-tight text-brand-text text-balance sm:text-[44px]">
-              Every creation comes with a 30-second lesson in how the AI made it.
+              Your kid finishes a story — and walks away knowing how AI actually works.
             </h2>
             <p className="mt-4 text-body-lg leading-relaxed text-brand-text-secondary">
               We call it <strong className="font-semibold text-brand-text">AI X-Ray</strong>.
-              After each story, song, or game, your child sees a plain-English
-              breakdown of the AI that built it — mapped to the exact concept
-              their CBSE curriculum expects them to learn.
+              Thirty seconds at the end of every creation that turns "wow, the AI
+              did it" into "this is exactly what the AI did, and here's where I
+              could push it harder next time." Mapped to the CBSE concept they
+              owe their teacher.
             </p>
 
             {/* Concept list */}
