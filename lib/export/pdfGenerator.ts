@@ -1,6 +1,14 @@
 import type { QuizContent } from '@gsi/types';
 import type { Book, BookPage } from '@gsi/types';
-import { derivePalette, resolveComposition, hexToRgbTuple } from '@/lib/books/pageComposition';
+import {
+  derivePalette,
+  resolveComposition,
+  hexToRgbTuple,
+  readableTextOn,
+  autoBodyFontSize,
+} from '@/lib/books/pageComposition';
+import { SITE_DOMAIN } from '@/lib/brand';
+import { GSI_LOGO_PNG, GSI_LOGO_PNG_WIDTH, GSI_LOGO_PNG_HEIGHT } from '@/lib/brandLogo';
 
 /** Minimal story shape needed for PDF generation */
 interface PdfStory {
@@ -186,7 +194,7 @@ export async function generateStoryPdf(
   doc.setFontSize(12);
   doc.setTextColor(BRAND_GRAY);
   doc.text(
-    'Create your own AI-powered stories at gsi-ai-studio.netlify.app',
+    `Create your own AI-powered stories at ${SITE_DOMAIN}`,
     A4_WIDTH / 2,
     A4_HEIGHT / 2 + 5,
     { align: 'center' }
@@ -333,6 +341,15 @@ function hexToRgb(hex: string | null | undefined): [number, number, number] {
   return [parseInt(m[1]!, 16), parseInt(m[2]!, 16), parseInt(m[3]!, 16)];
 }
 
+/** Kid-friendly "June 12, 2026" for the back-cover footer. Accepts Date or ISO
+ *  string (SWR-deserialized books carry createdAt as a string). */
+function formatPdfDate(value: Date | string | null | undefined): string {
+  if (!value) return '';
+  const d = typeof value === 'string' ? new Date(value) : value;
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
 /**
  * Generate a printable PDF for a kid-authored book.
  * Layout follows the page's `layout` field. Renders plainText (TipTap rich
@@ -426,12 +443,46 @@ export async function generateBookPdf(book: Book, pages: BookPage[]): Promise<Bl
     doc.addImage(dataUrl, 'JPEG', pageMargin + 1.5, y + 1.5, contentWidth - 3, h - 3);
   };
 
+  // Blank inside-front-cover (BOOK-010): keeps page 1 on a right-hand recto
+  // when the book is printed double-sided, exactly like a real book.
+  doc.addPage([widthMm, heightMm], orientation);
+  doc.setFillColor(pbR, pbG, pbB);
+  doc.rect(0, 0, widthMm, heightMm, 'F');
+
   const sortedPages = [...pages].sort((a, b) => a.pageNumber - b.pageNumber);
 
   for (const page of sortedPages) {
     doc.addPage([widthMm, heightMm], orientation);
 
     const comp = resolveComposition(page.layout, book.size);
+
+    // ── Blank / text page (no picture) — its own solid colour + page-filling
+    //    centred text, mirroring the in-place editor + flipbook reader so the
+    //    print matches what the kid sees (BOOK-009). ──
+    if (!page.imageUrl) {
+      const bg = page.style?.backgroundColor ?? palette.pageBg;
+      const [blR, blG, blB] = hexToRgb(bg);
+      doc.setFillColor(blR, blG, blB);
+      doc.rect(0, 0, widthMm, heightMm, 'F');
+
+      if (page.plainText && page.plainText.trim()) {
+        const fontPt = page.style?.fontSize ?? autoBodyFontSize(page.plainText, { hasImage: false });
+        doc.setFontSize(fontPt);
+        const [tR, tG, tB] = hexToRgb(page.style?.textColor ?? readableTextOn(bg));
+        doc.setTextColor(tR, tG, tB);
+        const lines = wrapText(doc, page.plainText, contentWidth);
+        const lineH = fontPt * 0.5;
+        const blockH = lines.length * lineH;
+        let ty = Math.max(pageMargin + lineH * 0.72, (heightMm - blockH) / 2 + lineH * 0.72);
+        for (const line of lines) {
+          if (ty + lineH > heightMm - pageMargin) break;
+          doc.text(line, widthMm / 2, ty, { align: 'center' });
+          ty += lineH;
+        }
+      }
+      drawPageNumber(page.pageNumber);
+      continue;
+    }
 
     // Themed (not plain white) page background.
     doc.setFillColor(pbR, pbG, pbB);
@@ -446,20 +497,21 @@ export async function generateBookPdf(book: Book, pages: BookPage[]): Promise<Bl
     if (comp.mode === 'full_bleed' && imageDataUrl) {
       doc.addImage(imageDataUrl, 'JPEG', 0, 0, widthMm, heightMm);
       if (page.plainText) {
-        // Floating dark caption card near the bottom. It grows to fit ALL the
-        // wrapped lines so no story text is dropped: the on-screen flipbook
-        // renders the full caption, and the PDF must match it (previously this
-        // sliced to the first 2 lines and silently lost the rest).
+        // Dark caption card in the bottom safe-zone. Grows to fit ALL wrapped
+        // lines (never truncates) and honours the page's own font size + colour
+        // so the print matches the in-place editor (BOOK-008).
         const cardW = contentWidth;
-        doc.setFontSize(11);
+        const fontPt = page.style?.fontSize ?? 11;
+        doc.setFontSize(fontPt);
         const captionLines = wrapText(doc, page.plainText, cardW - 8);
-        const lineH = 11 * 0.5; // mm per line, matches the framed-text convention
+        const lineH = fontPt * 0.5;
         const padY = 3;
         const cardH = captionLines.length * lineH + padY * 2;
         const cardY = heightMm - cardH - 6;
         doc.setFillColor(18, 15, 38);
         doc.roundedRect((widthMm - cardW) / 2, cardY, cardW, cardH, 3, 3, 'F');
-        doc.setTextColor('#FFFFFF');
+        const [cr, cg, cb] = page.style?.textColor ? hexToRgb(page.style.textColor) : [255, 255, 255];
+        doc.setTextColor(cr, cg, cb);
         let ty = cardY + padY + lineH * 0.72;
         for (const line of captionLines) {
           doc.text(line, widthMm / 2, ty, { align: 'center' });
@@ -525,45 +577,78 @@ export async function generateBookPdf(book: Book, pages: BookPage[]): Promise<Bl
     drawPageNumber(page.pageNumber);
   }
 
-  // ── Back cover (optional) ──
-  if (book.backCover && (book.backCover.text || book.backCover.imageUrl)) {
-    doc.addPage([widthMm, heightMm], orientation);
-    const [bcR, bcG, bcB] = hexToRgb(book.cover.backgroundColor);
-    doc.setFillColor(bcR, bcG, bcB);
-    doc.rect(0, 0, widthMm, heightMm, 'F');
+  // ── Back cover (BOOK-010) — ALWAYS rendered. Carries the author details and
+  //    the GSI footer + date, so it doubles as the book's branding (the old
+  //    standalone "made with GSI" end page is gone). ──
+  doc.addPage([widthMm, heightMm], orientation);
+  doc.setFillColor(255, 248, 240); // warm cream, matches the on-screen back cover
+  doc.rect(0, 0, widthMm, heightMm, 'F');
 
-    if (book.backCover.imageUrl) {
-      const dataUrl = await loadImageAsDataUrl(book.backCover.imageUrl);
-      if (dataUrl) {
-        doc.addImage(dataUrl, 'JPEG', pageMargin, pageMargin, contentWidth, contentHeight * 0.5);
-      }
+  const back = book.backCover;
+  let backY = pageMargin + 4;
+
+  doc.setFontSize(9);
+  doc.setTextColor(176, 122, 31);
+  doc.text('ABOUT THE AUTHOR', pageMargin, backY);
+  backY += 7;
+  doc.setFontSize(16);
+  doc.setTextColor(txR, txG, txB);
+  doc.text(book.cover.authorName || book.author || 'Anonymous Author', pageMargin, backY);
+  backY += 9;
+
+  if (back?.authorBio) {
+    doc.setFontSize(11);
+    doc.setTextColor(BRAND_GRAY);
+    for (const line of wrapText(doc, `“${back.authorBio}”`, contentWidth)) {
+      doc.text(line, pageMargin, backY);
+      backY += 5.5;
     }
+    backY += 5;
+  }
 
-    if (book.backCover.text) {
-      doc.setFontSize(12);
-      doc.setTextColor('#FFFFFF');
-      const lines = wrapText(doc, book.backCover.text, contentWidth);
-      lines.forEach((line, i) => {
-        doc.text(line, widthMm / 2, heightMm * 0.7 + i * 6, { align: 'center' });
-      });
+  if (back?.text) {
+    doc.setFontSize(9);
+    doc.setTextColor(176, 122, 31);
+    doc.text('ABOUT THIS BOOK', pageMargin, backY);
+    backY += 6;
+    doc.setFontSize(11);
+    doc.setTextColor(txR, txG, txB);
+    for (const line of wrapText(doc, back.text, contentWidth)) {
+      doc.text(line, pageMargin, backY);
+      backY += 5.5;
     }
   }
 
-  // ── Branding page ──
-  doc.addPage([widthMm, heightMm], orientation);
-  doc.setFillColor('#F9FAFB');
-  doc.rect(0, 0, widthMm, heightMm, 'F');
-  doc.setFontSize(16);
+  // GSI footer / marketing CTA — the book's branding + viral loop live here.
+  // Real logo + the same vision pitch as the on-screen back cover; the domain
+  // comes from lib/brand so a production-domain change is one env var.
+  const logoW = 14;
+  const logoH = (logoW * GSI_LOGO_PNG_HEIGHT) / GSI_LOGO_PNG_WIDTH;
+  doc.addImage(GSI_LOGO_PNG, 'PNG', (widthMm - logoW) / 2, heightMm - 42, logoW, logoH);
+  doc.setFontSize(13);
   doc.setTextColor(BRAND_PURPLE);
-  doc.text(BRANDING_TEXT, widthMm / 2, heightMm / 2, { align: 'center' });
-  doc.setFontSize(10);
+  doc.text('Made with GSI AI Studio', widthMm / 2, heightMm - 28, { align: 'center' });
+  doc.setFontSize(9);
   doc.setTextColor(BRAND_GRAY);
-  doc.text(
-    'gsi-ai-studio.netlify.app',
-    widthMm / 2,
-    heightMm / 2 + 8,
-    { align: 'center' }
+  const pitchLines = wrapText(
+    doc,
+    'Where kids become real authors — writing books, making music, games & quizzes, and learning how AI actually works.',
+    contentWidth,
   );
+  let pitchY = heightMm - 23;
+  for (const line of pitchLines) {
+    doc.text(line, widthMm / 2, pitchY, { align: 'center' });
+    pitchY += 4.5;
+  }
+  doc.setTextColor(BRAND_PURPLE);
+  doc.text(`Create yours at ${SITE_DOMAIN}`, widthMm / 2, pitchY + 0.5, {
+    align: 'center',
+  });
+  const madeOn = formatPdfDate(book.createdAt);
+  if (madeOn) {
+    doc.setTextColor(BRAND_GRAY);
+    doc.text(`Made on ${madeOn}`, widthMm / 2, pitchY + 5.5, { align: 'center' });
+  }
 
   return doc.output('blob');
 }

@@ -16,6 +16,9 @@ interface KidDocFirestore {
   avatar?: string;
   mascotId?: string;
   avatarUrl?: string;
+  /** Author identity (BOOK-011) — real name + photo for published books. */
+  authorName?: string;
+  authorPhotoUrl?: string;
   verifiedBy: 'parent' | 'teacher' | null;
   verifiedAt?: Timestamp;
   verificationDeadline?: Timestamp;
@@ -70,6 +73,9 @@ export interface UpdateKidInput {
   age?: number;
   grade?: string;
   board?: 'cbse' | 'icse' | 'state';
+  /** Author identity (BOOK-011) — real name + photo for published books. */
+  authorName?: string;
+  authorPhotoUrl?: string;
 }
 
 // ─── Public API ────────────────────────────────────────────────────────────
@@ -213,6 +219,8 @@ export async function updateKid(
   if (input.age !== undefined) updates.age = input.age;
   if (input.grade !== undefined) updates.grade = input.grade;
   if (input.board !== undefined) updates.board = input.board;
+  if (input.authorName !== undefined) updates.authorName = input.authorName;
+  if (input.authorPhotoUrl !== undefined) updates.authorPhotoUrl = input.authorPhotoUrl;
 
   await kidRef.update(updates);
 

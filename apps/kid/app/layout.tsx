@@ -51,6 +51,23 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${satoshi.variable} ${figtree.variable} ${jetbrainsMono.variable}`}>
+      <head>
+        {/* Book Studio fonts (BOOK-009). The per-page font picker in the book
+            editor uses these real family names (Quicksand / Lexend / Lora /
+            Patrick Hand / Fredoka / Comic Neue), so they must be loaded or
+            changing a page's font does nothing. The CSS is tiny and each woff2
+            only downloads on a page that actually renders that family. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* no-page-custom-font is a pages/_document heuristic — in the App
+            Router this <head> lives in the ROOT layout, so the fonts load on
+            every page, not just one. Safe to ignore here. */}
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Fredoka:wght@400;500;700&family=Lexend:wght@400;500;700&family=Lora:wght@400;500;700&family=Patrick+Hand&family=Quicksand:wght@400;500;700&display=swap"
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

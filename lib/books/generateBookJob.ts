@@ -22,6 +22,7 @@ import {
   type BookCharacterGuide,
   type BookSceneType,
 } from '@gsi/ai/prompts/bookGeneratePrompt';
+import { getEmotionPreset, emotionFromTextHeuristic } from '@gsi/ai/prompts/emotionDirection';
 import {
   writeGeneratedBookContent,
   setPageImage,
@@ -271,7 +272,10 @@ export async function generateBookJob(job: BookGenerationJob): Promise<void> {
         plainText,
         imagePrompt: buildPageImagePrompt({
           scenePrompt: filterImagePrompt(p.imagePrompt),
-          emotion: p.emotion || undefined,
+          // Force a known emotion so the face is always explicit: use the LLM's
+          // tag when it maps to a preset, else derive it from the page text
+          // (BOOK-012). Prevents the "everyone smiles" default on tense pages.
+          emotion: getEmotionPreset(p.emotion)?.key ?? emotionFromTextHeuristic(plainText),
           guide: safeGuide,
           age: input.age,
         }),

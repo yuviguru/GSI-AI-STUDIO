@@ -39,6 +39,10 @@ export interface KidProfileSummary {
   avatar?: string;
   mascotId?: string;
   avatarUrl?: string;
+  /** Author identity (BOOK-011) — real name + photo for published books.
+   *  Optional: unset until the kid chooses to add them from a back cover. */
+  authorName?: string;
+  authorPhotoUrl?: string;
   age?: number;
   grade?: string;
   board?: string;

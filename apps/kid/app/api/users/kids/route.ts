@@ -140,6 +140,8 @@ export async function GET(request: NextRequest) {
         avatar: kid.avatar,
         mascotId: kid.mascotId,
         avatarUrl: kid.avatarUrl,
+        authorName: kid.authorName,
+        authorPhotoUrl: kid.authorPhotoUrl,
         age: kid.age,
         grade: kid.grade,
         board: kid.board,

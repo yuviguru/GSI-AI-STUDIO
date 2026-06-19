@@ -5,6 +5,13 @@ import {
   derivePalette,
   resolveComposition,
   splitDropCap,
+  imageCarriesOverlay,
+  readableTextOn,
+  autoBodyFontSize,
+  maxCharsForPage,
+  fontScaleForPageWidth,
+  REFERENCE_PAGE_WIDTH_PX,
+  BLANK_PAGE_COLORS,
 } from './pageComposition';
 import { sceneTypeToLayout } from './sceneLayout';
 
@@ -52,13 +59,15 @@ describe('resolveComposition', () => {
     expect(c.mode).toBe('full_bleed');
     expect(c.dropCap).toBe(false);
   });
-  it('maps image_top / text_bottom to framed_image_top with a drop-cap', () => {
-    const c = resolveComposition('image_top_text_bottom', 'square');
-    expect(c.mode).toBe('framed_image_top');
-    expect(c.dropCap).toBe(true);
+  it('collapses image layouts to full_bleed (BOOK-008 full-bleed everywhere)', () => {
+    expect(resolveComposition('image_top_text_bottom', 'square').mode).toBe('full_bleed');
+    expect(resolveComposition('text_top_image_bottom', 'tall').mode).toBe('full_bleed');
+    expect(resolveComposition('recipe_split', 'square').mode).toBe('full_bleed');
+    expect(resolveComposition('concept_letter', 'square').mode).toBe('full_bleed');
   });
-  it('maps text_top_image_bottom to framed_image_bottom', () => {
-    expect(resolveComposition('text_top_image_bottom', 'tall').mode).toBe('framed_image_bottom');
+  it('keeps text-only layouts as a text feature', () => {
+    expect(resolveComposition('text_only', 'tall').mode).toBe('text_feature');
+    expect(resolveComposition('entry_centered', 'pocket').mode).toBe('text_feature');
   });
   it('centres text for entry_centered', () => {
     const c = resolveComposition('entry_centered', 'pocket');
@@ -68,6 +77,79 @@ describe('resolveComposition', () => {
   it('gives landscape a larger image ratio than pocket', () => {
     expect(resolveComposition('image_top_text_bottom', 'landscape').imageHeightRatio).toBeGreaterThan(
       resolveComposition('image_top_text_bottom', 'pocket').imageHeightRatio,
+    );
+  });
+});
+
+describe('imageCarriesOverlay', () => {
+  it('is true only for full-bleed (text sits on the art)', () => {
+    expect(imageCarriesOverlay('full_bleed')).toBe(true);
+  });
+  it('is false for framed + text-feature (text on a separate themed area)', () => {
+    expect(imageCarriesOverlay('framed_image_top')).toBe(false);
+    expect(imageCarriesOverlay('framed_image_bottom')).toBe(false);
+    expect(imageCarriesOverlay('text_feature')).toBe(false);
+  });
+});
+
+describe('readableTextOn (BOOK-009)', () => {
+  it('returns dark text on light/white backgrounds', () => {
+    expect(readableTextOn('#FFFFFF')).toBe('#1F2937');
+    expect(readableTextOn('#FFF8E7')).toBe('#1F2937'); // cream
+    expect(readableTextOn('#FFE9A8')).toBe('#1F2937'); // gold
+  });
+  it('returns light text on dark backgrounds', () => {
+    expect(readableTextOn('#222A39')).toBe('#FFFFFF'); // night
+    expect(readableTextOn('#1F2937')).toBe('#FFFFFF');
+  });
+  it('defaults to dark text on bad input (assumes white)', () => {
+    expect(readableTextOn(null)).toBe('#1F2937');
+  });
+  it('keeps every blank-page swatch legible with its auto text colour', () => {
+    for (const c of BLANK_PAGE_COLORS) {
+      expect(readableTextOn(c)).toMatch(/^#(1F2937|FFFFFF)$/);
+    }
+  });
+});
+
+describe('autoBodyFontSize (BOOK-009)', () => {
+  it('makes short text on a blank page big and confident', () => {
+    expect(autoBodyFontSize('Hi!', { hasImage: false })).toBe(34);
+  });
+  it('scales blank-page text down as it grows so it still fits', () => {
+    const short = autoBodyFontSize('A short line of text here.', { hasImage: false });
+    const long = autoBodyFontSize('x'.repeat(700), { hasImage: false });
+    expect(short).toBeGreaterThan(long);
+    expect(long).toBeGreaterThanOrEqual(14);
+  });
+  it('keeps captions over art smaller than blank-page defaults', () => {
+    const caption = autoBodyFontSize('A caption.', { hasImage: true });
+    const blank = autoBodyFontSize('A caption.', { hasImage: false });
+    expect(caption).toBeLessThan(blank);
+  });
+});
+
+describe('fontScaleForPageWidth (BOOK-011)', () => {
+  it('is 1 at the reference width', () => {
+    expect(fontScaleForPageWidth(REFERENCE_PAGE_WIDTH_PX)).toBe(1);
+  });
+  it('scales down proportionally on smaller rendered pages', () => {
+    expect(fontScaleForPageWidth(REFERENCE_PAGE_WIDTH_PX / 2)).toBeCloseTo(0.5);
+  });
+  it('clamps extremes so text stays readable', () => {
+    expect(fontScaleForPageWidth(50)).toBeGreaterThanOrEqual(0.35);
+    expect(fontScaleForPageWidth(5000)).toBeLessThanOrEqual(1.5);
+  });
+  it('returns 1 when the width is unknown (SSR / first paint)', () => {
+    expect(fontScaleForPageWidth(undefined)).toBe(1);
+    expect(fontScaleForPageWidth(0)).toBe(1);
+  });
+});
+
+describe('maxCharsForPage (BOOK-009)', () => {
+  it('gives a blank writing page a much larger budget than an image caption', () => {
+    expect(maxCharsForPage({ hasImage: false })).toBeGreaterThan(
+      maxCharsForPage({ hasImage: true }),
     );
   });
 });

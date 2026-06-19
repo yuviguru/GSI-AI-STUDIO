@@ -490,7 +490,9 @@ export const coverPatchSchema = z.object({
   authorName: z.string().max(60).optional(),
   backgroundColor: colorHexSchema.optional(),
   imageUrl: z.string().url().nullable().optional(),
-  imagePrompt: z.string().max(500).nullable().optional(),
+  // Matches pagePatchSchema: AI covers carry the full assembled scene prompt
+  // (character look descriptions + action), which runs well past 500 chars.
+  imagePrompt: z.string().max(5000).nullable().optional(),
   font: z.string().max(50).optional(),
 });
 export type CoverPatchInput = z.infer<typeof coverPatchSchema>;
@@ -527,8 +529,23 @@ export const sceneImageSchema = z.object({
   characterIds: z.array(z.string().max(128)).max(3).default([]),
   action: z.string().min(3).max(200),
   styleHint: z.string().max(50).optional(),
+  // BOOK-012 — per-character emotion (preset key like 'angry'/'sad') so the
+  // scene renders the right facial expression instead of a default smile.
+  emotions: z
+    .array(z.object({ characterId: z.string().max(128), emotion: z.string().max(40) }))
+    .max(3)
+    .optional(),
 });
 export type SceneImageInput = z.infer<typeof sceneImageSchema>;
+
+/** Derive suggested per-character emotions from a page's current text (BOOK-012). */
+export const sceneEmotionsSchema = z.object({
+  bookId: z.string().min(1).max(128),
+  pageId: z.string().min(1).max(128).optional(),
+  text: z.string().max(10_000).default(''),
+  characterIds: z.array(z.string().max(128)).max(3).default([]),
+});
+export type SceneEmotionsInput = z.infer<typeof sceneEmotionsSchema>;
 
 /** Grammar check — Groq returns suggestions for grammar/spelling/punctuation only. */
 export const grammarCheckSchema = z.object({

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { GameNavBar } from '@/components/navigation/GameNavBar';
 import { LayoutBackLink } from '@/components/navigation/LayoutBackLink';
@@ -11,7 +11,7 @@ import { BookReadyWatcher } from '@/components/studios/book/BookReadyWatcher';
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { KidProfileProvider, useKidProfile } from '@/hooks/useKidProfile';
-import { useUserSessionStatus } from '@/hooks/useUserSessionStatus';
+import { useUserSessionStatus, claimedSummaryIsKeepable } from '@/hooks/useUserSessionStatus';
 import { ProfilePicker } from '@/components/profile/ProfilePicker';
 import { SessionMigrationPrompt } from '@/components/profile/SessionMigrationPrompt';
 import { ProfileSetupCarousel } from '@/components/onboarding/ProfileSetupCarousel';
@@ -32,9 +32,47 @@ const PENDING_CLAIM_KEY = 'gsi-pending-claim';
  */
 function AppGate({ children }: { children: React.ReactNode }) {
   const status = useUserSessionStatus();
-  const { isAuthenticated, user, refreshProfile } = useAuth();
+  const { isAuthenticated, user, getIdToken, refreshProfile } = useAuth();
   const { hasKids, kids, refreshKids } = useKidProfile();
   const [claimResolved, setClaimResolved] = useState(false);
+
+  // Self-heal stuck accounts (AUTH-002). A signed-in user WITH kids can carry a
+  // contentless claimed snapshot — e.g. an old avatar-only guest session with
+  // no name, points, or creations. It can never be "kept" (nothing to keep)
+  // and the gate no longer prompts for it, but the orphaned user-doc field
+  // lingers and re-surfaces on every sign-in. Clear it server-side once.
+  // Empty-body discard → clearOrphanedClaimSnapshot (drops the field only;
+  // archives no session or creations, so nothing of value is touched).
+  const claimSummary = user?.claimedSessionSummary;
+  const staleContentlessClaim =
+    isAuthenticated && hasKids && !!claimSummary && !claimedSummaryIsKeepable(claimSummary);
+  const autoClearedRef = useRef(false);
+  useEffect(() => {
+    if (!staleContentlessClaim || autoClearedRef.current) return;
+    autoClearedRef.current = true;
+    void (async () => {
+      try {
+        const token = await getIdToken();
+        if (!token) {
+          autoClearedRef.current = false;
+          return;
+        }
+        await fetch('/api/users/discard-claimed-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({}),
+        });
+        try {
+          localStorage.removeItem(PENDING_CLAIM_KEY);
+        } catch {
+          // localStorage unavailable — non-blocking
+        }
+        await refreshProfile();
+      } catch {
+        autoClearedRef.current = false; // allow a retry on a later render
+      }
+    })();
+  }, [staleContentlessClaim, getIdToken, refreshProfile]);
 
   if (status.phase === 'loading') return null;
 

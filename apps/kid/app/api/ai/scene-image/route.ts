@@ -6,6 +6,15 @@ import { checkRateLimit, trackCreation } from '@gsi/firebase/sessionService';
 import { getBook } from '@gsi/firebase/bookService';
 import { getImageProvider, type ImageStyle } from '@gsi/ai/imageProvider';
 import { dimsForBookAndLayout } from '@gsi/ai/imageDims';
+import {
+  resolveComposition,
+  imageCarriesOverlay,
+  OVERLAY_SAFE_ZONE_HINT,
+} from '@/lib/books/pageComposition';
+import {
+  renderEmotionDirection,
+  sceneMoodFromEmotions,
+} from '@gsi/ai/prompts/emotionDirection';
 import type { BookCharacter } from '@gsi/types';
 import { enforceBilling } from '@/lib/billing';
 
@@ -51,10 +60,26 @@ export async function POST(request: NextRequest) {
       .map((id) => book.characters.find((c) => c.id === id))
       .filter((c): c is BookCharacter => c !== undefined);
 
+    // A cover (no pageId) always overlays its title; a full-bleed page overlays
+    // its caption. In those cases ask the model to leave a calm band so the
+    // overlaid text stays legible (the safe-zone composition pro covers use).
+    const pageLayout = input.pageId
+      ? pages.find((p) => p.id === input.pageId)?.layout
+      : undefined;
+    const reserveTextBand = pageLayout
+      ? imageCarriesOverlay(resolveComposition(pageLayout, book.size).mode)
+      : !input.pageId; // cover
+
+    const emotionMap = new Map<string, string>(
+      (input.emotions ?? []).map((e) => [e.characterId, e.emotion]),
+    );
+
     const fullPrompt = buildScenePrompt({
       characters: selectedCharacters,
+      emotions: emotionMap,
       action: input.action,
       styleHint: input.styleHint,
+      reserveTextBand,
     });
 
     filterImagePrompt(fullPrompt);
@@ -64,10 +89,6 @@ export async function POST(request: NextRequest) {
     // mislead kids).
     await enforceBilling(request, { feature: 'image.flux' });
 
-    // Per-page slot aspect when pageId is provided; book aspect (cover) otherwise
-    const pageLayout = input.pageId
-      ? pages.find((p) => p.id === input.pageId)?.layout
-      : undefined;
     const dims = dimsForBookAndLayout(book.size, pageLayout);
 
     const styleKey = (input.styleHint ?? '').toLowerCase();
@@ -107,11 +128,15 @@ export async function POST(request: NextRequest) {
 }
 
 /** Assemble the full image prompt — character anchors verbatim, then scene
- *  action, then style. */
+ *  action, then style. When `reserveTextBand` is set (covers + full-bleed
+ *  pages), ask the model to keep a calm band for an overlaid title/caption. */
 function buildScenePrompt(args: {
   characters: BookCharacter[];
+  /** characterId → emotion preset key (BOOK-012). */
+  emotions: Map<string, string>;
   action: string;
   styleHint?: string;
+  reserveTextBand?: boolean;
 }): string {
   const style = args.styleHint ?? 'soft watercolor children\'s book illustration';
   const parts: string[] = ['Children\'s book scene illustration.'];
@@ -124,8 +149,27 @@ function buildScenePrompt(args: {
   }
 
   parts.push(`Scene: ${args.action}.`);
+
+  // Explicit per-character facial direction — counter-biases the default smile
+  // so a fierce / sad / scared character renders with the right expression.
+  const emoDirs = args.characters
+    .map((c) => renderEmotionDirection(c.name, args.emotions.get(c.id)))
+    .filter(Boolean);
+  if (emoDirs.length > 0) parts.push(`${emoDirs.join('. ')}.`);
+
   parts.push(`Style: ${style}.`);
   parts.push('Same characters as their reference portraits — keep faces, hair, and outfits identical. No text in image.');
+
+  // Mood-aware lighting: a tense/dark scene shouldn't get the default bright
+  // children's palette that fights the emotion.
+  const mood = sceneMoodFromEmotions([...args.emotions.values()]);
+  if (mood === 'dark') {
+    parts.push('Mood: dramatic, moody lighting with deep shadows and a tense atmosphere.');
+  } else if (mood === 'bright') {
+    parts.push('Mood: warm, bright, cheerful lighting.');
+  }
+
+  if (args.reserveTextBand) parts.push(OVERLAY_SAFE_ZONE_HINT);
 
   return parts.join(' ');
 }

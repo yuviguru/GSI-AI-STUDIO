@@ -51,11 +51,11 @@ export function GameNavBar() {
       <div className="mx-auto flex h-12 max-w-[1520px] items-center justify-between px-4 sm:px-6">
         {/* Brand — links to Game Hub */}
         <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-primary to-brand-ai shadow-glass">
-            <span className="text-sm">🎮</span>
-          </div>
+          {/* Real GSI brand mark (was a 🎮 placeholder). */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/gsi-logo.svg" alt="GSI" className="h-8 w-auto" />
           <div className="hidden font-display text-sm font-bold sm:block">
-            GSI <span className="text-brand-primary">Studio</span>
+            GSI <span className="text-brand-primary">AI Studio</span>
           </div>
         </Link>
 

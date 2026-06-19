@@ -13,6 +13,9 @@ export interface SceneImageOptions {
   characterIds: string[];
   action: string;
   styleHint?: string;
+  /** Per-character emotion preset keys (BOOK-012) — drives the facial
+   *  expression + scene mood in the generated image. */
+  emotions?: Array<{ characterId: string; emotion: string }>;
 }
 
 export interface SceneImageResult {

@@ -139,10 +139,14 @@ export function SessionMigrationPrompt({
 
   // ── Data summary card content ─────────────────────────────────────────
 
+  // Keep in lock-step with `claimedSummaryIsKeepable` + the server's
+  // `hasMeaningfulData` — concepts count, so a concept-only session shows a
+  // real card instead of being treated as contentless (Codex review #74).
   const hasAnything =
     claimedData.aiPoints > 0 ||
     claimedData.badgeCount > 0 ||
     claimedData.totalCreationCount > 0 ||
+    claimedData.conceptCount > 0 ||
     Boolean(claimedData.onboarding?.name);
 
   // Resolve copy by branch
@@ -220,6 +224,12 @@ export function SessionMigrationPrompt({
                         <span className="rounded-full bg-blue-50 px-2 py-0.5 font-medium text-blue-600">
                           {claimedData.totalCreationCount} creation
                           {claimedData.totalCreationCount !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                      {claimedData.conceptCount > 0 && (
+                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-600">
+                          {claimedData.conceptCount} concept
+                          {claimedData.conceptCount !== 1 ? 's' : ''}
                         </span>
                       )}
                     </div>

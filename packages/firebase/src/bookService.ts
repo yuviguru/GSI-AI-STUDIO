@@ -338,6 +338,7 @@ function docToPage(doc: FirebaseFirestore.DocumentSnapshot): BookPage {
     imageUrl: data.imageUrl ?? null,
     imagePrompt: data.imagePrompt ?? null,
     imageStyle: data.imageStyle ?? null,
+    imageHistory: (data.imageHistory as string[] | undefined) ?? [],
     voiceTranscriptRaw: data.voiceTranscriptRaw ?? null,
     grammarSuggestions: data.grammarSuggestions ?? [],
     style: data.style ?? null,
@@ -851,6 +852,18 @@ export async function updatePage(
     // AI-generated images are set via the bulk createGeneratedBook write
     // and never PATCH'd directly. Clearing → 'none'.
     newImageSource = patch.imageUrl ? 'kid_added' : 'none';
+
+    // BOOK-009 — never lose a generated picture. Remember every distinct image
+    // the page has shown (the one leaving + the one arriving) so the kid can
+    // bring any of them back from the editor's "Your pictures" gallery, even
+    // after switching to a plain colour. Capped to keep the doc small.
+    const history = [...(existingPage.imageHistory ?? [])];
+    const remember = (url: string | null | undefined) => {
+      if (url && !history.includes(url)) history.push(url);
+    };
+    remember(existingPage.imageUrl);
+    remember(patch.imageUrl ?? null);
+    updates.imageHistory = history.slice(-16);
   }
 
   const newAuthorship = recomputePageAuthorship({

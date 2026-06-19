@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useAuth } from './useAuth';
+import { useAuth, type ClaimedSessionSummary } from './useAuth';
 import { useKidProfile, type KidProfileSummary } from './useKidProfile';
 import { useOnboardingProfile, type OnboardingProfile } from './useOnboardingProfile';
 
@@ -55,6 +55,37 @@ export type UserSessionStatus =
   | { phase: 'anonymous-fresh' };
 
 /**
+ * Whether a claimed anonymous session holds anything the user could actually
+ * KEEP — points, badges, creations, learned AI concepts, or a *named*
+ * onboarding persona.
+ *
+ * An avatar/mascot-only blip (no name, no progress) is NOT keepable: the
+ * migration prompt's summary card can't display it (it shows points / badges /
+ * creations / concepts / a name), so prompting for it renders a contentless
+ * screen that dead-ends the user — fatally so on a full 4-kid account, where
+ * the only exits are "sign out + new number" or "discard" (AUTH-002).
+ *
+ * MUST mirror `SessionMigrationPrompt`'s own `hasAnything` and the server
+ * claim-writer's `hasMeaningfulData` so the gate, the prompt, and the stash
+ * all agree on what "meaningful" means. `conceptsLearned` counts on the server
+ * and is merged by `assignPendingClaimedDataToKid`, so it MUST be honoured here
+ * too — otherwise AppGate auto-discards a concept-only session before the merge
+ * and the kid silently loses their learned concepts (Codex review #74).
+ */
+export function claimedSummaryIsKeepable(
+  summary: ClaimedSessionSummary | undefined,
+): boolean {
+  if (!summary) return false;
+  return (
+    summary.aiPoints > 0 ||
+    summary.badgeCount > 0 ||
+    summary.totalCreationCount > 0 ||
+    summary.conceptCount > 0 ||
+    Boolean(summary.onboarding?.name)
+  );
+}
+
+/**
  * Read the pending-claim flag from localStorage. The flag is stamped by
  * SessionInit on successful claim and cleared by the migration prompt's
  * onResolved callback (or by the global gsi-* wipe on signOut). Returns
@@ -92,11 +123,13 @@ export function useUserSessionStatus(): UserSessionStatus {
     if (isAuthenticated) {
       if (kidLoading) return { phase: 'loading' };
 
-      // Pending sign-in migration: server has claimedSessionData AND the
-      // client just-signed-in flag is set. Both signals are required so
+      // Pending sign-in migration: server has KEEPABLE claimedSessionData AND
+      // the client just-signed-in flag is set. Both signals are required so
       // refreshes after the user resolves the prompt don't re-trigger it.
+      // Contentless claims (avatar-only, no name/points/creations) are skipped
+      // so they never block routing — AppGate clears them server-side instead.
       const pendingSessionId = readPendingClaim();
-      if (user?.claimedSessionSummary && pendingSessionId) {
+      if (pendingSessionId && claimedSummaryIsKeepable(user?.claimedSessionSummary)) {
         return { phase: 'authenticated-migrating', pendingSessionId };
       }
 
